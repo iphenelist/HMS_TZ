@@ -30,8 +30,7 @@ def get_submitted_claims(self):
 	doc = frappe.get_doc(frappe.parse_json(self))
 	doc.validate_reqd_fields()
 
-	# token = get_claimsservice_token(doc.get("company"))
-	token = "LoLaiFcJCLHaPs-ZYbEK8Br6yo6f5-FNFJMuG86kejDvDuqkBpGiVaAr7JvFKTC4Yb74NG42nX0AMsIwXyWapucWndHBaBiflDAJWG2B-cgAO7bFABjgPlg5EmPInQkU6QZ4fLtRKujaBhQ3XPyIEmjoFqRxl2zxWaFXRkZY_Q2umlRrR9odQrcCB5LEI2k6sPtWMN8_aGQpbdv2ofhG6vTMTWqtzDDYeamgvfR5HrpD0ami1cDpvr4s3jkfOZvqq_UKJkpSZ3aZPqe9t52_HtT1_KgTj4iO4n_890Pu-j73dxaAgL98JuwrDliGU5KeZ2_EJarAJ7slt7_XcwVDz0lDt9qJWO4U7B3YyvYZcOsLn8QLHYzajp2K5k5AFbeoeBtojhOxQRCSpo6QZMRc3bOQp1U-ye30bubiAxDwFWJSv_Fl_Oa2gsgOb_7-TfDdE8hNwX5I4Fp0V4ZFFv1qabMLkmhcoo3OmFWcv6bKwjfDubXWsQPJk3mffqlM_vRVe7H1aQi8qe_xPhiX_4I2nwH_4ySqnDUIWyXEzK62rGn1DcXTH-p0QVdIegofygZV"
+	token = get_claimsservice_token(doc.get("company"))
 	headers = {
 		"Content-Type": "application/json",
 		"Authorization": "Bearer " + token
@@ -40,10 +39,9 @@ def get_submitted_claims(self):
 	facility_code,  base_url = frappe.get_cached_value("Company NHIF Settings", doc.company, ["facility_code", "claimsserver_url"])
 	params = "FacilityCode={0}&ClaimYear={1}&ClaimMonth={2}".format(facility_code, doc.claim_year, doc.claim_month)
 
-	# url = "{0}/claimsserver/api/v1/claims/getSubmittedClaims?{1}".format(base_url, params)
-	temp_url  = "https://verification.nhif.or.tz/claimsserver/api/v1/claims/getSubmittedClaims?" + params
+	url = "{0}/claimsserver/api/v1/claims/getSubmittedClaims?{1}".format(base_url, params)
 
-	data = make_request(temp_url, headers, params)
+	data = make_request(url, headers, params)
 
 	if len(data) > 0:
 		return update_reconciliation_detail(doc, data)
