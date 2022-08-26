@@ -43,7 +43,7 @@ def get_nhif_price_package(kwargs):
     )
     frappe.db.commit()
     token = get_claimsservice_token(company)
-    claimsserver_url, facility_code = frappe.get_value(
+    claimsserver_url, facility_code = frappe.get_cached_value(
         "Company NHIF Settings", company, ["claimsserver_url", "facility_code"]
     )
     headers = {"Authorization": "Bearer " + token}
@@ -55,9 +55,11 @@ def get_nhif_price_package(kwargs):
     r = requests.get(url, headers=headers, timeout=300)
     if r.status_code != 200:
         add_log(
-            request_type="GetCardDetails",
+            request_type="GetPricePackageWithExcludedServices",
             request_url=url,
             request_header=headers,
+            response_data=r.text,
+            status_code=r.status_code
         )
         frappe.throw(json.loads(r.text))
     else:
@@ -67,6 +69,7 @@ def get_nhif_price_package(kwargs):
                 request_url=url,
                 request_header=headers,
                 response_data=r.text,
+                status_code=r.status_code
             )
             time_stamp = now()
             data = json.loads(r.text)
@@ -180,8 +183,8 @@ def process_nhif_records(company):
 
 def process_prices_list(kwargs):
     company = kwargs
-    facility_code = frappe.get_value("Company NHIF Settings", company, "facility_code")
-    currency = frappe.get_value("Company", company, "default_currency")
+    facility_code = frappe.get_cached_value("Company NHIF Settings", company, "facility_code")
+    currency = frappe.get_cached_value("Company", company, "default_currency")
     schemeid_list = frappe.db.sql(
         """
             SELECT packageid, schemeid from `tabNHIF Price Package`
@@ -520,10 +523,10 @@ def set_nhif_diff_records(FacilityCode):
         frappe.throw(_("There are not enough records in NHIF Response Log"))
 
     current_rec = json.loads(
-        frappe.get_value("NHIF Response Log", current, "response_data")
+        frappe.get_cached_value("NHIF Response Log", current, "response_data")
     )
     previous_rec = json.loads(
-        frappe.get_value("NHIF Response Log", previous, "response_data")
+        frappe.get_cached_value("NHIF Response Log", previous, "response_data")
     )
     current_price_packages = current_rec.get("PricePackage")
     previousـprice_packages = previous_rec.get("PricePackage")

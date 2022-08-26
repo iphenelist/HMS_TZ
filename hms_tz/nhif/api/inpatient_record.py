@@ -21,7 +21,7 @@ def validate(doc, method):
 def validate_inpatient_occupancies(doc):
     if doc.is_new():
         return
-    old_doc = frappe.get_doc(doc.doctype, doc.name)
+    old_doc = frappe.get_cached_doc(doc.doctype, doc.name)
     count = 0
     for old_row in old_doc.inpatient_occupancies:
         count += 1
@@ -52,7 +52,7 @@ def daily_update_inpatient_occupancies():
 
     for item in occupancies:
         try:
-            doc = frappe.get_doc("Inpatient Record", item.name)
+            doc = frappe.get_cached_doc("Inpatient Record", item.name)
             occupancies_len = len(doc.inpatient_occupancies)
             if occupancies_len > 0:
                 last_row = doc.inpatient_occupancies[occupancies_len - 1]
@@ -77,10 +77,10 @@ def confirmed(row, doc):
     if row.invoiced or not row.left:
         return
     encounter = frappe.get_doc("Patient Encounter", doc.admission_encounter)
-    service_unit_type, warehouse = frappe.get_value(
+    service_unit_type, warehouse = frappe.get_cached_value(
         "Healthcare Service Unit", row.service_unit, ["service_unit_type", "warehouse"]
     )
-    item_code = frappe.get_value(
+    item_code = frappe.get_cached_value(
         "Healthcare Service Unit Type", service_unit_type, "item_code"
     )
     item_rate = 0
@@ -98,7 +98,7 @@ def confirmed(row, doc):
                 ).format(encounter.insurance_subscription, item_code)
             )
     elif encounter.mode_of_payment:
-        price_list = frappe.get_value(
+        price_list = frappe.get_cached_value(
             "Mode of Payment", encounter.mode_of_payment, "price_list"
         )
         if not price_list:
@@ -149,10 +149,10 @@ def create_delivery_note(encounter, item_code, item_rate, warehouse, row, practi
             posting_time=nowtime(),
             set_warehouse=warehouse,
             company=encounter.company,
-            customer=frappe.get_value(
+            customer=frappe.get_cached_value(
                 "Healthcare Insurance Company", insurance_company, "customer"
             ),
-            currency=frappe.get_value("Company", encounter.company, "default_currency"),
+            currency=frappe.get_cached_value("Company", encounter.company, "default_currency"),
             items=items,
             reference_doctype=row.parenttype,
             reference_name=row.parent,
@@ -179,10 +179,10 @@ def set_beds_price(self):
     for bed in self.inpatient_occupancies:
         if bed.amount == 0:
             if self.insurance_subscription:
-                service_unit_type = frappe.get_value(
+                service_unit_type = frappe.get_cached_value(
                     "Healthcare Service Unit", bed.service_unit, "service_unit_type"
                 )
-                item_code = frappe.get_value(
+                item_code = frappe.get_cached_value(
                     "Healthcare Service Unit Type", service_unit_type, "item_code"
                 )
                 bed.amount = get_item_rate(
@@ -193,10 +193,10 @@ def set_beds_price(self):
                 mode_of_payment = frappe.get_value(
                     "Patient Encounter", self.admission_encounter, "mode_of_payment"
                 )
-                service_unit_type = frappe.get_value(
+                service_unit_type = frappe.get_cached_value(
                     "Healthcare Service Unit", bed.service_unit, "service_unit_type"
                 )
-                item_code = frappe.get_value(
+                item_code = frappe.get_cached_value(
                     "Healthcare Service Unit Type", service_unit_type, "item_code"
                 )
                 bed.amount = get_mop_amount(

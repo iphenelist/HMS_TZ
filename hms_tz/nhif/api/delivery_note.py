@@ -83,7 +83,7 @@ def set_missing_values(doc):
         )
             
     if not doc.hms_tz_phone_no:
-        doc.hms_tz_phone_no = frappe.get_value('Patient', doc.patient, 'mobile')
+        doc.hms_tz_phone_no = frappe.get_cached_value('Patient', doc.patient, 'mobile')
     
     if doc.form_sales_invoice:
         if not doc.hms_tz_appointment_no or not doc.healthcare_practitioner:
@@ -246,7 +246,7 @@ def check_out_of_stock_for_original_item(doc):
                 "parenttype": "Delivery Note",
                 "doctype": "Delivery Note Item",
             })
-            doc.append("items", frappe.get_doc(new_item).as_dict())
+            doc.append("items", frappe.get_cached_doc(new_item).as_dict())
 
             original_item.hms_tz_is_out_of_stock = 1
 
@@ -276,7 +276,7 @@ def convert_to_instock_item(name, row):
         "parenttype": "Delivery Note",
         "doctype": "Delivery Note Item"
     })
-    doc = frappe.get_doc("Delivery Note", name)
+    doc = frappe.get_cached_doc("Delivery Note", name)
     prev_size = len(doc.items)
     doc.append('items', new_row)
     
