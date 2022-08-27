@@ -1,7 +1,6 @@
 # Copyright (c) 2022, Aakvatech and contributors
 # For license information, please see license.txt
 
-from audioop import add
 import frappe
 import json
 import requests
@@ -18,7 +17,7 @@ class NHIFClaimReconciliation(Document):
 	def validate_reqd_fields(self):
 		for fieldname in ["company", "claim_year", "claim_month"]:
 			if not self.get(fieldname):
-				frappe.throw("{0} is required".format(fieldname))
+				frappe.throw(frappe.bold("{0} is required".format(fieldname)))
 	
 	def before_submit(self):
 		if self.status == "Pending":
@@ -86,10 +85,11 @@ def make_request(url, headers, payload):
 
 
 def update_reconciliation_detail(self, records):
-	self.number_of_submitted_claims = len(records)
+	total_amount = 0
 	self.status = "Successful"
+	self.number_of_submitted_claims = len(records)
 
-	total_amount = 0 
+	self.claim_details = []
 	for record in records:
 		total_amount += flt(record["AmountClaimed"])
 		self.append("claim_details", {
