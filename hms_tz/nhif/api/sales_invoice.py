@@ -30,7 +30,7 @@ def validate_create_delivery_note(doc):
         return
     inpatient_record = frappe.get_cached_value  ("Patient", doc.patient, "inpatient_record")
     if inpatient_record:
-        insurance_subscription = frappe.get_cached_value(
+        insurance_subscription = frappe.get_value(
             "Inpatient Record", inpatient_record, "insurance_subscription"
         )
         if not insurance_subscription:
@@ -106,7 +106,7 @@ def update_drug_prescription(doc):
                 item.reference_dt and 
                 item.reference_dt == "Drug Prescription"
             ):
-                dn_name = frappe.get_cached_value("Delivery Note", {"form_sales_invoice": doc.name}, "name")
+                dn_name = frappe.get_value("Delivery Note", {"form_sales_invoice": doc.name}, "name")
                 if not dn_name:
                     return
                 frappe.db.set_value("Drug Prescription", item.reference_dn, {

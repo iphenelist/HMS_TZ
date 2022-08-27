@@ -694,7 +694,7 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
                 "customer",
             )
             insurance_coverage_plan = patient_encounter_doc.insurance_coverage_plan
-            authorization_number = frappe.get_cached_value(
+            authorization_number = frappe.get_value(
                 "Patient Appointment",
                 patient_encounter_doc.appointment,
                 fieldname="authorization_number",
@@ -799,7 +799,7 @@ def validate_totals(doc):
     ):
         return
     if doc.encounter_type == "Initial":
-        appointment_amount = frappe.get_cached_value(
+        appointment_amount = frappe.get_value(
             "Patient Appointment", doc.appointment, "paid_amount"
         )
         doc.previous_total = appointment_amount

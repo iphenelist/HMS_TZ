@@ -216,7 +216,7 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
     if patient_encounter_doc.appointment:
         return
     # purposely put this above to skip the delivery note process 2021-04-07 14:36:04
-    insurance_subscription, insurance_company = frappe.get_cached_value(
+    insurance_subscription, insurance_company = frappe.get_value(
         "Patient Appointment",
         patient_encounter_doc.appointment,
         ["insurance_subscription", "insurance_company"],
@@ -383,7 +383,7 @@ def get_healthcare_practitioner(item):
     if refd == "Patient Encounter":
         return frappe.get_value("Patient Encounter", refn, "practitioner")
     elif refd == "Patient Appointment":
-        return frappe.get_cached_value("Patient Appointment", refn, "practitioner")
+        return frappe.get_value("Patient Appointment", refn, "practitioner")
     elif refd == "Drug Prescription":
         parent, parenttype = frappe.get_value(
             "Drug Prescription", refn, ["parent", "parenttype"]
@@ -391,7 +391,7 @@ def get_healthcare_practitioner(item):
         if parenttype == "Patient Encounter":
             return frappe.get_value("Patient Encounter", parent, "practitioner")
     elif refd == "Healthcare Service Order":
-        encounter = frappe.get_cached_value("Healthcare Service Order", refn, "order_group")
+        encounter = frappe.get_value("Healthcare Service Order", refn, "order_group")
         if encounter:
             return frappe.get_value("Patient Encounter", encounter, "practitioner")
 
@@ -417,11 +417,11 @@ def get_healthcare_service_unit(item):
     if refd == "Patient Encounter":
         return frappe.get_value("Patient Encounter", refn, "healthcare_service_unit")
     elif refd == "Patient Appointment":
-        return frappe.get_cached_value("Patient Appointment", refn, "service_unit")
+        return frappe.get_value("Patient Appointment", refn, "service_unit")
     elif refd == "Drug Prescription":
         return frappe.get_value("Drug Prescription", refn, "healthcare_service_unit")
     elif refd == "Healthcare Service Order":
-        order_doctype, order, order_group, billing_item, company = frappe.get_cached_value(
+        order_doctype, order, order_group, billing_item, company = frappe.get_value(
             refd,
             refn,
             ["order_doctype", "order", "order_group", "billing_item", "company"],
@@ -550,7 +550,7 @@ def set_healthcare_services(doc, checked_values):
 
         else:
             map_obj = childs_map.get(checked_item["dt"])
-            service_item = frappe.get_cached_value(
+            service_item = frappe.get_value(
                 checked_item["dt"],
                 checked_item["dn"],
                 map_obj.get("item"),
@@ -710,7 +710,7 @@ def get_approval_number_from_LRPMT(ref_doctype=None, ref_docname=None):
     if not ref_doctype or not ref_docname:
         return None
 
-    return frappe.get_cached_value(ref_doctype, ref_docname, "approval_number")
+    return frappe.get_value(ref_doctype, ref_docname, "approval_number")
 
 
 def set_uninvoiced_so_closed():
@@ -793,7 +793,7 @@ def delete_or_cancel_draft_document():
 
     for app_doc in appointments:
         try:
-            doc = frappe.get_cached_doc("Patient Appointment", app_doc.name)
+            doc = frappe.get_doc("Patient Appointment", app_doc.name)
             doc.status = "Cancelled"
             doc.save(ignore_permissions=True)
 
@@ -834,7 +834,7 @@ def delete_or_cancel_draft_document():
     # )
 
     # for dn_doc in delivery_documents:
-    #     dn_del = frappe.get_cached_doc("Delivery Note", dn_doc.name)
+    #     dn_del = frappe.get_doc("Delivery Note", dn_doc.name)
     #     try:
     #         dn_del.delete()
     #     except Exception:
