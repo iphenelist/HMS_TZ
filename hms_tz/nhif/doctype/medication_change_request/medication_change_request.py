@@ -132,8 +132,8 @@ class MedicationChangeRequest(Document):
             
             if row.prescribe or row.is_not_available_inhouse or row.is_cancelled:
                 continue
-            item_code, uom = frappe.get_value("Medication", row.drug_code, ["item", "stock_uom"])
-            is_stock, item_name = frappe.get_value(
+            item_code, uom = frappe.get_cached_value("Medication", row.drug_code, ["item", "stock_uom"])
+            is_stock, item_name = frappe.get_cached_value(
                 "Item", item_code, ["is_stock_item", "item_name"]
             )
             if not is_stock:
@@ -219,7 +219,7 @@ def get_insurance_details(self):
     return insurance_subscription, insurance_company
 
 def set_amount(self, item):
-    item_code = frappe.get_value("Medication", item.drug_code, "item")
+    item_code = frappe.get_cached_value("Medication", item.drug_code, "item")
 
     if not item.prescribe:
         insurance_subscription, insurance_company = get_insurance_details(self)
@@ -237,7 +237,7 @@ def validate_restricted(self, row):
     items = {}
     insurance_subscription, insurance_company = get_insurance_details(self)
 
-    insurance_coverage_plan = frappe.get_value(
+    insurance_coverage_plan = frappe.get_cached_value(
         "Healthcare Insurance Subscription",
         {"name" :insurance_subscription},
         "healthcare_insurance_coverage_plan"
