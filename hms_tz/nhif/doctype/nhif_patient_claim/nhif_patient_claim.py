@@ -689,14 +689,11 @@ class NHIFPatientClaim(Document):
             r = requests.post(url, headers=headers, data=json_data, timeout=300)
 
             if r.status_code != 200:
-                if (
-                    str(r)
-                    and r.status_code == 500
-                    and "A claim with Similar Authorization No. already exists"
-                    in r.text
-                ):
+                if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
                     frappe.msgprint(
-                        "This folio was NOT sent. However, since it is already existing at NHIF it has been submitted! "
+                        "This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{0}".format(
+                            r.text
+                        )
                         + str(get_datetime())
                     )
                 elif (
@@ -708,7 +705,9 @@ class NHIFPatientClaim(Document):
                     in r.text
                 ):
                     frappe.msgprint(
-                        "This folio was NOT sent. However, since it is already existing at NHIF it has been submitted! "
+                        "This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{0}".format(
+                            r.text
+                        )
                         + str(get_datetime())
                     )
                 else:
