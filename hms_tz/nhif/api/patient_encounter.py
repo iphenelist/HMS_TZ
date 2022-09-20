@@ -1286,7 +1286,7 @@ def validate_patient_balance_vs_patient_costs(doc):
                 plan.prescribe == 0
                 or plan.is_not_available_inhouse == 1
                 or plan.invoiced == 1
-                or lab.is_cancelled == 1
+                or plan.is_cancelled == 1
             ):
                 return
 
