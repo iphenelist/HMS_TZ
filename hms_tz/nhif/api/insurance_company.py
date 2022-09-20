@@ -17,6 +17,7 @@ from frappe.model.naming import set_new_name
 import ast
 from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
 
+from time import sleep
 
 @frappe.whitelist()
 def enqueue_get_nhif_price_package(company):
@@ -33,15 +34,6 @@ def enqueue_get_nhif_price_package(company):
 def get_nhif_price_package(kwargs):
     company = kwargs
     user = frappe.session.user
-    frappe.db.sql(
-        """DELETE FROM `tabNHIF Price Package` WHERE company = '{0}' """.format(company)
-    )
-    frappe.db.sql(
-        """DELETE FROM `tabNHIF Excluded Services` WHERE company = '{0}' """.format(
-            company
-        )
-    )
-    frappe.db.commit()
     token = get_claimsservice_token(company)
     claimsserver_url, facility_code = frappe.get_value(
         "Company NHIF Settings", company, ["claimsserver_url", "facility_code"]
@@ -55,17 +47,32 @@ def get_nhif_price_package(kwargs):
     r = requests.get(url, headers=headers, timeout=300)
     if r.status_code != 200:
         add_log(
-            request_type="GetCardDetails",
+            request_type="GetPricePackageWithExcludedServices",
             request_url=url,
             request_header=headers,
+            status_code=r.status_code
         )
         frappe.throw(json.loads(r.text))
     else:
         if json.loads(r.text):
+            frappe.db.sql(
+                """DELETE FROM `tabNHIF Price Package` WHERE company = '{0}' """.format(company)
+            )
+            frappe.db.sql(
+                """DELETE FROM `tabNHIF Excluded Services` WHERE company = '{0}' """.format(
+                    company
+                )
+            )
+            frappe.db.commit()
+
+            # wait for 60 seconds before creating records again
+            sleep(60)
+
             log_name = add_log(
                 request_type="GetPricePackageWithExcludedServices",
                 request_url=url,
                 request_header=headers,
+                status_code=r.status_code,
                 response_data=r.text,
             )
             time_stamp = now()
@@ -284,7 +291,7 @@ def process_prices_list(kwargs):
     frappe.db.commit()
 
 
-def get_insurance_coverage_items():
+def get_insurance_coverage_items(company):
     items_list = frappe.db.sql(
         """
             SELECT 'Appointment Type' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -293,6 +300,7 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabAppointment Type` m ON icd.parent = m.out_patient_consulting_charge_item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
             UNION ALL
             SELECT 'Lab Test Template' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -301,6 +309,7 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabLab Test Template` m ON icd.parent = m.item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
             UNION ALL
             SELECT 'Radiology Examination Template' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -309,6 +318,7 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabRadiology Examination Template` m ON icd.parent = m.item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
             UNION ALL
             SELECT 'Clinical Procedure Template' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -317,6 +327,7 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabClinical Procedure Template` m ON icd.parent = m.item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
             UNION ALL
             SELECT 'Medication' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -325,6 +336,7 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabMedication` m ON icd.parent = m.item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
             UNION ALL
             SELECT 'Therapy Type' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -333,6 +345,7 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabTherapy Type` m ON icd.parent = m.item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
             UNION ALL
             SELECT 'Healthcare Service Unit Type' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
@@ -341,8 +354,9 @@ def get_insurance_coverage_items():
                 INNER JOIN `tabHealthcare Service Unit Type` m ON icd.parent = m.item
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
                 WHERE icd.customer_name = 'NHIF'
+                AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
-        """,
+        """.format(company=frappe.db.escape(company)),
         as_dict=1,
     )
     return items_list
@@ -374,7 +388,7 @@ def get_price_package(itemcode, schemeid, company):
 
 def process_insurance_coverages(kwargs):
     company = kwargs
-    items_list = get_insurance_coverage_items()
+    items_list = get_insurance_coverage_items(company)
 
     coverage_plan_list = frappe.get_all(
         "Healthcare Insurance Coverage Plan",
@@ -461,14 +475,18 @@ def process_insurance_coverages(kwargs):
                 )
             )
 
-        if plan.name:
-            frappe.db.sql(
-                "DELETE FROM `tabHealthcare Service Insurance Coverage` WHERE is_auto_generated = 1 AND healthcare_insurance_coverage_plan = '{0}'".format(
-                    plan.name
-                )
-            )
-
         if insert_data:
+            if plan.name:
+                frappe.db.sql(
+                        "DELETE FROM `tabHealthcare Service Insurance Coverage` WHERE is_auto_generated = 1 AND healthcare_insurance_coverage_plan = '{0}'".format(
+                            plan.name
+                        )
+                    )
+                frappe.db.commit()
+                
+            # wait for 60 seconds before creating HSIC records again
+            sleep(60)
+
             frappe.db.sql(
                 """
                 INSERT INTO `tabHealthcare Service Insurance Coverage`
