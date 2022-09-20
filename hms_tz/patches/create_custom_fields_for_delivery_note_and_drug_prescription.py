@@ -3,7 +3,7 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 def execute():
     frappe.reload_doc('nhif', 'doctype', 'original_delivery_note_item', force=True)
-    frappe.db.ommit()
+    frappe.db.commit()
 
     fields = {
         "Delivery Note": [
