@@ -465,3 +465,11 @@ def make_next_doc(doc, method):
         make_encounter(doc, method)
     else:
         make_vital(doc, method)
+
+
+@frappe.whitelist()
+def validate_insurance_company(insurance_company: str) -> str:
+    if frappe.get_value("Healthcare Insurance Company", insurance_company, "disabled"):
+        frappe.msgprint(_("<b>Insurance Company: <string>{0}</strong> is disabled, Please choose different insurance subscription</b>".format(insurance_company)))
+        return True
+    return False
