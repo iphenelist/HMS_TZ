@@ -351,7 +351,7 @@ def send_vfd(invoice_name):
         msg = {"enqueue": False}
         return msg
     else:
-        from vfd_tz.api.sales_invoice import enqueue_posting_vfd_invoice
+        from vfd_tz.vfd_tz.api.sales_invoice import enqueue_posting_vfd_invoice
 
         enqueue_posting_vfd_invoice(invoice_name)
         pos_profile_name = frappe.get_value(
