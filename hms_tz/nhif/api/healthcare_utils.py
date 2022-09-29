@@ -18,7 +18,7 @@ import re
 def get_healthcare_services_to_invoice(
     patient, company, encounter=None, service_order_category=None, prescribed=None
 ):
-    patient = frappe.get_doc("Patient", patient)
+    patient = frappe.get_cached_doc("Patient", patient)
     items_to_invoice = []
     if patient:
         validate_customer_created(patient)
@@ -100,7 +100,7 @@ def get_healthcare_service_order_to_invoice(
                     and not row.get("is_not_available_inhouse")
                     and not row.get("is_cancelled")
                 ):
-                    item_code = frappe.get_value(
+                    item_code = frappe.get_cached_value(
                         value.get("template"),
                         row.get(value.get("item")),
                         "item",
@@ -231,7 +231,7 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
     item_code = item.get("item_code")
     if not item_code:
         return
-    is_stock, item_name = frappe.get_value(
+    is_stock, item_name = frappe.get_cached_value(
         "Item", item_code, ["is_stock_item", "item_name"]
     )
     if is_stock:
@@ -251,7 +251,7 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
     )
     item_row.reference_doctype = LRPT_doc.doctype
     item_row.reference_name = LRPT_doc.name
-    item_row.description = frappe.get_value("Item", item_code, "description")
+    item_row.description = frappe.get_cached_value("Item", item_code, "description")
     items.append(item_row)
 
     if len(items) == 0:
@@ -263,10 +263,10 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
             posting_time=nowtime(),
             set_warehouse=warehouse,
             company=patient_encounter_doc.company,
-            customer=frappe.get_value(
+            customer=frappe.get_cached_value(
                 "Healthcare Insurance Company", insurance_company, "customer"
             ),
-            currency=frappe.get_value(
+            currency=frappe.get_cached_value(
                 "Company", patient_encounter_doc.company, "default_currency"
             ),
             items=items,
@@ -288,7 +288,7 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
 
 
 def get_warehouse_from_service_unit(healthcare_service_unit):
-    warehouse = frappe.get_value(
+    warehouse = frappe.get_cached_value(
         "Healthcare Service Unit", healthcare_service_unit, "warehouse"
     )
     if not warehouse:
@@ -305,19 +305,19 @@ def get_item_form_LRPT(LRPT_doc):
     comapny_option = get_template_company_option(LRPT_doc.template, LRPT_doc.company)
     item.healthcare_service_unit = comapny_option.service_unit
     if LRPT_doc.doctype == "Lab Test":
-        item.item_code = frappe.get_value(
+        item.item_code = frappe.get_cached_value(
             "Lab Test Template", LRPT_doc.template, "item"
         )
         item.qty = 1
     elif LRPT_doc.doctype == "Radiology Examination":
-        item.item_code = frappe.get_value(
+        item.item_code = frappe.get_cached_value(
             "Radiology Examination Template",
             LRPT_doc.radiology_examination_template,
             "item",
         )
         item.qty = 1
     elif LRPT_doc.doctype == "Clinical Procedure":
-        item.item_code = frappe.get_value(
+        item.item_code = frappe.get_cached_value(
             "Clinical Procedure Template",
             LRPT_doc.procedure_template,
             "item",
@@ -476,7 +476,7 @@ def get_restricted_LRPT(doc):
             "Patient Encounter", doc.ref_docname, "insurance_subscription"
         )
         if insurance_subscription:
-            healthcare_insurance_coverage_plan = frappe.get_value(
+            healthcare_insurance_coverage_plan = frappe.get_cached_value(
                 "Healthcare Insurance Subscription",
                 insurance_subscription,
                 "healthcare_insurance_coverage_plan",
@@ -550,7 +550,7 @@ def set_healthcare_services(doc, checked_values):
 
         else:
             map_obj = childs_map.get(checked_item["dt"])
-            service_item = frappe.get_cached_value(
+            service_item = frappe.get_value(
                 checked_item["dt"],
                 checked_item["dn"],
                 map_obj.get("item"),
@@ -570,7 +570,7 @@ def create_individual_lab_test(source_doc, child):
     if child.lab_test_created == 1 or child.is_not_available_inhouse:
         return
     ltt_doc = frappe.get_cached_doc("Lab Test Template", child.lab_test_code)
-    patient_sex = frappe.get_value("Patient", source_doc.patient, "sex")
+    patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
 
     doc = frappe.new_doc("Lab Test")
     doc.patient = source_doc.patient
@@ -667,7 +667,7 @@ def create_individual_procedure_prescription(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
-    doc.patient_sex = frappe.get_value("Patient", source_doc.patient, "sex")
+    doc.patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
     doc.medical_department = frappe.get_cached_value(
         "Clinical Procedure Template", child.procedure, "medical_department"
     )
@@ -757,7 +757,7 @@ def get_template_company_option(template=None, company=None):
         "Healthcare Company Option", {"company": company, "parent": template}
     )
     if exist:
-        doc = frappe.get_doc(
+        doc = frappe.get_cached_doc(
             "Healthcare Company Option", {"company": company, "parent": template}
         )
         return doc
@@ -814,7 +814,7 @@ def delete_or_cancel_draft_document():
 
     for vs_doc in vital_docs:
         try:
-            doc = frappe.get_doc("Vital Signs", vs_doc.name)
+            doc = frappe.get_cached_doc("Vital Signs", vs_doc.name)
             doc.delete()
 
         except Exception:
@@ -922,7 +922,7 @@ def create_invoiced_items_if_not_created():
                                 "insurance_subscription": patient_encounter_doc.insurance_subscription
                                 if patient_encounter_doc.insurance_subscription
                                 else "",
-                                "medical_department": frappe.get_value(
+                                "medical_department": frappe.get_cached_value(
                                     "Radiology Examination Template",
                                     child.radiology_examination_template,
                                     "medical_department",
@@ -956,7 +956,7 @@ def create_invoiced_items_if_not_created():
                                 "source": patient_encounter_doc.source,
                                 "prescribe": child.prescribe,
                                 "insurance_subscription": patient_encounter_doc.insurance_subscription,
-                                "medical_department": frappe.get_value(
+                                "medical_department": frappe.get_cached_value(
                                     "Clinical Procedure Template",
                                     child.procedure,
                                     "medical_department",

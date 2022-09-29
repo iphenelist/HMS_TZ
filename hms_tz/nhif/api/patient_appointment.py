@@ -37,7 +37,7 @@ def get_insurance_amount(
 def get_mop_amount(billing_item, mop=None, company=None, patient=None):
     price_list = None
     if mop:
-        price_list = frappe.get_value("Mode of Payment", mop, "price_list")
+        price_list = frappe.get_cached_value("Mode of Payment", mop, "price_list")
     if not price_list and patient:
         price_list = get_default_price_list(patient)
     if not price_list:
@@ -47,13 +47,13 @@ def get_mop_amount(billing_item, mop=None, company=None, patient=None):
 
 def get_default_price_list(patient):
     price_list = None
-    price_list = frappe.get_value("Patient", patient, "default_price_list")
+    price_list = frappe.get_cached_value("Patient", patient, "default_price_list")
     if not price_list:
-        customer = frappe.get_value("Patient", patient, "customer")
+        customer = frappe.get_cached_value("Patient", patient, "customer")
         if customer:
-            price_list = frappe.get_value("Customer", customer, "default_price_list")
+            price_list = frappe.get_cached_value("Customer", customer, "default_price_list")
     if not price_list:
-        customer_group = frappe.get_value("Customer", customer, "customer_group")
+        customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
         frappe.get_cached_value("Customer Group", customer_group, "default_price_list")
     if not price_list:
         if frappe.db.exists("Price List", "Standard Selling"):
@@ -63,7 +63,7 @@ def get_default_price_list(patient):
 
 def get_item_price(item_code, price_list, company):
     price = 0
-    company_currency = frappe.get_value("Company", company, "default_currency")
+    company_currency = frappe.get_cached_value("Company", company, "default_currency")
     item_prices_data = frappe.get_all(
         "Item Price",
         fields=["item_code", "price_list_rate", "currency"],
@@ -114,7 +114,7 @@ def invoice_appointment(name):
     ):
         sales_invoice = frappe.new_doc("Sales Invoice")
         sales_invoice.patient = appointment_doc.patient
-        sales_invoice.customer = frappe.get_value(
+        sales_invoice.customer = frappe.get_cached_value(
             "Patient", appointment_doc.patient, "customer"
         )
         sales_invoice.appointment = appointment_doc.name
@@ -154,11 +154,11 @@ def invoice_appointment(name):
 @frappe.whitelist()
 def get_consulting_charge_item(appointment_type, practitioner):
     charge_item = ""
-    is_inpatient = frappe.get_value("Appointment Type", appointment_type, "ip")
+    is_inpatient = frappe.get_cached_value("Appointment Type", appointment_type, "ip")
     field_name = (
         "inpatient_visit_charge_item" if is_inpatient else "op_consulting_charge_item"
     )
-    charge_item = frappe.get_value("Healthcare Practitioner", practitioner, field_name)
+    charge_item = frappe.get_cached_value("Healthcare Practitioner", practitioner, field_name)
     return charge_item
 
 
@@ -259,7 +259,7 @@ def make_encounter(doc, method):
 def get_authorization_num(
     insurance_subscription, company, appointment_type, card_no, referral_no="", remarks=""
 ):
-    enable_nhif_api, nhifservice_url = frappe.get_value("Company NHIF Settings", company, ["enable", "nhifservice_url"])
+    enable_nhif_api, nhifservice_url = frappe.get_cached_value("Company NHIF Settings", company, ["enable", "nhifservice_url"])
     if not enable_nhif_api:
         frappe.msgprint(
             _("Company {0} not enabled for NHIF Integration".format(company))
@@ -278,7 +278,7 @@ def get_authorization_num(
     card_no = "CardNo=" + str(card_no)
     visit_type_id = (
         "&VisitTypeID="
-        + frappe.get_value("Appointment Type", appointment_type, "visit_type_id")[:1]
+        + frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")[:1]
     )
     referral_no = "&ReferralNo=" + str(referral_no)
     remarks = "&Remarks=" + str(remarks)
@@ -351,13 +351,13 @@ def send_vfd(invoice_name):
         msg = {"enqueue": False}
         return msg
     else:
-        from vfd_tz.api.sales_invoice import enqueue_posting_vfd_invoice
+        from vfd_tz.vfd_tz.api.sales_invoice import enqueue_posting_vfd_invoice
 
         enqueue_posting_vfd_invoice(invoice_name)
         pos_profile_name = frappe.get_value(
             "Sales Invoice", invoice_name, "pos_profile"
         )
-        pos_profile = frappe.get_doc("POS Profile", pos_profile_name)
+        pos_profile = frappe.get_cached_doc("POS Profile", pos_profile_name)
         msg = {"enqueue": True, "pos_rofile": pos_profile}
         return msg
 
@@ -391,7 +391,7 @@ def set_follow_up(appointment_doc, method):
     if appointment and appointment_doc.appointment_date:
         diff = date_diff(appointment_doc.appointment_date, appointment.appointment_date)
         valid_days = int(
-            frappe.get_value("Healthcare Settings", "Healthcare Settings", "valid_days")
+            frappe.get_cached_value("Healthcare Settings", "Healthcare Settings", "valid_days")
         )
         if diff <= valid_days:
             appointment_doc.follow_up = 1
@@ -418,7 +418,7 @@ def make_next_doc(doc, method):
     if doc.is_new():
         return
     if doc.insurance_subscription:
-        is_active, his_patient = frappe.get_value(
+        is_active, his_patient = frappe.get_cached_value(
             "Healthcare Insurance Subscription",
             doc.insurance_subscription,
             ["is_active", "patient"],
@@ -461,7 +461,7 @@ def make_next_doc(doc, method):
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
         return
-    if frappe.get_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
+    if frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
         make_encounter(doc, method)
     else:
         make_vital(doc, method)

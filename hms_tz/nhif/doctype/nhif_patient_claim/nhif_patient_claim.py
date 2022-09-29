@@ -121,7 +121,7 @@ class NHIFPatientClaim(Document):
         self.folio_no = int(self.name[-9:])
         self.serial_no = self.folio_no
         self.item_crt_by = get_fullname(frappe.session.user)
-        final_patient_encounter = self.final_patient_encounter        
+        final_patient_encounter = self.final_patient_encounter
         practitioner_name, practitioner_no = frappe.get_cached_value(
             "Healthcare Practitioner",
             final_patient_encounter.practitioner,
@@ -689,14 +689,11 @@ class NHIFPatientClaim(Document):
             r = requests.post(url, headers=headers, data=json_data, timeout=300)
 
             if r.status_code != 200:
-                if (
-                    str(r)
-                    and r.status_code == 500
-                    and "A claim with Similar Authorization No. already exists"
-                    in r.text
-                ):
+                if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
                     frappe.msgprint(
-                        "This folio was NOT sent. However, since it is already existing at NHIF it has been submitted! "
+                        "This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{0}".format(
+                            r.text
+                        )
                         + str(get_datetime())
                     )
                 elif (
@@ -708,7 +705,9 @@ class NHIFPatientClaim(Document):
                     in r.text
                 ):
                     frappe.msgprint(
-                        "This folio was NOT sent. However, since it is already existing at NHIF it has been submitted! "
+                        "This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{0}".format(
+                            r.text
+                        )
                         + str(get_datetime())
                     )
                 else:
@@ -737,9 +736,9 @@ class NHIFPatientClaim(Document):
                 request_url=url,
                 request_header=headers,
                 request_body=json_data,
-                response_data=(r.text if str(r) or r.text  else "NO RESPONSE r. Timeout???")
+                response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???")
                 or "NO TEXT",
-                status_code=(r.status_code if str(r) or r.status_code else "NO RESPONSE r. Timeout???")
+                status_code=(r.status_code if str(r) else "NO RESPONSE r. Timeout???")
                 or "NO STATUS CODE",
             )
             frappe.throw(
@@ -801,7 +800,7 @@ class NHIFPatientClaim(Document):
 
 def get_missing_patient_signature(self):
     if self.patient:
-        patient_doc = frappe.get_doc("Patient", self.patient)
+        patient_doc = frappe.get_cached_doc("Patient", self.patient)
         signature = patient_doc.patient_signature
         if not signature:
             frappe.throw(_("Patient signature is required"))

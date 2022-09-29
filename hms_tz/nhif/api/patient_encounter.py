@@ -121,7 +121,7 @@ def on_submit_validation(doc, method):
 
     
     # Run on_submit
-    submitting_healthcare_practitioner = frappe.db.get_value(
+    submitting_healthcare_practitioner = frappe.get_cached_value(
         "Healthcare Practitioner", {"user_id": frappe.session.user}, ["name"]
     )
     if submitting_healthcare_practitioner:
@@ -209,7 +209,7 @@ def on_submit_validation(doc, method):
 
     if not doc.healthcare_service_unit:
         frappe.throw(_("Healthcare Service Unit not set"))
-    healthcare_insurance_coverage_plan = frappe.get_value(
+    healthcare_insurance_coverage_plan = frappe.get_cached_value(
         "Healthcare Insurance Subscription",
         insurance_subscription,
         "healthcare_insurance_coverage_plan",
@@ -245,7 +245,7 @@ def on_submit_validation(doc, method):
     )
     # hsic_map is like {"CBC": HSIC_object_for_CBC, "XRay Abdomen": HSIC_object_for_xray_abdomen, "Panadol": HSIC_object_for_panadol}
     hsic_map = {hsic.healthcare_service_template: hsic for hsic in hsic_list}
-    hicp_name, is_exclusions = frappe.get_value(
+    hicp_name, is_exclusions = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
         healthcare_insurance_coverage_plan,
         ["coverage_plan_name", "is_exclusions"],
@@ -380,9 +380,9 @@ def duplicate_encounter(encounter):
 def get_item_info(item_code=None, medication_name=None):
     data = {}
     if not item_code and medication_name:
-        item_code = frappe.get_value("Medication", medication_name, "item")
+        item_code = frappe.get_cached_value("Medication", medication_name, "item")
     if item_code:
-        is_stock, disabled = frappe.get_value(
+        is_stock, disabled = frappe.get_cached_value(
             "Item", item_code, ["is_stock_item", "disabled"]
         )
         data = {"item_code": item_code, "is_stock": is_stock, "disabled": disabled}
@@ -605,8 +605,8 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
             or line.is_cancelled
         ):
             continue
-        item_code = frappe.get_value("Medication", line.drug_code, "item")
-        is_stock = frappe.get_value("Item", item_code, "is_stock_item")
+        item_code = frappe.get_cached_value("Medication", line.drug_code, "item")
+        is_stock = frappe.get_cached_value("Item", item_code, "is_stock_item")
         if not is_stock:
             continue
         warehouse = get_warehouse_from_service_unit(line.healthcare_service_unit)
@@ -624,7 +624,7 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
                 continue
             encounter_customer = ""
             if row.invoiced and row.prescribe:
-                encounter_customer = frappe.get_value(
+                encounter_customer = frappe.get_cached_value(
                     "Patient", patient_encounter_doc.patient, "customer"
                 )
                 insurance_coverage_plan = ""
@@ -633,8 +633,8 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
             warehouse = get_warehouse_from_service_unit(row.healthcare_service_unit)
             if element != warehouse:
                 continue
-            item_code = frappe.get_value("Medication", row.drug_code, "item")
-            is_stock, item_name = frappe.get_value(
+            item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
+            is_stock, item_name = frappe.get_cached_value(
                 "Item", item_code, ["is_stock_item", "item_name"]
             )
             if not is_stock:
@@ -683,12 +683,12 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
             not patient_encounter_doc.insurance_subscription
             and patient_encounter_doc.inpatient_record
         ):
-            encounter_customer = frappe.get_value(
+            encounter_customer = frappe.get_cached_value(
                 "Patient", patient_encounter_doc.patient, "customer"
             )
             insurance_coverage_plan = ""
         elif not encounter_customer:
-            encounter_customer = frappe.get_value(
+            encounter_customer = frappe.get_cached_value(
                 "Healthcare Insurance Company",
                 patient_encounter_doc.insurance_company,
                 "customer",
@@ -708,7 +708,7 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
                 set_warehouse=element,
                 company=patient_encounter_doc.company,
                 customer=encounter_customer,
-                currency=frappe.get_value(
+                currency=frappe.get_cached_value(
                     "Company", patient_encounter_doc.company, "default_currency"
                 ),
                 items=items,
@@ -836,7 +836,7 @@ def validate_totals(doc):
         for row in doc.get(child.get("table")):
             if row.prescribe:
                 continue
-            item_code = frappe.get_value(
+            item_code = frappe.get_cached_value(
                 child.get("doctype"), row.get(child.get("item")), "item"
             )
             # Disabled items allowed to be used in Patient Encounter
@@ -868,7 +868,7 @@ def validate_totals(doc):
 @frappe.whitelist()
 def finalized_encounter(cur_encounter, ref_encounter=None):
     cur_encounter_doc = frappe.get_doc("Patient Encounter", cur_encounter)
-    inpatient_status, inpatient_record = frappe.get_value(
+    inpatient_status, inpatient_record = frappe.get_cached_value(
         "Patient", cur_encounter_doc.patient, ["inpatient_status", "inpatient_record"]
     )
     if inpatient_status and cur_encounter_doc.inpatient_record == inpatient_record:
@@ -902,7 +902,7 @@ def create_sales_invoice(encounter, encounter_category, encounter_mode_of_paymen
 
     doc = frappe.new_doc("Sales Invoice")
     doc.patient = encounter_doc.patient
-    doc.customer = frappe.get_value("Patient", encounter_doc.patient, "customer")
+    doc.customer = frappe.get_cached_value("Patient", encounter_doc.patient, "customer")
     doc.due_date = getdate()
     doc.company = encounter_doc.company
     doc.debit_to = get_receivable_account(encounter_doc.company)
@@ -945,7 +945,7 @@ def create_sales_invoice(encounter, encounter_category, encounter_mode_of_paymen
 
 def update_inpatient_record_consultancy(doc):
     if doc.inpatient_record:
-        item_code = frappe.get_value(
+        item_code = frappe.get_cached_value(
             "Healthcare Practitioner", doc.practitioner, "inpatient_visit_charge_item"
         )
         rate = 0
@@ -957,7 +957,7 @@ def update_inpatient_record_consultancy(doc):
                 doc.insurance_company,
             )
         elif doc.mode_of_payment:
-            price_list = frappe.get_value(
+            price_list = frappe.get_cached_value(
                 "Mode of Payment", doc.mode_of_payment, "price_list"
             )
             rate = get_item_price(item_code, price_list, doc.company)
@@ -1025,7 +1025,7 @@ def enqueue_on_update_after_submit(doc_name):
 
 def before_submit(doc, method):
     set_amounts(doc)
-    encounter_create_sales_invoice = frappe.get_value(
+    encounter_create_sales_invoice = frappe.get_cached_value(
         "Encounter Category", doc.encounter_category, "create_sales_invoice"
     )
     if encounter_create_sales_invoice:
@@ -1099,7 +1099,7 @@ def set_amounts(doc):
                 continue
             
             item_rate = 0
-            item_code = frappe.get_value(
+            item_code = frappe.get_cached_value(
                 child.get("doctype"), row.get(child.get("item")), "item"
             )
             
@@ -1119,7 +1119,7 @@ def set_amounts(doc):
                     )
             
             elif row.prescribe and doc.insurance_subscription:
-                price_list = frappe.get_value("Company", doc.company, "default_price_list")
+                price_list = frappe.get_cached_value("Company", doc.company, "default_price_list")
                 if not price_list:
                     frappe.throw(
                         _("Please set default price list in company {0}").format(
@@ -1286,7 +1286,7 @@ def validate_patient_balance_vs_patient_costs(doc):
                 plan.prescribe == 0
                 or plan.is_not_available_inhouse == 1
                 or plan.invoiced == 1
-                or lab.is_cancelled == 1
+                or plan.is_cancelled == 1
             ):
                 return
 
@@ -1447,7 +1447,7 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
         )
         return 
     
-    inpatient_record, inpatient_status = frappe.get_value('Patient', doc.patient, ['inpatient_record', 'inpatient_status'])
+    inpatient_record, inpatient_status = frappe.get_cached_value('Patient', doc.patient, ['inpatient_record', 'inpatient_status'])
     if not inpatient_record:
         inpatient_details_from_encounters = frappe.get_all("Patient Encounter", 
             filters={'appointment': doc.appointment, 'inpatient_record': ['!=', ""]},
