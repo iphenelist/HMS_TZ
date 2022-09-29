@@ -800,7 +800,7 @@ class NHIFPatientClaim(Document):
 
 def get_missing_patient_signature(self):
     if self.patient:
-        patient_doc = frappe.get_doc("Patient", self.patient)
+        patient_doc = frappe.get_cached_doc("Patient", self.patient)
         signature = patient_doc.patient_signature
         if not signature:
             frappe.throw(_("Patient signature is required"))
