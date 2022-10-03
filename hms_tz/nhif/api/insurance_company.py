@@ -73,7 +73,6 @@ def get_nhif_price_package(kwargs):
                 request_type="GetPricePackageWithExcludedServices",
                 request_url=url,
                 request_header=headers,
-                status_code=r.status_code,
                 response_data=r.text,
                 status_code=r.status_code
             )
