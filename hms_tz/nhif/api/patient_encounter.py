@@ -380,7 +380,7 @@ def duplicate_encounter(encounter):
 def get_item_info(item_code=None, medication_name=None):
     data = {}
     if not item_code and medication_name:
-        item_code = frappe.get_cached_value("Medication", medication_name, "item")
+        item_code = frappe.get_value("Medication", medication_name, "item")
     if item_code:
         is_stock, disabled = frappe.get_cached_value(
             "Item", item_code, ["is_stock_item", "disabled"]

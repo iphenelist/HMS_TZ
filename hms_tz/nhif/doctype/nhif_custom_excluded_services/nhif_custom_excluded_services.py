@@ -18,11 +18,14 @@ class NHIFCustomExcludedServices(Document):
 	def set_missing_values(self):
 		if not self.time_stamp:
 			self.time_stamp = now_datetime()
-		self.itemcode = frappe.get_cached_value('Item Customer Detail', {'parent': self.item}, 'ref_code')
+		self.itemcode = frappe.get_value('Item Customer Detail', {'parent': self.item}, 'ref_code')
+		if not self.itemcode:
+			frappe.throw(_("refcode is not found on Item Customer Detail of Item doctype for item: {0}\
+				please set it to proceed".format(frappe.bold(self.item))))
 
 @frappe.whitelist()
 def validate_item(company, item, name):
-	record = frappe.get_cached_value('NHIF Custom Excluded Services', {
+	record = frappe.get_value('NHIF Custom Excluded Services', {
 		'name': ['!=', name],
 		'company': company,
 		'item': item
