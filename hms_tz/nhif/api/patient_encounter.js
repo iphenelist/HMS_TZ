@@ -507,7 +507,6 @@ frappe.ui.form.on('Lab Prescription', {
             });
 
         if (!row.lab_test_code) { return; }
-        validate_stock_item(frm, row.lab_test_code, 1, row.healthcare_service_unit, "Lab Test Template");
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -527,7 +526,6 @@ frappe.ui.form.on('Lab Prescription', {
         let row = frappe.get_doc(cdt, cdn);
         if (row.override_subscription) {
             frappe.model.set_value(cdt, cdn, "prescribe", 0);
-            validate_stock_item(frm, row.lab_test_code, 1, row.healthcare_service_unit, "Lab Test Template");
         }
     },
 });
@@ -546,7 +544,6 @@ frappe.ui.form.on('Radiology Procedure Prescription', {
             });
 
         if (!row.radiology_examination_template) { return; }
-        validate_stock_item(frm, row.radiology_examination_template, 1, row.healthcare_service_unit, "Radiology Examination Template");
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -566,7 +563,6 @@ frappe.ui.form.on('Radiology Procedure Prescription', {
         let row = frappe.get_doc(cdt, cdn);
         if (row.override_subscription) {
             frappe.model.set_value(cdt, cdn, "prescribe", 0);
-            validate_stock_item(frm, row.radiology_examination_template, 1, row.healthcare_service_unit, "Radiology Examination Template");
         }
     },
 });
@@ -585,7 +581,6 @@ frappe.ui.form.on('Procedure Prescription', {
             });
 
         if (!row.procedure) { return; }
-        validate_stock_item(frm, row.procedure, 1, row.healthcare_service_unit, "Clinical Procedure Template");
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -605,7 +600,6 @@ frappe.ui.form.on('Procedure Prescription', {
         let row = frappe.get_doc(cdt, cdn);
         if (row.override_subscription) {
             frappe.model.set_value(cdt, cdn, "prescribe", 0);
-            validate_stock_item(frm, row.procedure, 1, row.healthcare_service_unit, "Clinical Procedure Template");
         }
     },
 });
@@ -673,7 +667,6 @@ frappe.ui.form.on('Therapy Plan Detail', {
             });
 
         if (!row.therapy_type) { return; }
-        validate_stock_item(frm, row.therapy_type, 1, row.healthcare_service_unit, "Therapy Type");
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -693,7 +686,6 @@ frappe.ui.form.on('Therapy Plan Detail', {
         let row = frappe.get_doc(cdt, cdn);
         if (row.override_subscription) {
             frappe.model.set_value(cdt, cdn, "prescribe", 0);
-            validate_stock_item(frm, row.therapy_type, 1, row.healthcare_service_unit, "Therapy Type");
         }
     },
 });
