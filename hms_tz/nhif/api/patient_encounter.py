@@ -121,8 +121,8 @@ def on_submit_validation(doc, method):
 
     
     # Run on_submit
-    submitting_healthcare_practitioner = frappe.get_cached_value(
-        "Healthcare Practitioner", {"user_id": frappe.session.user}, "name"
+    submitting_healthcare_practitioner = frappe.db.get_value(
+        "Healthcare Practitioner", {"user_id": frappe.session.user}, ["name"]
     )
     if submitting_healthcare_practitioner:
         doc.practitioner = submitting_healthcare_practitioner
