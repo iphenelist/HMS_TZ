@@ -82,7 +82,7 @@ def set_missing_values(doc):
             "Patient Encounter", doc.reference_name, "patient"
         )
             
-    if not doc.hms_tz_phone_no:
+    if not doc.hms_tz_phone_no and doc.patient:
         doc.hms_tz_phone_no = frappe.get_cached_value('Patient', doc.patient, 'mobile')
     
     if doc.form_sales_invoice:
