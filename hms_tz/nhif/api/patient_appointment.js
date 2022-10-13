@@ -31,6 +31,7 @@ frappe.ui.form.on('Patient Appointment', {
         frm.trigger("update_primary_action");
         if (frm.doc.insurance_subscription) {
             frm.set_value("mode_of_payment", "");
+            validate_insurance_company(frm);
             frm.trigger('get_insurance_amount');
         } else {
             frm.set_value("insurance_subscription", "");
@@ -486,3 +487,17 @@ const set_auth_number_reqd = frm => {
         frm.toggle_reqd("authorization_number", false);
     }
 };
+
+const validate_insurance_company = (frm) => {
+    frappe.call('hms_tz.nhif.api.patient_appointment.validate_insurance_company', {
+        insurance_company: frm.doc.insurance_company })
+        .then(r => {
+            if (r.message) {
+                frm.set_value("insurance_subscription", "");
+                frm.set_value("insurance_company", "");
+                frm.set_value("coverage_plan_name", "");
+                frm.set_value("coverage_plan_card_number", "");
+                frm.set_value("insurance_company_name", "");
+            }
+        });
+}
