@@ -232,6 +232,7 @@ frappe.ui.form.on('Patient Encounter', {
 });
 
 var schedule_inpatient = function(frm) {
+	var count = 0
 	var dialog = new frappe.ui.Dialog({
 		title: 'Patient Admission',
 		fields: [
@@ -247,6 +248,8 @@ var schedule_inpatient = function(frm) {
 		],
 		primary_action_label: __('Order Admission'),
 		primary_action : function() {
+			if (count > 0) {return}
+
 			var args = {
 				patient: frm.doc.patient,
 				admission_encounter: frm.doc.name,
@@ -274,6 +277,7 @@ var schedule_inpatient = function(frm) {
 				freeze_message: __('Scheduling Patient Admission')
 			});
 			frm.refresh_fields();
+			count += 1
 			dialog.hide();
 		}
 	});
