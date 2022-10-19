@@ -165,7 +165,7 @@ def update_lab_prescription(doc):
     if doc.ref_doctype == "Patient Encounter":
         encounter_doc = frappe.get_doc("Patient Encounter", doc.ref_docname)
         for row in encounter_doc.lab_test_prescription:
-            if row.lab_test_code == doc.template:
+            if row.name == doc.hms_tz_ref_childname and row.lab_test_code == doc.template:
                 frappe.db.set_value(row.doctype, row.name, {
                     "lab_test": doc.name,
                     "delivered_quantity": 1
