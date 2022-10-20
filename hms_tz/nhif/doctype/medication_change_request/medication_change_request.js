@@ -44,6 +44,9 @@ frappe.ui.form.on('Medication Change Request', {
                 }
             };
         });
+		if(!frm.doc.hms_tz_comment) {
+			frappe.msgprint("<strong>Please keep a comment to indicate which item to be changed</strong>")
+		}
 	},
 	patient_encounter: (frm) => {
 		set_delivery_note(frm);

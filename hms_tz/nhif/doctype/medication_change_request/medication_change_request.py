@@ -15,7 +15,8 @@ from hms_tz.nhif.api.healthcare_utils import (
 from hms_tz.hms_tz.doctype.patient_encounter.patient_encounter import get_quantity
 from hms_tz.nhif.api.patient_encounter import validate_stock_item
 from hms_tz.nhif.api.patient_appointment import get_mop_amount
-
+from frappe.model.workflow import apply_workflow
+from frappe.utils import get_url_to_form
 
 class MedicationChangeRequest(Document):
     def validate(self):
@@ -50,9 +51,8 @@ class MedicationChangeRequest(Document):
     def before_insert(self):
         if self.patient_encounter:
             encounter_doc = get_patient_encounter_doc(self.patient_encounter)
-            if not encounter_doc.insurance_coverage_plan:
-                frappe.throw(frappe.bold("Cannot create medication change request for Cash Patient,\
-                    Medication change request is only used for Insurance Patients"))
+            if not encounter_doc.insurance_coverage_plan and not encounter_doc.inpatient_record:
+                frappe.throw(frappe.bold("Cannot create medication change request for Cash Patient OPD"))
             
             self.warehouse = self.get_warehouse_per_delivery_note()
 
@@ -62,7 +62,34 @@ class MedicationChangeRequest(Document):
                     new_row["name"] = None
                     self.append('original_pharmacy_prescription', new_row)
                     self.append('drug_prescription', new_row)
-        
+            
+            if not self.patient_encounter_final_diagnosis:
+                for d in encounter_doc.patient_encounter_final_diagnosis:
+                    if not isinstance(d, dict):
+                        d = d.as_dict()
+
+                    d["name"] = None
+
+                self.append("patient_encounter_final_diagnosis", d)
+            
+            dn_doc = frappe.get_doc("Delivery Note", self.delivery_note)
+            if dn_doc.form_sales_invoice:
+                url = get_url_to_form("sales Ivoice", dn_doc.form_sales_invoice)
+                frappe.throw("Cannot create medicaton change request for items paid in cash<br>\
+                    refer sales invoice: <a href='{0}'>{1}</a>".format(
+                        url, frappe.bold(dn_doc.form_sales_invoice)
+                    ))
+            
+            try:
+                if dn_doc.workflow_state != "Changes Requested":
+                    apply_workflow(dn_doc, "Request Changes")
+                    
+            except Exception:
+                frappe.log_error(frappe.get_traceback(), str(self.doctype))
+                frappe.msgprint("Apply workflow error for delivery note: {0}".format(frappe.bold(dn_doc.name)))
+                frappe.throw("Medication Change Request was not created, try again")
+    
+
     def before_submit(self):
         self.warehouse = self.get_warehouse_per_delivery_note()
         for item in self.drug_prescription:
@@ -130,8 +157,12 @@ class MedicationChangeRequest(Document):
             if warehouse != doc.set_warehouse:
                 continue
             
-            if row.prescribe or row.is_not_available_inhouse or row.is_cancelled:
+            if row.prescribe and not encounter_doc.inpatient_record:
                 continue
+            
+            if row.is_not_available_inhouse or row.is_cancelled:
+                continue
+
             item_code, uom = frappe.get_cached_value("Medication", row.drug_code, ["item", "stock_uom"])
             is_stock, item_name = frappe.get_cached_value(
                 "Item", item_code, ["is_stock_item", "item_name"]
@@ -139,10 +170,6 @@ class MedicationChangeRequest(Document):
             if not is_stock:
                 continue
             item = frappe.new_doc("Delivery Note Item")
-            if not item:
-                frappe.throw(
-                    _("Could not create delivery note item for " + row.drug_code)
-                )
             item.item_code = item_code
             item.item_name = item_name
             item.warehouse = warehouse
@@ -156,11 +183,13 @@ class MedicationChangeRequest(Document):
             item.description = (
                 row.drug_name
                 + " for "
-                + row.dosage
+                + (row.dosage or "No Prescription Dosage")
                 + " for "
-                + row.period
-                + " with specific notes as follows: "
-                + (row.comment or "No Comments")
+                + (row.period or "No Prescription Period")
+                + " with "
+                + row.medical_code
+                + " and doctor notes: "
+                + (row.comment or "Take medication as per dosage.")
             )
             doc.append("items", item)
 
@@ -170,9 +199,20 @@ class MedicationChangeRequest(Document):
             doc.append("hms_tz_original_items", new_original_item)
 
         doc.save(ignore_permissions=True)
-        frappe.msgprint(
-            _("Delivery Note " + self.delivery_note + " has been updated!"), alert=True
-        )
+        doc.reload()
+
+        try:
+            if doc.workflow_state != "Changes Made":
+                apply_workflow(doc, "Make Changes")
+
+                if doc.workflow_state == "Changes Made":
+                    frappe.msgprint(
+                        _("Delivery Note " + self.delivery_note + " has been updated!"), alert=True
+                    )
+
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), str("Apply workflow error for delivery note: {0}".format(frappe.bold(doc.name))))
+            frappe.throw("Apply workflow error for delivery note: {0}".format(frappe.bold(doc.name)))
 
 
 @frappe.whitelist()
@@ -232,7 +272,6 @@ def set_amount(self, item):
         item.amount = get_mop_amount(item_code, "Cash", self.company,self.patient)
 
 
-
 def validate_restricted(self, row):
     items = {}
     insurance_subscription, insurance_company = get_insurance_details(self)
@@ -278,7 +317,7 @@ def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
     if not doc or not encounter or not delivery_note:
         return 
 
-    patient_encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+    patient_encounter_doc = get_patient_encounter_doc(encounter)
     delivery_note_doc = frappe.get_doc("Delivery Note", delivery_note)
 
     doc.original_pharmacy_prescription = []
@@ -316,3 +355,28 @@ def set_original_items(name, item):
     })
     
     return new_row
+
+
+@frappe.whitelist()
+def create_medication_change_request_from_dn(doctype, name):
+    source_doc = frappe.get_doc(doctype, name)
+    
+    if source_doc.form_sales_invoice:
+        url = get_url_to_form("sales Ivoice", source_doc.form_sales_invoice)
+        frappe.throw("Cannot create medicaton change request for items paid in cash,<br>\
+            please refer sales invoice: <a href='{0}'>{1}</a>".format(
+                url, frappe.bold(source_doc.form_sales_invoice)
+            ))
+
+    doc = frappe.new_doc("Medication Change Request")
+    doc.patient = source_doc.patient
+    doc.patient_name = source_doc.patient_name
+    doc.appointment = source_doc.hms_tz_appointment_no
+    doc.company = source_doc.company
+    doc.patient_encounter = source_doc.reference_name
+    doc.delivery_note = source_doc.name
+    doc.healthcare_practitioner = source_doc.healthcare_practitioner
+
+    doc.save(ignore_permissions=True)
+    return doc.name
+
