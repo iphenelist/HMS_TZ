@@ -596,6 +596,7 @@ def create_individual_lab_test(source_doc, child):
         + " : "
         + (child.lab_test_comment or "No Comment")
     )
+    doc.hms_tz_ref_childname = child.name
 
     doc.save(ignore_permissions=True)
     if doc.get("name"):
@@ -638,6 +639,7 @@ def create_individual_radiology_examination(source_doc, child):
         + " : "
         + (child.radiology_test_comment or "No Comment")
     )
+    doc.hms_tz_ref_childname = child.name
 
     doc.save(ignore_permissions=True)
     if doc.get("name"):
@@ -679,6 +681,7 @@ def create_individual_procedure_prescription(source_doc, child):
     doc.service_comment = (
         (child.medical_code or "No ICD Code") + " : " + (child.comments or "No Comment")
     )
+    doc.hms_tz_ref_childname = child.name
 
     doc.save(ignore_permissions=True)
     if doc.get("name"):
