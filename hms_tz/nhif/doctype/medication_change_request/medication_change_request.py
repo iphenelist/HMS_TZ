@@ -25,8 +25,6 @@ class MedicationChangeRequest(Document):
         if self.drug_prescription:
             for drug in self.drug_prescription:
                 validate_healthcare_service_unit(self.warehouse, drug, method="validate")        
-                if not drug.amount:    
-                    set_amount(self, drug)
                 if not drug.quantity or drug.quantity == 0:
                     # Remarked by MPC_TZ 2022-06-10 16:16 to avoid automatic qty calculations
                     # qty = drug_line.get_quantity()
@@ -42,7 +40,6 @@ class MedicationChangeRequest(Document):
                             frappe.bold(drug.drug_code)
                     ))
                 
-                validate_restricted(self, drug)
         
     def get_warehouse_per_delivery_note(self):
         return frappe.get_value("Delivery Note", self.delivery_note, "set_warehouse")
@@ -103,6 +100,8 @@ class MedicationChangeRequest(Document):
                     caller="unknown",
                     method="throw"
                 )
+            
+            set_amount(self, item)
     
     def on_submit(self):
         encounter_doc = self.update_encounter()
@@ -252,29 +251,33 @@ def get_patient_encounter_doc(patient_encounter):
     return doc
 
 def get_insurance_details(self):
-    insurance_subscription, insurance_company = frappe.get_value(
+    insurance_subscription, insurance_company, mop = frappe.get_value(
         "Patient Appointment", self.appointment,
-        ["insurance_subscription", "insurance_company"],
+        ["insurance_subscription", "insurance_company", "mode_of_payment"],
     )
-    return insurance_subscription, insurance_company
+    return insurance_subscription, insurance_company, mop
 
-def set_amount(self, item):
-    item_code = frappe.get_cached_value("Medication", item.drug_code, "item")
+def set_amount(self, row):
+    item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
+    inpatient_record = frappe.get_value("Patient", self.patient, "inpatient_record")
+    insurance_subscription, insurance_company, mop = get_insurance_details(self)
 
-    if not item.prescribe:
-        insurance_subscription, insurance_company = get_insurance_details(self)
-
-        item.amount = get_item_rate(
+    if insurance_subscription and not row.prescribe:
+        row.amount = get_item_rate(
             item_code, self.company, insurance_subscription, insurance_company
         )
+        validate_restricted(self, row)
 
-    else:
-        item.amount = get_mop_amount(item_code, "Cash", self.company,self.patient)
+    elif mop and inpatient_record:
+        if not row.prescribe:
+            row.prescribe = 1
+        row.amount = get_mop_amount(item_code, mop, self.company,self.patient)
+
+
 
 
 def validate_restricted(self, row):
-    items = {}
-    insurance_subscription, insurance_company = get_insurance_details(self)
+    insurance_subscription, insurance_company, mop = get_insurance_details(self)
 
     insurance_coverage_plan = frappe.get_cached_value(
         "Healthcare Insurance Subscription",

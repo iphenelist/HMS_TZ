@@ -35,6 +35,10 @@ frappe.ui.form.on('Medication Change Request', {
 	refresh: function (frm) {
 		if (!frappe.user.has_role("Healthcare Practitioner")) {
 			frm.set_df_property("drug_prescription", "read_only", 1);
+
+			if(!frm.doc.hms_tz_comment && frm.doc.docstatus == 0) {
+				frappe.msgprint("<strong>Please keep a comment to indicate which item to be changed</strong>")
+			}
 		}
 		set_medical_code(frm);
 		frm.set_query('drug_code', 'drug_prescription', function () {
@@ -44,9 +48,6 @@ frappe.ui.form.on('Medication Change Request', {
                 }
             };
         });
-		if(!frm.doc.hms_tz_comment) {
-			frappe.msgprint("<strong>Please keep a comment to indicate which item to be changed</strong>")
-		}
 	},
 	patient_encounter: (frm) => {
 		set_delivery_note(frm);
@@ -73,6 +74,8 @@ frappe.ui.form.on('Codification Table', {
 frappe.ui.form.on('Drug Prescription', {
 	dosage: function (frm, cdt, cdn) {
 		frappe.model.set_value(cdt, cdn, "quantity", "");
+		frappe.model.set_value(cdt, cdn, "prescribe", "");
+		frappe.model.set_value(cdt, cdn, "amount", "");
 		frm.refresh_field("drug_prescription");
 	},
 });
