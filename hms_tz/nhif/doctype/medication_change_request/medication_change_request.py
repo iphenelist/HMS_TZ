@@ -22,13 +22,22 @@ class MedicationChangeRequest(Document):
     def validate(self):
         self.title = "{0}/{1}".format(self.patient_encounter, self.delivery_note)
         self.warehouse = self.get_warehouse_per_delivery_note()
+        items = []
         if self.drug_prescription:
             for drug in self.drug_prescription:
                 validate_healthcare_service_unit(self.warehouse, drug, method="validate")        
-                if not drug.quantity or drug.quantity == 0:
-                    # Remarked by MPC_TZ 2022-06-10 16:16 to avoid automatic qty calculations
-                    # qty = drug_line.get_quantity()
-                    drug.quantity = 0
+                
+                if drug.drug_code not in items:
+                    items.append(drug.drug_code)
+                else:
+                    frappe.throw(_("Drug '{0}' is duplicated in line '{1}' in Drug Prescription").format(
+                            frappe.bold(drug.drug_code), frappe.bold(drug.idx)
+                        ))
+
+                if not drug.quantity:
+                    frappe.throw("Please keep quantity for item: {0}, Row#: {1}".format(
+                        frappe.bold(drug.drug_code), frappe.bold(drug.idx)
+                    ))
                 drug.delivered_quantity = drug.quantity - (drug.quantity_returned or 0)
 
                 template_doc = get_template_company_option(drug.drug_code, self.company)
@@ -379,7 +388,12 @@ def create_medication_change_request_from_dn(doctype, name):
     doc.patient_encounter = source_doc.reference_name
     doc.delivery_note = source_doc.name
     doc.healthcare_practitioner = source_doc.healthcare_practitioner
+    doc.hms_tz_comment = source_doc.hms_tz_comment
 
     doc.save(ignore_permissions=True)
+    url = get_url_to_form(doc.doctype, doc.name)
+    frappe.msgprint("Draft Medication Change Request: <a href='{0}'>{1}</a> is created".format(
+        url, frappe.bold(doc.name)
+    ))
     return doc.name
 

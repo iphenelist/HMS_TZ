@@ -35,10 +35,6 @@ frappe.ui.form.on('Medication Change Request', {
 	refresh: function (frm) {
 		if (!frappe.user.has_role("Healthcare Practitioner")) {
 			frm.set_df_property("drug_prescription", "read_only", 1);
-
-			if(!frm.doc.hms_tz_comment && frm.doc.docstatus == 0) {
-				frappe.msgprint("<strong>Please keep a comment to indicate which item to be changed</strong>")
-			}
 		}
 		set_medical_code(frm);
 		frm.set_query('drug_code', 'drug_prescription', function () {

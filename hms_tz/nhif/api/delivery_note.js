@@ -1,5 +1,11 @@
 frappe.ui.form.on("Delivery Note", {
     refresh(frm) {
+        $('[data-label="Not%20Serviced"]').parent().hide();
+        $('[data-label="Request%20Changes"]').parent().hide();
+        $('[data-label="Make%20Changes"]').parent().hide();
+        $('[data-label="Issue%20Returns"]').parent().hide();
+        $('[data-label="Return"]').parent().hide();
+        
         if (!frappe.user.has_role("DN Changed Allowed")) {
             // hide button to add rows of delivery note item
             frm.get_field("items").grid.cannot_add_rows = true;
@@ -10,6 +16,12 @@ frappe.ui.form.on("Delivery Note", {
         }
     },
     onload(frm){
+        $('[data-label="Not%20Serviced"]').parent().hide();
+        $('[data-label="Request%20Changes"]').parent().hide();
+        $('[data-label="Make%20Changes"]').parent().hide();
+        $('[data-label="Issue%20Returns"]').parent().hide();
+        $('[data-label="Return"]').parent().hide();
+
         if (!frappe.user.has_role("DN Changed Allowed")) {
             // hide button to add rows of delivery note item
             frm.get_field("items").grid.cannot_add_rows = true;
@@ -37,6 +49,10 @@ frappe.ui.form.on("Delivery Note", {
         })
     },
     hms_tz_medicatiion_change_request: (frm) => {
+        if (!frm.doc.hms_tz_comment) {
+            frappe.msgprint("<b>Please write an item(s) to be changed on the comment field</b>");
+            return 
+        }
         frappe.call({
             method: "hms_tz.nhif.doctype.medication_change_request.medication_change_request.create_medication_change_request_from_dn",
             args: {
@@ -45,9 +61,6 @@ frappe.ui.form.on("Delivery Note", {
             },
             freeze: true,
             callback: (r) => {
-                if (r.message) {
-                    frappe.set_route("FORM", "Medication Change Request", r.message);
-                }
             },
         });
     }
