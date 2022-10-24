@@ -6,10 +6,18 @@ def execute():
     fields = {
         "Delivery Note": [
             dict(
+                fieldname="hms_tz_comment",
+                fieldtype="Small Text",
+                label="Comment",
+                insert_after="set_target_warehouse",
+                depends_on="eval: doc.docstatus == 0 && doc.is_return == 0 && doc.workflow_state != 'Not Serviced'",
+                description="comment to indicate an item that required to be changed in case you want to create medication change request",
+            ),
+            dict(
                 fieldname="hms_tz_lrpmt_returns",
                 fieldtype="Button",
                 label="LRPMT Returns",
-                insert_after="set_target_warehouse",
+                insert_after="hms_tz_comment",
                 allow_on_submit=1,
                 depends_on = "eval: doc.is_return == 0 && doc.workflow_state != 'Not Serviced' "
             ),
@@ -28,6 +36,7 @@ def execute():
                 label="Comment",
                 insert_after="appointment",
                 description="comment indicates an item that required to be changed",
+                read_only=1,
             )
         ],
         "LRPMT Returns": [
