@@ -45,6 +45,9 @@ frappe.ui.form.on('Patient Encounter', {
             frm.remove_custom_button("Medical Record", "Create");
             frm.remove_custom_button("Clinical Procedure", "Create");
         }
+        if (frm.doc.duplicated == 1 && frm.doc.inpatient_record) {
+            frm.remove_custom_button("Schedule Discharge");
+        }
         add_btn_final(frm);
         duplicate(frm);
         if (frm.doc.source == "External Referral") {
