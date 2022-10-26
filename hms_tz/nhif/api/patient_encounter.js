@@ -496,6 +496,7 @@ var duplicate = function (frm) {
 frappe.ui.form.on('Lab Prescription', {
     lab_test_code: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
+        if (!row.lab_test_code) { return; }
         set_is_not_available_inhouse(frm, row, row.lab_test_code)
             .then(() => {
                 if (row.is_not_available_inhouse) {
@@ -506,7 +507,6 @@ frappe.ui.form.on('Lab Prescription', {
                 }
             });
 
-        if (!row.lab_test_code) { return; }
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -533,6 +533,7 @@ frappe.ui.form.on('Lab Prescription', {
 frappe.ui.form.on('Radiology Procedure Prescription', {
     radiology_examination_template: function (frm, cdt, cdn) {
         let row = frappe.get_doc(cdt, cdn);
+        if (!row.radiology_examination_template) { return; }
         set_is_not_available_inhouse(frm, row, row.radiology_examination_template)
             .then(() => {
                 if (row.is_not_available_inhouse) {
@@ -543,7 +544,6 @@ frappe.ui.form.on('Radiology Procedure Prescription', {
                 }
             });
 
-        if (!row.radiology_examination_template) { return; }
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -570,6 +570,7 @@ frappe.ui.form.on('Radiology Procedure Prescription', {
 frappe.ui.form.on('Procedure Prescription', {
     procedure: function (frm, cdt, cdn) {
         let row = frappe.get_doc(cdt, cdn);
+        if (!row.procedure) { return; }
         set_is_not_available_inhouse(frm, row, row.procedure)
             .then(() => {
                 if (row.is_not_available_inhouse) {
@@ -580,7 +581,6 @@ frappe.ui.form.on('Procedure Prescription', {
                 }
             });
 
-        if (!row.procedure) { return; }
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -607,6 +607,7 @@ frappe.ui.form.on('Procedure Prescription', {
 frappe.ui.form.on('Drug Prescription', {
     drug_code: function (frm, cdt, cdn) {
         let row = frappe.get_doc(cdt, cdn);
+        if (!row.drug_code) { return; }
         set_is_not_available_inhouse(frm, row, row.drug_code)
             .then(() => {
                 if (row.is_not_available_inhouse) {
@@ -617,7 +618,6 @@ frappe.ui.form.on('Drug Prescription', {
                 }
 
             });
-        if (!row.drug_code) { return; }
         validate_stock_item(frm, row.drug_code, row.quantity, row.healthcare_service_unit, "Drug Prescription");
     },
     healthcare_service_unit: function (frm, cdt, cdn) {
@@ -656,6 +656,7 @@ frappe.ui.form.on('Drug Prescription', {
 frappe.ui.form.on('Therapy Plan Detail', {
     therapy_type: function (frm, cdt, cdn) {
         let row = frappe.get_doc(cdt, cdn);
+        if (!row.therapy_type) { return; }
         set_is_not_available_inhouse(frm, row, row.therapy_type)
             .then(() => {
                 if (row.is_not_available_inhouse) {
@@ -666,7 +667,6 @@ frappe.ui.form.on('Therapy Plan Detail', {
                 }
             });
 
-        if (!row.therapy_type) { return; }
     },
     is_not_available_inhouse: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
