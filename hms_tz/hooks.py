@@ -54,9 +54,11 @@ doctype_js = {
 }
 # csf_tz.nhif.api.patient_appointment
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-doctype_list_js = {"Therapy Plan" : "nhif/api/therapy_plan_list.js"}
 
-inpatient_record_list_js = {"doctype": "nhif/api/inpatient_record_list.js"}
+doctype_list_js = {
+    "Therapy Plan" : ["nhif/api/therapy_plan_list.js"],
+    "Patient Encounter": ["nhif/api/patient_encounter_list.js"]
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
