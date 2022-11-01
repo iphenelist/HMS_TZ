@@ -757,7 +757,7 @@ def validate_hsu_healthcare_template(doc):
 
 
 @frappe.whitelist()
-def get_template_company_option(template=None, company=None):
+def get_template_company_option(template=None, company=None, method=None):
     exist = frappe.db.exists(
         "Healthcare Company Option", {"company": company, "parent": template}
     )
@@ -767,10 +767,12 @@ def get_template_company_option(template=None, company=None):
         )
         return doc
     else:
-        frappe.throw(_("No company option found for template: {0} and company: {1}".format(
-            frappe.bold(template),
-            frappe.bold(company)
-        )))
+        msgThrow(
+            _("No company option found for template: {0} and company: {1}".format(
+                frappe.bold(template), frappe.bold(company))
+            ), 
+            method=method
+        )
 
 
 def delete_or_cancel_draft_document():

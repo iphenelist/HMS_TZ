@@ -741,7 +741,8 @@ const set_is_not_available_inhouse = function (frm, row, template) {
         method: 'hms_tz.nhif.api.healthcare_utils.get_template_company_option',
         args: {
             'template': template,
-            'company': frm.doc.company
+            'company': frm.doc.company,
+            "method": "validate"
         },
         callback: function (data) {
             if (data.message) {
