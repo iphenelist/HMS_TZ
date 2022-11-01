@@ -97,15 +97,24 @@ def on_submit_validation(doc, method):
                     ).format(child.get("doctype"), row.get(child.get("item")), row.idx),
                     method,
                 )
-
-
-            if (
-                child.get("doctype") != "Medication"
-                and row.doctype != "Drug Prescription"
-            ):
-                for option in healthcare_doc.company_options:
-                    if doc.company == option.company:
+            company_option = None
+            for option in healthcare_doc.company_options:
+                if doc.company == option.company:
+                    company_option = option.company
+            
+                    if (
+                        child.get("doctype") != "Medication"
+                        and row.doctype != "Drug Prescription"
+                    ):
                         row.department_hsu = option.service_unit
+
+            if not company_option:
+                msgThrow(
+                    _("No company option found for template: {0} and company: {1}".format(
+                        frappe.bold(row.get(child.get("item"))), frappe.bold(doc.company))
+                    ),
+                    method
+                )
             
             if (
                 child.get("doctype") == "Clinical Procedure Template"
@@ -417,21 +426,8 @@ def validate_stock_item(
 ):
     # frappe.msgprint(_("{0} warehouse passed. <br> {1} healthcare service unit passed").format(warehouse, healthcare_service_unit), alert=True)
     # frappe.msgprint(_("{0} healthcare_service. <br>").format(healthcare_service), alert=True)
-
-    company_option = get_template_company_option(healthcare_service, company)
-    if not company_option.get("service_unit"):
-        msgThrow(
-            _(
-                "The 'Company Option' in {0} - {2} for company {1} is not setup. Open {2} and correctly define it in Company Options child table".format(
-                    caller, company, healthcare_service
-                )
-            ),
-            method=method,
-        )
+    
     if caller != "Drug Prescription" and not healthcare_service_unit:
-        # LRPT code stock check goes here
-        return
-    if company_option.get("is_not_available"):
         return
 
     qty = float(qty or 0)
