@@ -49,6 +49,7 @@ class MedicationChangeRequest(Document):
                             frappe.bold(drug.drug_code)
                     ))
                 
+                validate_stock_item(drug.drug_code, drug.quantity, self.company, drug.doctype, drug.healthcare_service_unit, caller="unknown", method="validate")
         
     def get_warehouse_per_delivery_note(self):
         return frappe.get_value("Delivery Note", self.delivery_note, "set_warehouse")
@@ -76,9 +77,12 @@ class MedicationChangeRequest(Document):
 
                     d["name"] = None
 
-                self.append("patient_encounter_final_diagnosis", d)
+                    self.append("patient_encounter_final_diagnosis", d)
             
             dn_doc = frappe.get_doc("Delivery Note", self.delivery_note)
+            if not dn_doc.hms_tz_comment:
+                frappe.throw("<b>No comment found on the delivery note, Please keep a comment and save the delivery note, before creating med change request</b>")
+
             if dn_doc.form_sales_invoice:
                 url = get_url_to_form("sales Ivoice", dn_doc.form_sales_invoice)
                 frappe.throw("Cannot create medicaton change request for items paid in cash<br>\
@@ -89,6 +93,7 @@ class MedicationChangeRequest(Document):
             try:
                 if dn_doc.workflow_state != "Changes Requested":
                     apply_workflow(dn_doc, "Request Changes")
+                    dn_doc.reload()
                     
             except Exception:
                 frappe.log_error(frappe.get_traceback(), str(self.doctype))
@@ -100,16 +105,6 @@ class MedicationChangeRequest(Document):
         self.warehouse = self.get_warehouse_per_delivery_note()
         for item in self.drug_prescription:
             validate_healthcare_service_unit(self.warehouse, item, method="throw")
-            validate_stock_item(
-                    item.drug_code, 
-                    item.quantity, 
-                    self.company, 
-                    item.doctype, 
-                    item.healthcare_service_unit,
-                    caller="unknown",
-                    method="throw"
-                )
-            
             set_amount(self, item)
     
     def on_submit(self):
@@ -212,6 +207,7 @@ class MedicationChangeRequest(Document):
         try:
             if doc.workflow_state != "Changes Made":
                 apply_workflow(doc, "Make Changes")
+                doc.reload()
 
                 if doc.workflow_state == "Changes Made":
                     frappe.msgprint(
