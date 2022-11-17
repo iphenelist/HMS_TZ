@@ -208,6 +208,7 @@ def make_vital(appointment_doc, method):
         )
         vital_doc.save(ignore_permissions=True)
         appointment_doc.ref_vital_signs = vital_doc.name
+        appointment_doc.db_update()
         frappe.msgprint(_("Vital Signs {0} created".format(vital_doc.name)))
 
 
@@ -251,6 +252,7 @@ def make_encounter(doc, method):
     encounter_doc.save(ignore_permissions=True)
     if doc.doctype == "Patient Appointment":
         doc.ref_patient_encounter = encounter_doc.name
+        doc.db_update()
 
     frappe.msgprint(_("Patient Encounter {0} created".format(encounter_doc.name)))
 
@@ -418,10 +420,10 @@ def make_next_doc(doc, method):
     if doc.is_new():
         return
     if doc.insurance_subscription:
-        is_active, his_patient = frappe.get_cached_value(
+        is_active, his_patient, coverage_plan = frappe.get_cached_value(
             "Healthcare Insurance Subscription",
             doc.insurance_subscription,
-            ["is_active", "patient"],
+            ["is_active", "patient", "healthcare_insurance_coverage_plan"],
         )
         if not is_active:
             frappe.throw(
@@ -436,6 +438,13 @@ def make_next_doc(doc, method):
                     "Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."
                 )
             )
+        if "NHIF" not in doc.insurance_company:
+            doc.daily_limit = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan",
+                coverage_plan,
+                "daily_limit"
+            )
+            
     if not doc.billing_item and doc.authorization_number:
         doc.billing_item = get_consulting_charge_item(
             doc.appointment_type, doc.practitioner
