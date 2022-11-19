@@ -67,8 +67,30 @@ class NHIFPatientClaim(Document):
     def before_submit(self):
         start_datetime = get_datetime()
         frappe.msgprint("Submit process started: " + str(get_datetime()))
-        authorization_no = self.authorization_no
 
+        self.validate_multiple_appointments_per_authorization_no()
+
+        validate_item_status(self)
+        self.patient_encounters = self.get_patient_encounters()
+        if not self.patient_signature:
+            get_missing_patient_signature(self)
+
+        validate_submit_date(self)
+
+        # self.claim_file_mem = get_claim_pdf_file(self)
+        frappe.msgprint("Sending NHIF Claim: " + str(get_datetime()))
+        self.send_nhif_claim()
+        frappe.msgprint("Got response from NHIF Claim: " + str(get_datetime()))
+        end_datetime = get_datetime()
+        time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
+        frappe.msgprint(
+            "Total time to complete the process in seconds = " + str(time_in_seconds)
+        )
+    
+    def validate_multiple_appointments_per_authorization_no(self):
+        """Validate if patient gets multiple appointments with same authorization number"""
+
+        #Check if there are multiple claims with same authorization number
         claim_details = frappe.get_all(
             "NHIF Patient Claim",
             filters={
@@ -91,25 +113,27 @@ class NHIFPatientClaim(Document):
                         frappe.bold(self.authorization_no), frappe.bold(claim_name_list)
                     )
                 )
+        
+        # rock: 139
+        # Check if there are multiple appointments with same authorization number
+        appointment_documents = frappe.get_all("Patient Appointment", filters={
+            "patient": self.patient, "authorization_number": self.authorization_no,
+            "coverage_plan_card_number": self.cardno
+        }, pluck="name")
+        
+        if len(appointment_documents) > 1:
+            msg = "This patient: {0} has multiple appointments: ".format(frappe.bold(self.patient))
+            for appointment in appointment_documents:
+                msg += frappe.bold(appointment) + ", "
+            
+            msg += "with same authorization no: {1}<br> Please consider merging of claims\
+                if Claims for all {2} appointments have already been created".format(
+                    frappe.bold(self.patient), 
+                    frappe.bold(self.authorization_no),
+                    frappe.bold(len(appointment_documents))
+                )
+            frappe.throw(msg)
 
-        validate_item_status(self)
-        self.patient_encounters = self.get_patient_encounters()
-        if not self.patient_signature:
-            get_missing_patient_signature(self)
-
-        validate_submit_date(self)
-        # frappe.msgprint("Generating patient file: " + str(get_datetime()))
-        # self.patient_file_mem = generate_pdf(self)
-        # frappe.msgprint("Generating claim file: " + str(get_datetime()))
-        # self.claim_file_mem = get_claim_pdf_file(self)
-        frappe.msgprint("Sending NHIF Claim: " + str(get_datetime()))
-        self.send_nhif_claim()
-        frappe.msgprint("Got response from NHIF Claim: " + str(get_datetime()))
-        end_datetime = get_datetime()
-        time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
-        frappe.msgprint(
-            "Total time to complete the process in seconds = " + str(time_in_seconds)
-        )
 
     def set_claim_values(self):
         if not self.folio_id:
