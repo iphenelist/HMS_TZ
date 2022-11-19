@@ -11,7 +11,6 @@ from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import (
 from erpnext.healthcare.doctype.healthcare_settings.healthcare_settings import (
     get_receivable_account,
 )
-from frappe.utils import getdate
 from frappe.model.mapper import get_mapped_doc
 from hms_tz.nhif.api.token import get_nhifservice_token
 import json
@@ -20,7 +19,7 @@ from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
 from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
-from frappe.utils import date_diff, getdate
+from frappe.utils import date_diff, getdate, nowdate
 from csf_tz import console
 
 
@@ -467,6 +466,9 @@ def make_next_doc(doc, method):
             )
     if doc.ref_sales_invoice:
         doc.invoiced = 1
+
+    if not doc.patient_age:
+        doc.patient_age = calculate_patient_age(doc.patient)
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
         return
@@ -482,3 +484,14 @@ def validate_insurance_company(insurance_company: str) -> str:
         frappe.msgprint(_("<b>Insurance Company: <string>{0}</strong> is disabled, Please choose different insurance subscription</b>".format(insurance_company)))
         return True
     return False
+
+
+def calculate_patient_age(patient):
+    dob = frappe.get_value("Patient", patient, "dob")
+    if not dob:
+        frappe.msgprint("<h4 style='background-color: LightCoral'>Please update date of birth for this patient</h4>")
+        return None
+    diff = date_diff(nowdate(), dob)
+    years = diff//365
+    months = (diff -(years * 365))//30
+    return f"{years} Year(s) {months} Month(s)"
