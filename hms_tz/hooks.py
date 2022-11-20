@@ -57,7 +57,6 @@ doctype_js = {
 
 doctype_list_js = {
     "Therapy Plan" : ["nhif/api/therapy_plan_list.js"],
-    "Patient Encounter": ["nhif/api/patient_encounter_list.js"]
 }
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
