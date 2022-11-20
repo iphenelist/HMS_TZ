@@ -50,11 +50,64 @@ class MedicationChangeRequest(Document):
                     ))
                 
                 validate_stock_item(drug.drug_code, drug.quantity, self.company, drug.doctype, drug.healthcare_service_unit, caller="unknown", method="validate")
-        
+                
+                self.validate_item_insurance_coverage(drug, "validate")
+
+
     def get_warehouse_per_delivery_note(self):
         return frappe.get_value("Delivery Note", self.delivery_note, "set_warehouse")
 
-    
+
+    def validate_item_insurance_coverage(self, row, method):
+        """Validate if the Item is covered with the insurance coverage plan of a patient"""
+        
+        insurance_subscription, insurance_company, mop = get_insurance_details(self)
+        if mop:
+            return
+        
+        insurance_coverage_plan = frappe.get_cached_value(
+            "Healthcare Insurance Subscription",
+            {"name": insurance_subscription},
+            "healthcare_insurance_coverage_plan"
+        )
+        if not insurance_coverage_plan:
+            frappe.throw(_("Healthcare Insurance Coverage Plan is Not defiend"))
+        
+        coverage_plan_name, is_exclusions = frappe.get_cached_value(
+            "Healthcare Insurance Coverage Plan",
+            insurance_coverage_plan,
+            ["coverage_plan_name", "is_exclusions"],
+        )
+        
+        today = frappe.utils.nowdate()
+        service_coverage = frappe.get_all("Healthcare Service Insurance Coverage",
+            filters={"is_active": 1, "start_date": ["<=", today],"end_date": [">=", today],
+                "healthcare_service_template": row.drug_code, 
+                "healthcare_insurance_coverage_plan": insurance_coverage_plan,
+            }, fields=["name", "approval_mandatory_for_claim", "healthcare_service_template"],
+        )
+        if service_coverage:
+            row.is_restricted = service_coverage[0].approval_mandatory_for_claim
+
+            if is_exclusions:
+                msgThrow(_(
+                        "{0} not covered in Healthcare Insurance Coverage Plan "
+                        + str(frappe.bold(coverage_plan_name))
+                    ).format(frappe.bold(row.drug_code)),
+                    method
+                )
+            
+        else:
+            if not is_exclusions:
+                msgThrow(_(
+                        "{0} not covered in Healthcare Insurance Coverage Plan "
+                        + str(frappe.bold(coverage_plan_name))
+                    ).format(frappe.bold(row.drug_code)),
+                    method
+                )
+
+
+
     def before_insert(self):
         if self.patient_encounter:
             encounter_doc = get_patient_encounter_doc(self.patient_encounter)
@@ -80,9 +133,7 @@ class MedicationChangeRequest(Document):
                     self.append("patient_encounter_final_diagnosis", d)
             
             dn_doc = frappe.get_doc("Delivery Note", self.delivery_note)
-            if not dn_doc.hms_tz_comment:
-                frappe.throw("<b>No comment found on the delivery note, Please keep a comment and save the delivery note, before creating med change request</b>")
-
+            
             if dn_doc.form_sales_invoice:
                 url = get_url_to_form("sales Ivoice", dn_doc.form_sales_invoice)
                 frappe.throw("Cannot create medicaton change request for items paid in cash<br>\
@@ -105,6 +156,7 @@ class MedicationChangeRequest(Document):
         self.warehouse = self.get_warehouse_per_delivery_note()
         for item in self.drug_prescription:
             validate_healthcare_service_unit(self.warehouse, item, method="throw")
+            self.validate_item_insurance_coverage(item, "throw")
             set_amount(self, item)
     
     def on_submit(self):
@@ -271,38 +323,12 @@ def set_amount(self, row):
         row.amount = get_item_rate(
             item_code, self.company, insurance_subscription, insurance_company
         )
-        validate_restricted(self, row)
 
     elif mop and inpatient_record:
         if not row.prescribe:
             row.prescribe = 1
         row.amount = get_mop_amount(item_code, mop, self.company,self.patient)
 
-
-
-
-def validate_restricted(self, row):
-    insurance_subscription, insurance_company, mop = get_insurance_details(self)
-
-    insurance_coverage_plan = frappe.get_cached_value(
-        "Healthcare Insurance Subscription",
-        {"name" :insurance_subscription},
-        "healthcare_insurance_coverage_plan"
-    )
-    if not insurance_coverage_plan:
-        frappe.throw(_("Healthcare Insurance Coverage Plan is Not defiend"))
-    
-    today = frappe.utils.nowdate()
-    service_coverage = frappe.get_all("Healthcare Service Insurance Coverage",
-        filters={"is_active": 1, "start_date": ["<=", today],"end_date": [">=", today],
-            "healthcare_service_template": row.drug_code, 
-            "healthcare_insurance_coverage_plan": insurance_coverage_plan,
-        }, fields=["name", "approval_mandatory_for_claim"],
-    )
-    if service_coverage:
-        row.is_restricted = service_coverage[0].approval_mandatory_for_claim
-    else:
-        row.is_restricted = 0
 
 @frappe.whitelist()
 def validate_healthcare_service_unit(warehouse, item, method):
@@ -375,6 +401,9 @@ def create_medication_change_request_from_dn(doctype, name):
             please refer sales invoice: <a href='{0}'>{1}</a>".format(
                 url, frappe.bold(source_doc.form_sales_invoice)
             ))
+    
+    if not source_doc.hms_tz_comment:
+        frappe.throw("<b>No comment found on the delivery note, Please keep a comment and save the delivery note, before creating med change request</b>")
 
     doc = frappe.new_doc("Medication Change Request")
     doc.patient = source_doc.patient
