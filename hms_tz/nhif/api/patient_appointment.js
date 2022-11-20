@@ -207,6 +207,16 @@ frappe.ui.form.on('Patient Appointment', {
     },
     patient: function (frm) {
         if (frm.doc.patient) {
+            frappe.call("hms_tz.nhif.api.patient.validate_missing_patient_dob", {
+                patient: frm.doc.patient
+            }).then(r => {
+                if (!r.message) {
+                    let d = frm.doc.patient;
+                    frm.set_value("patient", "")
+                    frappe.set_route("Form", "Patient", d);
+                    frappe.msgprint("<h4 style='background-color:LightCoral'>Please update date of birth for this patient</h4>");
+                }
+            }),
             setTimeout(() => {
                 frm.toggle_display('mode_of_payment', true);
                 frm.toggle_display('paid_amount', true);

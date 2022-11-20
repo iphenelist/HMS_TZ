@@ -11,7 +11,6 @@ from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import (
 from erpnext.healthcare.doctype.healthcare_settings.healthcare_settings import (
     get_receivable_account,
 )
-from frappe.utils import getdate
 from frappe.model.mapper import get_mapped_doc
 from hms_tz.nhif.api.token import get_nhifservice_token
 import json
@@ -20,7 +19,7 @@ from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
 from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
-from frappe.utils import date_diff, getdate
+from frappe.utils import date_diff, getdate, nowdate
 from csf_tz import console
 
 
@@ -208,6 +207,7 @@ def make_vital(appointment_doc, method):
         )
         vital_doc.save(ignore_permissions=True)
         appointment_doc.ref_vital_signs = vital_doc.name
+        appointment_doc.db_update()
         frappe.msgprint(_("Vital Signs {0} created".format(vital_doc.name)))
 
 
@@ -251,6 +251,7 @@ def make_encounter(doc, method):
     encounter_doc.save(ignore_permissions=True)
     if doc.doctype == "Patient Appointment":
         doc.ref_patient_encounter = encounter_doc.name
+        doc.db_update()
 
     frappe.msgprint(_("Patient Encounter {0} created".format(encounter_doc.name)))
 
@@ -418,10 +419,10 @@ def make_next_doc(doc, method):
     if doc.is_new():
         return
     if doc.insurance_subscription:
-        is_active, his_patient = frappe.get_cached_value(
+        is_active, his_patient, coverage_plan = frappe.get_cached_value(
             "Healthcare Insurance Subscription",
             doc.insurance_subscription,
-            ["is_active", "patient"],
+            ["is_active", "patient", "healthcare_insurance_coverage_plan"],
         )
         if not is_active:
             frappe.throw(
@@ -436,6 +437,13 @@ def make_next_doc(doc, method):
                     "Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."
                 )
             )
+        if "NHIF" not in doc.insurance_company:
+            doc.daily_limit = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan",
+                coverage_plan,
+                "daily_limit"
+            )
+            
     if not doc.billing_item and doc.authorization_number:
         doc.billing_item = get_consulting_charge_item(
             doc.appointment_type, doc.practitioner
@@ -458,6 +466,9 @@ def make_next_doc(doc, method):
             )
     if doc.ref_sales_invoice:
         doc.invoiced = 1
+
+    if not doc.patient_age:
+        doc.patient_age = calculate_patient_age(doc.patient)
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
         return
@@ -473,3 +484,14 @@ def validate_insurance_company(insurance_company: str) -> str:
         frappe.msgprint(_("<b>Insurance Company: <string>{0}</strong> is disabled, Please choose different insurance subscription</b>".format(insurance_company)))
         return True
     return False
+
+
+def calculate_patient_age(patient):
+    dob = frappe.get_value("Patient", patient, "dob")
+    if not dob:
+        frappe.msgprint("<h4 style='background-color: LightCoral'>Please update date of birth for this patient</h4>")
+        return None
+    diff = date_diff(nowdate(), dob)
+    years = diff//365
+    months = (diff -(years * 365))//30
+    return f"{years} Year(s) {months} Month(s)"
