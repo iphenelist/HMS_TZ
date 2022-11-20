@@ -420,14 +420,14 @@ const get_value = (doctype, name, field) => {
 };
 
 const add_btns = (frm) => {
-    if (!frm.doc.patient || frm.is_new() || frm.doc.invoiced || frm.doc.status == "Cancelled") return;
+    if (!frm.doc.patient || frm.is_new() || frm.doc.invoiced || frm.doc.status == "Closed" || frm.doc.status == "Cancelled") return;
     var vitals_btn_required = false;
     const valid_days = get_value("Healthcare Settings", "Healthcare Settings", "valid_days");
     const appointment = get_previous_appointment(frm, { name: ["!=", frm.doc.name], insurance_subscription: frm.doc.insurance_subscription, department: frm.doc.department, status: "Closed" });
     if (typeof appointment != "undefined") {
         const last_appointment_date = appointment.appointment_date;
         const diff = frappe.datetime.get_day_diff(frm.doc.appointment_date, last_appointment_date);
-        if (diff <= valid_days) {
+        if (diff > 0 && diff <= valid_days) {
             vitals_btn_required = true;
             if (!frm.doc.invoiced) {
                 frm.set_value("invoiced", 1);
@@ -461,7 +461,7 @@ const add_invoice_btn = (frm) => {
     });
 };
 
-const add_vital_btn = frm => {
+const add_vital_btn = (frm) => {
     frm.add_custom_button(__('Create Vitals'), function () {
         if (frm.is_dirty()) {
             frm.save();
