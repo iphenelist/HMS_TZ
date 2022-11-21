@@ -142,8 +142,7 @@ class NHIFPatientClaim(Document):
             "Company NHIF Settings", self.company, "facility_code"
         )
         self.posting_date = nowdate()
-        self.folio_no = int(self.name[-9:])
-        self.serial_no = self.folio_no
+        self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
         final_patient_encounter = self.final_patient_encounter
         practitioner_name, practitioner_no = frappe.get_cached_value(
@@ -820,6 +819,16 @@ class NHIFPatientClaim(Document):
                     frappe.bold(self.patient), frappe.bold(self.patient_appointment)
                 )
             )
+
+
+    def after_insert(self):
+        count = frappe.db.count(self.doctype, {
+            "claim_month": self.claim_month,
+            "claim_year": self.claim_year,
+            "docstatus": ["<", 2]
+        })
+        frappe.set_value(self.doctype, self.name, "folio_no", count)
+        self.reload()
 
 
 def get_missing_patient_signature(self):
