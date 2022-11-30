@@ -124,17 +124,29 @@ class NHIFPatientClaim(Document):
         }, pluck="name")
         
         if len(appointment_documents) > 1:
-            msg = "This patient: {0} has multiple appointments: ".format(frappe.bold(self.patient))
+            msg = "<p style='text-align: left; font-size: 13px'>Patient: {0}-{1} has multiple appointments: ".format(
+                frappe.bold(self.patient), frappe.bold(self.patient_name)
+            )
+            #check if there is any merging done before
+            merged_appointments = json.loads(self.hms_tz_claim_appointment_list) if self.hms_tz_claim_appointment_list else None
+            reqd_throw_count = 0
             for appointment in appointment_documents:
                 msg += frappe.bold(appointment) + ", "
+
+                if merged_appointments:
+                    for app in merged_appointments:
+                        if appointment == app:
+                            reqd_throw_count += 1
             
-            msg += "with same authorization no: {1}<br> Please consider merging of claims\
-                if Claims for all {2} appointments have already been created".format(
+            msg += " with same authorization no: {1}<br> Please consider merging of claims\
+                if Claims for all {2} appointments have already been created</p>".format(
                     frappe.bold(self.patient), 
                     frappe.bold(self.authorization_no),
                     frappe.bold(len(appointment_documents))
                 )
-            frappe.throw(msg)
+
+            if reqd_throw_count < 2:
+                frappe.throw(msg)
 
 
     def set_claim_values(self):
