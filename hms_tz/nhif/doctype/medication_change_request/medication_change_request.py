@@ -14,7 +14,7 @@ from hms_tz.nhif.api.healthcare_utils import (
 )
 from hms_tz.hms_tz.doctype.patient_encounter.patient_encounter import get_quantity
 from hms_tz.nhif.api.patient_encounter import validate_stock_item
-from hms_tz.nhif.api.patient_appointment import get_mop_amount
+from hms_tz.nhif.api.patient_appointment import get_mop_amount, get_discount_percent
 from frappe.model.workflow import apply_workflow
 from frappe.utils import get_url_to_form
 
@@ -235,6 +235,8 @@ class MedicationChangeRequest(Document):
             item.reference_doctype = row.doctype
             item.reference_name = row.name
             item.is_restricted = row.is_restricted
+            item.discount_percentage = row.hms_tz_is_discount_percent
+            item.hms_tz_is_discount_applied = row.hms_tz_is_discount_applied
             item.description = (
                 row.drug_name
                 + " for "
@@ -319,10 +321,19 @@ def set_amount(self, row):
     inpatient_record = frappe.get_value("Patient", self.patient, "inpatient_record")
     insurance_subscription, insurance_company, mop = get_insurance_details(self)
 
+    # apply discount if it is available on Heathcare Insurance Company
+    discount_percent = 0
+    if insurance_company and "NHIF" not in insurance_company:
+        discount_percent = get_discount_percent(insurance_company)
+
     if insurance_subscription and not row.prescribe:
-        row.amount = get_item_rate(
+        amount = get_item_rate(
             item_code, self.company, insurance_subscription, insurance_company
         )
+        row.amount = amount - (amount * (discount_percent/100))
+        if discount_percent > 0:
+            row.hms_tz_is_discount_applied = 1
+            row.hms_tz_is_discount_percent = discount_percent
 
     elif mop and inpatient_record:
         if not row.prescribe:

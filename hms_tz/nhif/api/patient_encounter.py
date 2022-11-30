@@ -25,6 +25,7 @@ import time
 import calendar
 from hms_tz.nhif.api.patient_appointment import get_mop_amount
 from erpnext.accounts.utils import get_balance_on
+from hms_tz.nhif.api.patient_appointment import get_discount_percent
 
 
 def on_trash(doc, method):
@@ -608,6 +609,12 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
         warehouse = get_warehouse_from_service_unit(line.healthcare_service_unit)
         if warehouse and warehouse not in warehouses:
             warehouses.append(warehouse)
+    
+    # apply discount if it is available on Heathcare Insurance Company
+    discount_percent = 0
+    if patient_encounter_doc.insurance_company and "NHIF" not in patient_encounter_doc.insurance_company:
+        discount_percent = get_discount_percent(patient_encounter_doc.insurance_company)
+
     # Process list of warehouses
     for element in warehouses:
         items = []
@@ -642,6 +649,8 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
             item.is_restricted = row.is_restricted
             item.qty = row.quantity or 1
             item.medical_code = row.medical_code
+
+            # TODO we have an amount on encounter, no need to fetch amount again
             if row.prescribe:
                 item.rate = get_mop_amount(
                     item_code,
@@ -649,13 +658,20 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
                     patient_encounter_doc.company,
                     patient_encounter_doc.patient,
                 )
+                item.price_list_rate = item_rate
             else:
-                item.rate = get_item_rate(
+                item_rate = get_item_rate(
                     item_code,
                     patient_encounter_doc.company,
                     patient_encounter_doc.insurance_subscription,
                     patient_encounter_doc.insurance_company,
                 )
+                item.rate = item_rate - (item_rate * (discount_percent/100))
+                item.price_list_rate = item_rate
+                if discount_percent > 0:
+                    item.discount_percentage = discount_percent
+                    item.hms_tz_is_discount_applied = 1
+
             item.reference_doctype = row.doctype
             item.reference_name = row.name
             item.description = (
@@ -945,13 +961,21 @@ def update_inpatient_record_consultancy(doc):
             "Healthcare Practitioner", doc.practitioner, "inpatient_visit_charge_item"
         )
         rate = 0
+        
+        # apply discount if it is available on Heathcare Insurance Company
+        discount_percent = 0
+        if doc.insurance_company and "NHIF" not in doc.insurance_company:
+            discount_percent = get_discount_percent(doc.insurance_company)
+
         if doc.insurance_subscription:
-            rate = get_item_rate(
+            item_rate = get_item_rate(
                 item_code,
                 doc.company,
                 doc.insurance_subscription,
                 doc.insurance_company,
             )
+            rate = item_rate - (item_rate * (discount_percent/100))
+
         elif doc.mode_of_payment:
             price_list = frappe.get_cached_value(
                 "Mode of Payment", doc.mode_of_payment, "price_list"
@@ -964,6 +988,9 @@ def update_inpatient_record_consultancy(doc):
         row.consultation_item = item_code
         row.rate = rate
         row.encounter = doc.name
+        if discount_percent > 0:
+            row.hms_tz_is_discount_applied = 1
+        
         record_doc.save(ignore_permissions=True)
         frappe.msgprint(
             _("Inpatient Consultancy record added for item {0}").format(item_code),
@@ -1089,6 +1116,12 @@ def set_amounts(doc):
             "item": "therapy_type",
         },
     ]
+    
+    # apply discount if it is available on Heathcare Insurance Company
+    discount_percent = 0
+    if doc.insurance_company and "NHIF" not in doc.insurance_company:
+        discount_percent = get_discount_percent(doc.insurance_company)
+    
     for child in childs_map:
         for row in doc.get(child.get("table")):
             if row.amount:
@@ -1132,12 +1165,19 @@ def set_amounts(doc):
                     )
 
             elif not row.prescribe:
-                item_rate = get_item_rate(
+                item_price_rate = get_item_rate(
                     item_code,
                     doc.company,
                     doc.insurance_subscription,
                     doc.insurance_company,
                 )
+                item_rate = item_price_rate - (item_price_rate * (discount_percent/100))
+                
+                if discount_percent > 0:
+                    row.hms_tz_is_discount_applied = 1
+                    if row.doctype == "Drug Prescription":
+                        row.hms_tz_is_discount_percent = discount_percent
+
             row.amount = item_rate
 
 

@@ -162,7 +162,7 @@ frappe.ui.form.on('Patient Appointment', {
             },
             callback: function (data) {
                 if (data.message) {
-                    frm.set_value("paid_amount", data.message);
+                    frm.set_value("paid_amount", data.message[0]);
                 }
             }
         });

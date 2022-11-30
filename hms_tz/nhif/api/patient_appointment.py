@@ -27,9 +27,19 @@ from csf_tz import console
 def get_insurance_amount(
     insurance_subscription, billing_item, company, insurance_company
 ):
-    return get_item_rate(
+    item_price =  get_item_rate(
         billing_item, company, insurance_subscription, insurance_company
     )
+
+    discount_percent = 0
+    if insurance_company and "NHIF" not in insurance_company:
+        discount_percent = get_discount_percent(insurance_company)
+
+        amount = item_price - (item_price * (discount_percent/100))
+
+        return amount, discount_percent
+    
+    return item_price, discount_percent
 
 
 @frappe.whitelist()
@@ -90,12 +100,16 @@ def invoice_appointment(name):
                 appointment_doc.patient,
             )
         else:
-            appointment_doc.paid_amount = get_insurance_amount(
+            # TODO to be removed since on creating sales invoice we don't need insurance amount
+            appointment_doc.paid_amount, discount_percent = get_insurance_amount(
                 appointment_doc.insurance_subscription,
                 appointment_doc.billing_item,
                 appointment_doc.company,
                 appointment_doc.insurance_company,
             )
+            if discount_percent > 0:
+                appointment_doc.hms_tz_is_discount_applied = 1
+
         appointment_doc.save()
         appointment_doc.reload()
     set_follow_up(appointment_doc, "invoice_appointment")
@@ -182,12 +196,21 @@ def make_vital(appointment_doc, method):
         )
         return
     if appointment_doc.insurance_subscription and appointment_doc.billing_item:
-        appointment_doc.paid_amount = get_insurance_amount(
+        appointment_doc.paid_amount, discount_percent = get_insurance_amount(
             appointment_doc.insurance_subscription,
             appointment_doc.billing_item,
             appointment_doc.company,
             appointment_doc.insurance_company,
         )
+        if discount_percent > 0:
+            appointment_doc.hms_tz_is_discount_applied = 1
+            frappe.msgprint("Discount of {0} is applied to this Patient: {1}".format(
+                    frappe.bold(discount_percent), frappe.bold(appointment_doc.patient)
+                ), 
+                alert=True
+            )
+
+
     set_follow_up(appointment_doc, "invoice_appointment")
     if (not appointment_doc.ref_vital_signs) and (
         appointment_doc.invoiced
@@ -495,3 +518,22 @@ def calculate_patient_age(patient):
     years = diff//365
     months = (diff -(years * 365))//30
     return f"{years} Year(s) {months} Month(s)"
+
+
+def get_discount_percent(insurance_company):
+    """Get discount percent (%) from Non NHIF Insurance Company"""
+
+    discount_percent = 0
+    has_price_discount, discount = frappe.get_cached_value(
+        "Healthcare Insurance Company",
+        insurance_company,
+        ["hms_tz_has_price_discount", "hms_tz_price_discount"]
+    )
+    if has_price_discount and discount == 0:
+        frappe.throw(_("Please set discount(%) for this insurance company: {0}".format(
+            frappe.bold(insurance_company))))
+    
+    if has_price_discount and discount > 0:
+        discount_percent = discount
+    
+    return discount_percent
