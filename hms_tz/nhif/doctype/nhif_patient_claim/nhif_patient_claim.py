@@ -17,6 +17,8 @@ from frappe.utils import (
     nowdate,
     get_datetime,
     time_diff_in_seconds,
+    now_datetime,
+    cint
 )
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.healthcare_utils import (
@@ -142,8 +144,7 @@ class NHIFPatientClaim(Document):
             "Company NHIF Settings", self.company, "facility_code"
         )
         self.posting_date = nowdate()
-        self.folio_no = int(self.name[-9:])
-        self.serial_no = self.folio_no
+        self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
         final_patient_encounter = self.final_patient_encounter
         practitioner_name, practitioner_no = frappe.get_cached_value(
@@ -820,6 +821,31 @@ class NHIFPatientClaim(Document):
                     frappe.bold(self.patient), frappe.bold(self.patient_appointment)
                 )
             )
+
+
+    def after_insert(self):
+        folio_counter = frappe.get_all("NHIF Folio Counter", filters={"company": self.company, "claim_year": self.claim_year, "claim_month": self.claim_month})
+        if not folio_counter:
+            new_folio_doc = frappe.get_doc({
+                "doctype": "NHIF Folio Counter",
+                "company": self.company,
+                "claim_year": self.claim_year,
+                "claim_month": self.claim_month,
+                "posting_date": now_datetime(),
+                "folio_no": 1
+            }).insert(ignore_permissions=True)
+            new_folio_doc.reload()
+            frappe.set_value(self.doctype, self.name, "folio_no", 1)
+            self.reload()
+            return True
+
+        folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
+        folio_no = cint(folio_doc.folio_no) + 1
+        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
+
+        folio_doc.folio_no += 1
+        folio_doc.posting_date = now_datetime()
+        folio_doc.save(ignore_permissions=True)
 
 
 def get_missing_patient_signature(self):
