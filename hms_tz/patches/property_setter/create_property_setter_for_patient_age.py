@@ -28,8 +28,8 @@ def execute():
             "fetch_from",
             property.get("value"),
             "Small Text",
-            "DocField",
-            "False"
+            for_doctype=False,
+            validate_fields_for_doctype=False
         )
     
     frappe.db.commit()
