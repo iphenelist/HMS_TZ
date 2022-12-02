@@ -836,7 +836,11 @@ class NHIFPatientClaim(Document):
 
 
     def after_insert(self):
-        folio_counter = frappe.get_all("NHIF Folio Counter", filters={"company": self.company, "claim_year": self.claim_year, "claim_month": self.claim_month})
+        folio_counter = frappe.get_all("NHIF Folio Counter", filters={
+            "company": self.company, "claim_year": self.claim_year, "claim_month": self.claim_month
+        }, fields=["name"], page_length=1)
+
+        folio_no = 1
         if not folio_counter:
             new_folio_doc = frappe.get_doc({
                 "doctype": "NHIF Folio Counter",
@@ -844,20 +848,18 @@ class NHIFPatientClaim(Document):
                 "claim_year": self.claim_year,
                 "claim_month": self.claim_month,
                 "posting_date": now_datetime(),
-                "folio_no": 1
+                "folio_no": folio_no
             }).insert(ignore_permissions=True)
             new_folio_doc.reload()
-            frappe.set_value(self.doctype, self.name, "folio_no", 1)
-            self.reload()
-            return True
+        else:
+            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_no = cint(folio_doc.folio_no) + 1
 
-        folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
-        folio_no = cint(folio_doc.folio_no) + 1
+            folio_doc.folio_no += 1
+            folio_doc.posting_date = now_datetime()
+            folio_doc.save(ignore_permissions=True)
         frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
-
-        folio_doc.folio_no += 1
-        folio_doc.posting_date = now_datetime()
-        folio_doc.save(ignore_permissions=True)
+        self.reload()
 
 
 def get_missing_patient_signature(self):
