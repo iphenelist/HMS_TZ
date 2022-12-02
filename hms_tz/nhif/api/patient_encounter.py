@@ -658,7 +658,7 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
                     patient_encounter_doc.company,
                     patient_encounter_doc.patient,
                 )
-                item.price_list_rate = item_rate
+                item.price_list_rate = item.rate
             else:
                 item_rate = get_item_rate(
                     item_code,
