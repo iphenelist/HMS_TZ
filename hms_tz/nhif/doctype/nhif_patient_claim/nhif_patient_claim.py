@@ -852,7 +852,7 @@ class NHIFPatientClaim(Document):
             }).insert(ignore_permissions=True)
             new_folio_doc.reload()
         else:
-            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_doc = frappe.get_doc("NHIF Folio Counter", folio_counter[0].name)
             folio_no = cint(folio_doc.folio_no) + 1
 
             folio_doc.folio_no += 1
