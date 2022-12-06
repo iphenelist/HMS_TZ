@@ -120,7 +120,7 @@ class NHIFPatientClaim(Document):
         # Check if there are multiple appointments with same authorization number
         appointment_documents = frappe.get_all("Patient Appointment", filters={
             "patient": self.patient, "authorization_number": self.authorization_no,
-            "coverage_plan_card_number": self.cardno
+            "coverage_plan_card_number": self.cardno, "status": ["!=", "Cancelled"]
         }, pluck="name")
         
         if len(appointment_documents) > 1:
