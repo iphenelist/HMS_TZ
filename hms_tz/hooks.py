@@ -119,9 +119,8 @@ doctype_list_js = {
 
 doc_events = {
     "Patient Appointment": {
-        "validate": [
-            "hms_tz.nhif.api.patient_appointment.make_next_doc",
-        ]
+        "before_insert": "hms_tz.nhif.api.patient_appointment.before_insert",
+        "validate": "hms_tz.nhif.api.patient_appointment.make_next_doc",
     },
     "Vital Signs": {
         "on_submit": "hms_tz.nhif.api.patient_appointment.make_encounter",

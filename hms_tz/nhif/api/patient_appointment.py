@@ -23,6 +23,14 @@ from frappe.utils import date_diff, getdate, nowdate
 from csf_tz import console
 
 
+def before_insert(doc, method):
+    if doc.inpatient_record:
+        frappe.throw(
+            _(
+                "You cannot create an appointment for a patient already admitted.<br>First <b>discharge the patient</b> and then create the appointment."
+            )
+        )
+
 @frappe.whitelist()
 def get_insurance_amount(
     insurance_subscription, billing_item, company, insurance_company
@@ -433,12 +441,6 @@ def set_follow_up(appointment_doc, method):
 
 
 def make_next_doc(doc, method):
-    if doc.inpatient_record:
-        frappe.throw(
-            _(
-                "You cannot create an appointment for a patient already admitted.<br>First <b>discharge the patient</b> and then create the appointment."
-            )
-        )
     if doc.is_new():
         return
     if doc.insurance_subscription:
