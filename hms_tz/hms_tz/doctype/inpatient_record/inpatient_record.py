@@ -11,6 +11,9 @@ from frappe.desk.reportview import get_match_cond
 
 
 class InpatientRecord(Document):
+    def before_insert(self):
+        self.validate_already_scheduled_or_admitted()
+
     def after_insert(self):
         frappe.db.set_value("Patient", self.patient, "inpatient_record", self.name)
         frappe.db.set_value("Patient", self.patient, "inpatient_status", self.status)
@@ -31,7 +34,6 @@ class InpatientRecord(Document):
 
     def validate(self):
         self.validate_dates()
-        self.validate_already_scheduled_or_admitted()
         if self.status == "Discharged":
             frappe.db.set_value("Patient", self.patient, "inpatient_status", None)
             frappe.db.set_value("Patient", self.patient, "inpatient_record", None)
