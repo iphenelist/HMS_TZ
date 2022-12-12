@@ -65,14 +65,14 @@ class InpatientRecord(Document):
 			select name, status
 			from `tabInpatient Record`
 			where (status = 'Admitted' or status = 'Admission Scheduled')
-			and name != %(name)s and patient = %(patient)s
+			and patient = %(patient)s
 			"""
 
         ip_record = frappe.db.sql(
-            query, {"name": self.name, "patient": self.patient}, as_dict=1
+            query, {"patient": self.patient}, as_dict=1
         )
 
-        if ip_record:
+        if len(ip_record) > 0:
             msg = _(
                 ("Already {0} Patient {1} with Inpatient Record ").format(
                     ip_record[0].status, self.patient
