@@ -1074,6 +1074,9 @@ def auto_submit_nhif_patient_claim(setting_dict=None):
     else:
         company_setting_detail.append(frappe._dict(json.loads(setting_dict)))
     
+    if len(company_setting_detail) == 0:
+        return 
+
     for detail in company_setting_detail:
         frappe.enqueue(
             method=enqueue_auto_sending_of_patient_claims,
@@ -1093,6 +1096,9 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
         "is_ready_for_auto_submission": 1,
         "docstatus": 0
     })
+    
+    if len(patient_claims) == 0:
+        return
 
     success_count = 0
     failed_count = 0
