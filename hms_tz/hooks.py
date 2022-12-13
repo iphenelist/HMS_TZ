@@ -208,6 +208,10 @@ scheduler_events = {
     "daily": ["hms_tz.nhif.api.inpatient_record.daily_update_inpatient_occupancies"],
     
     "cron": {
+        # Routine for every day 00:01 am at night
+        "1 0 * * *": [
+            "hms_tz.nhif.api.healthcare_utils.auto_submit_nhif_patient_claim"
+        ],
         # Routine for every day 2:30am at night
         "30 2 * * *": [
             "hms_tz.nhif.api.healthcare_utils.delete_or_cancel_draft_document"
