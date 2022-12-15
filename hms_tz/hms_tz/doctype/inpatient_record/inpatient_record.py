@@ -195,7 +195,7 @@ def schedule_discharge(args):
         inpatient_record = frappe.get_doc("Inpatient Record", inpatient_record_id)
         check_out_inpatient(inpatient_record)
         set_details_from_ip_order(inpatient_record, discharge_order)
-        validate_schedule_discharge(inpatient_record)
+        validate_discharge(inpatient_record)
         inpatient_record.status = "Discharge Scheduled"
         inpatient_record.save(ignore_permissions=True)
         frappe.db.set_value(
@@ -238,6 +238,7 @@ def check_out_inpatient(inpatient_record):
 
 
 def discharge_patient(inpatient_record):
+    validate_discharge(inpatient_record)
     validate_invoiced_inpatient(inpatient_record)
     inpatient_record.discharge_date = today()
     inpatient_record.status = "Discharged"
@@ -385,7 +386,7 @@ def get_leave_from(doctype, txt, searchfield, start, page_len, filters):
         },
     )
 
-def validate_schedule_discharge(inpatient_record):
+def validate_discharge(inpatient_record):
     if inpatient_record.status == "Admission Scheduled":
         frappe.throw(frappe.bold(
             "Cannot schedule discharge for the patient who was not admitted,<br><br>\
