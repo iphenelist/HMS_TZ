@@ -507,6 +507,9 @@ def make_next_doc(doc, method):
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
         return
+    # do not create vital sign or encounter if appointment is already cancelled
+    if doc.status == "Cancelled":
+        return
     if frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
         make_encounter(doc, method)
     else:
