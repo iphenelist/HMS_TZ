@@ -248,11 +248,13 @@ def make_encounter(doc, method):
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
             return
+        if frappe.get_value("Patient Appointment", doc.appointment, "status") == "Cancelled":
+            frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
     elif doc.doctype == "Patient Appointment":
         if (
             not doc.authorization_number and not doc.mode_of_payment
-        ) or doc.ref_patient_encounter:
+        ) or doc.ref_patient_encounter or doc.status == "Cancelled":
             return
         source_name = doc.name
     target_doc = None
