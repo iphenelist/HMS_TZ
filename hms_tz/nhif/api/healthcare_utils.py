@@ -588,6 +588,8 @@ def create_individual_lab_test(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
+        doc.insurance_company = source_doc.insurance_company
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.invoiced = 1
@@ -615,6 +617,8 @@ def create_individual_radiology_examination(source_doc, child):
         return
     doc = frappe.new_doc("Radiology Examination")
     doc.patient = source_doc.patient
+    doc.hms_tz_patient_sex = source_doc.patient_sex
+    doc.hms_tz_patient_age = source_doc.patient_age
     doc.company = source_doc.company
     doc.radiology_examination_template = child.radiology_examination_template
     if source_doc.doctype == "Healthcare Service Order":
@@ -626,6 +630,8 @@ def create_individual_radiology_examination(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
+        doc.insurance_company = source_doc.insurance_company
     doc.medical_department = frappe.get_cached_value(
         "Radiology Examination Template",
         child.radiology_examination_template,
@@ -671,7 +677,10 @@ def create_individual_procedure_prescription(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
+        doc.insurance_company = source_doc.insurance_company
     doc.patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
+    doc.patient_age = source_doc.patient_age
     doc.medical_department = frappe.get_cached_value(
         "Clinical Procedure Template", child.procedure, "medical_department"
     )
