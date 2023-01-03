@@ -1521,6 +1521,18 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
         doc.reload()
         return True
 
+@frappe.whitelist()
+def validate_admission_encounter(encounter):
+    """Validate encounter if it has duplicated = 1"""
+    duplicated_encounter = frappe.get_value("Patient Encounter", {"from_encounter": encounter}, "name")
+    if duplicated_encounter:
+        url = frappe.utils.get_link_to_form("Patient Encounter", duplicated_encounter)
+        frappe.msgprint("You can't schedule Admission on this encounter: {0},<br>\
+            Please, Click Here: {1} to open the right encounter".format(
+            frappe.bold(encounter),
+            frappe.bold(url)
+        ))
+        return True
 
 def validate_maximum_number_of_claims_per_month(coverage_info, insurance_subscription, template, today, method):
     days = 30
