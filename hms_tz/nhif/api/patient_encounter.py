@@ -23,9 +23,12 @@ from erpnext.healthcare.doctype.healthcare_settings.healthcare_settings import (
 )
 import time
 import calendar
-from hms_tz.nhif.api.patient_appointment import get_mop_amount
+from hms_tz.nhif.api.patient_appointment import (
+    get_mop_amount,
+    get_discount_percent,
+    calculate_patient_age
+)
 from erpnext.accounts.utils import get_balance_on
-from hms_tz.nhif.api.patient_appointment import get_discount_percent
 
 
 def on_trash(doc, method):
@@ -175,8 +178,8 @@ def on_submit_validation(doc, method):
                             alert=True,
                         )
             if not row.is_not_available_inhouse:
-                if doc.insurance_subscription:
-                    old_method = method
+                old_method = method
+                if doc.insurance_subscription and not row.prescribe:
                     method='validate'
                 validate_stock_item(
                     row.get(value),
@@ -299,6 +302,9 @@ def on_submit_validation(doc, method):
 
         validate_maximum_number_of_claims_per_month(coverage_info, insurance_subscription, template, today, method)
 
+    if not doc.patient_age:
+        doc.patient_age = calculate_patient_age(doc.patient)
+    
     # Run on_submit
     validate_totals(doc)
 

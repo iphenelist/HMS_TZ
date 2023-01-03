@@ -588,6 +588,8 @@ def create_individual_lab_test(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
+        doc.insurance_company = source_doc.insurance_company
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.invoiced = 1
@@ -615,6 +617,8 @@ def create_individual_radiology_examination(source_doc, child):
         return
     doc = frappe.new_doc("Radiology Examination")
     doc.patient = source_doc.patient
+    doc.hms_tz_patient_sex = source_doc.patient_sex
+    doc.hms_tz_patient_age = source_doc.patient_age
     doc.company = source_doc.company
     doc.radiology_examination_template = child.radiology_examination_template
     if source_doc.doctype == "Healthcare Service Order":
@@ -626,6 +630,8 @@ def create_individual_radiology_examination(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
+        doc.insurance_company = source_doc.insurance_company
     doc.medical_department = frappe.get_cached_value(
         "Radiology Examination Template",
         child.radiology_examination_template,
@@ -671,7 +677,10 @@ def create_individual_procedure_prescription(source_doc, child):
         doc.prescribe = 1
     else:
         doc.insurance_subscription = source_doc.insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
+        doc.insurance_company = source_doc.insurance_company
     doc.patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
+    doc.patient_age = source_doc.patient_age
     doc.medical_department = frappe.get_cached_value(
         "Clinical Procedure Template", child.procedure, "medical_department"
     )
@@ -1057,3 +1066,71 @@ def create_invoiced_items_if_not_created():
                     frappe.log_error(traceback)
 
         frappe.db.commit()
+
+@frappe.whitelist()
+def auto_submit_nhif_patient_claim(setting_dict=None):
+    """Routine to submit patient claims and will be triggered:
+        1. Every 00:01 am at night by cron job
+        2. By a button called 'Auto Submit Patient Claim' which is on Company NHIF settings
+    """
+    company_setting_detail = []
+
+    if not setting_dict:
+        company_setting_detail = frappe.get_all("Company NHIF Settings",
+            filters={"enable": 1, "enable_auto_submit_of_claims": 1}, 
+            fields=["company", "submit_claim_year", "submit_claim_month"]
+        )
+    else:
+        company_setting_detail.append(frappe._dict(json.loads(setting_dict)))
+    
+    if len(company_setting_detail) == 0:
+        return 
+
+    for detail in company_setting_detail:
+        frappe.enqueue(
+            method=enqueue_auto_sending_of_patient_claims,
+            queue="long",
+            timeout=1000000,
+            is_async=True,
+            setting_obj=detail,
+        )
+
+def enqueue_auto_sending_of_patient_claims(setting_obj):
+    from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+
+    patient_claims = frappe.get_all("NHIF Patient Claim", filters={
+        "company": setting_obj.company, 
+        "claim_month": setting_obj.submit_claim_month, 
+        "claim_year": setting_obj.submit_claim_year,
+        "is_ready_for_auto_submission": 1,
+        "docstatus": 0
+    })
+    
+    if len(patient_claims) == 0:
+        return
+
+    success_count = 0
+    failed_count = 0
+    for claim in patient_claims:
+        doc = frappe.get_doc("NHIF Patient Claim", claim.name)
+        try:
+            doc.submit()
+            doc.reload()
+            if doc.docstatus == 1:
+                success_count += 1
+        except:
+            failed_count += 1
+
+    description = "CLAIM'S AUTO SUBMISSION SUMMARY\n\n\ncompany: {0}\n\nTotal Claims Prepared for auto submit: {1}\
+        \n\nTotal claims Submitted: {2}\n\nTotal Claims failed: {3}".format(
+            setting_obj.company, len(patient_claims), success_count, failed_count
+        )
+    add_log(
+        request_type="AutoSubmitFolios",
+        request_url="",
+        request_header="",
+        request_body="",
+        response_data=description,
+        status_code="Summary",
+    )
+    frappe.db.commit()
