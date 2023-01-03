@@ -131,6 +131,17 @@ def on_submit_validation(doc, method):
                         ),
                         method,
                     )
+            if (
+                child.get("doctype") == "Medication" and
+                row.doctype == "Drug Prescription"
+            ):
+                if (
+                    doc.insurance_subscription and
+                    healthcare_doc.medication_category == "Category S Medication"
+                ):
+                    frappe.msgprint("Item: {0} is Category S Medication".format(
+                        frappe.bold(row.get(child.get("item")))
+                    ), alert=True)
 
     
     # Run on_submit

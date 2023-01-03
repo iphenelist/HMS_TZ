@@ -69,7 +69,20 @@ def set_prescribed(doc):
         if len(items_list):
             item.last_qty_prescribed = items_list[0].get("stock_qty")
             item.last_date_prescribed = items_list[0].get("posting_date")
+    
+        # Check for medication category
+        if doc.coverage_plan_name:
+            check_for_medication_category(item)
 
+def check_for_medication_category(item):
+    is_category_s_medication = frappe.get_cached_value("Medication", {
+        "item": item.item_code
+    }, "medication_category")
+
+    if is_category_s_medication == "Category S Medication":
+        frappe.msgprint("Item: {0} is Category S Medication".format(
+            frappe.bold(item.item_code)
+        ), alert=True)
 
 def set_missing_values(doc):
     if (
