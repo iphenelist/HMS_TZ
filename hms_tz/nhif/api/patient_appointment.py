@@ -248,11 +248,13 @@ def make_encounter(doc, method):
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
             return
+        if frappe.get_value("Patient Appointment", doc.appointment, "status") == "Cancelled":
+            frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
     elif doc.doctype == "Patient Appointment":
         if (
             not doc.authorization_number and not doc.mode_of_payment
-        ) or doc.ref_patient_encounter:
+        ) or doc.ref_patient_encounter or doc.status == "Cancelled":
             return
         source_name = doc.name
     target_doc = None
@@ -496,6 +498,9 @@ def make_next_doc(doc, method):
         doc.patient_age = calculate_patient_age(doc.patient)
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
+        return
+    # do not create vital sign or encounter if appointment is already cancelled
+    if doc.status == "Cancelled":
         return
     if frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
         make_encounter(doc, method)
