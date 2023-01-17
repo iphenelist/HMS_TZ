@@ -17,11 +17,10 @@ pull_request_rules:
   - name: Automatic merge pull request to develop
     conditions:
       - and:
-          - and:
-              - base: develop
-          - or:
-              - author = aakvatech
-              - author = av-dev2
+        - base = develop
+        - or:
+            - author = aakvatech
+            - author = av-dev2
     actions:
       merge:
         method: merge
