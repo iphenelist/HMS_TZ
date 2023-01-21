@@ -16,7 +16,8 @@ pull_request_rules:
 
   - name: Automatic merge after review to version-13-hotfix
     conditions:
-      - base: version-13-hotfix
+      - base = version-13-hotfix
+      - label != conflict
       - "#approved-reviews-by >= 1"
     actions:
       merge:
