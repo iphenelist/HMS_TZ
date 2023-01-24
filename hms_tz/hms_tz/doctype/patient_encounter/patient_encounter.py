@@ -50,6 +50,12 @@ def create_therapy_plan(encounter):
 		doc.patient = encounter.patient
 		doc.company = encounter.company
 		doc.start_date = encounter.encounter_date
+		doc.hms_tz_appointment = encounter.appointment
+		doc.hms_tz_patient_age = encounter.patient_age
+		doc.hms_tz_patient_sex = encounter.patient_sex
+		doc.hms_tz_insurance_coverage_plan = encounter.insurance_coverage_plan
+		doc.ref_doctype = "Patient Encounter"
+		doc.ref_docname = encounter.name
 		for entry in encounter.therapies:
 			doc.append('therapy_plan_details', {
 				'therapy_type': entry.therapy_type,
