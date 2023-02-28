@@ -48,7 +48,7 @@ class NHIFPatientClaim(Document):
         else:
             self.final_patient_encounter = self.get_final_patient_encounter()
         self.calculate_totals()
-        self.set_clinical_notes()
+        # self.set_clinical_notes()
         if not self.is_new():
             frappe.db.sql(
                 "UPDATE `tabPatient Appointment` SET nhif_patient_claim = '' WHERE nhif_patient_claim = '{0}'".format(
@@ -89,7 +89,7 @@ class NHIFPatientClaim(Document):
             "Total time to complete the process in seconds = " + str(time_in_seconds)
         )
     
-    def validate_multiple_appointments_per_authorization_no(self):
+    def validate_multiple_appointments_per_authorization_no(self, caller=None):
         """Validate if patient gets multiple appointments with same authorization number"""
 
         #Check if there are multiple claims with same authorization number
@@ -101,21 +101,25 @@ class NHIFPatientClaim(Document):
                 "cardno": self.cardno,
                 "docstatus": 0,
             },
-            fields=["name", "patient", "patient_name"],
+            fields=["name", "patient", "patient_name", "hms_tz_claim_appointment_list"],
         )
-
-        if len(claim_details) > 1:
-            claim_name_list = ""
-            for claim in claim_details:
-                claim_name_list += claim_details[0]["name"] + ", "
-
-                frappe.throw(
-                    "This Authorization Number {0} has used multiple times in NHIF Patient Claim: {1}. \
-                    Please merge the authorization number to Proceed".format(
-                        frappe.bold(self.authorization_no), frappe.bold(claim_name_list)
-                    )
-                )
+        claim_name_list = ""
+        merged_appointments = []
+        for claim in claim_details:
+            claim_name_list += claim["name"] + ", "
+            if claim["hms_tz_claim_appointment_list"]:
+                merged_appointments += json.loads(claim["hms_tz_claim_appointment_list"])
         
+        if len(claim_details) > 1 and not caller:
+            frappe.throw(
+                "<p style='text-align: justify; font-size: 14px;'>This Authorization Number {0} has used multiple times in NHIF Patient Claim: {1}. \
+                Please merge these {2} claims to Proceed</p>".format(
+                    frappe.bold(self.authorization_no),
+                    frappe.bold(claim_name_list),
+                    frappe.bold(len(claim_details))
+                )
+            )
+
         # rock: 139
         # Check if there are multiple appointments with same authorization number
         appointment_documents = frappe.get_all("Patient Appointment", filters={
@@ -124,29 +128,7 @@ class NHIFPatientClaim(Document):
         }, pluck="name")
         
         if len(appointment_documents) > 1:
-            msg = "<p style='text-align: left; font-size: 13px'>Patient: {0}-{1} has multiple appointments: ".format(
-                frappe.bold(self.patient), frappe.bold(self.patient_name)
-            )
-            #check if there is any merging done before
-            merged_appointments = json.loads(self.hms_tz_claim_appointment_list) if self.hms_tz_claim_appointment_list else None
-            reqd_throw_count = 0
-            for appointment in appointment_documents:
-                msg += frappe.bold(appointment) + ", "
-
-                if merged_appointments:
-                    for app in merged_appointments:
-                        if appointment == app:
-                            reqd_throw_count += 1
-            
-            msg += " with same authorization no: {1}<br> Please consider merging of claims\
-                if Claims for all {2} appointments have already been created</p>".format(
-                    frappe.bold(self.patient), 
-                    frappe.bold(self.authorization_no),
-                    frappe.bold(len(appointment_documents))
-                )
-
-            if reqd_throw_count < 2:
-                frappe.throw(msg)
+            validate_hold_card_status(self, appointment_documents, claim_details, merged_appointments, caller)
 
 
     def set_claim_values(self):
@@ -158,29 +140,30 @@ class NHIFPatientClaim(Document):
         self.posting_date = nowdate()
         self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
-        final_patient_encounter = self.final_patient_encounter
-        practitioner_name, practitioner_no = frappe.get_cached_value(
+        # rock: 173 
+        practitioners = [d.practitioner for d in self.final_patient_encounter]
+        practitioner_details = frappe.get_all(
             "Healthcare Practitioner",
-            final_patient_encounter.practitioner,
+            {"name": ["in", practitioners]},
             ["practitioner_name", "tz_mct_code"],
         )
-        if not practitioner_name:
+        if not practitioner_details[0].practitioner_name:
             frappe.throw(
                 _("There is no Practitioner Name for Practitioner {0}").format(
-                    final_patient_encounter.practitioner
+                    practitioner_details[0].practitioner_name
                 )
             )
             
-        if not practitioner_no:
+        if not practitioner_details[0].tz_mct_code:
             frappe.throw(
                 _("There is no TZ MCT Code for Practitioner {0}").format(
-                    final_patient_encounter.practitioner
+                    practitioner_details[0].practitioner_name
                 )
             )
 
-        self.practitioner_name = practitioner_name
-        self.practitioner_no = practitioner_no
-        inpatient_record = final_patient_encounter.inpatient_record
+        self.practitioner_name = practitioner_details[0].practitioner_name
+        self.practitioner_no = ", ".join([d.tz_mct_code for d in practitioner_details])
+        inpatient_record = [h.inpatient_record for h in self.final_patient_encounter][0] or None
         self.inpatient_record = inpatient_record
         # Reset values for every validate
         self.patient_type_code = "OUT"
@@ -221,18 +204,16 @@ class NHIFPatientClaim(Document):
 
     @frappe.whitelist()
     def get_appointments(self):
-        appointments = frappe.get_all(
+        appointment_list = frappe.get_all(
             "NHIF Patient Claim",
             filters={
                 "patient": self.patient,
                 "authorization_no": self.authorization_no,
                 "cardno": self.cardno,
             },
-            fields=["patient_appointment"],
-            pluck="patient_appointment",
+            fields=["patient_appointment", "hms_tz_claim_appointment_list"],
         )
-
-        if len(appointments) == 1:
+        if len(appointment_list) == 1:
             frappe.throw(
                 _(
                     "<p style='text-align: center; font-size: 12pt; background-color: #FFD700;'>\
@@ -242,14 +223,26 @@ class NHIFPatientClaim(Document):
                     )
                 )
             )
+        app_list = []
+        for app_name in appointment_list:
+            if app_name["hms_tz_claim_appointment_list"]:
+                app_numbers = json.loads(app_name["hms_tz_claim_appointment_list"])
+                app_list += app_numbers
 
-        for app_name in appointments:
-            frappe.db.set_value(
-                "Patient Appointment", app_name, "nhif_patient_claim", self.name
-            )
-
+                frappe.db.set_value(
+                    "Patient Appointment", app_numbers[0], "nhif_patient_claim", self.name
+                )
+                frappe.db.set_value(
+                    "Patient Appointment", app_numbers[1], "nhif_patient_claim", self.name
+                )
+            else:
+                app_list.append(app_name["patient_appointment"])
+                frappe.db.set_value(
+                    "Patient Appointment", app_name["patient_appointment"], "nhif_patient_claim", self.name
+                )
+            
         self.allow_changes = 0
-        self.hms_tz_claim_appointment_list = json.dumps(appointments)
+        self.hms_tz_claim_appointment_list = json.dumps(app_list)
 
         self.save(ignore_permissions=True)
 
@@ -389,12 +382,14 @@ class NHIFPatientClaim(Document):
             },
         ]
         self.nhif_patient_claim_item = []
-        final_patient_encounter = self.final_patient_encounter
-        inpatient_record = final_patient_encounter.inpatient_record
-        # is_inpatient = True if inpatient_record else False
+        self.clinical_notes = ""
+        inpatient_record = [d.inpatient_record for d in self.final_patient_encounter][0] or None
         if not inpatient_record:
             for encounter in self.patient_encounters:
                 encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
+
+                self.set_clinical_notes(encounter_doc)
+
                 for child in childs_map:
                     for row in encounter_doc.get(child.get("table")):
                         if row.prescribe or row.is_cancelled:
@@ -535,6 +530,9 @@ class NHIFPatientClaim(Document):
                         encounter_doc = frappe.get_doc(
                             "Patient Encounter", encounter.name
                         )
+
+                        self.set_clinical_notes(encounter_doc)
+                        
                         for child in childs_map:
                             for row in encounter_doc.get(child.get("table")):
                                 if row.prescribe or row.is_cancelled:
@@ -628,21 +626,28 @@ class NHIFPatientClaim(Document):
                 new_row.idx = 1
 
     def get_final_patient_encounter(self):
+        # rock 173
+        appointment = None
+        if self.hms_tz_claim_appointment_list:
+            appointment = ["in", json.loads(self.hms_tz_claim_appointment_list)]
+        else:
+            appointment = self.patient_appointment
+
         patient_encounter_list = frappe.get_all(
             "Patient Encounter",
             filters={
-                "appointment": self.patient_appointment,
+                "appointment": appointment,
                 "docstatus": 1,
                 "duplicated": 0,
                 "encounter_type": "Final",
             },
             fields=["name", "practitioner", "inpatient_record"],
             order_by="`modified` desc",
-            limit_page_length=1,
+            # limit_page_length=1,
         )
         if len(patient_encounter_list) == 0:
             frappe.throw(_("There no Final Patient Encounter for this Appointment"))
-        return patient_encounter_list[0]
+        return patient_encounter_list
 
     def get_patient_file_no(self):
         patient_file_no = self.patient
@@ -664,7 +669,7 @@ class NHIFPatientClaim(Document):
         entities.DateOfBirth = str(self.date_of_birth)
         entities.PatientFileNo = self.patient_file_no
         # entities.PatientFile = generate_pdf(self)
-        entities.ClaimFile = get_claim_pdf_file(self)
+        # entities.ClaimFile = get_claim_pdf_file(self)
         entities.ClinicalNotes = self.clinical_notes
         entities.AuthorizationNo = self.authorization_no
         entities.AttendanceDate = str(self.attendance_date)
@@ -796,27 +801,36 @@ class NHIFPatientClaim(Document):
             item.folio_disease_id = item.folio_disease_id or str(uuid.uuid1())
             item.date_created = item.date_created or nowdate()
 
-    def set_clinical_notes(self):
-        self.clinical_notes = ""
-        for patient_encounter in self.patient_encounters:
-            examination_detail = (
-                frappe.get_value(
-                    "Patient Encounter", patient_encounter.name, "examination_detail"
-                )
-                or ""
+    def set_clinical_notes(self, encounter_doc):
+        if not self.clinical_notes:
+            patient_name = f"Patient: <b>{self.patient_name}</b>,"
+            date_of_birth = f"Date of Birth: <b>{self.date_of_birth}</b>,"
+            gender = f"Gender: <b>{self.gender}</b>,"
+            years = f"Age: <b>{(frappe.utils.date_diff(nowdate(), self.date_of_birth))//365} years</b>,"
+            self.clinical_notes = " ".join([patient_name, gender, date_of_birth, years]) + "\n\n"
+
+        if not encounter_doc.examination_detail:
+            frappe.msgprint(
+                _(
+                    f"Encounter {encounter_doc.name} does not have Examination Details defined. Check the encounter."
+                ),
+                alert=True,
             )
-            if not examination_detail:
-                frappe.msgprint(
-                    _(
-                        "Encounter {0} does not have Examination Details defined. Check the encounter.".format(
-                            patient_encounter
-                        )
-                    ),
-                    alert=True,
-                )
-                # return
-            self.clinical_notes += examination_detail or ""
-            self.clinical_notes += "\n"
+            # return
+        self.clinical_notes += encounter_doc.examination_detail or ""
+        self.clinical_notes += "\n\n"
+
+        if len(encounter_doc.get("drug_prescription")) > 0:
+            for row in encounter_doc.get("drug_prescription"):
+                med_info = ""
+                if row.dosage:
+                    med_info += f", Dosage: {row.dosage}"
+                if row.period:
+                    med_info += f", Perion: {row.period}"
+                if row.dosage_form:
+                    med_info += f", Dosage Form: {row.dosage_form}"
+                
+                self.clinical_notes += f"Drug: {row.drug_code} {med_info} \n\n"
 
     def before_insert(self):
         if frappe.db.exists(
@@ -833,6 +847,8 @@ class NHIFPatientClaim(Document):
                     frappe.bold(self.patient), frappe.bold(self.patient_appointment)
                 )
             )
+        
+        self.validate_multiple_appointments_per_authorization_no("before_insert")
 
 
     def after_insert(self):
@@ -912,6 +928,51 @@ def validate_item_status(self):
                 )
             )
 
+def validate_hold_card_status(self, appointment_documents, claim_details, merged_appointments, caller=None):
+    msg = "<p style='text-align: justify; font-size: 14px'>Patient: {0}-{1} has multiple appointments: <br>".format(
+                frappe.bold(self.patient), frappe.bold(self.patient_name)
+            )
+    #check if there is any merging done before
+    reqd_throw_count = 0
+    for appointment in appointment_documents:
+        msg += frappe.bold(appointment) + ", "
+
+        if merged_appointments:
+            for app in frappe.utils.unique(merged_appointments):
+                if appointment == app:
+                    reqd_throw_count += 1
+    
+    # rock 163
+    if caller:
+        unique_claims_appointments = 0
+        if len(frappe.utils.unique(merged_appointments)) < len(claim_details):
+            unique_claims_appointments = len(claim_details)
+        else:
+            unique_claims_appointments = len(frappe.utils.unique(merged_appointments))
+
+        if (len(appointment_documents) - 1) == unique_claims_appointments:
+            frappe.msgprint("<strong>Release Patient Card</strong>", 20, alert=True)
+            frappe.msgprint("<strong>Release Patient Card</strong>")
+        else:
+            msg += "<br> with same authorization no: {0}<br><br>\
+                Please <strong>Hold patient card</strong> until claims for all {1} appointments to be created.</p>".format(
+                    frappe.bold(self.authorization_no),
+                    frappe.bold(len(appointment_documents))
+                )
+            frappe.msgprint("<strong>Please Hold Card</strong>", 20, alert=True)
+            frappe.msgprint(str(msg))
+
+        return
+
+    msg += "<br> with same authorization no: {1}<br><br> Please consider <strong>merging of claims</strong>\
+        if Claims for all {2} appointments have already been created</p>".format(
+            frappe.bold(self.patient), 
+            frappe.bold(self.authorization_no),
+            frappe.bold(len(appointment_documents))
+        )
+
+    if reqd_throw_count < len(appointment_documents):
+        frappe.throw(msg)
 
 def get_item_refcode(item_code):
     code_list = frappe.get_all(

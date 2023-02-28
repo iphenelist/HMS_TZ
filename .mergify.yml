@@ -13,7 +13,12 @@ pull_request_rules:
       comment:
         message: "@{{author}} this pull request is now in conflict 😩"
   
-  
+  - name: Automatic merge after review to version-13-hotfix
+    conditions:
+      - base = version-13-hotfix
+      - label != conflict
+      - "#approved-reviews-by >= 1"
+
   - name: Automatic merge pull request to version-13
     conditions:
       - and:
@@ -26,3 +31,4 @@ pull_request_rules:
     actions:
       merge:
         method: merge
+  

@@ -175,8 +175,8 @@ def on_submit_validation(doc, method):
                             alert=True,
                         )
             if not row.is_not_available_inhouse:
-                if doc.insurance_subscription:
-                    old_method = method
+                old_method = method
+                if doc.insurance_subscription and not row.prescribe:
                     method='validate'
                 validate_stock_item(
                     row.get(value),
