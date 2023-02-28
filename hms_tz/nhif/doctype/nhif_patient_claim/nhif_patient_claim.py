@@ -141,10 +141,10 @@ class NHIFPatientClaim(Document):
         self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
         # rock: 173 
-        pratitioners = [d.practitioner for d in self.final_patient_encounter]
+        practitioners = [d.practitioner for d in self.final_patient_encounter]
         practitioner_details = frappe.get_all(
             "Healthcare Practitioner",
-            {"name": ["in", pratitioners]},
+            {"name": ["in", practitioners]},
             ["practitioner_name", "tz_mct_code"],
         )
         if not practitioner_details[0].practitioner_name:
@@ -383,6 +383,7 @@ class NHIFPatientClaim(Document):
         ]
         self.nhif_patient_claim_item = []
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.clinical_notes = ""
         final_patient_encounter = self.final_patient_encounter
         inpatient_record = final_patient_encounter.inpatient_record
@@ -390,6 +391,10 @@ class NHIFPatientClaim(Document):
 =======
         inpatient_record = [d.inpatient_record for d in self.final_patient_encounter][0] or None
 >>>>>>> dabe53be (feat: add multiple practitioner number in json if multiple claims merged together)
+=======
+        self.clinical_notes = ""
+        inpatient_record = [d.inpatient_record for d in self.final_patient_encounter][0] or None
+>>>>>>> 66a1d9e3 (fix: conflicts)
         if not inpatient_record:
             for encounter in self.patient_encounters:
                 encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
