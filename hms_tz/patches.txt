@@ -20,7 +20,4 @@ hms_tz.patches.custom_fields.company_field_on_healthcare_practitioner
 hms_tz.patches.property_setter.property_setter_for_department_field_on_patient_appointment
 hms_tz.patches.custom_fields.custom_fields_fetching_values_from_his
 hms_tz.patches.property_setter.properties_for_values_fetched_from_his
-<<<<<<< HEAD
-=======
 hms_tz.patches.custom_fields.followup_custom_field_on_coverage_plan_and_insurance_company
->>>>>>> 722c24ce (feat: allow altering of follow up days for insurance patients)
