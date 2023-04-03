@@ -344,7 +344,7 @@ def get_authorization_num(
         card = json.loads(r.text)
         # console(card)
         if card.get("AuthorizationStatus") != "ACCEPTED":
-            frappe.throw(card["Remarks"])
+            frappe.throw(title=card.get("AuthorizationStatus"), msg=card["Remarks"])
         frappe.msgprint(_(card["Remarks"]), alert=True)
         add_scheme(card.get("SchemeID"), card.get("SchemeName"))
         add_product(company, card.get("ProductCode"), card.get("ProductName"))
@@ -472,7 +472,7 @@ def make_next_doc(doc, method):
                     "Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."
                 )
             )
-        if "NHIF" not in doc.insurance_company:
+        if "NHIF" not in doc.insurance_company and not doc.daily_limit:
             doc.daily_limit = frappe.get_cached_value(
                 "Healthcare Insurance Coverage Plan",
                 coverage_plan,
