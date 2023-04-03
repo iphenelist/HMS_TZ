@@ -248,11 +248,13 @@ def make_encounter(doc, method):
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
             return
+        if frappe.get_value("Patient Appointment", doc.appointment, "status") == "Cancelled":
+            frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
     elif doc.doctype == "Patient Appointment":
         if (
             not doc.authorization_number and not doc.mode_of_payment
-        ) or doc.ref_patient_encounter:
+        ) or doc.ref_patient_encounter or doc.status == "Cancelled":
             return
         source_name = doc.name
     target_doc = None
@@ -344,7 +346,7 @@ def get_authorization_num(
         card = json.loads(r.text)
         # console(card)
         if card.get("AuthorizationStatus") != "ACCEPTED":
-            frappe.throw(card["Remarks"])
+            frappe.throw(title=card.get("AuthorizationStatus"), msg=card["Remarks"])
         frappe.msgprint(_(card["Remarks"]), alert=True)
         add_scheme(card.get("SchemeID"), card.get("SchemeName"))
         add_product(company, card.get("ProductCode"), card.get("ProductName"))
@@ -472,7 +474,7 @@ def make_next_doc(doc, method):
                     "Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."
                 )
             )
-        if "NHIF" not in doc.insurance_company:
+        if "NHIF" not in doc.insurance_company and not doc.daily_limit:
             doc.daily_limit = frappe.get_cached_value(
                 "Healthcare Insurance Coverage Plan",
                 coverage_plan,
@@ -506,6 +508,9 @@ def make_next_doc(doc, method):
         doc.patient_age = calculate_patient_age(doc.patient)
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
+        return
+    # do not create vital sign or encounter if appointment is already cancelled
+    if doc.status == "Cancelled":
         return
     if frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
         make_encounter(doc, method)
