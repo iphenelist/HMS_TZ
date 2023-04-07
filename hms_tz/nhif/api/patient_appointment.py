@@ -248,11 +248,13 @@ def make_encounter(doc, method):
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
             return
+        if frappe.get_value("Patient Appointment", doc.appointment, "status") == "Cancelled":
+            frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
     elif doc.doctype == "Patient Appointment":
         if (
             not doc.authorization_number and not doc.mode_of_payment
-        ) or doc.ref_patient_encounter:
+        ) or doc.ref_patient_encounter or doc.status == "Cancelled":
             return
         source_name = doc.name
     target_doc = None
@@ -344,7 +346,7 @@ def get_authorization_num(
         card = json.loads(r.text)
         # console(card)
         if card.get("AuthorizationStatus") != "ACCEPTED":
-            frappe.throw(card["Remarks"])
+            frappe.throw(title=card.get("AuthorizationStatus"), msg=card["Remarks"])
         frappe.msgprint(_(card["Remarks"]), alert=True)
         add_scheme(card.get("SchemeID"), card.get("SchemeName"))
         add_product(company, card.get("ProductCode"), card.get("ProductName"))
@@ -431,9 +433,18 @@ def set_follow_up(appointment_doc, method):
     appointment = get_previous_appointment(appointment_doc.patient, filters)
     if appointment and appointment_doc.appointment_date:
         diff = date_diff(appointment_doc.appointment_date, appointment.appointment_date)
-        valid_days = int(
-            frappe.get_cached_value("Healthcare Settings", "Healthcare Settings", "valid_days")
-        )
+        if appointment_doc.mode_of_payment:
+            valid_days = int(
+                frappe.get_cached_value("Healthcare Settings", "Healthcare Settings", "valid_days")
+            )
+        else:
+            valid_days = int(
+                frappe.get_cached_value("Healthcare Insurance Coverage Plan", {"coverage_plan_name": appointment_doc.coverage_plan_name}, "no_of_days_for_follow_up")
+            )
+            if valid_days == 0:
+                valid_days = int(
+                    frappe.get_cached_value("Healthcare Insurance Company", appointment_doc.insurance_company, "no_of_days_for_follow_up")
+                )
         if diff <= valid_days:
             appointment_doc.follow_up = 1
             if (
@@ -443,6 +454,7 @@ def set_follow_up(appointment_doc, method):
             ):
                 return
             appointment_doc.invoiced = 1
+            appointment_doc.paid_amount = 0
             # frappe.msgprint(_("Previous appointment found valid for free follow-up.<br>Skipping invoice for this appointment!"), alert=True)
         else:
             appointment_doc.follow_up = 0
@@ -472,7 +484,7 @@ def make_next_doc(doc, method):
                     "Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."
                 )
             )
-        if "NHIF" not in doc.insurance_company:
+        if "NHIF" not in doc.insurance_company and not doc.daily_limit:
             doc.daily_limit = frappe.get_cached_value(
                 "Healthcare Insurance Coverage Plan",
                 coverage_plan,
@@ -506,6 +518,9 @@ def make_next_doc(doc, method):
         doc.patient_age = calculate_patient_age(doc.patient)
     # fix: followup appointments still require authorization number
     if doc.follow_up and doc.insurance_subscription and not doc.authorization_number:
+        return
+    # do not create vital sign or encounter if appointment is already cancelled
+    if doc.status == "Cancelled":
         return
     if frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
         make_encounter(doc, method)

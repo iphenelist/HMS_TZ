@@ -10,6 +10,10 @@ frappe.ui.form.on('Patient Appointment', {
         frm.trigger("get_mop_amount");
     },
     refresh: function (frm) {
+        // check if appointment is cancelled and hide fields for authorization
+        // this will stop getting authorization number for cancelled appointment and
+        // vital sign will not be created
+        frm.trigger("check_for_cancelled_appointment");
         set_filters(frm);
         frm.trigger("update_primary_action");
         frm.trigger("toggle_reqd_referral_no");
@@ -222,9 +226,25 @@ frappe.ui.form.on('Patient Appointment', {
                 frm.toggle_display('paid_amount', true);
             }, 100);
             frm.set_value("insurance_subscription", "");
+            if (!frm.doc.ref_vital_signs) {
+                frm.set_df_property("follow_up", "read_only", 0);
+            } else {
+                frm.set_df_property("follow_up", "read_only", 1);
+            }
+        }
+    },
+    ref_vital_signs: function (frm) {
+        if (frm.doc.ref_vital_signs) {
+            frm.set_df_property("follow_up", "read_only", 1);
+        } else {
+            frm.set_df_property("follow_up", "read_only", 0);
         }
     },
     get_authorization_number: function (frm) {
+        if (frm.doc.status == "Cancelled") {
+            frappe.msgprint("Appointment is already cancelled")
+            return
+        }
         frm.trigger("get_authorization_num");
     },
     get_authorization_num: function (frm) {
@@ -354,6 +374,15 @@ frappe.ui.form.on('Patient Appointment', {
             }
         });
     },
+    check_for_cancelled_appointment: (frm) => {
+        if (frm.doc.status == "Cancelled" && !frm.doc.authorization_number) {
+            frm.set_df_property("get_authorization_number", "hidden", 1)
+            frm.set_df_property("authorization_number", "hidden", 1)
+        } else {
+            frm.set_df_property("get_authorization_number", "hidden", 0)
+            frm.set_df_property("authorization_number", "hidden", 0)
+        }
+    }
 });
 
 
