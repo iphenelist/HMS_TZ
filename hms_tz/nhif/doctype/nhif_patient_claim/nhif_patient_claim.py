@@ -30,6 +30,7 @@ import os
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 import html2text
+from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
 
 
 class NHIFPatientClaim(Document):
@@ -60,6 +61,8 @@ class NHIFPatientClaim(Document):
                     self.name, self.patient_appointment
                 )
             )
+        if self.allow_changes == 1:
+            track_changes_of_claim_items(self)
 
     def on_trash(self):
         frappe.set_value(
