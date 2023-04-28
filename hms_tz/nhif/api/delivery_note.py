@@ -24,6 +24,10 @@ def set_original_item(doc):
             item.original_item = item.item_code
             item.original_stock_uom_qty = item.stock_qty
         
+        #SHM Rock: #168
+        if doc.form_sales_invoice and doc.patient:
+            update_dosage_details(item)
+        
         new_row = item.as_dict()
         for fieldname in get_fields_to_clear():
             new_row[fieldname] = None
@@ -37,6 +41,23 @@ def set_original_item(doc):
         doc.append("hms_tz_original_items", new_row)
     doc.save(ignore_permissions=True)
 
+def update_dosage_details(item):
+    """Update dosage details for Cash Patient only if dosage is not set"""
+
+    if item.si_detail:
+        reference_dn = frappe.get_value("Sales Invoice Item", item.si_detail, "reference_dn")
+        if not reference_dn:
+            return
+        
+        drug_doc = frappe.get_doc("Drug Prescription", reference_dn)
+        description = (
+            drug_doc.drug_name
+            + " for "  + (drug_doc.dosage or "No Prescription Dosage")
+            + " for "  + (drug_doc.period or "No Prescription Period")
+            + " with "  + drug_doc.medical_code
+            + " and doctor notes: " + (drug_doc.comment or "Take medication as per dosage.")
+        )
+        item.description = description
 
 def onload(doc, method):
     for item in doc.items:
