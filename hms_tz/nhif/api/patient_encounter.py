@@ -1517,6 +1517,7 @@ def show_last_prescribed_for_lrpt(doc, method):
             )
 
 def validate_prescribe_days(doc, doctype, item_value, date):
+    valid_min_presribe_days = None
     if doc.insurance_company:
         valid_min_presribe_days = frappe.get_value(doctype, 
             {"name": item_value, "hms_tz_validate_prescription_days_for_insurance": 1},
