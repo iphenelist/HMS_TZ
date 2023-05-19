@@ -161,6 +161,7 @@ frappe.ui.form.on('Patient Encounter', {
                     });
                     refresh_field('patient_encounter_preliminary_diagnosis');
                     set_medical_code(frm);
+                    frm.trigger("copy_from_preliminary_diagnosis");
                 }
             }
         });
@@ -240,27 +241,42 @@ frappe.ui.form.on('Patient Encounter', {
         if (frm.doc.docstatus == 1) {
             return;
         }
-        frm.doc.patient_encounter_preliminary_diagnosis.forEach(element => {
-            const row_idx = frm.doc.patient_encounter_final_diagnosis.findIndex(x => x.medical_code === element.medical_code);
-            if (row_idx === -1) {
-                let row = frappe.model.add_child(frm.doc, "Codification Table", "patient_encounter_final_diagnosis");
-                row.medical_code = element.medical_code;
-                row.code = element.code;
-                row.description = element.description;
-                row.mtuha = element.mtuha;
-                // frappe.show_alert({
-                //     message: __(`Medical Code '${element.medical_code}' added successfully`),
-                //     indicator: 'green'
-                // }, 5);
+        function set_final_diagnosis(frm, preliminary_diagnosis) {
+            preliminary_diagnosis.forEach(element => {
+                const row_idx = frm.doc.patient_encounter_final_diagnosis.findIndex(x => x.medical_code === element.medical_code);
+                if (row_idx === -1) {
+                    let row = frappe.model.add_child(frm.doc, "Codification Table", "patient_encounter_final_diagnosis");
+                    row.medical_code = element.medical_code;
+                    row.code = element.code;
+                    row.description = element.description;
+                    row.mtuha = element.mtuha;
+                    // frappe.show_alert({
+                    //     message: __(`Medical Code '${element.medical_code}' added successfully`),
+                    //     indicator: 'green'
+                    // }, 5);
+                } else {
+                    frappe.show_alert({
+                        message: __(`Medical Code '${element.medical_code}' already exists`),
+                        indicator: 'yellow'
+                    }, 5);
+                }
+            });
+            refresh_field('patient_encounter_final_diagnosis');
+            set_medical_code(frm);
+        }
+        if (frm.doc.patient_encounter_preliminary_diagnosis.length > 0) {
+            let selected = frm.get_field("patient_encounter_preliminary_diagnosis").grid.get_selected_children();
+            if (selected.length > 0) {
+                set_final_diagnosis(frm, selected);
             } else {
-                frappe.show_alert({
-                    message: __(`Medical Code '${element.medical_code}' already exists`),
-                    indicator: 'red'
-                }, 5);
+                set_final_diagnosis(frm, frm.doc.patient_encounter_preliminary_diagnosis);
             }
-        });
-        refresh_field('patient_encounter_final_diagnosis');
-        set_medical_code(frm);
+        } else {
+            frappe.show_alert({
+                message: __(`There are no Preliminary Diagnosis`),
+                indicator: 'yellow'
+            }, 5);
+        }
     },
     encounter_category: function (frm) {
         if (frm.doc.patient_encounter_preliminary_diagnosis && frm.doc.patient_encounter_preliminary_diagnosis.length > 0) {
@@ -364,6 +380,36 @@ frappe.ui.form.on('Patient Encounter', {
                 frm.refresh()
             }
         })
+    },
+    hms_tz_reuse_lab_items: (frm) => {
+        let fields = ["lab_test_code as item", "lab_test_name as item_name", "creation as date"]
+        let value_dict = { "table_field": "lab_test_prescription", "item_field": "lab_test_code", "item_name_field": "lab_test_name"}
+        reuse_lrpmt_items(frm, "Lab Prescription", fields, value_dict, "Lab Items")
+    },
+    hms_tz_reuse_radiology_items: (frm) => {
+        let fields = ["radiology_examination_template as item", "radiology_procedure_name as item_name", "creation as date"]
+        let value_dict = { "table_field": "radiology_procedure_prescription", "item_field": "radiology_examination_template", "item_name_field": "radiology_procedure_name"}
+        reuse_lrpmt_items(frm, "Radiology Procedure Prescription", fields, value_dict, "Radiology Items")
+    },
+    hms_tz_reuse_procedure_items: (frm) => {
+        let fields = ["procedure as item", "procedure_name as item_name", "creation as date"]
+        let value_dict = { "table_field": "procedure_prescription", "item_field": "procedure", "item_name_field": "procedure_name"}
+        reuse_lrpmt_items(frm, "Procedure Prescription", fields, value_dict, "Procedure Items")
+    },
+    hms_tz_reuse_drug_items: (frm) => {
+        let fields = ["drug_code as item", "drug_name as item_name", "creation as date"]
+        let value_dict = { "table_field": "drug_prescription", "item_field": "drug_code", "item_name_field": "drug_name"}
+        reuse_lrpmt_items(frm, "Drug Prescription", fields, value_dict, "Drug Items")
+    },
+    hms_tz_reuse_therapy_items: (frm) => {
+        let fields = ["therapy_type as item", "therapy_type as item_name", "creation as date"]
+        let value_dict = { "table_field": "therapies", "item_field": "therapy_type", "item_name_field": "therapy_type"}
+        reuse_lrpmt_items(frm, "Therapy Plan Detail", fields, value_dict, "Therapy Items")
+    },
+    hms_tz_reuse_previous_diagnosis: (frm) => {
+        let fields = ["medical_code as item", "code as item_name", "description", "mtuha", "creation as date"]
+        let value_dict = { "table_field": "patient_encounter_preliminary_diagnosis", "item_field": "medical_code", "item_name_field": "code", "description_field": "description", "mtuha_field": "mtuha"}
+        reuse_lrpmt_items(frm, "Codification Table", fields, value_dict, "Previous Diagnosis", "Diagnosis")
     }
 });
 
@@ -386,7 +432,8 @@ function get_diagnosis_list(frm, table_name) {
     if (frm.doc[table_name]) {
         frm.doc[table_name].forEach(element => {
             if (!element.medical_code) return;
-            diagnosis_list.push(element.medical_code);
+            let d = String(element.medical_code) + "\n " + String(element.description);
+            diagnosis_list.push(d);
         });
     }
     return diagnosis_list;
@@ -762,3 +809,213 @@ var set_btn_properties = (frm) => {
             'width': '180px',
         });
 };
+
+var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller="") => {
+    let filters = { "patient": frm.doc.patient, "appoitnemnt": frm.doc.appointment, "doctype": doctype, "fields": fields };
+    let d = new frappe.ui.Dialog({
+        title: "Select Item",
+        fields: [
+            {
+                fieldname: "item_category",
+                fieldtype: "Data",
+                read_only: 1,
+                Bold: 1,
+            },
+            {
+                fieldname: "no_of_visit_sb",
+                fieldtype: "Section Break"
+            },
+            {
+                fieldname: "number_of_visit",
+                fieldtype: "Int",
+                label: "Number of Visit",
+                reqd: 1,
+            },
+            {
+                fieldname: "include_cb",
+                fieldtype: "Column Break"
+            },
+            {
+                fieldname: "include_ipd_encounters",
+                fieldtype: "Check",
+                label: "Include IPD Encounters",
+                Bold: 1,
+            },
+            {
+                fieldname: "filters_cb",
+                fieldtype: "Column Break"
+            },
+            {
+                fieldname: "apply_filters",
+                fieldtype: "Button",
+                label: "Apply Filters",
+            },
+            {
+                fieldname: "space_sb",
+                fieldtype: "Section Break"
+            },
+            {
+                fieldname: "space",
+                fieldtype: "HTML"
+            }
+        ],
+    });
+    d.set_value("item_category", item_category);
+    let wrapper = d.fields_dict.space.$wrapper;
+
+    d.fields_dict.apply_filters.$input.click(() => {
+        if (!d.get_value("number_of_visit")) {
+            frappe.msgprint("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                Please enter number of visit</h4>");
+            return
+        }
+
+        filters.number_of_visit = d.get_value("number_of_visit");
+        filters.include_ipd_encounters = d.get_value("include_ipd_encounters");
+        frappe.dom.freeze(__("Please wait..."));
+        frappe.call({
+            method: "hms_tz.nhif.api.patient_encounter.get_previous_diagnosis_and_lrpmt_items_to_reuse",
+            args: {
+                kwargs: filters,
+                caller: caller
+            }
+        }).then(r => {
+            frappe.dom.unfreeze();
+            let records = r.message;
+            if (records.length > 0) {
+                let html = show_details(records, caller);
+                wrapper.html(html);
+            } else {
+                wrapper.append(`<div class="multiselect-empty-state"
+                    style="border: 1px solid #d1d8dd; border-radius: 3px; height: 200px; overflow: auto;">
+                    <span class="text-center" style="margin-top: -40px;">
+                        <i class="fa fa-2x fa-heartbeat text-extra-muted"></i>
+                        <p class="text-extra-muted text-center" style="font-size: 16px; font-weight: bold;">
+                        No Item(s) reuse</p>
+                    </span>
+                </div>`);
+            }
+        });
+    });
+
+    d.set_primary_action(__("Reuse Item"), function () {
+        let items = [];
+
+        wrapper.find('tr:has(input:checked)').each(function () {
+            if (caller == "Diagnosis") { 
+                items.push({
+                    item: $(this).find("#item").attr("data-item"),
+                    item_name: $(this).find("#item_name").attr("data-item_name"),
+                    description: $(this).find("#description").attr("data-description"),
+                    mtuha: $(this).find("#mtuha").attr("data-mtuha"),
+                });
+            } else {
+                items.push({
+                    item: $(this).find("#item").attr("data-item"),
+                    item_name: $(this).find("#item_name").attr("data-item_name"),
+                });
+             }
+        });
+
+        if (items.length > 0) {
+            let field = String(value_dict.table_field);
+            if (caller == "Diagnosis") { 
+                items.forEach((item) => {
+                    let new_row = {}
+                    new_row[value_dict.item_field] = item.item;
+                    new_row[value_dict.item_name_field] = item.item_name;
+                    new_row[value_dict.description_field] = item.description;
+                    new_row[value_dict.mtuha_field] = item.mtuha;
+                    let row = frm.add_child(field, new_row);
+                })
+            } else {
+                items.forEach((item) => {
+                    let new_row = {}
+                    new_row[value_dict.item_field] = item.item;
+                    new_row[value_dict.item_name_field] = item.item_name;
+                    let row = frm.add_child(field, new_row);
+                })
+            }
+            frm.refresh_field(field);
+            d.hide();
+
+        } else {
+            frappe.msgprint({
+                title: __('Message'),
+                indicator: 'red',
+                message: __(
+                    '<h4 class="text-center" style="background-color: #D3D3D3; font-weight: bold;">\
+                    No any Item selected<h4>'
+                )
+            });
+        }
+    });
+
+    d.$body.find("button[data-fieldtype='Button']").removeClass("btn-default").addClass("btn-info");
+    d.$wrapper.find('.modal-content').css({
+        "width": "650px",
+        "max-height": "1000px",
+        "overflow": "auto",
+    });
+
+    d.show();
+};
+
+var show_details = (data, caller="") => {
+    let html = `<table class="table table-hover" style="width:100%;">`;
+    if (caller == "Diagnosis") {
+        html += `
+            <colgroup>
+                <col width="5%">
+                <col width=17%">
+                <col width="10%">
+                <col width="26%">
+                <col width="22%">
+                <col width="20%">
+            </colgroup>
+            <tr style="background-color: #D3D3D3;">
+                <th></th>
+                <th>Medical Code</th>
+                <th>Code Name</th>
+                <th>Description</th>
+                <th>Mtuha</th>
+                <th>Date of Service</th>
+            </tr>`;
+
+        data.forEach(row => {
+            html += `<tr>
+                        <td><input type="checkbox"/></td>
+                        <td id="item" data-item="${row.item}">${row.item}</td>
+                        <td id="item_name" data-item_name="${row.item_name}">${row.item_name}</td>
+                        <td id="description" data-description="${row.description}">${row.description}</td>
+                        <td id="mtuha" data-mtuha="${row.mtuha}">${row.mtuha}</td>
+                        <td id="date" data-date="${frappe.datetime.get_datetime_as_string(row.date)}">${frappe.datetime.get_datetime_as_string(row.date)}</td>
+                    </tr>`;
+        });
+    } else {
+        html += `
+            <colgroup>
+                <col width="5%">
+                <col width=30%">
+                <col width="35%">
+                <col width="30%">
+            </colgroup>
+            <tr style="background-color: #D3D3D3;">
+                <th></th>
+                <th>Item</th>
+                <th>Item Name</th>
+                <th>Date of Service</th>
+            </tr>`;
+
+        data.forEach(row => {
+            html += `<tr>
+                        <td><input type="checkbox"/></td>
+                        <td id="item" data-item="${row.item}">${row.item}</td>
+                        <td id="item_name" data-item_name="${row.item_name}">${row.item_name}</td>
+                        <td id="date" data-date="${frappe.datetime.get_datetime_as_string(row.date)}">${frappe.datetime.get_datetime_as_string(row.date)}</td>
+                    </tr>`;
+        });
+    }
+    html += `</table>`;
+    return html;
+}
