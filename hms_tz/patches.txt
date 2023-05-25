@@ -24,5 +24,10 @@ hms_tz.patches.custom_fields.followup_custom_field_on_coverage_plan_and_insuranc
 hms_tz.patches.custom_fields.cash_limit_alert_custom_fields_on_company
 hms_tz.patches.custom_fields.reuse_lrpmt_items_custom_fields_on_encounter
 hms_tz.patches.custom_fields.reuse_previous_diagnosis_custom_fields_on_encounter
+<<<<<<< HEAD
 hms_tz.patches.custom_fields.custom_fields_for_lrpmt_template
 hms_tz.patches.custom_fields.custom_fields_of_approval_number_for_lrpm_docs
+=======
+hms_tz.patches.custom_fields.custom_fields_of_approval_number_for_lrpm_docs
+hms_tz.patches.custom_fields.enable_auto_quantity_calculation_custom_field
+>>>>>>> f6516cc8 (feat: enable auto calculation of drug quantity of patient encounter)
