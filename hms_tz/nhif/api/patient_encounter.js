@@ -1029,11 +1029,6 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
         html += `</table>`;
         return html;
     }
-<<<<<<< HEAD
-    html += `</table>`;
-    return html;
-}
-=======
 };
 
 var auto_calculate_drug_quantity = (frm, drug_item) => {
@@ -1046,4 +1041,3 @@ var auto_calculate_drug_quantity = (frm, drug_item) => {
         frappe.model.set_value(drug_item.doctype, drug_item.name, "quantity", r.message);
     });
 }
->>>>>>> d1353a06 (feat: set default number of visit to be 5 for reuse of previous items and previous diagnosis)
