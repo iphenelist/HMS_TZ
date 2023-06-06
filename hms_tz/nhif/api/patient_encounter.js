@@ -161,6 +161,7 @@ frappe.ui.form.on('Patient Encounter', {
                     });
                     refresh_field('patient_encounter_preliminary_diagnosis');
                     set_medical_code(frm);
+                    frm.trigger("copy_from_preliminary_diagnosis");
                 }
             }
         });
@@ -251,27 +252,42 @@ frappe.ui.form.on('Patient Encounter', {
         if (frm.doc.docstatus == 1) {
             return;
         }
-        frm.doc.patient_encounter_preliminary_diagnosis.forEach(element => {
-            const row_idx = frm.doc.patient_encounter_final_diagnosis.findIndex(x => x.medical_code === element.medical_code);
-            if (row_idx === -1) {
-                let row = frappe.model.add_child(frm.doc, "Codification Table", "patient_encounter_final_diagnosis");
-                row.medical_code = element.medical_code;
-                row.code = element.code;
-                row.description = element.description;
-                row.mtuha = element.mtuha;
-                // frappe.show_alert({
-                //     message: __(`Medical Code '${element.medical_code}' added successfully`),
-                //     indicator: 'green'
-                // }, 5);
+        function set_final_diagnosis(frm, preliminary_diagnosis) {
+            preliminary_diagnosis.forEach(element => {
+                const row_idx = frm.doc.patient_encounter_final_diagnosis.findIndex(x => x.medical_code === element.medical_code);
+                if (row_idx === -1) {
+                    let row = frappe.model.add_child(frm.doc, "Codification Table", "patient_encounter_final_diagnosis");
+                    row.medical_code = element.medical_code;
+                    row.code = element.code;
+                    row.description = element.description;
+                    row.mtuha = element.mtuha;
+                    // frappe.show_alert({
+                    //     message: __(`Medical Code '${element.medical_code}' added successfully`),
+                    //     indicator: 'green'
+                    // }, 5);
+                } else {
+                    frappe.show_alert({
+                        message: __(`Medical Code '${element.medical_code}' already exists`),
+                        indicator: 'yellow'
+                    }, 5);
+                }
+            });
+            refresh_field('patient_encounter_final_diagnosis');
+            set_medical_code(frm);
+        }
+        if (frm.doc.patient_encounter_preliminary_diagnosis.length > 0) {
+            let selected = frm.get_field("patient_encounter_preliminary_diagnosis").grid.get_selected_children();
+            if (selected.length > 0) {
+                set_final_diagnosis(frm, selected);
             } else {
-                frappe.show_alert({
-                    message: __(`Medical Code '${element.medical_code}' already exists`),
-                    indicator: 'red'
-                }, 5);
+                set_final_diagnosis(frm, frm.doc.patient_encounter_preliminary_diagnosis);
             }
-        });
-        refresh_field('patient_encounter_final_diagnosis');
-        set_medical_code(frm);
+        } else {
+            frappe.show_alert({
+                message: __(`There are no Preliminary Diagnosis`),
+                indicator: 'yellow'
+            }, 5);
+        }
     },
     encounter_category: function (frm) {
         if (frm.doc.patient_encounter_preliminary_diagnosis && frm.doc.patient_encounter_preliminary_diagnosis.length > 0) {
@@ -427,7 +443,8 @@ function get_diagnosis_list(frm, table_name) {
     if (frm.doc[table_name]) {
         frm.doc[table_name].forEach(element => {
             if (!element.medical_code) return;
-            diagnosis_list.push(element.medical_code);
+            let d = String(element.medical_code) + "\n " + String(element.description);
+            diagnosis_list.push(d);
         });
     }
     return diagnosis_list;
@@ -691,10 +708,24 @@ frappe.ui.form.on('Drug Prescription', {
             validate_stock_item(frm, row.drug_code, row.quantity, row.healthcare_service_unit, "Drug Prescription");
         }
     },
-    dosage: function (frm, cdt, cdn) {
-        frappe.model.set_value(cdt, cdn, "quantity", 0);
+    dosage: (frm, cdt, cdn) => {
+        let row = locals[cdt][cdn];
+        if (row.dosage && row.period) {
+            auto_calculate_drug_quantity(frm, row);
+        } else {
+            frappe.model.set_value(cdt, cdn, "quantity", 0);
+        }
         frm.refresh_field("drug_prescription");
     },
+    period: (frm, cdt, cdn) => {
+        let row = locals[cdt][cdn];
+        if (row.dosage && row.period) {
+            auto_calculate_drug_quantity(frm, row);
+        } else {
+            frappe.model.set_value(cdt, cdn, "quantity", 0);
+        }
+        frm.refresh_field("drug_prescription");
+    }
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {
@@ -1012,4 +1043,15 @@ var show_details = (data, caller="") => {
     }
     html += `</table>`;
     return html;
+}
+
+var auto_calculate_drug_quantity = (frm, drug_item) => {
+    frappe.call({
+        method: "hms_tz.nhif.api.patient_encounter.get_drug_quantity",
+        args: {
+            drug_item: drug_item,
+        }
+    }).then(r => {
+        frappe.model.set_value(drug_item.doctype, drug_item.name, "quantity", r.message);
+    });
 }

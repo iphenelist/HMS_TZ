@@ -142,6 +142,10 @@ def on_submit_validation(doc, method):
                     frappe.msgprint("Item: {0} is Category S Medication".format(
                         frappe.bold(row.get(child.get("item")))
                     ), alert=True)
+                
+                # auto calculating quantity
+                if not row.quantity:
+                    row.quantity = get_drug_quantity(row)
 
     
     # Run on_submit
@@ -316,7 +320,7 @@ def on_submit_validation(doc, method):
         doc.patient_age = calculate_patient_age(doc.patient)
     
     # Run on_submit
-    validate_totals(doc)
+    validate_totals(doc, method)
 
 
 def checkـforـduplicate(doc, method):
@@ -875,7 +879,7 @@ def add_chronic_medications(patient, encounter, items):
         frappe.msgprint("Chronic medication already exist")
 
 
-def validate_totals(doc):
+def validate_totals(doc, method):
     if (
         not doc.insurance_company
         or not doc.insurance_subscription
@@ -942,12 +946,13 @@ def validate_totals(doc):
             doc.current_total += item_rate * quantity
     diff = doc.daily_limit - doc.current_total - doc.previous_total
     if diff < 0:
-        frappe.throw(
+        msgThrow(
             _(
-                "The total daily limit of {0} for the Insurance Subscription {1} has"
-                " been exceeded by {2}. <br> Please contact the reception to increase"
-                " the limit or prescribe the items"
-            ).format(doc.daily_limit, doc.insurance_subscription, diff)
+                f"The total daily limit of <b>{doc.daily_limit}</b> for the Insurance Subscription <b>{doc.insurance_subscription}</b> has \
+                been exceeded by <b>{diff}</b>. <br> Please contact the reception to increase \
+                limit or prescribe the items"
+            ),
+            method=method,
         )
 
 
@@ -1062,12 +1067,13 @@ def update_inpatient_record_consultancy(doc):
         row.consultation_item = item_code
         row.rate = rate
         row.encounter = doc.name
+        row.healthcare_practitioner = doc.practitioner
         if discount_percent > 0:
             row.hms_tz_is_discount_applied = 1
         
         record_doc.save(ignore_permissions=True)
         frappe.msgprint(
-            _("Inpatient Consultancy record added for item {0}").format(item_code),
+            _(f"Inpatient Consultancy record added for item {item_code}"),
             alert=True,
         )
 
@@ -1575,6 +1581,7 @@ def show_last_prescribed_for_lrpt(doc, method):
             )
 
 def validate_prescribe_days(doc, doctype, item_value, date):
+    valid_min_presribe_days = None
     if doc.insurance_company:
         valid_min_presribe_days = frappe.get_value(doctype, 
             {"name": item_value, "hms_tz_validate_prescription_days_for_insurance": 1},
@@ -1706,3 +1713,44 @@ def get_previous_diagnosis_and_lrpmt_items_to_reuse(kwargs, caller):
                 data.append(item)
 
     return data
+
+@frappe.whitelist()
+def get_drug_quantity(drug_item):
+    """Get drug quantity based on dosage, period, interval and interval uom
+    
+    :param drug_item: object or json string of drug item
+    """
+    if not frappe.db.get_single_value("Healthcare Settings", "enable_auto_quantity_calculation"):
+        return 0
+
+    quantity = 0
+    strength_count = 0
+    
+    drug_row = frappe.parse_json(drug_item)
+
+    if drug_row.dosage and drug_row.period:
+        dosage = frappe.get_doc("Prescription Dosage", drug_row.dosage)
+        period = frappe.get_doc("Prescription Duration", drug_row.period)
+        for item in dosage.dosage_strength:
+            strength_count += item.strength
+        if strength_count == 0:
+            strength_count = dosage.default_strength
+        if strength_count > 0:
+            if drug_row.interval and drug_row.interval_uom:
+                if drug_row.interval_uom == "Day" and drug_row.interval < period.get_days():
+                    quantity = strength_count * (period.get_days() / drug_row.interval)
+                elif drug_row.interval_uom == "Hour" and drug_row.interval < period.get_hours():
+                    quantity = strength_count * (period.get_hours() / drug_row.interval)
+            else:
+                quantity = strength_count * period.get_days()
+
+        elif drug_row.interval and drug_row.interval_uom:
+            if drug_row.interval_uom == "Day" and drug_row.interval < period.get_days():
+                quantity = period.get_days() / drug_row.interval
+            elif drug_row.interval_uom == "Hour" and drug_row.interval < period.get_hours():
+                quantity = period.get_hours() / drug_row.interval
+
+    if quantity > 0:
+        return quantity
+    else:
+        return 0
