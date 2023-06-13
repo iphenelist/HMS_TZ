@@ -1070,16 +1070,6 @@ var auto_calculate_drug_quantity = (frm, drug_item) => {
     });
 }
 
-<<<<<<< HEAD
-var auto_calculate_drug_quantity = (frm, drug_item) => {
-    frappe.call({
-        method: "hms_tz.nhif.api.patient_encounter.get_drug_quantity",
-        args: {
-            drug_item: drug_item,
-        }
-    }).then(r => {
-        frappe.model.set_value(drug_item.doctype, drug_item.name, "quantity", r.message);
-=======
 var validate_medication_class = (frm, drug_item) => {
     frappe.call({
         method: "hms_tz.nhif.api.patient_encounter.validate_medication_class",
@@ -1106,6 +1096,5 @@ var validate_medication_class = (frm, drug_item) => {
                 title: __("Medication Class Validation")
             }, 30);
         }
->>>>>>> bf41a3eb (feat: validate medication class and alert it on patient encounters and delivery note if validate medication class is ticked on company)
     });
 }
