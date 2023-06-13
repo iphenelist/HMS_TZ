@@ -680,6 +680,9 @@ frappe.ui.form.on('Drug Prescription', {
 
             });
         validate_stock_item(frm, row.drug_code, row.quantity, row.healthcare_service_unit, "Drug Prescription");
+
+        // shm rock: 169
+        validate_medication_class(frm, row.drug_code);
     },
     healthcare_service_unit: function (frm, cdt, cdn) {
         if (frm.healthcare_service_unit) frm.trigger("drug_code");
@@ -1064,5 +1067,34 @@ var auto_calculate_drug_quantity = (frm, drug_item) => {
         }
     }).then(r => {
         frappe.model.set_value(drug_item.doctype, drug_item.name, "quantity", r.message);
+    });
+}
+
+var validate_medication_class = (frm, drug_item) => {
+    frappe.call({
+        method: "hms_tz.nhif.api.patient_encounter.validate_medication_class",
+        args: {
+            company: frm.doc.company,
+            encounter: frm.doc.name,
+            patient: frm.doc.patient,
+            drug_item: drug_item,
+            caller: "Front End"
+        }
+    }).then(r => {
+        if (r.message) {
+            let data = r.message;
+            frappe.show_alert({
+                message: __(
+                    `<p class="text-left">Item: <strong>${__(data.drug_item)}</strong>
+                    with same Medication Class ${__(data.medication_class)}\
+                    was lastly prescribed on: <strong>${__(data.prescribed_date)}</strong><br>\
+                    Therefore item with same <b>medication class</b> were suppesed to be\
+                    prescribed after: <strong>${__(data.valid_days)}</strong> days
+                    </p>`
+                ),
+                indicator: 'red',
+                title: __("Medication Class Validation")
+            }, 30);
+        }
     });
 }
