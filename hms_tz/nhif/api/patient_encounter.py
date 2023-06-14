@@ -147,14 +147,6 @@ def on_submit_validation(doc, method):
                 if not row.quantity:
                     row.quantity = get_drug_quantity(row)
 
-    
-    # Run on_submit
-    submitting_healthcare_practitioner = frappe.db.get_value(
-        "Healthcare Practitioner", {"user_id": frappe.session.user}, ["name"]
-    )
-    if submitting_healthcare_practitioner:
-        doc.practitioner = submitting_healthcare_practitioner
-
     # Run on_submit?
     prescribed_list = ""
     for key, value in child_tables.items():
@@ -228,7 +220,9 @@ def on_submit_validation(doc, method):
             ),
             method,
         )
-
+    
+    #shm rock: 151
+    set_practitioner_name(doc, method)
 
     insurance_subscription = doc.insurance_subscription
 
@@ -1128,6 +1122,11 @@ def enqueue_on_update_after_submit(doc_name):
 
 def before_submit(doc, method):
     set_amounts(doc)
+    #shm rock: 151
+    set_practitioner_name(doc, method)
+    if doc.inpatient_record:
+        validate_patient_balance_vs_patient_costs(doc)
+    
     encounter_create_sales_invoice = frappe.get_cached_value(
         "Encounter Category", doc.encounter_category, "create_sales_invoice"
     )
@@ -1150,9 +1149,6 @@ def before_submit(doc, method):
                     "Cannot Submit Encounter",
                 )
             )
-    if doc.inpatient_record:
-        validate_patient_balance_vs_patient_costs(doc)
-
 
 @frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
@@ -1756,4 +1752,85 @@ def get_drug_quantity(drug_item):
     if quantity > 0:
         return quantity
     else:
+<<<<<<< HEAD
         return 0
+=======
+        return 0
+
+@frappe.whitelist()
+def validate_medication_class(company, encounter, patient, drug_item, caller="Backend"):
+    """Validate medication class based on company settings
+
+    Args:
+        company (str): company name
+        encounter (str): patient encounter id
+        patient (str): patient id
+        drug_item (str): drug item name
+        caller (str, optional): excute location. Defaults to "Backend".
+    """
+
+    validate_medication_class = frappe.get_cached_value("Company", company, "validate_medication_class")
+    if int(validate_medication_class) == 0:
+        return
+
+    medication_class = frappe.get_cached_value("Medication", drug_item, "medication_class")
+    if not medication_class:
+        return
+    
+    medication_class_list = frappe.db.sql(f"""
+        SELECT dp.drug_code, pe.name, pe.encounter_date, mc.prescribed_after as valid_days
+        FROM `tabDrug Prescription` dp
+        INNER JOIN `tabMedication` m ON m.name = dp.drug_code
+        INNER JOIN `tabMedication Class` mc ON mc.name = m.medication_class
+        INNER JOIN `tabPatient Encounter` pe ON pe.name = dp.parent
+        WHERE dp.is_cancelled = 0 
+            AND dp.is_not_available_inhouse = 0
+            AND dp.dn_detail != ""
+            AND dp.parent != {frappe.db.escape(encounter)}
+            AND mc.name = {frappe.db.escape(medication_class)}
+            AND pe.docstatus = 1
+            AND pe.patient = {frappe.db.escape(patient)}
+        order by pe.encounter_date Desc
+    """, as_dict=1)
+        
+    if len(medication_class_list) == 0:
+        return
+    
+    prescribed_date = medication_class_list[0].encounter_date
+    drug_code = medication_class_list[0].drug_code
+    valid_days = medication_class_list[0].valid_days
+    if not int(valid_days):
+        return
+    
+    if int(date_diff(nowdate(), prescribed_date)) < int(valid_days):
+        if caller == "Front End":
+            return {
+                "prescribed_date": prescribed_date,
+                "drug_item": drug_code,
+                "valid_days": valid_days,
+                "medication_class": medication_class
+            }
+        
+        frappe.msgprint(_(f"Item: <strong>{drug_code}</strong> with same Medication Class: <strong>{medication_class}</strong> was lastly prescribed on: <strong>{prescribed_date}</strong><br>\
+            Therefore item with same <b>medication class</b> were supposed to be prescribed after: <strong>{valid_days}</strong> days"))
+
+def set_practitioner_name(doc, method):
+    frappe.msgprint(str(method))
+    submitting_healthcare_practitioner = frappe.db.get_value(
+        "Healthcare Practitioner", {"user_id": frappe.session.user, "hms_tz_company": doc.company},
+        ["name", "practitioner_name"],
+        as_dict=1
+    )
+
+    if submitting_healthcare_practitioner:
+        doc.practitioner = submitting_healthcare_practitioner.name
+        doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
+    
+    elif doc.encounter_category == "Appointment":
+        if method != "validate":
+            frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
+                in Healthcare Practitioner<br>\
+                so as to set the correct practitioner, who submitting this encounter"
+            ))
+    
+>>>>>>> 87095d73 (chore: set practitionier name and throw if practitioner name is missing before submitting the encounter)
