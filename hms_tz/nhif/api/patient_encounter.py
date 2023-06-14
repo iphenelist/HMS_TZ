@@ -146,6 +146,14 @@ def on_submit_validation(doc, method):
                 if not row.quantity:
                     row.quantity = get_drug_quantity(row)
 
+    
+    # Run on_submit
+    submitting_healthcare_practitioner = frappe.db.get_value(
+        "Healthcare Practitioner", {"user_id": frappe.session.user}, ["name"]
+    )
+    if submitting_healthcare_practitioner:
+        doc.practitioner = submitting_healthcare_practitioner
+
     # Run on_submit?
     prescribed_list = ""
     for key, value in child_tables.items():
@@ -219,9 +227,7 @@ def on_submit_validation(doc, method):
             ),
             method,
         )
-    
-    #shm rock: 151
-    set_practitioner_name(doc, method)
+
 
     insurance_subscription = doc.insurance_subscription
 
@@ -1121,11 +1127,6 @@ def enqueue_on_update_after_submit(doc_name):
 
 def before_submit(doc, method):
     set_amounts(doc)
-    #shm rock: 151
-    set_practitioner_name(doc, method)
-    if doc.inpatient_record:
-        validate_patient_balance_vs_patient_costs(doc)
-    
     encounter_create_sales_invoice = frappe.get_cached_value(
         "Encounter Category", doc.encounter_category, "create_sales_invoice"
     )
@@ -1148,6 +1149,9 @@ def before_submit(doc, method):
                     "Cannot Submit Encounter",
                 )
             )
+    if doc.inpatient_record:
+        validate_patient_balance_vs_patient_costs(doc)
+
 
 @frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
@@ -1830,9 +1834,10 @@ def set_practitioner_name(doc, method):
         doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
     
     elif doc.encounter_category == "Appointment":
-        if method != "validate":
+        if method not in ("before_insert","validate"):
             frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
                 in Healthcare Practitioner<br>\
                 so as to set the correct practitioner, who submitting this encounter"
             ))
+
     
