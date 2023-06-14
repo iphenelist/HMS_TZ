@@ -1821,4 +1821,23 @@ def validate_medication_class(company, encounter, patient, drug_item, caller="Ba
         
         frappe.msgprint(_(f"Item: <strong>{drug_code}</strong> with same Medication Class: <strong>{medication_class}</strong> was lastly prescribed on: <strong>{prescribed_date}</strong><br>\
             Therefore item with same <b>medication class</b> were supposed to be prescribed after: <strong>{valid_days}</strong> days"))
+
+def set_practitioner_name(doc, method):
+    submitting_healthcare_practitioner = frappe.db.get_value(
+        "Healthcare Practitioner", {"user_id": frappe.session.user, "hms_tz_company": doc.company},
+        ["name", "practitioner_name"],
+        as_dict=1
+    )
+
+    if submitting_healthcare_practitioner:
+        doc.practitioner = submitting_healthcare_practitioner.name
+        doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
+    
+    elif doc.encounter_category == "Appointment":
+        if method not in ("before_insert","validate"):
+            frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
+                in Healthcare Practitioner<br>\
+                so as to set the correct practitioner, who submitting this encounter"
+            ))
+
     
