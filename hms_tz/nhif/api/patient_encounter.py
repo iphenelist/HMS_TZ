@@ -1752,9 +1752,6 @@ def get_drug_quantity(drug_item):
     if quantity > 0:
         return quantity
     else:
-<<<<<<< HEAD
-        return 0
-=======
         return 0
 
 @frappe.whitelist()
@@ -1827,10 +1824,9 @@ def set_practitioner_name(doc, method):
         doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
     
     elif doc.encounter_category == "Appointment":
-        if method != "validate":
+        if method not in ("before_insert", "validate")
             frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
                 in Healthcare Practitioner<br>\
                 so as to set the correct practitioner, who submitting this encounter"
             ))
     
->>>>>>> 87095d73 (chore: set practitionier name and throw if practitioner name is missing before submitting the encounter)
