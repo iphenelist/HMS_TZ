@@ -1725,9 +1725,6 @@ def get_drug_quantity(drug_item):
     if quantity > 0:
         return quantity
     else:
-<<<<<<< HEAD
-        return 0
-=======
         return 0
 
 @frappe.whitelist()
@@ -1846,4 +1843,3 @@ def validate_medical_code(doc, method):
                         ),
                         method
                     )
->>>>>>> cb7ec3a9 (feat: allow configuration for medical code validation to remove medical code restrictions)
