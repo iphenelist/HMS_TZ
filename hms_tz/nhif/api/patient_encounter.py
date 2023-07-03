@@ -45,7 +45,6 @@ def on_trash(doc, method):
             "Patient Medical Record", pmr_doc.name, ignore_permissions=True
         )
 
-
 def on_submit_validation(doc, method):
     child_tables = {
         "lab_test_prescription": "lab_test_code",
@@ -228,6 +227,10 @@ def on_submit_validation(doc, method):
             method,
         )
 
+    if not doc.patient_age:
+        doc.patient_age = calculate_patient_age(doc.patient)
+    
+    validate_medical_code(doc, method)
 
     insurance_subscription = doc.insurance_subscription
 
@@ -314,13 +317,8 @@ def on_submit_validation(doc, method):
         if coverage_info.maximum_number_of_claims == 0:
             continue
 
-
-    if not doc.patient_age:
-        doc.patient_age = calculate_patient_age(doc.patient)
-    
     # Run on_submit
     validate_totals(doc, method)
-
 
 def checkـforـduplicate(doc, method):
     items = []
@@ -334,7 +332,6 @@ def checkـforـduplicate(doc, method):
                 ),
                 method,
             )
-
 
 @frappe.whitelist()
 def duplicate_encounter(encounter):
@@ -405,7 +402,6 @@ def duplicate_encounter(encounter):
     frappe.db.update(doc.doctype, doc.name, {"duplicated": 1})
     return encounter_doc.name
 
-
 def get_item_info(item_code=None, medication_name=None):
     data = {}
     if not item_code and medication_name:
@@ -416,7 +412,6 @@ def get_item_info(item_code=None, medication_name=None):
         )
         data = {"item_code": item_code, "is_stock": is_stock, "disabled": disabled}
     return data
-
 
 def get_stock_availability(item_code, warehouse):
     latest_sle = frappe.db.sql(
@@ -432,7 +427,6 @@ def get_stock_availability(item_code, warehouse):
 
     sle_qty = latest_sle[0].actual_qty or 0 if latest_sle else 0
     return sle_qty
-
 
 @frappe.whitelist()
 def validate_stock_item(
@@ -490,7 +484,6 @@ def validate_stock_item(
     #         healthcare_service, warehouse, healthcare_service_unit, stock_qty), alert=True)
     return True
 
-
 def on_submit(doc, method):
     if (
         not doc.insurance_subscription and doc.inpatient_record
@@ -503,7 +496,6 @@ def on_submit(doc, method):
     if doc.inpatient_record:
         update_inpatient_record_consultancy(doc)
 
-
 @frappe.whitelist()
 def create_healthcare_docs_from_name(patient_encounter_doc_name):
     patient_encounter_doc = frappe.get_doc(
@@ -511,7 +503,6 @@ def create_healthcare_docs_from_name(patient_encounter_doc_name):
     )
     create_healthcare_docs(patient_encounter_doc, "from_button")
     create_delivery_note(patient_encounter_doc, "from_button")
-
 
 def create_healthcare_docs(patient_encounter_doc, method="event"):
     encounter_list = frappe.get_list(
@@ -531,7 +522,6 @@ def create_healthcare_docs(patient_encounter_doc, method="event"):
                 "The {0} patient encounters were processed for creating pending healthcare docs."
             ).format(str(len(encounter_list)))
         )
-
 
 def create_healthcare_docs_per_encounter(patient_encounter_doc):
     if patient_encounter_doc.docstatus != 1:
@@ -582,7 +572,6 @@ def create_healthcare_docs_per_encounter(patient_encounter_doc):
                         patient_encounter_doc, child
                     )
 
-
 def create_delivery_note(patient_encounter_doc, method):
     encounter_list = frappe.get_list(
         "Patient Encounter",
@@ -598,7 +587,6 @@ def create_delivery_note(patient_encounter_doc, method):
                 "The {0} patient encounters were processed for creating pending delivery notes."
             ).format(str(len(encounter_list)))
         )
-
 
 def create_delivery_note_per_encounter(patient_encounter_doc, method):
     if not patient_encounter_doc.appointment:
@@ -765,7 +753,6 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
                 )
             )
 
-
 @frappe.whitelist()
 def get_chronic_diagnosis(patient):
     data = frappe.get_all(
@@ -778,7 +765,6 @@ def get_chronic_diagnosis(patient):
         fields=["medical_code", "code", "description"],
     )
     return data
-
 
 @frappe.whitelist()
 def add_chronic_diagnosis(patient, encounter):
@@ -804,7 +790,6 @@ def add_chronic_diagnosis(patient, encounter):
         frappe.msgprint("Chronic diagnosis added successfully")
     else:
         frappe.msgprint("Chronic diagnosis already exist")
-
 
 @frappe.whitelist()
 def get_chronic_medications(patient):
@@ -876,7 +861,6 @@ def add_chronic_medications(patient, encounter, items):
         frappe.msgprint("Chronic medication added successfully")
     else:
         frappe.msgprint("Chronic medication already exist")
-
 
 def validate_totals(doc, method):
     if (
@@ -954,7 +938,6 @@ def validate_totals(doc, method):
             method=method,
         )
 
-
 @frappe.whitelist()
 def finalized_encounter(cur_encounter, ref_encounter=None):
     cur_encounter_doc = frappe.get_doc("Patient Encounter", cur_encounter)
@@ -981,7 +964,6 @@ def finalized_encounter(cur_encounter, ref_encounter=None):
     if not ref_encounter:
         frappe.set_value("Patient Encounter", cur_encounter, "finalized", 1)
         return
-
 
 @frappe.whitelist()
 def create_sales_invoice(encounter, encounter_category, encounter_mode_of_payment):
@@ -1032,7 +1014,6 @@ def create_sales_invoice(encounter, encounter_category, encounter_mode_of_paymen
 
     return "true"
 
-
 def update_inpatient_record_consultancy(doc):
     if doc.inpatient_record:
         item_code = frappe.get_cached_value(
@@ -1076,7 +1057,6 @@ def update_inpatient_record_consultancy(doc):
             alert=True,
         )
 
-
 def on_update_after_submit(doc, method):
     if doc.is_not_billable:
         return
@@ -1119,11 +1099,9 @@ def on_update_after_submit(doc, method):
         # frappe.msgprint("done method enqueue db commit")
         doc.db_update()
 
-
 def enqueue_on_update_after_submit(doc_name):
     time.sleep(5)
     on_update_after_submit(frappe.get_doc("Patient Encounter", doc_name), "enqueue")
-
 
 def before_submit(doc, method):
     set_amounts(doc)
@@ -1152,7 +1130,6 @@ def before_submit(doc, method):
     if doc.inpatient_record:
         validate_patient_balance_vs_patient_costs(doc)
 
-
 @frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
     encounters_list = frappe.get_all(
@@ -1165,7 +1142,6 @@ def undo_finalized_encounter(cur_encounter, ref_encounter=None):
         frappe.set_value("Patient Encounter", cur_encounter, "finalized", 0)
         return
     frappe.set_value("Patient Encounter", cur_encounter, "encounter_type", "Ongoing")
-
 
 def set_amounts(doc):
     childs_map = [
@@ -1259,7 +1235,6 @@ def set_amounts(doc):
 
             row.amount = item_rate
 
-
 def inpatient_billing(patient_encounter_doc, method):
     if patient_encounter_doc.insurance_subscription:  # IPD/OPD insurance
         return
@@ -1287,7 +1262,6 @@ def inpatient_billing(patient_encounter_doc, method):
                         patient_encounter_doc, child
                     )
     create_delivery_note(patient_encounter_doc, method)
-
 
 def show_last_prescribed(doc, method):
     if doc.is_new():
@@ -1351,7 +1325,6 @@ def show_last_prescribed(doc, method):
                 )
             )
 
-
 def update_drug_prescription(patient_encounter_doc, name):
     dn_doc = frappe.get_doc("Delivery Note", name)
 
@@ -1362,7 +1335,6 @@ def update_drug_prescription(patient_encounter_doc, name):
                     frappe.db.set_value(
                         "Drug Prescription", item.reference_name, "dn_detail", item.name
                     )
-
 
 def validate_patient_balance_vs_patient_costs(doc):
     encounters = get_patient_encounters(doc)
@@ -1428,7 +1400,6 @@ def validate_patient_balance_vs_patient_costs(doc):
     
     make_cash_limit_alert(doc, cash_limit_percent, cash_limit_details)
 
-
 def make_cash_limit_alert(doc, cash_limit_percent, cash_limit_details):
     if cash_limit_percent > 0 and cash_limit_percent <= cash_limit_details.get("hms_tz_minimum_cash_limit_percent"):
         if cash_limit_details.get("hms_tz_limit_under_minimum_percent_action") == "Warn":
@@ -1474,7 +1445,6 @@ def make_cash_limit_alert(doc, cash_limit_percent, cash_limit_details):
                 )
             )
 
-
 def get_patient_encounters(doc):
     if doc.mode_of_payment != "" and doc.inpatient_record != "":
         patient_encounters = frappe.get_all(
@@ -1488,7 +1458,6 @@ def get_patient_encounters(doc):
             pluck="name",
         )
         return patient_encounters
-
 
 def show_last_prescribed_for_lrpt(doc, method):
     childs_map = [
@@ -1840,4 +1809,62 @@ def set_practitioner_name(doc, method):
                 so as to set the correct practitioner, who submitting this encounter"
             ))
 
+def validate_medical_code(doc, method):
+    """
+        Validate medical code on patient encounter based on the configuration
+
+        for cash patients its configuration is on Healthcare Settings
+        for insurance patients its configuration is on Healthcare Insurance Company
+    """
+
+    validation_for_medical_code = None
+    if doc.insurance_subscription:
+        validation_for_medical_code = frappe.db.get_value("Healthcare Insurance Company",
+            doc.insurance_company, "validate_medical_code_for_insurance_patients")
+    else:
+        validation_for_medical_code = frappe.db.get_single_value("Healthcare Settings",
+            "validate_medical_code_for_cash_patients")
     
+    if validation_for_medical_code == 0:
+        return
+    
+    def medical_code_mapping():
+        return {
+            "patient_encounter_preliminary_diagnosis": [
+                "lab_test_prescription",
+                "radiology_procedure_prescription"
+            ],
+            "patient_encounter_final_diagnosis": [
+                "procedure_prescription",
+                "drug_prescription",
+                "therapies",
+                "diet_recommendation"
+            ]
+        }
+    
+    def get_diagnosis_list(doc, diagnosis_table):
+        diagnosis_list = []
+        if doc.get(diagnosis_table):
+            for row in doc.get(diagnosis_table):
+                if not row.medical_code: continue
+                d = str(row.medical_code) + "\n " + str(row.description)
+                diagnosis_list.append(d)
+        return diagnosis_list
+    
+    for from_table, fields in medical_code_mapping().items():
+        diagnosis_list = get_diagnosis_list(doc, from_table)
+
+        from_table_label = frappe.get_meta(doc.doctype).get_label(from_table)
+        for fieldname in fields:
+            if not doc.get(fieldname): continue
+
+            fieldname_label = frappe.get_meta(doc.doctype).get_label(fieldname)
+            for row in doc.get(fieldname):
+                if row.medical_code not in diagnosis_list:
+
+                    msgThrow(_(
+                        f"The Medical Code in the <strong>{fieldname_label}</strong> table at line <strong>{row.idx}</strong> is empty\
+                            or does not exist in the <strong>{from_table_label}</strong> table."
+                        ),
+                        method
+                    )
