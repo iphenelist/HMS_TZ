@@ -74,9 +74,9 @@ frappe.ui.form.on('Patient Appointment', {
 		}
 
 		if (frm.doc.patient) {
-			frm.add_custom_button(__('Patient History'), function () {
+			frm.add_custom_button(__('Patient History'), () => {
 				frappe.route_options = { 'patient': frm.doc.patient };
-				frappe.set_route('patient_history');
+				frappe.set_route('tz-patient-history');
 			}, __('View'));
 		}
 
