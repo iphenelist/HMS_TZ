@@ -60,7 +60,7 @@ class NHIFPatientClaim(Document):
                 "UPDATE `tabPatient Appointment` SET nhif_patient_claim = '{0}' WHERE name = '{1}'".format(
                     self.name, self.patient_appointment
                 )
-        #     )
+            )
         # if self.allow_changes == 1:
         #     track_changes_of_claim_items(self)
 
