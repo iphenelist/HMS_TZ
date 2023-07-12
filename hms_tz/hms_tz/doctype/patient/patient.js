@@ -26,9 +26,9 @@ frappe.ui.form.on('Patient', {
 		}
 
 		if (frm.doc.patient_name && frappe.user.has_role('Healthcare Practitioner')) {
-			frm.add_custom_button(__('Patient History'), function() {
+			frm.add_custom_button(__('Patient History'), () => {
 				frappe.route_options = {'patient': frm.doc.name};
-				frappe.set_route('patient_history');
+				frappe.set_route('tz-patient-history');
 			},'View');
 		}
 		if(!frm.doc.__islocal && frm.doc.inpatient_record){
