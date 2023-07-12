@@ -316,7 +316,9 @@ class PatientHistory {
 				me.page.main.find('.' + docname).parent().find('.document-html').show();
 			} else {
 				if (doctype && docname) {
-					let exclude = ['patient', 'patient_name', 'patient_sex', 'encounter_date', 'patient_signature', 'healthcare_practitioner_signature'];
+					let exclude = ["patient", "patient_name", "naming_series",
+						"patient_signature", "healthcare_practitioner_signature",
+					];
 					frappe.call({
 						method: 'hms_tz.hms_tz.utils.render_doc_as_html',
 						args: {
