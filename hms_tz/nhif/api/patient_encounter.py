@@ -45,6 +45,10 @@ def on_trash(doc, method):
             "Patient Medical Record", pmr_doc.name, ignore_permissions=True
         )
 
+def before_insert(doc, method):
+    doc.encounter_date = nowdate()
+    doc.encounter_time = nowtime()
+
 def on_submit_validation(doc, method):
     child_tables = {
         "lab_test_prescription": "lab_test_code",
@@ -1804,7 +1808,7 @@ def set_practitioner_name(doc, method):
         doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
     
     elif doc.encounter_category == "Appointment":
-        if method not in ("before_insert", "validate")
+        if method not in ("before_insert", "validate"):
             frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
                 in Healthcare Practitioner<br>\
                 so as to set the correct practitioner, who submitting this encounter"
