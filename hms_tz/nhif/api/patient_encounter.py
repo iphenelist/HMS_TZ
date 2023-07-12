@@ -140,7 +140,6 @@ def on_submit_validation(doc, method):
                 ):
                     frappe.msgprint(f"Item: {row.get(child.get('item'))} is Category S Medication", alert=True)
                 
-                # if 
                 # auto calculating quantity
                 if not row.quantity:
                     row.quantity = get_drug_quantity(row)
