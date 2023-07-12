@@ -4,9 +4,19 @@ frappe.ui.form.on('Patient Encounter', {
             frappe.throw(__("Final diagnosis mandatory before submit"));
         }
     },
+<<<<<<< HEAD
     validate: function (frm) {
         validate_medical_code(frm);
     },
+=======
+
+    // Rock Regency#: 102
+    // remove medical code restriction: 03-07-2023
+    // validate: function (frm) {
+    //     validate_medical_code(frm);
+    // },
+
+>>>>>>> d0d09867 (fix: showing medical codes on child tables of patient encounter after reuse of previous diagnosis)
     onload: function (frm) {
         add_btn_final(frm);
         // duplicate(frm);
@@ -89,22 +99,22 @@ frappe.ui.form.on('Patient Encounter', {
                 }
             };
         });
-        frm.set_query("default_healthcare_service_unit", function(){
+        frm.set_query("default_healthcare_service_unit", function () {
             return {
-                filters:{
+                filters: {
                     "company": frm.doc.company,
                     "name": ["like", "%Pharmacy%"]
-                    }
+                }
             }
         });
         if (!frm.doc.practitioner.includes("Direct")) {
             frm.toggle_reqd("examination_detail", 1)
         };
-        
+
         set_btn_properties(frm);
     },
-    
-    clear_history: function(frm) {
+
+    clear_history: function (frm) {
         frm.set_value("examination_detail", "")
         frm.refresh_field("examination_detail")
     },
@@ -167,7 +177,7 @@ frappe.ui.form.on('Patient Encounter', {
         });
     },
 
-    hms_tz_add_chronic_diagnosis: function(frm) {
+    hms_tz_add_chronic_diagnosis: function (frm) {
         if (frm.doc.docstatus == 0) {
             frappe.call('hms_tz.nhif.api.patient_encounter.add_chronic_diagnosis', {
                 patient: frm.doc.patient,
@@ -382,7 +392,7 @@ frappe.ui.form.on('Patient Encounter', {
             frappe.msgprint(`<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 12pt;'>\
                 This encounter has insurance of <b>${__(frm.doc.insurance_coverage_plan)}</b>,\
                 no need to convert this encounter to inpatient encounter </p>`);
-            return 
+            return
         }
         frappe.call('hms_tz.nhif.api.patient_encounter.convert_opd_encounter_to_ipd_encounter', {
             encounter: frm.doc.name
@@ -394,32 +404,32 @@ frappe.ui.form.on('Patient Encounter', {
     },
     hms_tz_reuse_lab_items: (frm) => {
         let fields = ["lab_test_code as item", "lab_test_name as item_name", "creation as date"]
-        let value_dict = { "table_field": "lab_test_prescription", "item_field": "lab_test_code", "item_name_field": "lab_test_name"}
+        let value_dict = { "table_field": "lab_test_prescription", "item_field": "lab_test_code", "item_name_field": "lab_test_name" }
         reuse_lrpmt_items(frm, "Lab Prescription", fields, value_dict, "Lab Items")
     },
     hms_tz_reuse_radiology_items: (frm) => {
         let fields = ["radiology_examination_template as item", "radiology_procedure_name as item_name", "creation as date"]
-        let value_dict = { "table_field": "radiology_procedure_prescription", "item_field": "radiology_examination_template", "item_name_field": "radiology_procedure_name"}
+        let value_dict = { "table_field": "radiology_procedure_prescription", "item_field": "radiology_examination_template", "item_name_field": "radiology_procedure_name" }
         reuse_lrpmt_items(frm, "Radiology Procedure Prescription", fields, value_dict, "Radiology Items")
     },
     hms_tz_reuse_procedure_items: (frm) => {
         let fields = ["procedure as item", "procedure_name as item_name", "creation as date"]
-        let value_dict = { "table_field": "procedure_prescription", "item_field": "procedure", "item_name_field": "procedure_name"}
+        let value_dict = { "table_field": "procedure_prescription", "item_field": "procedure", "item_name_field": "procedure_name" }
         reuse_lrpmt_items(frm, "Procedure Prescription", fields, value_dict, "Procedure Items")
     },
     hms_tz_reuse_drug_items: (frm) => {
         let fields = ["drug_code as item", "drug_name as item_name", "creation as date"]
-        let value_dict = { "table_field": "drug_prescription", "item_field": "drug_code", "item_name_field": "drug_name"}
+        let value_dict = { "table_field": "drug_prescription", "item_field": "drug_code", "item_name_field": "drug_name" }
         reuse_lrpmt_items(frm, "Drug Prescription", fields, value_dict, "Drug Items")
     },
     hms_tz_reuse_therapy_items: (frm) => {
         let fields = ["therapy_type as item", "therapy_type as item_name", "creation as date"]
-        let value_dict = { "table_field": "therapies", "item_field": "therapy_type", "item_name_field": "therapy_type"}
+        let value_dict = { "table_field": "therapies", "item_field": "therapy_type", "item_name_field": "therapy_type" }
         reuse_lrpmt_items(frm, "Therapy Plan Detail", fields, value_dict, "Therapy Items")
     },
     hms_tz_reuse_previous_diagnosis: (frm) => {
         let fields = ["medical_code as item", "code as item_name", "description", "mtuha", "creation as date"]
-        let value_dict = { "table_field": "patient_encounter_preliminary_diagnosis", "item_field": "medical_code", "item_name_field": "code", "description_field": "description", "mtuha_field": "mtuha"}
+        let value_dict = { "table_field": "patient_encounter_preliminary_diagnosis", "item_field": "medical_code", "item_name_field": "code", "description_field": "description", "mtuha_field": "mtuha" }
         reuse_lrpmt_items(frm, "Codification Table", fields, value_dict, "Previous Diagnosis", "Diagnosis")
     }
 });
@@ -835,7 +845,7 @@ var set_btn_properties = (frm) => {
         });
 };
 
-var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller="") => {
+var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller = "") => {
     let filters = { "patient": frm.doc.patient, "appoitnemnt": frm.doc.appointment, "doctype": doctype, "fields": fields };
     let d = new frappe.ui.Dialog({
         title: "Select Item",
@@ -910,7 +920,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
         let items = [];
 
         wrapper.find('tr:has(input:checked)').each(function () {
-            if (caller == "Diagnosis") { 
+            if (caller == "Diagnosis") {
                 items.push({
                     item: $(this).find("#item").attr("data-item"),
                     item_name: $(this).find("#item_name").attr("data-item_name"),
@@ -922,12 +932,12 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                     item: $(this).find("#item").attr("data-item"),
                     item_name: $(this).find("#item_name").attr("data-item_name"),
                 });
-             }
+            }
         });
 
         if (items.length > 0) {
             let field = String(value_dict.table_field);
-            if (caller == "Diagnosis") { 
+            if (caller == "Diagnosis") {
                 items.forEach((item) => {
                     let new_row = {}
                     new_row[value_dict.item_field] = item.item;
@@ -936,6 +946,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                     new_row[value_dict.mtuha_field] = item.mtuha;
                     let row = frm.add_child(field, new_row);
                 })
+                set_medical_code(frm, true);
             } else {
                 items.forEach((item) => {
                     let new_row = {}
@@ -996,7 +1007,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
         });
     }
 
-    function show_details(data, caller = ""){
+    function show_details(data, caller = "") {
         let html = `<table class="table table-hover" style="width:100%;">`;
         if (caller == "Diagnosis") {
             html += `
