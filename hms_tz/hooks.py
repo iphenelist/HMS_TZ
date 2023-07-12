@@ -141,6 +141,7 @@ doc_events = {
         "validate": "hms_tz.nhif.api.patient_encounter.on_submit_validation",
         "on_trash": "hms_tz.nhif.api.patient_encounter.on_trash",
         "on_submit": "hms_tz.nhif.api.patient_encounter.on_submit",
+        "before_insert": "hms_tz.nhif.api.patient_encounter.before_insert",
     },
     "Healthcare Service Order": {
         "before_insert": "hms_tz.nhif.api.service_order.set_missing_values",

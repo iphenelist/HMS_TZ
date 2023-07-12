@@ -45,6 +45,10 @@ def on_trash(doc, method):
             "Patient Medical Record", pmr_doc.name, ignore_permissions=True
         )
 
+def before_insert(doc, method):
+    doc.encounter_date = nowdate()
+    doc.encounter_time = nowtime()
+
 def on_submit_validation(doc, method):
     child_tables = {
         "lab_test_prescription": "lab_test_code",
