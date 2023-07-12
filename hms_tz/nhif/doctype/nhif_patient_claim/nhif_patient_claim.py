@@ -146,7 +146,6 @@ class NHIFPatientClaim(Document):
         if len(appointment_documents) > 1:
             validate_hold_card_status(self, appointment_documents, claim_details, merged_appointments, caller)
 
-
     def set_claim_values(self):
         if not self.folio_id:
             self.folio_id = str(uuid.uuid1())
@@ -879,7 +878,6 @@ class NHIFPatientClaim(Document):
         
         self.validate_multiple_appointments_per_authorization_no("before_insert")
 
-
     def after_insert(self):
         folio_counter = frappe.get_all("NHIF Folio Counter", filters={
             "company": self.company, "claim_year": self.claim_year, "claim_month": self.claim_month
@@ -904,8 +902,18 @@ class NHIFPatientClaim(Document):
             folio_doc.posting_date = now_datetime()
             folio_doc.save(ignore_permissions=True)
         frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
+        
+        items = []
+        for row in self.nhif_patient_claim_item:
+            new_row = row.as_dict()
+            for fieldname in ["name", "owner", "creation", "modified", "modified_by", "docstatus"]:
+                new_row[fieldname] = None
+            items.append(new_row)
+        
+        if len(items) > 0:
+            frappe.set_value(self.doctype, self.name, "original_nhif_patient_claim_item", items)
+        
         self.reload()
-
 
 def get_missing_patient_signature(self):
     if self.patient:
@@ -914,7 +922,6 @@ def get_missing_patient_signature(self):
         if not signature:
             frappe.throw(_("Patient signature is required"))
         self.patient_signature = signature
-
 
 def validate_submit_date(self):
     import calendar
@@ -943,7 +950,6 @@ def validate_submit_date(self):
                 frappe.bold(submit_claim_year),
             )
         )
-
 
 def validate_item_status(self):
     for row in self.nhif_patient_claim_item:
@@ -1016,7 +1022,6 @@ def get_item_refcode(item_code):
         frappe.throw(_("Item {0} has not NHIF Code Reference").format(item_code))
     return ref_code
 
-
 def generate_pdf(doc):
     file_list = frappe.get_all(
         "File",
@@ -1068,7 +1073,6 @@ def generate_pdf(doc):
         base64_data = to_base64(pdf)
         return base64_data
 
-
 def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
     output = PdfFileWriter()
     if isinstance(doctype, dict):
@@ -1088,7 +1092,6 @@ def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
 
     return read_multi_pdf(output)
 
-
 def read_multi_pdf(output):
     fname = os.path.join("/tmp", "frappe-pdf-{0}.pdf".format(frappe.generate_hash()))
     output.write(open(fname, "wb"))
@@ -1097,7 +1100,6 @@ def read_multi_pdf(output):
         filedata = fileobj.read()
 
     return filedata
-
 
 def get_claim_pdf_file(doc):
     file_list = frappe.get_all(

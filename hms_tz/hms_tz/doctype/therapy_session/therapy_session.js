@@ -34,6 +34,12 @@ frappe.ui.form.on('Therapy Session', {
 		if (frm.doc.source) {
 			set_source_referring_practitioner(frm)
 		}
+		if (frm.doc.patient) {
+			frm.add_custom_button(__('Patient History'),  () => {
+				frappe.route_options = { 'patient': frm.doc.patient };
+				frappe.set_route('tz-patient-history');
+			});
+		}
 	},
 
 	refresh: function (frm) {
