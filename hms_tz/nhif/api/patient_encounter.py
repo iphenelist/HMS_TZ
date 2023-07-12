@@ -1808,7 +1808,7 @@ def set_practitioner_name(doc, method):
         doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
     
     elif doc.encounter_category == "Appointment":
-        if method not in ("before_insert", "validate")
+        if method not in ("before_insert", "validate"):
             frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
                 in Healthcare Practitioner<br>\
                 so as to set the correct practitioner, who submitting this encounter"
