@@ -308,7 +308,8 @@ class PatientHistory {
 		});
 
 		this.page.main.on('click', '.btn-more', function () {
-			let doctype = $(this).attr('data-doctype'), docname = $(this).attr('data-docname');
+			let doctype = $(this).attr('data-doctype')
+			let	docname = $(this).attr('data-docname');
 			if (me.page.main.find('.' + docname).parent().find('.document-html').attr('data-fetched') == '1') {
 				me.page.main.find('.' + docname).hide();
 				me.page.main.find('.' + docname).parent().find('.document-html').show();
@@ -354,7 +355,7 @@ class PatientHistory {
 		});
 
 		me.page.main.on('click', '.btn-get-records', function () {
-			this.setup_documents();
+			me.setup_documents();
 		});
 	}
 
