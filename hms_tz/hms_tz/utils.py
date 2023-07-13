@@ -879,8 +879,14 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
 			and doc.get(df.fieldname)
 			and df.fieldname not in exclude_fields
 		):
+            if df.fieldname == "patient_signature":
+                continue
+            
             formatted_value = format_value(doc.get(df.fieldname), meta.get_field(df.fieldname), doc)
-            html += "<br>{0} : {1}".format(df.label or df.fieldname, formatted_value)
+            if df.fieldname in ["patient", "patient_name"]:
+                html += "<br>{0} : <b>{1}</b>".format(df.label or df.fieldname, formatted_value)
+            else:
+                html += "<br>{0} : {1}".format(df.label or df.fieldname, formatted_value)
 
             if not has_data:
                 has_data = True
