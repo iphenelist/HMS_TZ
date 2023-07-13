@@ -1,17 +1,15 @@
 frappe.provide('frappe.patient_history');
 frappe.pages['tz-patient-history'].on_page_load = (wrapper) => {
-	var page = frappe.ui.make_app_page({
+	frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __('Patient History')
-		// single_column: true
 	});
 
 	let patient_history = new PatientHistory(wrapper);
 	$(wrapper).bind('show', () => {
 		patient_history.show();
 	});
-}
-
+};
 
 class PatientHistory {
 	constructor(wrapper) {
@@ -21,7 +19,7 @@ class PatientHistory {
 		this.main_section = this.wrapper.find('.layout-main-section');
 		this.start = 0;
 	}
-	
+
 	show() {
 		frappe.breadcrumbs.add('Healthcare');
 		this.sidebar.empty();
@@ -47,7 +45,7 @@ class PatientHistory {
 		});
 		patient.refresh();
 
-		if (frappe.route_options && !this.patient_id) {
+		if (frappe.route_options) {
 			patient.set_value(frappe.route_options.patient);
 			this.patient_id = frappe.route_options.patient;
 		}
@@ -316,9 +314,7 @@ class PatientHistory {
 				me.page.main.find('.' + docname).parent().find('.document-html').show();
 			} else {
 				if (doctype && docname) {
-					let exclude = ["patient", "patient_name", "naming_series",
-						"patient_signature", "healthcare_practitioner_signature",
-					];
+					let exclude = ["naming_series", "healthcare_practitioner_signature"];
 					frappe.call({
 						method: 'hms_tz.hms_tz.utils.render_doc_as_html',
 						args: {
