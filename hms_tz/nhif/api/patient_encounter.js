@@ -164,7 +164,7 @@ frappe.ui.form.on('Patient Encounter', {
                         }
                     });
                     refresh_field('patient_encounter_preliminary_diagnosis');
-                    set_medical_code(frm);
+                    set_medical_code(frm, true);
                     // frm.trigger("copy_from_preliminary_diagnosis");
                 }
             }
@@ -225,6 +225,7 @@ frappe.ui.form.on('Patient Encounter', {
                             row.occurrence = element.occurrence;
                             row.occurence_period = element.occurence_period;
                             row.note = element.note;
+                            frm.trigger("default_healthcare_service_unit");
                             frappe.show_alert({
                                 message: __(`Drug '${element.drug_code}' added successfully`),
                                 indicator: 'green'
@@ -277,7 +278,7 @@ frappe.ui.form.on('Patient Encounter', {
                 }
             });
             refresh_field('patient_encounter_final_diagnosis');
-            set_medical_code(frm);
+            set_medical_code(frm, true);
         }
         if (frm.doc.patient_encounter_preliminary_diagnosis.length > 0) {
             let selected = frm.get_field("patient_encounter_preliminary_diagnosis").grid.get_selected_children();
@@ -310,7 +311,7 @@ frappe.ui.form.on('Patient Encounter', {
             final_row.mtuha = "Other";
             refresh_field('patient_encounter_final_diagnosis');
         }
-        set_medical_code(frm);
+        set_medical_code(frm, true);
 
     },
     create_sales_invoice: function (frm) {
@@ -481,6 +482,19 @@ function set_medical_code(frm, reset_columns) {
 
             grid.fields_map.medical_code.options = options;
             grid.refresh();
+            
+            if (reset_columns) {
+                frm.fields_dict[fieldname].grid.grid_rows.forEach(row => {
+                    row.docfields.forEach(docfield => {
+                        if (docfield.fieldname === 'medical_code') {
+                            docfield.options = options;
+                        }
+                    });
+                });
+            }
+            frm.refresh_field(fieldname);
+            grid.refresh();
+            grid.setup_visible_columns();
         }
     }
 
