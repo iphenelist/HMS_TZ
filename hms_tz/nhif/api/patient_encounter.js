@@ -29,6 +29,7 @@ frappe.ui.form.on('Patient Encounter', {
             });
         };
 
+        validate_healthcare_package_order_items(frm);
     },
     refresh: function (frm) {
         frm.fields_dict['drug_prescription'].grid.get_field('healthcare_service_unit').get_query = function (doc, cdt, cdn) {
@@ -104,7 +105,7 @@ frappe.ui.form.on('Patient Encounter', {
         if (!frm.doc.practitioner.includes("Direct")) {
             frm.toggle_reqd("examination_detail", 1)
         };
-
+        validate_healthcare_package_order_items(frm);
         set_btn_properties(frm);
     },
 
@@ -349,6 +350,10 @@ frappe.ui.form.on('Patient Encounter', {
     },
     undo_set_as_final: function (frm) {
         if (!frm.doc.finalized) return;
+        if (frm.doc.healthcare_package_order) {
+            frappe.msgprint(__("This encounter cannot undo set as final because it is from healthcare package order"));
+            return;
+        }
         frappe.call({
             method: "hms_tz.nhif.api.patient_encounter.undo_finalized_encounter",
             args: {
@@ -482,7 +487,7 @@ function set_medical_code(frm, reset_columns) {
 
             grid.fields_map.medical_code.options = options;
             grid.refresh();
-            
+
             if (reset_columns) {
                 frm.fields_dict[fieldname].grid.grid_rows.forEach(row => {
                     row.docfields.forEach(docfield => {
@@ -1117,3 +1122,21 @@ var validate_medication_class = (frm, drug_item) => {
         }
     });
 }
+<<<<<<< HEAD
+=======
+
+var validate_healthcare_package_order_items = (frm) => {
+    if (frm.doc.healthcare_package_order) {
+        for (let field of [
+            "lab_test_prescription",
+            "radiology_procedure_prescription",
+            "procedure_prescription",
+            "therapies",
+            "drug_prescription"]
+        ) {
+            frm.get_field(field).grid.cannot_add_rows = true;
+            frm.set_df_property(field, "read_only", 1);
+        }
+    }
+}
+>>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
