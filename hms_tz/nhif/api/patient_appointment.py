@@ -453,11 +453,7 @@ def set_follow_up(appointment_doc, method):
         "name": ["!=", appointment_doc.name],
         "insurance_subscription": appointment_doc.insurance_subscription,
         "department": appointment_doc.department,
-<<<<<<< HEAD
-        # "status": "Closed",
-=======
         "status": "Closed",
->>>>>>> cbfa94e4 (feat: Healthcare Package)
     }
     appointment = get_previous_appointment(appointment_doc.patient, filters)
     if appointment and appointment_doc.appointment_date:
