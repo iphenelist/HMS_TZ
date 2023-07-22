@@ -1122,8 +1122,6 @@ var validate_medication_class = (frm, drug_item) => {
         }
     });
 }
-<<<<<<< HEAD
-=======
 
 var validate_healthcare_package_order_items = (frm) => {
     if (frm.doc.healthcare_package_order) {
@@ -1139,4 +1137,3 @@ var validate_healthcare_package_order_items = (frm) => {
         }
     }
 }
->>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
