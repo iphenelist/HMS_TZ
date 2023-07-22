@@ -168,10 +168,6 @@ def on_submit_validation(doc, method):
                 if not row.quantity:
                     row.quantity = get_drug_quantity(row)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
     # Run on_submit?
     prescribed_list = ""
     for key, value in child_tables.items():
@@ -225,13 +221,8 @@ def on_submit_validation(doc, method):
                 )
                 if doc.insurance_subscription:
                     method = old_method
-<<<<<<< HEAD
-
-    if prescribed_list:
-=======
             
     if prescribed_list and not doc.healthcare_package_order:
->>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
         msgPrint(
             _(
                 "{0}<BR>The above been prescribed. <b>Request the patient to visit the"
@@ -1191,18 +1182,12 @@ def enqueue_on_update_after_submit(doc_name):
 
 
 def before_submit(doc, method):
-<<<<<<< HEAD
-    set_amounts(doc)
-    # shm rock: 151
-    set_practitioner_name(doc, method)
-=======
     if not doc.healthcare_package_order:
         set_amounts(doc)
 
     # shm rock: 151
     set_practitioner_name(doc, method)
 
->>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
     if doc.inpatient_record:
         validate_patient_balance_vs_patient_costs(doc)
 
@@ -1228,13 +1213,6 @@ def before_submit(doc, method):
                     "Cannot Submit Encounter",
                 )
             )
-
-<<<<<<< HEAD
-    if doc.inpatient_record:
-        validate_patient_balance_vs_patient_costs(doc)
-=======
->>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
-
 
 @frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
@@ -2010,17 +1988,6 @@ def set_practitioner_name(doc, method):
     if submitting_healthcare_practitioner:
         doc.practitioner = submitting_healthcare_practitioner.name
         doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
-<<<<<<< HEAD
-
-    elif doc.encounter_category == "Appointment" and doc.practitioner not in [
-        "Direct Cash",
-        "Direct Insurance",
-    ]:
-        if method not in ("before_insert", "validate"):
-            frappe.throw(
-                _(
-                    f"Please set user id: <b>{frappe.session.user}</b>\
-=======
     
     elif (
         doc.encounter_category == "Appointment" and
@@ -2029,7 +1996,6 @@ def set_practitioner_name(doc, method):
     ):
         if method not in ("before_insert","validate"):
             frappe.throw(_(f"Please set user id: <b>{frappe.session.user}</b>\
->>>>>>> 12e66307 (feat: prevent duplicate and undo set final of encounters having healthcare package order)
                 in Healthcare Practitioner<br>\
                 so as to set the correct practitioner, who submitting this encounter"
                 )
