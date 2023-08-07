@@ -1090,14 +1090,10 @@ def auto_submit_nhif_patient_claim(setting_dict=None):
         )
     else:
         company_setting_detail.append(frappe._dict(json.loads(setting_dict)))
-<<<<<<< HEAD
-    
-=======
 
     if len(company_setting_detail) == 0:
         return
 
->>>>>>> a2373055 (chore: attach a link to a clinical procedure on the message popup after creation of procedure)
     for detail in company_setting_detail:
         frappe.enqueue(
             method=enqueue_auto_sending_of_patient_claims,
@@ -1111,7 +1107,6 @@ def auto_submit_nhif_patient_claim(setting_dict=None):
 def enqueue_auto_sending_of_patient_claims(setting_obj):
     from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
-<<<<<<< HEAD
     patient_claims = frappe.get_all("NHIF Patient Claim", filters={
         "company": setting_obj.company, 
         "claim_month": setting_obj.submit_claim_month, 
@@ -1119,7 +1114,6 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
         "is_ready_for_auto_submission": 1,
         "docstatus": 0
     })
-=======
     patient_claims = frappe.get_all(
         "NHIF Patient Claim",
         filters={
@@ -1133,7 +1127,6 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
 
     if len(patient_claims) == 0:
         return
->>>>>>> a2373055 (chore: attach a link to a clinical procedure on the message popup after creation of procedure)
 
     success_count = 0
     failed_count = 0
