@@ -13,7 +13,7 @@ from hms_tz.nhif.api.healthcare_utils import (
 from hms_tz.hms_tz.doctype.clinical_procedure.clinical_procedure import (
     insert_clinical_procedure_to_medical_record,
 )
-from frappe.utils import getdate, get_fullname
+from frappe.utils import getdate, get_fullname, nowdate
 
 
 def validate(doc, methd):
@@ -38,6 +38,7 @@ def before_submit(doc, method):
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
+    doc.hms_tz_submitted_date = nowdate()
 
     # 2023-07-13
     # stop this validation for now

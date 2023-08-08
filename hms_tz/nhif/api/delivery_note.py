@@ -241,6 +241,7 @@ def before_submit(doc, method):
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
+    doc.hms_tz_submitted_date = nowdate()
 
 
 def on_submit(doc, method):
