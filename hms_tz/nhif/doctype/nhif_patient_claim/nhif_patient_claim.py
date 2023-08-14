@@ -29,13 +29,10 @@ from hms_tz.nhif.api.healthcare_utils import (
 import os
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
-import html2text
-<<<<<<< HEAD
-=======
+#import html2text
 from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import (
     track_changes_of_claim_items,
 )
->>>>>>> a5bff692 (chore: set name of practitioner in line item of nhif patient claim item table)
 
 
 class NHIFPatientClaim(Document):
@@ -172,16 +169,12 @@ class NHIFPatientClaim(Document):
         )
 
         if len(appointment_documents) > 1:
-<<<<<<< HEAD
-            validate_hold_card_status(self, appointment_documents, claim_details, merged_appointments, caller)
-=======
             validate_hold_card_status(
                 self, appointment_documents, claim_details, merged_appointments, caller
             )
         else:
             if caller:
                 frappe.msgprint("Release Patient Card", 20, alert=True)
->>>>>>> a5bff692 (chore: set name of practitioner in line item of nhif patient claim item table)
 
     def set_claim_values(self):
         if not self.folio_id:
