@@ -308,9 +308,8 @@ def on_submit_validation(doc, method):
         if not is_exclusions:
             if template not in hsic_map:
                 msg = _(
-                    "{0} not covered in Healthcare Insurance Coverage Plan "
-                    + str(hicp_name)
-                ).format(template)
+                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+                )
                 msgThrow(
                     msg,
                     method,
@@ -319,9 +318,9 @@ def on_submit_validation(doc, method):
         else:
             if template in hsic_map:
                 msg = _(
-                    "{0} not covered in Healthcare Insurance Coverage Plan "
-                    + str(hicp_name)
-                ).format(template)
+                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+
+                )
                 msgThrow(
                     msg,
                     method,
