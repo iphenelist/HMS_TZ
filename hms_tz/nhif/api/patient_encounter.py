@@ -319,7 +319,6 @@ def on_submit_validation(doc, method):
             if template in hsic_map:
                 msg = _(
                     f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
-
                 )
                 msgThrow(
                     msg,
@@ -1349,8 +1348,8 @@ def set_amounts(doc):
                 )
                 if not item_rate or item_rate == 0:
                     frappe.throw(
-                        _("Cannot get mode of payment rate for item {0}").format(
-                            item_code
+                        _(
+                            f"Cannot get rate for item {item_code} in {doc.get('encounter_mode_of_payment')}"
                         )
                     )
 
