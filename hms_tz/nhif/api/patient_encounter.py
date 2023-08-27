@@ -319,7 +319,6 @@ def on_submit_validation(doc, method):
             if template in hsic_map:
                 msg = _(
                     f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
-
                 )
                 msgThrow(
                     msg,
@@ -715,6 +714,12 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
             )
             if not is_stock:
                 continue
+            if not item_code:
+                frappe.throw(
+                    _(
+                        f"The Item Code for {row.drug_code} is not found!<br>Please request administrator to set item code in {row.drug_code}."
+                    )
+                )
             item = frappe.new_doc("Delivery Note Item")
             item.item_code = item_code
             item.item_name = item_name
