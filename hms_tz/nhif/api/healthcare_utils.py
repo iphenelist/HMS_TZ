@@ -134,7 +134,6 @@ def get_healthcare_service_order_to_invoice(
                         }
                     )
 
-    frappe.msgprint(str(inpatient_record))
     if inpatient_record:
         inpatient_doc = frappe.get_doc("Inpatient Record", inpatient_record)
         for row in inpatient_doc.inpatient_occupancies:
