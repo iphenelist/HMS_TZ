@@ -308,9 +308,8 @@ def on_submit_validation(doc, method):
         if not is_exclusions:
             if template not in hsic_map:
                 msg = _(
-                    "{0} not covered in Healthcare Insurance Coverage Plan "
-                    + str(hicp_name)
-                ).format(template)
+                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+                )
                 msgThrow(
                     msg,
                     method,
@@ -319,9 +318,8 @@ def on_submit_validation(doc, method):
         else:
             if template in hsic_map:
                 msg = _(
-                    "{0} not covered in Healthcare Insurance Coverage Plan "
-                    + str(hicp_name)
-                ).format(template)
+                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+                )
                 msgThrow(
                     msg,
                     method,
@@ -716,6 +714,12 @@ def create_delivery_note_per_encounter(patient_encounter_doc, method):
             )
             if not is_stock:
                 continue
+            if not item_code:
+                frappe.throw(
+                    _(
+                        f"The Item Code for {row.drug_code} is not found!<br>Please request administrator to set item code in {row.drug_code}."
+                    )
+                )
             item = frappe.new_doc("Delivery Note Item")
             item.item_code = item_code
             item.item_name = item_name
@@ -1031,6 +1035,13 @@ def validate_totals(doc, method):
                     row.hms_tz_is_limit_exceeded = 1
                     row.is_cancelled = 1
 
+    def unmark_limit_exceeded(doc):
+        for child in get_field_map():
+            for row in doc.get(child.get("table")):
+                if row.hms_tz_is_limit_exceeded == 1:
+                    row.hms_tz_is_limit_exceeded = 0
+                    row.is_cancelled = 0
+
     if (
         not doc.insurance_company
         or not doc.insurance_subscription
@@ -1076,6 +1087,8 @@ def validate_totals(doc, method):
                 ),
                 method=method,
             )
+    else:
+        unmark_limit_exceeded(doc)
 
 
 @frappe.whitelist()
@@ -1350,9 +1363,7 @@ def set_amounts(doc):
                 )
                 if not item_rate or item_rate == 0:
                     frappe.throw(
-                        _("Cannot get mode of payment rate for item {0}").format(
-                            item_code
-                        )
+                        _(f"Cannot get rate for item {item_code} in {mode_of_payment}")
                     )
 
             elif row.prescribe and doc.insurance_subscription:
