@@ -9,7 +9,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     create_delivery_note_from_LRPT,
     get_restricted_LRPT,
 )
-from frappe.utils import getdate
+from frappe.utils import getdate, get_fullname
 import dateutil
 
 
@@ -18,6 +18,7 @@ def validate(doc, method):
         is_restricted = get_restricted_LRPT(doc)
         doc.is_restricted = is_restricted
     set_normals(doc)
+
 
 def set_normals(doc):
     dob = frappe.get_cached_value("Patient", doc.patient, "dob")
@@ -35,42 +36,41 @@ def set_normals(doc):
             row.detailed_normal_range = data_normals["detailed_normal_range"]
             row.result_status = data_normals["result_status"]
 
+
 def calc_data_normals(data, value):
     data = frappe._dict(data)
     value = float(value)
-    result = {
-        "detailed_normal_range": "",
-        "result_status": ""
-    }
+    result = {"detailed_normal_range": "", "result_status": ""}
 
-    if (data.min and not data.max):
+    if data.min and not data.max:
         result["detailed_normal_range"] = "> " + str(data.min)
-        if (value > data.min):
+        if value > data.min:
             result["result_status"] = "N"
         else:
             result["result_status"] = "L"
-    elif (not data.min and data.max):
+    elif not data.min and data.max:
         result["detailed_normal_range"] = "< " + str(data.max)
-        if (value < data.max):
+        if value < data.max:
             result["result_status"] = "N"
         else:
             result["result_status"] = "H"
-    elif (data.min and data.max):
+    elif data.min and data.max:
         result["detailed_normal_range"] = str(data.min) + " - " + str(data.max)
-        if (value > data.min and value < data.max):
+        if value > data.min and value < data.max:
             result["result_status"] = "N"
-        elif (value < data.min):
+        elif value < data.min:
             result["result_status"] = "L"
-        elif (value > data.max):
+        elif value > data.max:
             result["result_status"] = "H"
 
-    if (data.text):
-        if (result["detailed_normal_range"]):
+    if data.text:
+        if result["detailed_normal_range"]:
             result["detailed_normal_range"] += " / "
 
         result["detailed_normal_range"] += data.text
 
     return result
+
 
 @frappe.whitelist()
 def get_normals(lab_test_name, patient_age, patient_sex):
@@ -110,20 +110,26 @@ def get_lab_test_template(lab_test_name):
 
 def before_submit(doc, method):
     if doc.is_restricted and not doc.approval_number:
-            frappe.throw(_(
-                    f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."
-                )
+        frappe.throw(
+            _(
+                f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."
             )
-    
+        )
+
+    doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
+    doc.hms_tz_user_id = frappe.session.user
+
     # 2023-07-13
     # stop this validation for now
     return
     if doc.approval_number and doc.approval_status != "Verified":
-        frappe.throw(_(
+        frappe.throw(
+            _(
                 f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.radiology_examination_template}</b> is not verified.>br>\
                     Please verify the Approval Number."
             )
         )
+
 
 def on_submit(doc, method):
     update_lab_prescription(doc)
@@ -151,11 +157,14 @@ def on_trash(doc, method):
     for item in sample_list:
         frappe.delete_doc("Sample Collection", item.name)
 
+
 def on_cancel(doc, method):
     doc.flags.ignore_links = True
 
     if doc.docstatus == 2:
-        frappe.db.set_value("Lab Prescription", doc.hms_tz_ref_childname, "lab_test", "")
+        frappe.db.set_value(
+            "Lab Prescription", doc.hms_tz_ref_childname, "lab_test", ""
+        )
 
         new_lab_doc = frappe.copy_doc(doc)
         new_lab_doc.status = "Draft"
@@ -164,9 +173,11 @@ def on_cancel(doc, method):
         new_lab_doc.save(ignore_permissions=True)
 
         url = frappe.utils.get_url_to_form(new_lab_doc.doctype, new_lab_doc.name)
-        frappe.msgprint(f"Lab Test: <strong>{doc.name}</strong> is cancelled:<br>\
-            New Lab Test: <a href='{url}'><strong>{new_lab_doc.name}</strong></a> is successful created")
-        
+        frappe.msgprint(
+            f"Lab Test: <strong>{doc.name}</strong> is cancelled:<br>\
+            New Lab Test: <a href='{url}'><strong>{new_lab_doc.name}</strong></a> is successful created"
+        )
+
 
 def create_sample_collection(doc):
     if not doc.template:
@@ -194,12 +205,17 @@ def create_sample_collection(doc):
         _("Sample Collection created {0}").format(sample_doc.name), alert=True
     )
 
+
 def update_lab_prescription(doc):
     if doc.ref_doctype == "Patient Encounter":
         encounter_doc = frappe.get_doc("Patient Encounter", doc.ref_docname)
         for row in encounter_doc.lab_test_prescription:
-            if row.name == doc.hms_tz_ref_childname and row.lab_test_code == doc.template:
-                frappe.db.set_value(row.doctype, row.name, {
-                    "lab_test": doc.name,
-                    "delivered_quantity": 1
-                })
+            if (
+                row.name == doc.hms_tz_ref_childname
+                and row.lab_test_code == doc.template
+            ):
+                frappe.db.set_value(
+                    row.doctype,
+                    row.name,
+                    {"lab_test": doc.name, "delivered_quantity": 1},
+                )
