@@ -14,6 +14,9 @@ frappe.ui.form.on('Inpatient Record', {
         $('*[data-fieldname="inpatient_consultancy"]').find('.grid-remove-all-rows').hide();
 
         if (!frm.doc.insurance_subscription) {
+            frm.add_custom_button(__("Create Invoice"), () => {
+                create_sales_invoice(frm);
+            });
             frm.add_custom_button(__("Make Deposit"), () => {
                 make_deposit(frm);
             }).removeClass("btn-default").addClass("btn-warning font-weight-bold");
@@ -107,7 +110,6 @@ var make_deposit = (frm) => {
     ],
 
         (data) => {
-            frappe.dom.freeze(__("Making Deposit..."));
             frappe.call({
                 method: "hms_tz.nhif.api.inpatient_record.make_deposit",
                 args: {
@@ -115,8 +117,9 @@ var make_deposit = (frm) => {
                     deposit_amount: data.deposit_amount,
                     mode_of_payment: data.mode_of_payment,
                 },
+                freeze: true,
+                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
             }).then((r) => {
-                frappe.dom.unfreeze();
                 if (r.message) {
                     frm.reload_doc();
                 }
@@ -125,4 +128,25 @@ var make_deposit = (frm) => {
         "Make Deposit",
         "Submit"
     );
+}
+
+var create_sales_invoice = (frm) => {
+    let filters = {
+        "patient": frm.doc.patient,
+        "appointment_no": frm.doc.patient_appointment,
+        "inpatient_record": frm.doc.name,
+        "company": frm.doc.company,
+    }
+    frappe.call({
+        method: "hms_tz.nhif.api.inpatient_record.create_sales_invoice",
+        args: {
+            args: filters
+        },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+    }).then((r) => {
+        if (r.message) {
+            frappe.set_route("Form", "Sales Invoice", r.message);
+        }
+    });
 }

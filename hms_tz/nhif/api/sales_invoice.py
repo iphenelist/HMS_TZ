@@ -28,7 +28,9 @@ def validate(doc, method):
 def validate_create_delivery_note(doc):
     if not doc.patient:
         return
-    inpatient_record = frappe.get_cached_value  ("Patient", doc.patient, "inpatient_record")
+    inpatient_record = frappe.get_cached_value(
+        "Patient", doc.patient, "inpatient_record"
+    )
     if inpatient_record:
         insurance_subscription = frappe.get_value(
             "Inpatient Record", inpatient_record, "insurance_subscription"
@@ -48,6 +50,13 @@ def before_submit(doc, method):
         frappe.throw(
             _(
                 "Sales invoice not paid in full.<BR><BR>Make sure that full paid amount is entered in <b>Mode of Payments table.</b>"
+            )
+        )
+
+    if doc.hms_tz_discount_requested == 1 and doc.hms_tz_discount_status == "Pending":
+        frappe.throw(
+            _(
+                "Patient Discount Request is still pending. Please wait for approval before submitting this invoice."
             )
         )
 
@@ -94,23 +103,57 @@ def create_healthcare_docs(doc, method):
 
                 item.hms_tz_is_lrp_item_created = 1
                 item.db_update()
+            elif item.reference_dt and item.reference_dt in [
+                "Inpatient Occupancy",
+                "Inpatient Consultancy",
+            ]:
+                invoiced_field = "invoiced"
+                if frappe.get_meta(item.reference_dt).get_field("hms_tz_invoiced"):
+                    invoiced_field = "hms_tz_invoiced"
+
+                frappe.db.set_value(
+                    item.reference_dt,
+                    item.reference_dn,
+                    {
+                        invoiced_field: 1,
+                        "sales_invoice_number": doc.name,
+                    },
+                )
 
     if method == "From Front End":
         frappe.db.commit()
+
 
 def update_drug_prescription(doc):
     if doc.patient and doc.enabled_auto_create_delivery_notes:
         for item in doc.items:
             if (
-                item.reference_dn and 
-                item.reference_dt and 
-                item.reference_dt == "Drug Prescription"
+                item.reference_dn
+                and item.reference_dt
+                and item.reference_dt == "Drug Prescription"
             ):
-                dn_name = frappe.get_value("Delivery Note", {"form_sales_invoice": doc.name}, "name")
+                dn_name = frappe.get_value(
+                    "Delivery Note", {"form_sales_invoice": doc.name}, "name"
+                )
                 if not dn_name:
                     return
-                frappe.db.set_value("Drug Prescription", item.reference_dn, {
-                    "sales_invoice_number": doc.name,
-                    "drug_prescription_created": 1,
-                    "invoiced": 1
-                })
+                frappe.db.set_value(
+                    "Drug Prescription",
+                    item.reference_dn,
+                    {
+                        "sales_invoice_number": doc.name,
+                        "drug_prescription_created": 1,
+                        "invoiced": 1,
+                    },
+                )
+
+
+@frappe.whitelist()
+def get_discount_items(invoice_no):
+    items = frappe.get_all(
+        "Sales Invoice Item",
+        filters={"parent": invoice_no},
+        fields=["item_code", "item_name", "amount", "reference_dt", "name"],
+        order_by="reference_dt desc",
+    )
+    return items
