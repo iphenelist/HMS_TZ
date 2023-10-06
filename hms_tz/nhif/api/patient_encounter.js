@@ -137,6 +137,8 @@ frappe.ui.form.on('Patient Encounter', {
             args: {
                 'patient': frm.doc.patient,
             },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
             callback: function (data) {
                 if (data.message) {
                     if (data.message.length == 0) {
@@ -176,9 +178,11 @@ frappe.ui.form.on('Patient Encounter', {
         if (frm.doc.docstatus == 0) {
             frappe.call('hms_tz.nhif.api.patient_encounter.add_chronic_diagnosis', {
                 patient: frm.doc.patient,
-                encounter: frm.doc.name
+                encounter: frm.doc.name,
+                freeze: true,
+                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
             }).then(r => {
-                console.log(r.message)
+                // console.log(r.message)
             })
         }
     },
@@ -192,6 +196,8 @@ frappe.ui.form.on('Patient Encounter', {
             args: {
                 'patient': frm.doc.patient,
             },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
             callback: function (data) {
                 if (data.message) {
                     if (data.message.length == 0) {
@@ -245,10 +251,13 @@ frappe.ui.form.on('Patient Encounter', {
     },
     add_chronic_medications: (frm) => {
         if (frm.doc.docstatus == 0) {
+            let items =  frm.get_field('drug_prescription').grid.get_selected_children();
             frappe.call('hms_tz.nhif.api.patient_encounter.add_chronic_medications', {
                 patient: frm.doc.patient,
                 encounter: frm.doc.name,
-                items: frm.get_field('drug_prescription').grid.get_selected_children()
+                items: items,
+                freeze: true,
+                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
             }).then(r => {
                 // console.log(r.message);
             })
@@ -964,12 +973,23 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                 })
                 set_medical_code(frm, true);
             } else {
-                items.forEach((item) => {
-                    let new_row = {}
-                    new_row[value_dict.item_field] = item.item;
-                    new_row[value_dict.item_name_field] = item.item_name;
-                    let row = frm.add_child(field, new_row);
-                })
+                if (doctype == "Drug Prescription") {
+                    items.forEach((item) => {
+                        let new_row = {}
+                        new_row[value_dict.item_field] = item.item;
+                        new_row[value_dict.item_name_field] = item.item_name;
+                        let row = frm.add_child(field, new_row);
+                    })
+                    frm.trigger("default_healthcare_service_unit");
+                }
+                else {
+                    items.forEach((item) => {
+                        let new_row = {}
+                        new_row[value_dict.item_field] = item.item;
+                        new_row[value_dict.item_name_field] = item.item_name;
+                        let row = frm.add_child(field, new_row);
+                    })
+                }
             }
             frm.refresh_field(field);
             d.hide();
@@ -987,6 +1007,11 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
     });
 
     d.$body.find("button[data-fieldtype='Button']").removeClass("btn-default").addClass("btn-info");
+    d.$body.on('change', '#th', function() {
+        var isChecked = $(this).prop('checked');
+        wrapper.find('input[type="checkbox"]').prop('checked', isChecked);
+    });
+
     d.$wrapper.find('.modal-content').css({
         "width": "650px",
         "max-height": "1000px",
@@ -1035,13 +1060,13 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                 <col width="22%">
                 <col width="20%">
             </colgroup>
-            <tr style="background-color: #D3D3D3;">
-                <th></th>
-                <th>Medical Code</th>
-                <th>Code Name</th>
-                <th>Description</th>
-                <th>Mtuha</th>
-                <th>Date of Service</th>
+            <tr>
+                <th><input type="checkbox" id="th" class="check-all" style="border: 2px solid black;"/></th>
+                <th style="background-color: #D3D3D3;">Medical Code</th>
+                <th style="background-color: #D3D3D3;">Code Name</th>
+                <th style="background-color: #D3D3D3;">Description</th>
+                <th style="background-color: #D3D3D3;">Mtuha</th>
+                <th style="background-color: #D3D3D3;">Date of Service</th>
             </tr>`;
 
             data.forEach(row => {
@@ -1062,11 +1087,11 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                 <col width="35%">
                 <col width="30%">
             </colgroup>
-            <tr style="background-color: #D3D3D3;">
-                <th></th>
-                <th>Item</th>
-                <th>Item Name</th>
-                <th>Date of Service</th>
+            <tr>
+                <th><input type="checkbox" id="th" class="check-all" style="border: 2px solid black;" /></th>
+                <th style="background-color: #D3D3D3;">Item</th>
+                <th style="background-color: #D3D3D3;">Item Name</th>
+                <th style="background-color: #D3D3D3;">Date of Service</th>
             </tr>`;
 
             data.forEach(row => {
