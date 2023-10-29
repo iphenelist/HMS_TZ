@@ -227,7 +227,11 @@ scheduler_events = {
         # Routine for every 10min
         "*/10 * * * *": [
             "hms_tz.nhif.api.healthcare_utils.create_invoiced_items_if_not_created"
-        ]
+        ],
+        # Routine for day 03:00am at night
+        "0 3 * * *": [
+            "hms_tz.nhif.api.healthcare_utils.auto_finalize_patient_encounters"
+        ],
     },
     # 	"hourly": [
     # 		"hms_tz.tasks.hourly"
