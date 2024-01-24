@@ -24,6 +24,7 @@ frappe.ui.form.on('Inpatient Record', {
                 make_deposit(frm);
             }).addClass("font-weight-bold");
         }
+        view_current_encounter(frm);
     },
     onload(frm) {
         frm.get_field("inpatient_occupancies").grid.cannot_add_rows = true;
@@ -197,7 +198,7 @@ var isConfirmed = (frm, fieldname) => {
 }
 
 var validate_inpatient_balance_vs_inpatient_cost = (frm) => {
-    if (!frm.doc.insurance_subscription){
+    if (!frm.doc.insurance_subscription) {
         frappe.call({
             method: 'hms_tz.nhif.api.inpatient_record.validate_inpatient_balance_vs_inpatient_cost',
             args: {
@@ -212,5 +213,29 @@ var validate_inpatient_balance_vs_inpatient_cost = (frm) => {
                 }
             }
         });
+    }
+}
+
+var view_current_encounter = (frm) => {
+    if (!frm.page.fields_dict.view__encounter) {
+        frm.page.add_field({
+            label: __("View Encounter"),
+            fieldname: "view__encounter",
+            fieldtype: "Button",
+            click: function () {
+                frappe.call({
+                    method: 'hms_tz.nhif.api.inpatient_record.get_last_encounter',
+                    args: {
+                        patient: frm.doc.patient,
+                        inpatient_record: frm.doc.name,
+                    },
+                    callback: function (r) {
+                        if (r.message) {
+                            frappe.set_route('Form', 'Patient Encounter', r.message);
+                        }
+                    }
+                });
+            }
+        }).$input.addClass("btn-sm font-weight-bold");
     }
 }

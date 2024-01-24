@@ -27,7 +27,19 @@ import json
 def validate(doc, method):
     set_beds_price(doc)
     validate_inpatient_occupancies(doc)
-    validate_inpatient_balance_vs_inpatient_cost(doc.patient, doc.patient_appointment, doc.name)
+    validate_inpatient_balance_vs_inpatient_cost(
+        doc.patient, doc.patient_appointment, doc.name
+    )
+
+
+def before_save(doc, method):
+    last_row = doc.inpatient_occupancies[len(doc.inpatient_occupancies) - 1]
+    if last_row.service_unit:
+        service_unit_type = frappe.get_cached_value(
+            "Healthcare Service Unit", last_row.service_unit, "service_unit_type"
+        )
+        if doc.admission_service_unit_type != service_unit_type:
+            doc.admission_service_unit_type = service_unit_type
 
 
 def validate_inpatient_occupancies(doc):
@@ -370,3 +382,18 @@ def validate_inpatient_balance_vs_inpatient_cost(
         encounter_doc, encounters=patient_encounters
     )
     return True
+
+
+@frappe.whitelist()
+def get_last_encounter(patient, inpatient_record):
+    pe = frappe.qb.DocType("Patient Encounter")
+    encounters = (
+        frappe.qb.from_(pe)
+        .select(pe.name)
+        .where(
+            (pe.patient == patient)
+            & (pe.inpatient_record == inpatient_record)
+            & (pe.duplicated == 0)
+        )
+    ).run(as_dict=True)
+    return encounters[0].name if len(encounters) > 0 else None

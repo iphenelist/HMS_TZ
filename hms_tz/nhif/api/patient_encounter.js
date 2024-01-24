@@ -10,7 +10,7 @@ frappe.ui.form.on('Patient Encounter', {
     // validate: function (frm) {
     //     validate_medical_code(frm);
     // },
-    
+
     onload: function (frm) {
         control_practitioners_to_submit_others_encounters(frm);
         add_btn_final(frm);
@@ -69,7 +69,7 @@ frappe.ui.form.on('Patient Encounter', {
                 }
             };
         });
-        
+
         // filter medication based on company
         filter_drug_prescriptions(frm);
 
@@ -106,7 +106,14 @@ frappe.ui.form.on('Patient Encounter', {
         validate_healthcare_package_order_items(frm);
         set_btn_properties(frm);
         // set_delete_button_in_child_table(frm);
-        
+        frm.set_query('admission_service_unit_type', function () {
+            return {
+                filters: {
+                    inpatieint_occupancy: 1
+                }
+            };
+        });
+
     },
 
     clear_history: function (frm) {
@@ -251,7 +258,7 @@ frappe.ui.form.on('Patient Encounter', {
     },
     add_chronic_medications: (frm) => {
         if (frm.doc.docstatus == 0) {
-            let items =  frm.get_field('drug_prescription').grid.get_selected_children();
+            let items = frm.get_field('drug_prescription').grid.get_selected_children();
             frappe.call('hms_tz.nhif.api.patient_encounter.add_chronic_medications', {
                 patient: frm.doc.patient,
                 encounter: frm.doc.name,
@@ -598,7 +605,7 @@ function validate_medical_code(frm) {
         "drug_prescription": "drug_code",
         "therapies": "therapy_type",
     };
-  
+
     for (const [from_table, fields] of Object.entries(medical_code_mapping)) {
         const options = get_diagnosis_list(frm, from_table);
 
@@ -926,12 +933,12 @@ frappe.ui.form.on('Therapy Plan Detail', {
         let row = frappe.get_doc(cdt, cdn);
         if (row.override_subscription) {
             frappe.model.set_value(cdt, cdn, "prescribe", 0);
-    }
+        }
     },
 });
 
 
-const validate_stock_item = function (frm, healthcare_service, prescribe=0, qty = 1, healthcare_service_unit = "", caller = "Unknown") {
+const validate_stock_item = function (frm, healthcare_service, prescribe = 0, qty = 1, healthcare_service_unit = "", caller = "Unknown") {
     if (healthcare_service_unit == "") {
         healthcare_service_unit = frm.doc.healthcare_service_unit;
     }
@@ -1088,7 +1095,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                     description: $(this).find("#description").attr("data-description"),
                     mtuha: $(this).find("#mtuha").attr("data-mtuha"),
                 });
-            } else  if (caller == "Medication") {
+            } else if (caller == "Medication") {
                 items.push({
                     item: $(this).find("#item").attr("data-item"),
                     item_name: $(this).find("#item_name").attr("data-item_name"),
@@ -1120,7 +1127,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
             } else {
                 if (doctype == "Drug Prescription") {
                     items.forEach((item) => {
-                        if (item.medical_code) { 
+                        if (item.medical_code) {
                             let diagnosis_codes = frm.doc.patient_encounter_final_diagnosis.map(d => d.medical_code);
                             let medical_code = item.medical_code.split("\n");
                             if (!diagnosis_codes.includes(medical_code[0])) {
@@ -1171,7 +1178,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
     });
 
     d.$body.find("button[data-fieldtype='Button']").removeClass("btn-default").addClass("btn-info");
-    d.$body.on('change', '#th', function() {
+    d.$body.on('change', '#th', function () {
         var isChecked = $(this).prop('checked');
         wrapper.find('input[type="checkbox"]').prop('checked', isChecked);
     });
@@ -1192,7 +1199,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                 caller: caller
             },
             freeze: true,
-			freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
         }).then(r => {
             let records = r.message;
             if (records.length > 0) {
@@ -1374,7 +1381,7 @@ var control_practitioners_to_submit_others_encounters = (frm) => {
                 }
             });
     }
- };
+};
 
 var validate_medication_class = (frm, drug_item) => {
     frappe.call({

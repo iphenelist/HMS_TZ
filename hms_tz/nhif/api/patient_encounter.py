@@ -62,6 +62,7 @@ def before_insert(doc, method):
         validate_nhif_patient_claim_status(
             "Patient Encounter", doc.company, doc.appointment, doc.insurance_company
         )
+    set_admission_service_type(doc)
 
 
 # regency rock: 95
@@ -1439,6 +1440,7 @@ def before_submit(doc, method):
 
     if doc.inpatient_record:
         validate_patient_balance_vs_patient_costs(doc)
+        set_admission_service_type(doc)
 
     encounter_create_sales_invoice = frappe.get_cached_value(
         "Encounter Category", doc.encounter_category, "create_sales_invoice"
@@ -2510,3 +2512,14 @@ def get_filtered_dosage(doctype, txt, searchfield, start, page_len, filters):
             fields=[searchfield],
             as_list=1,
         )
+
+
+def set_admission_service_type(doc):
+    """Set admission service type based on service unit type of inpatient record"""
+
+    if doc.inpatient_record:
+        admission_service_unit_type = frappe.get_value(
+            "Inpatient Record", doc.inpatient_record, "admission_service_unit_type"
+        )
+        if admission_service_unit_type and doc.admission_service_unit_type != admission_service_unit_type:
+            doc.admission_service_unit_type = admission_service_unit_type
