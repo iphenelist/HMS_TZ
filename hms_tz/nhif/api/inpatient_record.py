@@ -37,6 +37,16 @@ def validate(doc, method):
         )
 
 
+def before_save(doc, method):
+    last_row = doc.inpatient_occupancies[len(doc.inpatient_occupancies) - 1]
+    if last_row.service_unit:
+        service_unit_type = frappe.get_cached_value(
+            "Healthcare Service Unit", last_row.service_unit, "service_unit_type"
+        )
+        if doc.admission_service_unit_type != service_unit_type:
+            doc.admission_service_unit_type = service_unit_type
+
+
 def validate_inpatient_occupancies(doc):
     if doc.is_new():
         return
@@ -425,3 +435,17 @@ def validate_similary_authozation_number(doc):
                     msg=msg,
                     exc=frappe.ValidationError,
                 )
+
+@frappe.whitelist()
+def get_last_encounter(patient, inpatient_record):
+    pe = frappe.qb.DocType("Patient Encounter")
+    encounters = (
+        frappe.qb.from_(pe)
+        .select(pe.name)
+        .where(
+            (pe.patient == patient)
+            & (pe.inpatient_record == inpatient_record)
+            & (pe.duplicated == 0)
+        )
+    ).run(as_dict=True)
+    return encounters[0].name if len(encounters) > 0 else None
