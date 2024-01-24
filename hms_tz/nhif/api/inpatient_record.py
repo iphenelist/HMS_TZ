@@ -24,12 +24,17 @@ from hms_tz.nhif.api.healthcare_utils import (
 import json
 
 
+def before_insert(doc, method):
+    validate_similary_authozation_number(doc)
+
+
 def validate(doc, method):
     set_beds_price(doc)
     validate_inpatient_occupancies(doc)
-    validate_inpatient_balance_vs_inpatient_cost(
-        doc.patient, doc.patient_appointment, doc.name
-    )
+    if not doc.insurance_subscription:
+        validate_inpatient_balance_vs_inpatient_cost(
+            doc.patient, doc.patient_appointment, doc.name
+        )
 
 
 def before_save(doc, method):
@@ -97,14 +102,13 @@ def daily_update_inpatient_occupancies():
 @frappe.whitelist()
 def confirmed(company, appointment, insurance_company=None):
     if insurance_company and "NHIF" in insurance_company:
-        validate_nhif_patient_claim_status(
+        return validate_nhif_patient_claim_status(
             "Inpatient Record",
             company,
             appointment,
             insurance_company,
             "inpatient_record",
         )
-        return True
 
 
 def create_delivery_note(encounter, item_code, item_rate, warehouse, row, practitioner):
@@ -383,6 +387,54 @@ def validate_inpatient_balance_vs_inpatient_cost(
     )
     return True
 
+
+def validate_similary_authozation_number(doc):
+    """Validate if NHIF Patient Claim for this AuthorizationNo is already submitted."""
+    
+    if not doc.insurance_subscription:
+        return
+
+    insurance_company = doc.insurance_company
+
+    if not insurance_company:
+        insurance_company = frappe.get_value(
+            "Healthcare Insurance Subscription",
+            doc.insurance_subscription,
+            "insurance_company",
+        )
+
+    if insurance_company and "NHIF" in insurance_company:
+        auth_no = frappe.get_value(
+            "Patient Appointment", doc.patient_appointment, "authorization_number"
+        )
+        claims = frappe.get_all(
+            "NHIF Patient Claim",
+            filters={"patient": doc.patient, "authorization_no": auth_no},
+            fields=["name", "docstatus"],
+        )
+        if len(claims) > 0:
+            is_submitted = False
+            submitted_claim = None
+            for row in claims:
+                if row.docstatus == 1:
+                    is_submitted = True
+                    submitted_claim = row.name
+                    break
+
+            if is_submitted:
+                claim_url = get_url_to_form("NHIF Patient Claim", submitted_claim)
+                app_url = get_url_to_form(
+                    "Patient Appointment", doc.patient_appointment
+                )
+                msg = f"""<div style="  text-align: justify; border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin: 10px;">
+                        NHIF Patient Claim: <a href='{claim_url}'><b>{submitted_claim}</b></a> for this AuthorizationNo: <b>{auth_no}</b> and Appointment: <a href='{app_url}'><b>{doc.patient_appointment}</b></a> is already submitted.<br><br>
+                        <i>Please <strong>do not Admit this patient</strong>, Let patient ask for a new AuthorizationNo from NHIF.</i>
+                    </div>"""
+                frappe.throw(
+                    title=f"NHIF Patient Claim: <a href='{claim_url}'><b>{submitted_claim}</b></a> Already Submitted",
+                    msg=msg,
+                    exc=frappe.ValidationError,
+                )
 
 @frappe.whitelist()
 def get_last_encounter(patient, inpatient_record):
