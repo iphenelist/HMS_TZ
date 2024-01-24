@@ -442,7 +442,9 @@ def update_insurance_subscription(insurance_subscription, card, company):
 
         if coverage_plan:
             card["CoveragePlanName"] = coverage_plan
-            plan_doc = frappe.get_cached_doc("Healthcare Insurance Coverage Plan", coverage_plan)
+            plan_doc = frappe.get_cached_doc(
+                "Healthcare Insurance Coverage Plan", coverage_plan
+            )
 
             if plan_doc:
                 subscription_doc.insurance_company = plan_doc.insurance_company
@@ -451,7 +453,7 @@ def update_insurance_subscription(insurance_subscription, card, company):
 
         subscription_doc.hms_tz_product_code = card["ProductCode"]
         subscription_doc.hms_tz_product_name = card["ProductName"]
-    
+
         subscription_doc.hms_tz_scheme_id = card["SchemeID"]
         subscription_doc.hms_tz_scheme_name = card["SchemeName"]
 
@@ -504,6 +506,8 @@ def set_follow_up(appointment_doc, method):
     }
     if appointment_doc.insurance_subscription:
         filters["insurance_subscription"] = appointment_doc.insurance_subscription
+    else:
+        filters["mode_of_payment"] = ["!=", ""]
 
     appointment = get_previous_appointment(appointment_doc.patient, filters)
     if appointment and appointment_doc.appointment_date:
@@ -626,6 +630,11 @@ def make_next_doc(doc, method, from_hook=True):
     # do not create vital sign or encounter if appointment is already cancelled
     if doc.status == "Cancelled":
         return
+
+    # do not create vital sign or encounter if appointment is already invoiced
+    if doc.mode_of_payment and not doc.invoiced:
+        return
+
     if frappe.get_cached_value(
         "Healthcare Practitioner", doc.practitioner, "bypass_vitals"
     ):
