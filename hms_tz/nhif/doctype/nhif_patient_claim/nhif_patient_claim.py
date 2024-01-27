@@ -1071,7 +1071,7 @@ def validate_hold_card_status(
             frappe.msgprint("<strong>Release Patient Card</strong>")
         else:
             msg += f"<br> with same authorization no: <b>{self.authorization_no}</b><br><br>\
-                Please <strong>Hold patient card</strong> until claims for all <b>{appointment_documents}</b> appointments to be created.</p>"
+                Please <strong>Hold patient card</strong> until claims for all <b>{len(appointment_documents)}</b> appointments to be created.</p>"
             frappe.msgprint("<strong>Please Hold Card</strong>", 20, alert=True)
             frappe.msgprint(str(msg))
 
