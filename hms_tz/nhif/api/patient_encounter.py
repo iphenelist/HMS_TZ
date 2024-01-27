@@ -1257,30 +1257,31 @@ def validate_totals(doc, method):
 
 @frappe.whitelist()
 def finalized_encounter(cur_encounter, ref_encounter=None):
-    cur_encounter_doc = frappe.get_doc("Patient Encounter", cur_encounter)
-    inpatient_status, inpatient_record = frappe.get_cached_value(
-        "Patient", cur_encounter_doc.patient, ["inpatient_status", "inpatient_record"]
+    patient, cur_inpatient_record = frappe.get_value(
+        "Patient Encounter", cur_encounter, ["patient", "inpatient_record"]
     )
-    if inpatient_status and cur_encounter_doc.inpatient_record == inpatient_record:
+    inpatient_status, inpatient_record = frappe.get_cached_value(
+        "Patient", patient, ["inpatient_status", "inpatient_record"]
+    )
+    if inpatient_status and cur_inpatient_record == inpatient_record:
         frappe.throw(
             _(
-                "The patient {0} has inpatient status <strong>{1}</strong>. Please process the discharge before proceeding to finalize the encounter.".format(
-                    cur_encounter_doc.patient, inpatient_status
-                )
+                f"The patient {patient} has inpatient status <strong>{inpatient_status}</strong>.\
+                Please process the discharge before proceeding to finalize the encounter."
             )
         )
+
+    frappe.db.set_value("Patient Encounter", cur_encounter, "encounter_type", "Final")
+    if not ref_encounter:
+        frappe.db.set_value("Patient Encounter", cur_encounter, "finalized", 1)
+        return
 
     encounters_list = frappe.get_all(
         "Patient Encounter",
         filters={"docstatus": 1, "reference_encounter": ref_encounter},
     )
     for element in encounters_list:
-        frappe.set_value("Patient Encounter", element.name, "finalized", 1)
-
-    frappe.set_value("Patient Encounter", cur_encounter, "encounter_type", "Final")
-    if not ref_encounter:
-        frappe.set_value("Patient Encounter", cur_encounter, "finalized", 1)
-        return
+        frappe.db.set_value("Patient Encounter", element.name, "finalized", 1)
 
 
 @frappe.whitelist()
