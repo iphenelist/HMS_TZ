@@ -31,10 +31,6 @@ def before_insert(doc, method):
 def validate(doc, method):
     set_beds_price(doc)
     validate_inpatient_occupancies(doc)
-    if not doc.insurance_subscription:
-        validate_inpatient_balance_vs_inpatient_cost(
-            doc.patient, doc.patient_appointment, doc.name
-        )
 
 
 def before_save(doc, method):
@@ -365,32 +361,30 @@ def create_sales_invoice(args):
 
 @frappe.whitelist()
 def validate_inpatient_balance_vs_inpatient_cost(
-    patient, patient_appointment, inpatient_record
+    patient,
+    patient_name,
+    appointment,
+    inpatient_record,
+    company,
+    inpatient_cost,
+    cash_limit,
+    caller=None,
 ):
-    patient_encounters = frappe.get_all(
-        "Patient Encounter",
-        filters={
-            "patient": patient,
-            "appointment": patient_appointment,
-            "inpatient_record": inpatient_record,
-        },
-        fields=["name"],
-        order_by="encounter_date desc",
-        pluck="name",
+    return validate_patient_balance_vs_patient_costs(
+        patient,
+        patient_name,
+        appointment,
+        inpatient_record,
+        company,
+        inpatient_cost=inpatient_cost,
+        cash_limit=cash_limit,
+        caller=caller,
     )
-    if not patient_encounters or len(patient_encounters) == 0:
-        return
-
-    encounter_doc = frappe.get_doc("Patient Encounter", patient_encounters[0])
-    validate_patient_balance_vs_patient_costs(
-        encounter_doc, encounters=patient_encounters
-    )
-    return True
 
 
 def validate_similary_authozation_number(doc):
     """Validate if NHIF Patient Claim for this AuthorizationNo is already submitted."""
-    
+
     if not doc.insurance_subscription:
         return
 
@@ -435,6 +429,7 @@ def validate_similary_authozation_number(doc):
                     msg=msg,
                     exc=frappe.ValidationError,
                 )
+
 
 @frappe.whitelist()
 def get_last_encounter(patient, inpatient_record):

@@ -19,7 +19,8 @@ frappe.ui.form.on('Inpatient Record', {
         if (!frm.doc.insurance_subscription) {
             frm.add_custom_button(__("Create Invoice"), () => {
                 create_sales_invoice(frm);
-            });
+            }).addClass("font-weight-bold");
+
             frm.add_custom_button(__("Make Deposit"), () => {
                 make_deposit(frm);
             }).addClass("font-weight-bold");
@@ -29,7 +30,12 @@ frappe.ui.form.on('Inpatient Record', {
     onload(frm) {
         frm.get_field("inpatient_occupancies").grid.cannot_add_rows = true;
         frm.get_field("inpatient_consultancy").grid.cannot_add_rows = true;
-    }
+    },
+    validate: (frm) => {
+        if (!frm.doc.insurance_subscription) {
+            validate_inpatient_balance_vs_inpatient_cost(frm)
+        }
+    },
 });
 
 frappe.ui.form.on('Inpatient Occupancy', {
@@ -45,8 +51,11 @@ frappe.ui.form.on('Inpatient Occupancy', {
         control_inpatient_record_move(frm, cdt, cdn);
     },
     is_confirmed: (frm, cdt, cdn) => {
-        isConfirmed(frm, "inpatient_occupancies");
-        validate_inpatient_balance_vs_inpatient_cost(frm);
+        let row = locals[cdt][cdn];
+        if (row.is_confirmed == 1) {
+            isConfirmed(frm, "inpatient_occupancies");
+            validate_inpatient_balance_vs_inpatient_cost(frm, row, "inpatient_occupancies", "Inpatient Record");
+        }
     },
 });
 
@@ -68,8 +77,11 @@ frappe.ui.form.on('Inpatient Consultancy', {
     },
 
     is_confirmed: (frm, cdt, cdn) => {
-        isConfirmed(frm, "inpatient_consultancy");
-        validate_inpatient_balance_vs_inpatient_cost(frm);
+        let row = locals[cdt][cdn];
+        if (row.is_confirmed == 1) {
+            isConfirmed(frm, "inpatient_consultancy");
+            validate_inpatient_balance_vs_inpatient_cost(frm, row, "inpatient_consultancy", "Inpatient Record");
+        }
     },
 });
 
@@ -197,18 +209,43 @@ var isConfirmed = (frm, fieldname) => {
     });
 }
 
-var validate_inpatient_balance_vs_inpatient_cost = (frm) => {
+var validate_inpatient_balance_vs_inpatient_cost = (frm, row = null, fieldname = "", caller = "") => {
     if (!frm.doc.insurance_subscription) {
+        let total_cost = 0;
+        let occupancies = frm.doc.inpatient_occupancies;
+        for (let i in occupancies) {
+            let row = occupancies[i];
+            if (row.is_confirmed == 1 && row.invoiced == 0) {
+                total_cost += row.amount
+            }
+        }
+        let consultancies = frm.doc.inpatient_consultancy;
+        for (let d in consultancies) {
+            let row = consultancies[d];
+            if (row.is_confirmed == 1 && row.hms_tz_invoiced == 0) {
+                total_cost += row.rate
+            }
+        }
         frappe.call({
             method: 'hms_tz.nhif.api.inpatient_record.validate_inpatient_balance_vs_inpatient_cost',
             args: {
                 patient: frm.doc.patient,
+                patient_name: frm.doc.patient_name,
+                appointment: frm.doc.patient_appointment,
                 inpatient_record: frm.doc.name,
-                patient_appointment: frm.doc.patient_appointment,
+                company: frm.doc.company,
+                inpatient_cost: total_cost,
+                cash_limit: frm.doc.cash_limit,
+                caller: caller
             },
             callback: function (r) {
-                if (!r.message) {
-                    frm.refresh_field("inpatient_consultancies");
+                if (r.message) {
+                    if (row) {
+                        row.is_confirmed = 0
+                    }
+                    if (fieldname) {
+                        frm.refresh_field(fieldname)
+                    }
                     frm.reload_doc();
                 }
             }
