@@ -16,6 +16,8 @@
   "cash_rates",
   "section_break_2",
   "excluded_service_rates",
+  "vc_practitioners_tab",
+  "practitioners",
   "vc_users_for_lrpmt_docs_section",
   "lab_users",
   "column_break_edsot",
@@ -45,7 +47,7 @@
   {
    "collapsible": 1,
    "fieldname": "insurance_sec",
-   "fieldtype": "Section Break",
+   "fieldtype": "Tab Break",
    "label": "Insurance Commission Rates"
   },
   {
@@ -56,7 +58,7 @@
   {
    "collapsible": 1,
    "fieldname": "cash_sec",
-   "fieldtype": "Section Break",
+   "fieldtype": "Tab Break",
    "label": "Cash Commission Rates"
   },
   {
@@ -67,7 +69,7 @@
   {
    "collapsible": 1,
    "fieldname": "section_break_2",
-   "fieldtype": "Section Break",
+   "fieldtype": "Tab Break",
    "label": "Excluded Service Rates"
   },
   {
@@ -78,14 +80,15 @@
   {
    "collapsible": 1,
    "fieldname": "vc_users_for_lrpmt_docs_section",
-   "fieldtype": "Section Break",
-   "label": "VC Users for LRPMT Docs"
+   "fieldtype": "Tab Break",
+   "label": "VC Technicians"
   },
   {
-   "description": "List of VC users who are eligible to get commission after submitting lab tests",
+   "bold": 1,
+   "description": "List of VC technicians who are eligible to get commissions after submitting lab tests. If VC technician is not in this list, means that VC technician won't get VC commission",
    "fieldname": "lab_users",
-   "fieldtype": "Table MultiSelect",
-   "label": "VC Lab Users",
+   "fieldtype": "Table",
+   "label": "VC Lab Technicians",
    "options": "VC LRPMT Submitter"
   },
   {
@@ -93,10 +96,11 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "List of VC users who are eligible to get commission after submitting Radiology Examinations",
+   "bold": 1,
+   "description": "List of VC technicians who are eligible to get commissions after submitting radiology. If VC technician is not on this list, means that VC technician won't get VC commission",
    "fieldname": "radiology_users",
-   "fieldtype": "Table MultiSelect",
-   "label": "VC Radiology Users",
+   "fieldtype": "Table",
+   "label": "VC Radiology Technicians",
    "options": "VC LRPMT Submitter"
   },
   {
@@ -105,14 +109,28 @@
    "label": "Series",
    "options": "HLC-VC-.YYYY.-",
    "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "vc_practitioners_tab",
+   "fieldtype": "Tab Break",
+   "label": "VC Practitioners"
+  },
+  {
+   "description": "List of healthcare practitioners eligible to get a visiting commission. If  VC practitioner is not on this list, then that practitioner won't get visiting commission",
+   "fieldname": "practitioners",
+   "fieldtype": "Table",
+   "label": "Vc Practitioners",
+   "options": "VC Practitioner"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-08-02 09:40:46.004211",
+ "modified": "2024-01-30 17:35:41.761456",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "Visiting Comission",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -130,5 +148,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

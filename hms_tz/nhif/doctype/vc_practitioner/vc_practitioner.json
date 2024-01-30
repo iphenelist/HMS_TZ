@@ -1,37 +1,37 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2023-08-01 15:38:22.200470",
+ "creation": "2024-01-30 10:35:44.585441",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "user_field",
+  "healathcare_practitioner",
   "wtax"
  ],
  "fields": [
   {
-   "fieldname": "user_field",
+   "fieldname": "healathcare_practitioner",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "VC User",
-   "options": "User",
+   "label": "Healathcare Practitioner",
+   "options": "Healthcare Practitioner",
    "reqd": 1
   },
   {
    "fieldname": "wtax",
    "fieldtype": "Percent",
    "in_list_view": 1,
-   "label": "Wtax"
+   "label": "WTax"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-01-30 10:55:32.191177",
+ "modified": "2024-01-30 10:35:44.585441",
  "modified_by": "Administrator",
  "module": "NHIF",
- "name": "VC LRPMT Submitter",
+ "name": "VC Practitioner",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
