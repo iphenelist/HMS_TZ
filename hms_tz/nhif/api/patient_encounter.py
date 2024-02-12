@@ -14,6 +14,7 @@ from frappe.utils import (
     cstr,
     flt,
     date_diff,
+    fmt_money,
 )
 from hms_tz.nhif.api.healthcare_utils import (
     get_item_rate,
@@ -62,6 +63,7 @@ def before_insert(doc, method):
         validate_nhif_patient_claim_status(
             "Patient Encounter", doc.company, doc.appointment, doc.insurance_company
         )
+    set_admission_service_type(doc)
 
 
 # regency rock: 95
@@ -670,6 +672,14 @@ def on_submit(doc, method):
         and doc.inpatient_record
         and not doc.healthcare_package_order
     ):  # Cash inpatient billing
+        if doc.mode_of_payment:
+            validate_patient_balance_vs_patient_costs(
+                doc.patient,
+                doc.patient_name,
+                doc.appointment,
+                doc.inpatient_record,
+                doc.company,
+            )
         inpatient_billing(doc, method)
     else:  # insurance patient
         on_submit_validation(doc, method)
@@ -1257,30 +1267,31 @@ def validate_totals(doc, method):
 
 @frappe.whitelist()
 def finalized_encounter(cur_encounter, ref_encounter=None):
-    cur_encounter_doc = frappe.get_doc("Patient Encounter", cur_encounter)
-    inpatient_status, inpatient_record = frappe.get_cached_value(
-        "Patient", cur_encounter_doc.patient, ["inpatient_status", "inpatient_record"]
+    patient, cur_inpatient_record = frappe.get_value(
+        "Patient Encounter", cur_encounter, ["patient", "inpatient_record"]
     )
-    if inpatient_status and cur_encounter_doc.inpatient_record == inpatient_record:
+    inpatient_status, inpatient_record = frappe.get_cached_value(
+        "Patient", patient, ["inpatient_status", "inpatient_record"]
+    )
+    if inpatient_status and cur_inpatient_record == inpatient_record:
         frappe.throw(
             _(
-                "The patient {0} has inpatient status <strong>{1}</strong>. Please process the discharge before proceeding to finalize the encounter.".format(
-                    cur_encounter_doc.patient, inpatient_status
-                )
+                f"The patient {patient} has inpatient status <strong>{inpatient_status}</strong>.\
+                Please process the discharge before proceeding to finalize the encounter."
             )
         )
+
+    frappe.db.set_value("Patient Encounter", cur_encounter, "encounter_type", "Final")
+    if not ref_encounter:
+        frappe.db.set_value("Patient Encounter", cur_encounter, "finalized", 1)
+        return
 
     encounters_list = frappe.get_all(
         "Patient Encounter",
         filters={"docstatus": 1, "reference_encounter": ref_encounter},
     )
     for element in encounters_list:
-        frappe.set_value("Patient Encounter", element.name, "finalized", 1)
-
-    frappe.set_value("Patient Encounter", cur_encounter, "encounter_type", "Final")
-    if not ref_encounter:
-        frappe.set_value("Patient Encounter", cur_encounter, "finalized", 1)
-        return
+        frappe.db.set_value("Patient Encounter", element.name, "finalized", 1)
 
 
 @frappe.whitelist()
@@ -1438,7 +1449,7 @@ def before_submit(doc, method):
     set_practitioner_name(doc, method)
 
     if doc.inpatient_record:
-        validate_patient_balance_vs_patient_costs(doc)
+        set_admission_service_type(doc)
 
     encounter_create_sales_invoice = frappe.get_cached_value(
         "Encounter Category", doc.encounter_category, "create_sales_invoice"
@@ -1466,16 +1477,17 @@ def before_submit(doc, method):
 
 @frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
+    frappe.set_value("Patient Encounter", cur_encounter, "encounter_type", "Ongoing")
+    if not ref_encounter:
+        frappe.set_value("Patient Encounter", cur_encounter, "finalized", 0)
+        return
+
     encounters_list = frappe.get_all(
         "Patient Encounter",
         filters={"docstatus": 1, "reference_encounter": ref_encounter},
     )
     for element in encounters_list:
         frappe.set_value("Patient Encounter", element.name, "finalized", 0)
-    if not ref_encounter:
-        frappe.set_value("Patient Encounter", cur_encounter, "finalized", 0)
-        return
-    frappe.set_value("Patient Encounter", cur_encounter, "encounter_type", "Ongoing")
 
 
 def set_amounts(doc):
@@ -1732,69 +1744,68 @@ def update_drug_prescription(patient_encounter_doc, name):
                     )
 
 
-def validate_patient_balance_vs_patient_costs(doc, encounters=None):
-    if not encounters or len(encounters) == 0:
-        encounters = get_patient_encounters(doc)
+def validate_patient_balance_vs_patient_costs(
+    patient,
+    patient_name,
+    appointment,
+    inpatient_record,
+    company,
+    inpatient_cost=0,
+    cash_limit=0,
+    caller="",
+    encounters=[],
+):
+    def get_encounter_costs(encounters):
+        encounter_cost = 0
+        child_map = [
+            {"child_table": "lab_test_prescription"},
+            {"child_table": "radiology_procedure_prescription"},
+            {"child_table": "procedure_prescription"},
+            {"child_table": "drug_prescription"},
+            {"child_table": "therapies"},
+        ]
+        for enc in encounters:
+            encounter_doc = frappe.get_doc("Patient Encounter", enc)
 
-        if not encounters or len(encounters) == 0:
-            return
+            for row in child_map:
+                for child in encounter_doc.get(row.get("child_table")):
+                    if (
+                        child.prescribe == 0
+                        or child.is_not_available_inhouse == 1
+                        or child.invoiced == 1
+                        or child.is_cancelled == 1
+                    ):
+                        continue
 
-    total_amount_billed = 0
+                    if child.doctype == "Drug Prescription":
+                        encounter_cost += (
+                            child.quantity - child.quantity_returned
+                        ) * child.amount
+                    else:
+                        encounter_cost += child.amount
+        return encounter_cost
 
-    child_map = [
-        {"child_table": "lab_test_prescription"},
-        {"child_table": "radiology_procedure_prescription"},
-        {"child_table": "procedure_prescription"},
-        {"child_table": "drug_prescription"},
-        {"child_table": "therapies"},
-    ]
-    for enc in encounters:
-        encounter_doc = frappe.get_doc("Patient Encounter", enc)
+    def get_inpatient_costs(inpatient_record):
+        inpatient_cost = 0
+        inpatient_record_doc = frappe.get_doc("Inpatient Record", inpatient_record)
+        cash_limit = inpatient_record_doc.cash_limit
+        for record in inpatient_record_doc.inpatient_occupancies:
+            if not record.is_confirmed:
+                continue
 
-        for row in child_map:
-            for child in encounter_doc.get(row.get("child_table")):
-                if (
-                    child.prescribe == 0
-                    or child.is_not_available_inhouse == 1
-                    or child.invoiced == 1
-                    or child.is_cancelled == 1
-                ):
-                    continue
+            inpatient_cost += record.amount
 
-                if child.doctype == "Drug Prescription":
-                    total_amount_billed += (
-                        child.quantity - child.quantity_returned
-                    ) * child.amount
-                else:
-                    total_amount_billed += child.amount
+        for record in inpatient_record_doc.inpatient_consultancy:
+            if not record.is_confirmed:
+                continue
 
-    inpatient_record_doc = frappe.get_doc("Inpatient Record", doc.inpatient_record)
+            inpatient_cost += record.rate
 
-    cash_limit = inpatient_record_doc.cash_limit
+        return inpatient_cost, cash_limit
 
-    for record in inpatient_record_doc.inpatient_occupancies:
-        if not record.is_confirmed:
-            continue
-
-        total_amount_billed += record.amount
-
-    for record in inpatient_record_doc.inpatient_consultancy:
-        if not record.is_confirmed:
-            continue
-
-        total_amount_billed += record.rate
-
-    # get balance from payment entry after patient has deposit advances
-    deposit_balance = get_balance_on(
-        party_type="Customer", party=doc.patient_name, company=doc.company
-    )
-
-    patient_balance = (-1 * deposit_balance) + cash_limit
-
-    cash_limit_percent = 100 - ((total_amount_billed / patient_balance) * 100)
     cash_limit_details = frappe.get_value(
         "Company",
-        {"name": doc.company, "hms_tz_has_cash_limit_alert": 1},
+        {"name": company, "hms_tz_has_cash_limit_alert": 1},
         [
             "hms_tz_minimum_cash_limit_percent",
             "hms_tz_limit_exceed_action",
@@ -1802,18 +1813,48 @@ def validate_patient_balance_vs_patient_costs(doc, encounters=None):
         ],
         as_dict=1,
     )
+    if not cash_limit_details:
+        return
 
-    make_cash_limit_alert(doc, cash_limit_percent, cash_limit_details)
+    total_amount_billed = 0
+    if not encounters or len(encounters) == 0:
+        encounters = get_patient_encounters(patient, appointment, inpatient_record)
+
+        if not encounters or len(encounters) == 0:
+            return
+
+    total_amount_billed += get_encounter_costs(encounters)
+
+    if inpatient_cost == 0 and cash_limit == 0:
+        inpatient_cost, cash_limit = get_inpatient_costs(inpatient_record)
+
+    total_amount_billed += flt(inpatient_cost)
+
+    # get balance from payment entry after patient has deposit advances
+    deposit_balance = get_balance_on(
+        party_type="Customer", party=patient_name, company=company
+    )
+
+    patient_balance = (-1 * deposit_balance) + flt(cash_limit)
+    cost_diff = fmt_money(total_amount_billed - patient_balance)
+
+    cash_limit_percent = 100 - ((total_amount_billed / patient_balance) * 100)
+
+    return make_cash_limit_alert(
+        patient, patient_name, cash_limit_percent, cash_limit_details, cost_diff, caller
+    )
 
 
-def make_cash_limit_alert(doc, cash_limit_percent, cash_limit_details):
+def make_cash_limit_alert(
+    patient, patient_name, cash_limit_percent, cash_limit_details, cost_diff, caller
+):
     if cash_limit_percent > 0 and cash_limit_percent <= cash_limit_details.get(
         "hms_tz_minimum_cash_limit_percent"
     ):
         msg_per = f"""<div style="border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin: 10px;">
-                <p style="font-weight: normal; font-size: 14px; justify-content: left;">The patient: <span style="font-weight: bold;">{doc.patient}</span> - <span style="font-weight: bold;">{doc.patient_name}</span>\
+                <p style="font-weight: normal; font-size: 14px; justify-content: left;">The patient: <span style="font-weight: bold;">{patient}</span> - <span style="font-weight: bold;">{patient_name}</span>\
                     has reached <span style="font-weight: bold;">{100 - flt(cash_limit_percent, 2)}%</span> of his/her cash limit.</p>
-                <p style="font-style: italic; font-weight: bold; font-size: 14px; justify-content: left;">please request patient to deposit advances or request patient cash limit adjustment</p>
+                <p style="font-style: italic; font-weight: bold; font-size: 14px; justify-content: left;">please request patient to deposit advances or ask patient to request cash limit adjustment</p>
             </div>"""
 
         if (
@@ -1829,44 +1870,57 @@ def make_cash_limit_alert(doc, cash_limit_percent, cash_limit_details):
             cash_limit_details.get("hms_tz_limit_under_minimum_percent_action")
             == "Stop"
         ):
+            if caller == "Inpatient Record":
+                frappe.msgprint(
+                    title="Cash Limit Exceeded",
+                    msg=msg_per,
+                )
+                return True
+
             frappe.throw(
                 title="Cash Limit Exceeded",
                 msg=msg_per,
             )
 
-    elif cash_limit_percent <= 0:
+    elif cash_limit_percent < 0:
         msg = f"""<div style="border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin: 10px;">
-                <p style="font-weight: normal; font-size: 14px; justify-content: left;">The deposit balance of this patient: <span style="font-weight: bold;">{doc.patient}</span> - <span style="font-weight: bold;">{doc.patient_name}</span>\
+                <p style="font-weight: normal; font-size: 14px; justify-content: left;">The deposit balance of this patient: <span style="font-weight: bold;">{patient}</span> - <span style="font-weight: bold;">{patient_name}</span>\
                     is not enough or Patient has reached the cash limit.</p>
-                <p style="font-style: italic; font-weight: bold; font-size: 14px; justify-content: left;">please request patient to deposit advances or request patient cash limit adjustment</p>
+                <p style="font-style: italic; font-weight: bold; font-size: 14px; justify-content: left;">please request patient to deposit advances or ask patient to request cash limit adjustment</p>
             </div>"""
 
         if cash_limit_details.get("hms_tz_limit_exceed_action") == "Warn":
             frappe.msgprint(
-                title="Cash Limit Exceeded",
+                title=f"Cash Limit Exceeded by: <b>{cost_diff}</b>",
                 msg=msg,
             )
 
         if cash_limit_details.get("hms_tz_limit_exceed_action") == "Stop":
+            if caller == "Inpatient Record":
+                frappe.msgprint(
+                    title=f"Cash Limit Exceeded by: <b>{cost_diff}</b>",
+                    msg=msg,
+                )
+                return True
+
             frappe.throw(
-                title="Cash Limit Exceeded",
+                title=f"Cash Limit Exceeded by: <b>{cost_diff}</b>",
                 msg=msg,
             )
 
 
-def get_patient_encounters(doc):
-    if doc.mode_of_payment != "" and doc.inpatient_record != "":
-        patient_encounters = frappe.get_all(
-            "Patient Encounter",
-            filters={
-                "patient": doc.patient,
-                "appointment": doc.appointment,
-                "inpatient_record": doc.inpatient_record,
-            },
-            fields=["name"],
-            pluck="name",
-        )
-        return patient_encounters
+def get_patient_encounters(patient, appointment, inpatient_record):
+    patient_encounters = frappe.get_all(
+        "Patient Encounter",
+        filters={
+            "patient": patient,
+            "appointment": appointment,
+            "inpatient_record": inpatient_record,
+        },
+        fields=["name"],
+        pluck="name",
+    )
+    return patient_encounters
 
 
 def show_last_prescribed_for_lrpt(doc, method):
@@ -2510,3 +2564,17 @@ def get_filtered_dosage(doctype, txt, searchfield, start, page_len, filters):
             fields=[searchfield],
             as_list=1,
         )
+
+
+def set_admission_service_type(doc):
+    """Set admission service type based on service unit type of inpatient record"""
+
+    if doc.inpatient_record:
+        admission_service_unit_type = frappe.get_value(
+            "Inpatient Record", doc.inpatient_record, "admission_service_unit_type"
+        )
+        if (
+            admission_service_unit_type
+            and doc.admission_service_unit_type != admission_service_unit_type
+        ):
+            doc.admission_service_unit_type = admission_service_unit_type

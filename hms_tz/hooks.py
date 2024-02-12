@@ -194,6 +194,8 @@ doc_events = {
     },
     "Inpatient Record": {
         "validate": "hms_tz.nhif.api.inpatient_record.validate",
+        "before_insert": "hms_tz.nhif.api.inpatient_record.before_insert",
+        "before_save": "hms_tz.nhif.api.inpatient_record.before_save",
         "after_insert": "hms_tz.nhif.api.inpatient_record.after_insert",
     },
     "Prescription Dosage": {
