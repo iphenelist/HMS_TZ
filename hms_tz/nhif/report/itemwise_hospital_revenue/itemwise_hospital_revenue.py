@@ -65,7 +65,8 @@ def get_columns(filters):
         {
             "fieldname": "appointment_no",
             "label": "AppointmentNo",
-            "fieldtype": "Data",
+            "fieldtype": "Link",
+            "options": "Patient Appointment",
             "width": 120,
         },
     ]
@@ -123,13 +124,15 @@ def get_columns(filters):
             {
                 "fieldnaeme": "practitioner",
                 "label": "Practitioner",
-                "fieldtype": "Data",
+                "fieldtype": "Link",
+                "options": "Healthcare Practitioner",
                 "width": 120,
             },
             {
                 "fieldname": "service_unit",
                 "label": "Service Unit",
-                "fieldtype": "Data",
+                "fieldtype": "Link",
+                "options": "Healthcare Service Unit",
                 "width": 120,
             },
             {
@@ -151,7 +154,8 @@ def get_columns(filters):
             {
                 "fieldname": "encounter_no",
                 "label": "Encounter No",
-                "fieldtype": "Data",
+                "fieldtype": "Link",
+                "options": "Patient Encounter",
                 "width": 120,
             },
             {
