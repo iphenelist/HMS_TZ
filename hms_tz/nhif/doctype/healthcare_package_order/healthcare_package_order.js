@@ -50,7 +50,7 @@ frappe.ui.form.on('Healthcare Package Order', {
 					package_doc.consultations.forEach((row) => {
 						let child = frm.add_child("consultations", {
 							"consultation_item": row.consultation_item,
-							// "consultation_fee": row.service_price,
+							"consultation_fee": row.service_price,
 						});
 					});
 					frm.refresh_field("consultations");
