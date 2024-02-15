@@ -1,10 +1,12 @@
 frappe.ui.form.on('Clinical Procedure', {
     refresh: function(frm) {
+        $('[data-label="Not%20Serviced"]').parent().hide();
         frm.remove_custom_button('Start');
         frm.remove_custom_button('Complete');
     },
 
     onload: function(frm) {
+        $('[data-label="Not%20Serviced"]').parent().hide();
         frm.remove_custom_button('Start');
         frm.remove_custom_button('Complete');
         if (frm.doc.patient) {
