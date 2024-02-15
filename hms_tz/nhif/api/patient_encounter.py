@@ -1184,7 +1184,7 @@ def validate_totals(doc, method):
                 )
 
                 if hasattr(row, "quantity"):
-                    quantity = row.quantity
+                    quantity = flt(row.quantity)
                 else:
                     quantity = 1
 
