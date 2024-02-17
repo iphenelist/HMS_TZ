@@ -1148,7 +1148,7 @@ var reuse_lrpmt_items = (frm, doctype, fields, value_dict, item_category, caller
                             new_row.medical_code = item.medical_code;
                             new_row.dosage = item.dosage;
                             new_row.period = item.period;
-                            new_row.quantity = item.quantity;
+                            new_row.quantity = parseInt(item.quantity);
                             let row = frm.add_child(field, new_row);
                         }
                     })

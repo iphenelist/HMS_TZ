@@ -22,7 +22,11 @@ frappe.ui.form.on('Lab Test', {
             };
         });
     },
+    refresh: (frm) => {
+        $('[data-label="Not%20Serviced"]').parent().hide();
+    },
     onload: (frm) => {
+        $('[data-label="Not%20Serviced"]').parent().hide();
         if (frm.doc.patient) {
             frm.add_custom_button(__('Patient History'), function () {
                 frappe.route_options = { 'patient': frm.doc.patient };

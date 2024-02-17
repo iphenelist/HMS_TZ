@@ -37,7 +37,7 @@ def before_save(doc, method):
     if len(doc.inpatient_occupancies) == 0:
         return
     
-    last_row = doc.inpatient_occupancies[len(doc.inpatient_occupancies)]
+    last_row = doc.inpatient_occupancies[len(doc.inpatient_occupancies) - 1]
     if last_row.service_unit:
         service_unit_type = frappe.get_cached_value(
             "Healthcare Service Unit", last_row.service_unit, "service_unit_type"
