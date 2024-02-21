@@ -99,7 +99,7 @@ def execute(filters=None):
                 "coverage_plan_card_number": "",
                 "date_admitted": (
                     admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                    if admitted_discharge_date
+                    if admitted_discharge_date.admitted_date
                     else admitted_discharge_date.scheduled_date
                 ),
                 "date_discharge": (
@@ -172,7 +172,7 @@ def execute(filters=None):
                 "coverage_plan_card_number": "",
                 "date_admitted": (
                     admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                    if admitted_discharge_date
+                    if admitted_discharge_date.admitted_date
                     else admitted_discharge_date.scheduled_date
                 ),
                 "date_discharge": (
@@ -249,7 +249,7 @@ def execute(filters=None):
                 "coverage_plan_card_number": "",
                 "date_admitted": (
                     admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                    if admitted_discharge_date
+                    if admitted_discharge_date.admitted_date
                     else admitted_discharge_date.scheduled_date
                 ),
                 "date_discharge": (
