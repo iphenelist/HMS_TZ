@@ -83,6 +83,13 @@ def execute(filters=None):
             for n in range(0, len(data)):
                 total_amount += data[n]["amount"]
 
+            _date = ""
+            if admitted_discharge_date:
+                if admitted_discharge_date.admitted_date:
+                    _date = admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
+                else:
+                    _date = admitted_discharge_date.scheduled_date
+
             last_row = {
                 "date": "Total",
                 "category": "",
@@ -97,11 +104,7 @@ def execute(filters=None):
                 "coverage_plan_name": "",
                 "authorization_number": "",
                 "coverage_plan_card_number": "",
-                "date_admitted": (
-                    admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                    if admitted_discharge_date.admitted_date
-                    else admitted_discharge_date.scheduled_date
-                ),
+                "date_admitted": _date,
                 "date_discharge": (
                     admitted_discharge_date.discharge_date
                     if admitted_discharge_date
@@ -170,11 +173,7 @@ def execute(filters=None):
                 "coverage_plan_name": "",
                 "authorization_number": "",
                 "coverage_plan_card_number": "",
-                "date_admitted": (
-                    admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                    if admitted_discharge_date.admitted_date
-                    else admitted_discharge_date.scheduled_date
-                ),
+                "date_admitted": _date,
                 "date_discharge": (
                     admitted_discharge_date.discharge_date
                     if admitted_discharge_date
@@ -247,11 +246,7 @@ def execute(filters=None):
                 "coverage_plan_name": "",
                 "authorization_number": "",
                 "coverage_plan_card_number": "",
-                "date_admitted": (
-                    admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                    if admitted_discharge_date.admitted_date
-                    else admitted_discharge_date.scheduled_date
-                ),
+                "date_admitted": _date,
                 "date_discharge": (
                     admitted_discharge_date.discharge_date
                     if admitted_discharge_date
