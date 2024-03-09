@@ -19,7 +19,7 @@ frappe.ui.form.on("Radiology Examination", {
                     return;
                 }
                 frappe.call({
-                    method: "hms_tz.nhif.api.healthcare_utils.varify_service_approval_number_for_LRPM", 
+                    method: "hms_tz.nhif.api.healthcare_utils.verify_service_approval_number_for_LRPMT", 
                     args: {
                         company: frm.doc.company,
                         approval_number: frm.doc.approval_number,
