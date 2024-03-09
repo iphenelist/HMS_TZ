@@ -204,7 +204,7 @@ doc_events = {
     "Prescription Dosage": {
         "before_insert": "hms_tz.nhif.api.prescription_dosage.before_insert",
     },
-    "Sales Order": {"before_submit": "hms_tz.nhif.api.sales_order.create_sales_order"},
+    "Sales Order": {"before_submit": "hms_tz.nhif.api.sales_order.before_submit"},
     #    "Therapy Plan": {
     #        "validate": "hms_tz.nhif.api.therapy_plan.validate",
     #    },
