@@ -31,6 +31,7 @@ frappe.ui.form.on('Clinical Procedure', {
                         approval_number: frm.doc.approval_number,
                         template_doctype: "Clinical Procedure Template",
                         template_name: frm.doc.procedure_template,
+                        appointment: frm.doc.appointment,
                         encounter: frm.doc.ref_docname
                     },
                     freeze: true,

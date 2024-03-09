@@ -1,36 +1,24 @@
-frappe.ui.form.on("Radiology Examination", {
-    refresh: (frm) => {
-        $('[data-label="Not%20Serviced"]').parent().hide();
-    },
-    onload: (frm) => { 
-        $('[data-label="Not%20Serviced"]').parent().hide();
-        if (frm.doc.patient) {
-            frm.add_custom_button(__('Patient History'), function () {
-                frappe.route_options = { 'patient': frm.doc.patient };
-                frappe.set_route('tz-patient-history');
-            });
-        }
-     },
-    
+frappe.ui.form.on('Therapy Session', {
+
     approval_number: (frm) => {
         frm.fields_dict.approval_number.$input.focusout(() => {
             if (frm.doc.approval_number != "" && frm.doc.approval_number != undefined) {
                 if (!frm.doc.insurance_company.includes("NHIF")) {
                     return;
                 }
+
                 frappe.call({
-                    method: "hms_tz.nhif.api.healthcare_utils.varify_service_approval_number_for_LRPM", 
+                    method: "hms_tz.nhif.api.healthcare_utils.varify_service_approval_number_for_LRPM",
                     args: {
                         company: frm.doc.company,
                         approval_number: frm.doc.approval_number,
-                        template_doctype: "Radiology Examination Template",
-                        template_name: frm.doc.radiology_examination_template,
-                        appoiintment: frm.doc.appointment,
-                        encounter: frm.doc.ref_docname
+                        template_doctype: "Therapy Type",
+                        template_name: frm.doc.therapy_type,
+                        appointment: frm.doc.appointment,
+                        encounter: frm.doc.ref_docname,
                     },
                     freeze: true,
                     freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-
                 }).then(r => {
                     if (r.message && r.message == "approval number validation is disabled") {
                         return
@@ -41,7 +29,7 @@ frappe.ui.form.on("Radiology Examination", {
                                 Approval Number is Valid</h4>"),
                             indicator: "green"
                         }, 20);
-                        
+
                     } else {
                         frm.set_value("approval_number", "");
                         frappe.show_alert({
@@ -54,4 +42,4 @@ frappe.ui.form.on("Radiology Examination", {
             }
         });
     }
-})
+});

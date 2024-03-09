@@ -48,6 +48,7 @@ frappe.ui.form.on('Lab Test', {
                         approval_number: frm.doc.approval_number,
                         template_doctype: "Lab Test Template",
                         template_name: frm.doc.template,
+                        appointment: frm.doc.appointment,
                         encounter: frm.doc.ref_docname
                     },
                     freeze: true,

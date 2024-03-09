@@ -48,6 +48,7 @@ doctype_js = {
     "Inpatient Record": "nhif/api/inpatient_record.js",
     "Healthcare Service Unit": "nhif/api/service_unit.js",
     "Therapy Plan": "nhif/api/therapy_plan.js",
+    "Therapy Session": "nhif/api/therapy_session.js",
     "Clinical Procedure": "nhif/api/clinical_procedure.js",
     "Medical Department": "nhif/api/medical_department.js",
     "Delivery Note": "nhif/api/delivery_note.js",
@@ -204,6 +205,9 @@ doc_events = {
     #    "Therapy Plan": {
     #        "validate": "hms_tz.nhif.api.therapy_plan.validate",
     #    },
+    "Therapy Session": {
+        "after_insert": "hms_tz.nhif.api.therapy_session.after_insert",
+    },
 }
 
 # standard_queries = {
