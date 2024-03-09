@@ -75,6 +75,7 @@ def create_therapy_plan(encounter):
         doc.hms_tz_patient_age = encounter.patient_age
         doc.hms_tz_patient_sex = encounter.patient_sex
         doc.hms_tz_insurance_coverage_plan = encounter.insurance_coverage_plan
+        doc.insurance_company = encounter.insurance_company
         doc.ref_doctype = "Patient Encounter"
         doc.ref_docname = encounter.name
         for entry in therapies:
@@ -84,16 +85,18 @@ def create_therapy_plan(encounter):
                     "therapy_type": entry.therapy_type,
                     "no_of_sessions": entry.no_of_sessions,
                     "prescribe": entry.prescribe or 0,
+                    "is_restricted": entry.is_restricted or 0,
+                    "hms_tz_ref_childname": entry.name
                 },
             )
         doc.save(ignore_permissions=True)
         if doc.get("name"):
             encounter.db_set("therapy_plan", doc.name)
             frappe.msgprint(
-                _("Therapy Plan {0} created successfully.").format(
-                    frappe.bold(doc.name)
+                _(
+                    f"Therapy Plan {frappe.bold(doc.name)} created successfully."
                 ),
-                alert=True,
+                alert=True
             )
 
 
