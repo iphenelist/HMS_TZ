@@ -141,7 +141,10 @@ doc_events = {
         "before_submit": "hms_tz.nhif.api.patient_encounter.before_submit",
         "validate": "hms_tz.nhif.api.patient_encounter.on_submit_validation",
         "on_trash": "hms_tz.nhif.api.patient_encounter.on_trash",
-        "on_submit": "hms_tz.nhif.api.patient_encounter.on_submit",
+        "on_submit": [
+            "hms_tz.nhif.api.patient_encounter.on_submit",
+            "hms_tz.nhif.api.sales_order.create_sales_order",
+        ],
         "before_insert": "hms_tz.nhif.api.patient_encounter.before_insert",
         "after_insert": "hms_tz.nhif.api.patient_encounter.after_insert",
     },
@@ -201,6 +204,7 @@ doc_events = {
     "Prescription Dosage": {
         "before_insert": "hms_tz.nhif.api.prescription_dosage.before_insert",
     },
+    "Sales Order": {"before_submit": "hms_tz.nhif.api.sales_order.before_submit"},
     #    "Therapy Plan": {
     #        "validate": "hms_tz.nhif.api.therapy_plan.validate",
     #    },

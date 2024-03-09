@@ -1,5 +1,9 @@
 frappe.ui.form.on('Sales Order', {
     refresh: function (frm) {
+        if (frm.doc.patient_encounter) {
+            frm.set_df_property("items", "read_only", 1);
+        }
+
         if (frappe.boot.active_domains.includes("Healthcare")) {
             frm.set_df_property("patient", "hidden", 0);
             frm.set_df_property("patient_name", "hidden", 0);
@@ -11,6 +15,11 @@ frappe.ui.form.on('Sales Order', {
             }
         };
     },
+    onload: function (frm) {
+        if (frm.doc.patient_encounter) {
+            frm.set_df_property("items", "read_only", 1);
+        }
+    }
 });
 
 var get_healthcare_services_to_invoice = function (frm) {
