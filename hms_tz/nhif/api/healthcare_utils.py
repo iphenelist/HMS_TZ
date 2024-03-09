@@ -1274,7 +1274,7 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
 
 
 @frappe.whitelist()
-def varify_service_approval_number_for_LRPM(
+def verify_service_approval_number_for_LRPMT(
     company,
     approval_number,
     template_doctype,
