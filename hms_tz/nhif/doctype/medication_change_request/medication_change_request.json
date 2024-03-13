@@ -12,10 +12,12 @@
   "patient",
   "patient_name",
   "appointment",
+  "hms_tz_comment",
   "column_break_5",
   "company",
   "patient_encounter",
   "delivery_note",
+  "sales_order",
   "healthcare_practitioner",
   "practitioner_name",
   "medical_department",
@@ -77,12 +79,13 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval: !doc.sales_order",
    "fieldname": "delivery_note",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Delivery Note",
+   "mandatory_depends_on": "eval: !doc.sales_order",
    "options": "Delivery Note",
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -146,15 +149,31 @@
    "options": "Medication Change Request",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "description": "comment indicates an item that required to be changed",
+   "fieldname": "hms_tz_comment",
+   "fieldtype": "Small Text",
+   "label": "Comment",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: !doc.delivery_note",
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "mandatory_depends_on": "eval: !doc.delivery_note",
+   "options": "Sales Order"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2021-09-22 00:00:48.091050",
+ "modified": "2024-03-13 16:09:41.493711",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "Medication Change Request",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -177,6 +196,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title",
  "track_changes": 1,
  "track_seen": 1
