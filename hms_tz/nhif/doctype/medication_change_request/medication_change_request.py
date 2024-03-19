@@ -49,11 +49,14 @@ class MedicationChangeRequest(Document):
             self.warehouse = self.get_warehouse_per_dn_or_so()
 
             for row in encounter_doc.drug_prescription:
-                if self.warehouse != get_warehouse_from_service_unit(
-                    row.healthcare_service_unit
+                if (
+                    self.delivery_note and
+                    self.warehouse != get_warehouse_from_service_unit(
+                        row.healthcare_service_unit
+                    )
                 ):
                     continue
-                
+
                 self.set_drugs(row, encounter_doc.insurance_subscription)
 
             if not self.patient_encounter_final_diagnosis:
@@ -106,15 +109,12 @@ class MedicationChangeRequest(Document):
                         )
                     )
 
-                validate_healthcare_service_unit(
-                    self.warehouse, drug, method="validate"
-                )
-
                 self.validate_drug_quantity(drug)
                 self.validate_item_available_in_house(drug)
 
                 if not self.sales_order:
                     self.validate_item_insurance_coverage(drug, "validate")
+                    validate_healthcare_service_unit(self.warehouse, drug, method="validate")
 
     def before_submit(self):
         if not self.sales_order:
@@ -124,10 +124,9 @@ class MedicationChangeRequest(Document):
 
         self.warehouse = self.get_warehouse_per_dn_or_so()
         for item in self.drug_prescription:
-            validate_healthcare_service_unit(self.warehouse, item, method="throw")
-
             if not self.sales_order:
                 self.validate_item_insurance_coverage(item, "throw")
+                validate_healthcare_service_unit(self.warehouse, item, method="throw")
 
             set_amount(self, item)
 
@@ -164,7 +163,9 @@ class MedicationChangeRequest(Document):
             )
 
     def set_drugs(self, row, insurance_subscription=None):
-        is_so_from_encounter = frappe.get_cached_value("Company", self.company, "auto_create_sales_order_from_encounter")
+        is_so_from_encounter = frappe.get_cached_value(
+            "Company", self.company, "auto_create_sales_order_from_encounter"
+        )
         if is_so_from_encounter == 1 and insurance_subscription:
 
             # add only covered items unser insurance coverage, means items that reached to delivery note
@@ -432,7 +433,7 @@ class MedicationChangeRequest(Document):
                 "item_code": item_code,
                 "item_name": item_name,
                 "description": item_description,
-                dosage_info: dosage_info,
+                "dosage_info": dosage_info,
                 "qty": row.quantity - row.quantity_returned,
                 "delivery_date": nowdate(),
                 "warehouse": so_doc.set_warehouse,
@@ -686,16 +687,10 @@ def get_items_on_change_of_sales_order(name, encounter, sales_order):
         return
 
     patient_encounter_doc = get_patient_encounter_doc(encounter)
-    sales_order_doc = frappe.get_doc("Sales Order", sales_order)
 
     doc.drug_prescription = []
     doc.original_pharmacy_prescription = []
     for item_line in patient_encounter_doc.drug_prescription:
-        if sales_order_doc.set_warehouse != get_warehouse_from_service_unit(
-            item_line.healthcare_service_unit
-        ):
-            continue
-
         doc.set_drugs(item_line)
 
     doc.sales_order = sales_order
