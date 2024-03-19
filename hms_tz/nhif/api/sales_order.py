@@ -1,6 +1,14 @@
 import frappe
 from frappe import _
 from frappe.utils import nowdate
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import CombineDatetime
+from hms_tz.nhif.api.healthcare_utils import msgThrow
+
+
+def validate(doc, method):
+    for item in doc.items:
+        validate_stock_item(item, doc.set_warehouse, method)
 
 
 def before_submit(doc, method):
@@ -9,6 +17,9 @@ def before_submit(doc, method):
             "This sales order has pending medication change request.\
                 Please inform the doctor: <b>{doc.healthcare_practitioner}</b> to approve the request."
         )
+
+    for item in doc.items:
+        validate_stock_item(item, doc.set_warehouse, method)
 
 
 def create_sales_order(doc, method):
@@ -198,3 +209,50 @@ def get_childs_map():
             "item_field": "therapy_type",
         },
     ]
+
+
+def validate_stock_item(item, warehouse, method):
+    if frappe.get_cached_value("Item", item.item_code, "is_stock_item") == 1:
+        stock_qty = get_stock_availability(item.item_code, warehouse)
+        if float(item.qty) > float(stock_qty):
+            msgThrow(
+                (
+                    f"Available quantity for item: <h4 style='background-color:\
+                        LightCoral'>{item.item_code} is {stock_qty}</h4>In {warehouse}."
+                ),
+                method,
+            )
+
+    elif item.reference_dt == "Drug Prescription":
+        msgThrow(
+            (
+                f"Item: <b>{item.item_code}</b> RowNo: <b>{item.idx}</b> is not a stock item, delivery note cannot be create for this Item"
+            ),
+            method,
+        )
+
+
+def get_stock_availability(item_code, warehouse):
+    sle = DocType("Stock Ledger Entry")
+    latest_sle = (
+        frappe.qb.from_(sle)
+        .select(
+            sle.qty_after_transaction.as_("actual_qty"),
+            sle.posting_date,
+            sle.posting_time,
+            sle.name,
+        )
+        .where(
+            (sle.item_code == item_code)
+            & (sle.warehouse == warehouse)
+            & (sle.is_cancelled == 0)
+            & (sle.docstatus < 2)
+        )
+        .orderby(
+            CombineDatetime(sle.posting_date, sle.posting_time), order=frappe.qb.desc
+        )
+        .limit(1)
+    ).run(as_dict=True)
+
+    sle_qty = latest_sle[0].actual_qty or 0 if latest_sle else 0
+    return sle_qty
