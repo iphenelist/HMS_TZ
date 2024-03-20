@@ -1,7 +1,6 @@
 pull_request_rules:
 - name: Auto-close PRs on stable branch
     conditions:
-      - and:
         - author != aakvatech
         - author != av-dev2
         - author != mergify[bot]
