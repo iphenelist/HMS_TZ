@@ -1,10 +1,10 @@
 pull_request_rules:
-- name: Auto-close PRs on stable branch
+  - name: Auto-close PRs on stable branch
     conditions:
-        - author != aakvatech
-        - author != av-dev2
-        - author != mergify[bot]
-        - base=version-14
+       - author!=aakvatech
+       - author!=av-dev2
+       - author!=mergify[bot]
+       - base=version-14
     actions:
       close:
       comment:
