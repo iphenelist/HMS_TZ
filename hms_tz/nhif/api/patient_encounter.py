@@ -400,36 +400,52 @@ def on_submit_validation(doc, method):
         healthcare_insurance_coverage_plan,
         ["coverage_plan_name", "is_exclusions"],
     )
+    
+    validate_item_coverage(
+        doc,
+        method,
+        healthcare_service_templates,
+        hsic_map,
+        hicp_name,
+        is_exclusions,
+    )
+    validate_totals(doc, method)
+
+def validate_item_coverage(
+    doc,
+    method,
+    healthcare_service_templates,
+    hsic_map,
+    hicp_name,
+    is_exclusions
+):
     for template in healthcare_service_templates:
         """
         If the value of "is_exclusions" is 1, it means the template should not be listed in the "hsic_map". This is because when "is_exclusions" is 1, it indicates that the template which is in "hsic_map" is not covered.
-        
+
         However, there's an exception to this rule. If the "approval_mandatory_for_claim" for that template is also 1, it means the template is covered but needs extra authorization for approval.
-        
+
         This apply for NHIF and Non NHIF Insurance
         """
 
         if is_exclusions:
-            if template in hsic_map and hsic_map[template].approval_mandatory_for_claim == 0:
-                for row_item in healthcare_service_templates[template]:
-                    if (
-                        doc.company
-                        and frappe.get_cached_value(
-                            "Company",
-                            doc.company,
-                            "auto_prescribe_items_on_patient_encounter",
-                        )
-                        == 1
-                    ):
-                        row_item.prescribe = 1
-
-                msg = _(
-                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
-                )
-                msgThrow(
-                    msg,
+            if (
+                template in hsic_map
+                and hsic_map[template].approval_mandatory_for_claim == 0
+            ):
+                mark_item_not_covered(
+                    doc.company,
+                    hicp_name,
+                    template,
+                    healthcare_service_templates,
                     method,
                 )
+
+            elif (
+                template in hsic_map
+                and hsic_map[template].approval_mandatory_for_claim == 1
+            ):
+                set_is_restricted(template, healthcare_service_templates, hsic_map)
 
         else:
             """
@@ -441,40 +457,56 @@ def on_submit_validation(doc, method):
             This apply for NHIF and Non NHIF Insurance.
             """
             if template not in hsic_map:
-                for row_item in healthcare_service_templates[template]:
-                    if (
-                        doc.company
-                        and frappe.get_cached_value(
-                            "Company",
-                            doc.company,
-                            "auto_prescribe_items_on_patient_encounter",
-                        )
-                        == 1
-                    ):
-                        row_item.prescribe = 1
-
-                msg = _(
-                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
-                )
-                msgThrow(
-                    msg,
+                mark_item_not_covered(
+                    doc.company,
+                    hicp_name,
+                    template,
+                    healthcare_service_templates,
                     method,
                 )
 
-        coverage_info = hsic_map[template]
-        for row in healthcare_service_templates[template]:
-            row.is_restricted = coverage_info.approval_mandatory_for_claim
-            if row.is_restricted:
-                frappe.msgprint(
-                    _("{0} with template {1} requires additional authorization").format(
-                        _(row.doctype), template
-                    ),
-                    alert=True,
-                )
-        if coverage_info.maximum_number_of_claims == 0:
-            continue
+            elif (
+                template in hsic_map
+                and hsic_map[template].approval_mandatory_for_claim == 1
+            ):
+                set_is_restricted(template, healthcare_service_templates, hsic_map)
 
-    validate_totals(doc, method)
+
+def mark_item_not_covered(
+    company, hicp_name, template, healthcare_service_templates, method
+):
+    for row_item in healthcare_service_templates[template]:
+        if (
+            company
+            and frappe.get_cached_value(
+                "Company",
+                company,
+                "auto_prescribe_items_on_patient_encounter",
+            )
+            == 1
+        ):
+            row_item.prescribe = 1
+
+    msg = _(
+        f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+    )
+    msgThrow(
+        msg,
+        method,
+    )
+
+
+def set_is_restricted(template, healthcare_service_templates, hsic_map):
+    coverage_info = hsic_map[template]
+    for row in healthcare_service_templates[template]:
+        row.is_restricted = coverage_info.approval_mandatory_for_claim
+        if row.is_restricted:
+            frappe.msgprint(
+                _("{0} with template {1} requires additional authorization").format(
+                    _(row.doctype), template
+                ),
+                alert=True,
+            )
 
 
 def checkـforـduplicate(doc, method):
