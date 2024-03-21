@@ -1090,9 +1090,12 @@ def create_invoiced_items_if_not_created():
                                 "practitioner": patient_encounter_doc.practitioner,
                                 "source": patient_encounter_doc.source,
                                 "prescribe": child.prescribe,
-                                "insurance_subscription": patient_encounter_doc.insurance_subscription
-                                if patient_encounter_doc.insurance_subscription
-                                else "",
+                                "insurance_subscription": (
+                                    patient_encounter_doc.insurance_subscription
+                                    if patient_encounter_doc.insurance_subscription
+                                    else ""
+                                ),
+                                "appointment": patient_encounter_doc.appointment,
                                 "ref_doctype": patient_encounter_doc.doctype,
                                 "ref_docname": patient_encounter_doc.name,
                                 "hms_tz_ref_childname": child.name,
@@ -1120,14 +1123,17 @@ def create_invoiced_items_if_not_created():
                                 "practitioner": patient_encounter_doc.practitioner,
                                 "source": patient_encounter_doc.source,
                                 "prescribe": child.prescribe,
-                                "insurance_subscription": patient_encounter_doc.insurance_subscription
-                                if patient_encounter_doc.insurance_subscription
-                                else "",
+                                "insurance_subscription": (
+                                    patient_encounter_doc.insurance_subscription
+                                    if patient_encounter_doc.insurance_subscription
+                                    else ""
+                                ),
                                 "medical_department": frappe.get_cached_value(
                                     "Radiology Examination Template",
                                     child.radiology_examination_template,
                                     "medical_department",
                                 ),
+                                "appointment": patient_encounter_doc.appointment,
                                 "ref_doctype": patient_encounter_doc.doctype,
                                 "ref_docname": patient_encounter_doc.name,
                                 "hms_tz_ref_childname": child.name,
@@ -1164,6 +1170,7 @@ def create_invoiced_items_if_not_created():
                                     child.procedure,
                                     "medical_department",
                                 ),
+                                "appointment": patient_encounter_doc.appointment,
                                 "ref_doctype": patient_encounter_doc.doctype,
                                 "ref_docname": patient_encounter_doc.name,
                                 "hms_tz_ref_childname": child.name,
@@ -1267,8 +1274,13 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
 
 
 @frappe.whitelist()
-def varify_service_approval_number_for_LRPM(
-    company, approval_number, template_doctype, template_name, encounter
+def verify_service_approval_number_for_LRPMT(
+    company,
+    approval_number,
+    template_doctype,
+    template_name,
+    appointment=None,
+    encounter=None,
 ):
     """Verify if the service approval number is valid for the given approval number and item ref code
 
@@ -1298,11 +1310,26 @@ def varify_service_approval_number_for_LRPM(
             )
         return item_ref_code
 
-    def get_card_no(encounter):
-        appointment = frappe.get_value("Patient Encounter", encounter, "appointment")
-        cardno = frappe.get_value(
-            "Patient Appointment", appointment, "coverage_plan_card_number"
-        )
+    def get_card_no(appointment=None, encounter=None):
+        cardno = None
+        if appointment:
+            cardno = frappe.get_value(
+                "Patient Appointment", appointment, "coverage_plan_card_number"
+            )
+
+        elif not cardno and encounter:
+            appointment = frappe.get_value(
+                "Patient Encounter", encounter, "appointment"
+            )
+            cardno = frappe.get_value(
+                "Patient Appointment", appointment, "coverage_plan_card_number"
+            )
+
+        if not cardno:
+            frappe.throw(
+                "Card Number not found, Please set cardno on patient appointment"
+            )
+
         return cardno
 
     (
@@ -1325,7 +1352,7 @@ def varify_service_approval_number_for_LRPM(
     if validate_service_approval_no == 0:
         return "approval number validation is disabled"
 
-    cardno = get_card_no(encounter)
+    cardno = get_card_no(appointment, encounter)
     item_code = get_item_ref_code(template_doctype, template_name)
 
     url = (

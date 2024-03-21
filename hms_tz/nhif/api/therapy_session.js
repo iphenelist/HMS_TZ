@@ -1,22 +1,5 @@
-frappe.ui.form.on('Clinical Procedure', {
-    refresh: function(frm) {
-        $('[data-label="Not%20Serviced"]').parent().hide();
-        frm.remove_custom_button('Start');
-        frm.remove_custom_button('Complete');
-    },
+frappe.ui.form.on('Therapy Session', {
 
-    onload: function(frm) {
-        $('[data-label="Not%20Serviced"]').parent().hide();
-        frm.remove_custom_button('Start');
-        frm.remove_custom_button('Complete');
-        if (frm.doc.patient) {
-            frm.add_custom_button(__('Patient History'), function () {
-                frappe.route_options = { 'patient': frm.doc.patient };
-                frappe.set_route('tz-patient-history');
-            });
-        }
-    },
-    
     approval_number: (frm) => {
         frm.fields_dict.approval_number.$input.focusout(() => {
             if (frm.doc.approval_number != "" && frm.doc.approval_number != undefined) {
@@ -25,14 +8,14 @@ frappe.ui.form.on('Clinical Procedure', {
                 }
 
                 frappe.call({
-                    method: "hms_tz.nhif.api.healthcare_utils.verify_service_approval_number_for_LRPMT", 
+                    method: "hms_tz.nhif.api.healthcare_utils.verify_service_approval_number_for_LRPMT",
                     args: {
                         company: frm.doc.company,
                         approval_number: frm.doc.approval_number,
-                        template_doctype: "Clinical Procedure Template",
-                        template_name: frm.doc.procedure_template,
+                        template_doctype: "Therapy Type",
+                        template_name: frm.doc.therapy_type,
                         appointment: frm.doc.appointment,
-                        encounter: frm.doc.ref_docname
+                        encounter: frm.doc.ref_docname,
                     },
                     freeze: true,
                     freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
@@ -59,4 +42,4 @@ frappe.ui.form.on('Clinical Procedure', {
             }
         });
     }
-})
+});

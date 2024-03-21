@@ -31,9 +31,9 @@ class LabMachineMessage(Document):
                 fields = line.split("|")
                 if fields[2]:
                     sample_collection = fields[2]
-                    break
                 elif fields[3]:
                     sample_collection = fields[3]
+                break
 
         if sample_collection:
             sample_collection_exists = frappe.db.exists(
@@ -100,7 +100,6 @@ class LabMachineMessage(Document):
                                 )
                             else:
                                 test_name = line.split("|")[4].replace("*", "")
-                            frappe.msgprint(test_name)
                             test_result = fields[5]
                             lab_test_row = ""
                             for row in lab_test_doc.normal_test_items:
