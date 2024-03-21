@@ -11,6 +11,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     create_individual_radiology_examination,
     create_individual_procedure_prescription,
 )
+from hms_tz.nhif.api.sales_order import validate_stock_item
 
 
 def validate(doc, method):
@@ -21,6 +22,13 @@ def validate(doc, method):
                     "Amount of the healthcare service <b>'{0}'</b> cannot be ZERO. Please do not select this item and request Pricing team to resolve this."
                 ).format(item.item_name)
             )
+
+        # do not validate stock for cash inpatient sales invoice
+        if doc.enabled_auto_create_delivery_notes == 0:
+            continue
+
+        validate_stock_item(item, item.warehouse, method)
+
     update_dimensions(doc)
     validate_create_delivery_note(doc)
 
@@ -62,6 +70,12 @@ def before_submit(doc, method):
                 "Patient Discount Request is still pending. Please wait for approval before submitting this invoice."
             )
         )
+    
+    # do not validate stock for cash inpatient sales invoice
+    if doc.enabled_auto_create_delivery_notes == 1:
+        for row in doc.items:
+            if frappe.get_value("Item", row.item_code, "is_stock_item") == 1:
+                validate_stock_item(row, row.warehouse, method)
 
     if doc.is_return == 1:
         reset_invoiced_status(doc)

@@ -15,16 +15,17 @@ frappe.ui.form.on("Radiology Examination", {
     approval_number: (frm) => {
         frm.fields_dict.approval_number.$input.focusout(() => {
             if (frm.doc.approval_number != "" && frm.doc.approval_number != undefined) {
-                // if (!frm.doc.insurance_company.includes("NHIF")) {
-                //     return;
-                // }
+                if (!frm.doc.insurance_company.includes("NHIF")) {
+                    return;
+                }
                 frappe.call({
-                    method: "hms_tz.nhif.api.healthcare_utils.varify_service_approval_number_for_LRPM", 
+                    method: "hms_tz.nhif.api.healthcare_utils.verify_service_approval_number_for_LRPMT", 
                     args: {
                         company: frm.doc.company,
                         approval_number: frm.doc.approval_number,
                         template_doctype: "Radiology Examination Template",
                         template_name: frm.doc.radiology_examination_template,
+                        appoiintment: frm.doc.appointment,
                         encounter: frm.doc.ref_docname
                     },
                     freeze: true,

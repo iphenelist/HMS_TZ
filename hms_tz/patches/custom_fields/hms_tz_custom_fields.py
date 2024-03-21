@@ -1491,16 +1491,17 @@ def execute():
                 
             }
         ],
-        "Medication Change Request": [
-            {
-                'fieldtype': 'Small Text',
-                'label': 'Comment',
-                'fieldname': 'hms_tz_comment',
-                'insert_after': 'appointment',
-                'description': 'comment indicates an item that required to be changed',
-                "read_only": 1,
-            }
-        ],
+        # The field (Comment) shifted to json of medication change request 2024-03-12
+        # "Medication Change Request": [
+        #     {
+        #         'fieldtype': 'Small Text',
+        #         'label': 'Comment',
+        #         'fieldname': 'hms_tz_comment',
+        #         'insert_after': 'appointment',
+        #         'description': 'comment indicates an item that required to be changed',
+        #         "read_only": 1,
+        #     }
+        # ],
         "Medication": [
             {
                 'fieldtype': 'Table',

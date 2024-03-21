@@ -401,7 +401,45 @@ def on_submit_validation(doc, method):
         ["coverage_plan_name", "is_exclusions"],
     )
     for template in healthcare_service_templates:
-        if not is_exclusions:
+        """
+        If the value of "is_exclusions" is 1, it means the template should not be listed in the "hsic_map". This is because when "is_exclusions" is 1, it indicates that the template which is in "hsic_map" is not covered.
+        
+        However, there's an exception to this rule. If the "approval_mandatory_for_claim" for that template is also 1, it means the template is covered but needs extra authorization for approval.
+        
+        This apply for NHIF and Non NHIF Insurance
+        """
+
+        if is_exclusions:
+            if template in hsic_map and hsic_map[template].approval_mandatory_for_claim == 0:
+                for row_item in healthcare_service_templates[template]:
+                    if (
+                        doc.company
+                        and frappe.get_cached_value(
+                            "Company",
+                            doc.company,
+                            "auto_prescribe_items_on_patient_encounter",
+                        )
+                        == 1
+                    ):
+                        row_item.prescribe = 1
+
+                msg = _(
+                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+                )
+                msgThrow(
+                    msg,
+                    method,
+                )
+
+        else:
+            """
+            If the value of "is_exclusions" is 0, it means the template must be listed in the "hsic_map" for it to be covered.
+            This is because when "is_exclusions" is 0, it indicates that the template which is in "hsic_map" is covered.
+
+            No need to check for "approval_mandatory_for_claim" on this part because if the template is not listed in the "hsic_map" means the template is completely not covered.
+
+            This apply for NHIF and Non NHIF Insurance.
+            """
             if template not in hsic_map:
                 for row_item in healthcare_service_templates[template]:
                     if (
@@ -422,29 +460,6 @@ def on_submit_validation(doc, method):
                     msg,
                     method,
                 )
-                continue
-        else:
-            if template in hsic_map:
-                for row_item in healthcare_service_templates[template]:
-                    if (
-                        doc.company
-                        and frappe.get_cached_value(
-                            "Company",
-                            doc.company,
-                            "auto_prescribe_items_on_patient_encounter",
-                        )
-                        == 1
-                    ):
-                        row_item.prescribe = 1
-
-                msg = _(
-                    f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
-                )
-                msgThrow(
-                    msg,
-                    method,
-                )
-            continue
 
         coverage_info = hsic_map[template]
         for row in healthcare_service_templates[template]:

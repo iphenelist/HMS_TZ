@@ -1,16 +1,44 @@
 frappe.ui.form.on('Sales Order', {
     refresh: function (frm) {
-        if (frappe.boot.active_domains.includes("Healthcare")) {
-            frm.set_df_property("patient", "hidden", 0);
-            frm.set_df_property("patient_name", "hidden", 0);
-            frm.set_df_property("ref_practitioner", "hidden", 0);
-            if (cint(frm.doc.docstatus == 0) && cur_frm.page.current_view_name !== "pos" && !frm.doc.is_return) {
-                frm.add_custom_button(__('Healthcare Services'), function () {
-                    get_healthcare_services_to_invoice(frm);
-                }, "Get Items From");
-            }
-        };
+        if (frm.doc.patient_encounter) {
+            frm.set_df_property("items", "read_only", 1);
+        }
+
+        // 2024-03-12
+        // disabling this, because sales order will be created automatic from patient encounter
+        // if (frappe.boot.active_domains.includes("Healthcare")) {
+        //     frm.set_df_property("patient", "hidden", 0);
+        //     frm.set_df_property("patient_name", "hidden", 0);
+        //     frm.set_df_property("ref_practitioner", "hidden", 0);
+        //     if (cint(frm.doc.docstatus == 0) && cur_frm.page.current_view_name !== "pos" && !frm.doc.is_return) {
+        //         frm.add_custom_button(__('Healthcare Services'), function () {
+        //             get_healthcare_services_to_invoice(frm);
+        //         }, "Get Items From");
+        //     }
+        // };
     },
+    onload: function (frm) {
+        if (frm.doc.patient_encounter) {
+            frm.set_df_property("items", "read_only", 1);
+        }
+    },
+    med_change_request: (frm) => {
+        if (!frm.doc.med_change_request_comment) {
+            frappe.msgprint("<b>Please write an item(s) to be changed on the comment field</b>");
+            return
+        }
+        frappe.call({
+            method: "hms_tz.nhif.doctype.medication_change_request.medication_change_request.create_medication_change_request_from_so",
+            args: {
+                doctype: frm.doc.doctype,
+                name: frm.doc.name
+            },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            callback: (r) => {
+            },
+        });
+    }
 });
 
 var get_healthcare_services_to_invoice = function (frm) {

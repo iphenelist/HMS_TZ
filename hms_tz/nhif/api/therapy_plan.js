@@ -1,9 +1,10 @@
 frappe.ui.form.on('Therapy Plan', {
 	setup: function(frm) {
 		frm.get_field('therapy_plan_details').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 6},
+			{fieldname: 'therapy_type', columns: 4},
 			{fieldname: 'no_of_sessions', columns: 2},
-			{fieldname: 'sessions_completed', columns: 2}
+			{ fieldname: 'sessions_completed', columns: 2 },
+			{ "fieldname": 'is_restricted', columns: 2}
 		];
 	},
 	

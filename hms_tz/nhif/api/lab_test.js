@@ -42,12 +42,13 @@ frappe.ui.form.on('Lab Test', {
                 }
 
                 frappe.call({
-                    method: "hms_tz.nhif.api.healthcare_utils.varify_service_approval_number_for_LRPM",
+                    method: "hms_tz.nhif.api.healthcare_utils.verify_service_approval_number_for_LRPMT",
                     args: {
                         company: frm.doc.company,
                         approval_number: frm.doc.approval_number,
                         template_doctype: "Lab Test Template",
                         template_name: frm.doc.template,
+                        appointment: frm.doc.appointment,
                         encounter: frm.doc.ref_docname
                     },
                     freeze: true,

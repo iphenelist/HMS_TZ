@@ -3,28 +3,7 @@
 
 frappe.ui.form.on('Medication Change Request', {
 	setup: (frm) => {
-		frm.set_query('appointment', function () {
-			return {
-				filters: { 'patient': frm.doc.patient }
-			};
-		});
-		frm.set_query('patient_encounter', function () {
-			return {
-				filters: {
-					'patient': frm.doc.patient,
-					'docstatus': 1,
-				}
-			};
-		});
-		frm.set_query('delivery_note', function () {
-			return {
-				filters: {
-					'patient': frm.doc.patient,
-					'reference_name': frm.doc.patient_encounter,
-					'docstatus': 0,
-				}
-			};
-		});
+		set_query_filters(frm);
 	},
 	onload: function (frm) {
 		if (!frappe.user.has_role("Healthcare Practitioner")) {
@@ -33,30 +12,39 @@ frappe.ui.form.on('Medication Change Request', {
 		set_medical_code(frm);
 	},
 	refresh: function (frm) {
+		set_query_filters(frm);
 		if (!frappe.user.has_role("Healthcare Practitioner")) {
 			frm.set_df_property("drug_prescription", "read_only", 1);
 		}
 		set_medical_code(frm);
-		frm.set_query('drug_code', 'drug_prescription', function () {
-            return {
-                filters: {
-                    disabled: 0
-                }
-            };
-        });
 	},
 	patient_encounter: (frm) => {
-		set_delivery_note(frm);
-		update_childs_tables(frm);
+		if (frm.doc.patient_encounter) {
+			// user will have to select manually either delivery note or sales order
+			// disabling the function below 2024-03-12
+			// set_delivery_note(frm);
+			update_childs_tables(frm);
+		}
 	},
 
 	delivery_note: (frm) => {
-		set_patient_encounter(frm);
-		get_items_on_change_of_delivery_note(frm);
+		if (frm.doc.delvery_note) {
+			set_patient_encounter(frm);
+			get_items_on_change_of_delivery_note(frm);
+
+		}
+	},
+
+	sales_order: (frm) => {
+		if (frm.doc.sales_order) {
+			set_patient_encounter(frm);
+			get_items_on_change_of_sales_order(frm);
+		}
 	},
 	patient: (frm) => {
 		frm.set_value("patient_encounter", '');
 		frm.set_value("delivery_note", '');
+		frm.set_value("sales_order", '');
 		frm.set_value("appointment", '');
 	},
 });
@@ -69,23 +57,25 @@ frappe.ui.form.on('Codification Table', {
 
 frappe.ui.form.on('Drug Prescription', {
 	drug_prescription_add: (frm, cdt, cdn) => {
-		frappe.db.get_value("Delivery Note", frm.doc.delivery_note, "set_warehouse")
-			.then(r => {
-				if (r.message.set_warehouse) {
-					frappe.db.get_list("Healthcare Service Unit", {
-						fields: ["name"],
-						filters: {
-							warehouse: r.message.set_warehouse,
-							company: frm.doc.company,
-							service_unit_type: "Pharmacy"
-						}
-					}).then(records => {
-						if (records.length > 0) {
-							frappe.model.set_value(cdt, cdn, "healthcare_service_unit", records[0].name);
-						}
-					})
-				}
-			})
+		if (frm.doc.delivery_note) {
+			frappe.db.get_value("Delivery Note", frm.doc.delivery_note, "set_warehouse")
+				.then(r => {
+					if (r.message.set_warehouse) {
+						frappe.db.get_list("Healthcare Service Unit", {
+							fields: ["name"],
+							filters: {
+								warehouse: r.message.set_warehouse,
+								company: frm.doc.company,
+								service_unit_type: "Pharmacy"
+							}
+						}).then(records => {
+							if (records.length > 0) {
+								frappe.model.set_value(cdt, cdn, "healthcare_service_unit", records[0].name);
+							}
+						})
+					}
+				})
+		}
 	},
 	dosage: (frm, cdt, cdn) => {
 		frappe.model.set_value(cdt, cdn, "quantity", 0);
@@ -118,6 +108,7 @@ const set_patient_encounter = (frm) => {
 		async: false,
 		args: {
 			'delivery_note': frm.doc.delivery_note,
+			'sales_order': frm.doc.sales_order,
 		},
 		callback: function (data) {
 			if (data.message) {
@@ -215,12 +206,39 @@ const get_items_on_change_of_delivery_note = (frm) => {
 				frm.refresh_field('delivery_note');
 				frm.refresh_field('drug_prescription');
 				frm.reload_doc();
-				
+
 				if (!frm.is_dirty()) {
 					frm.enable_save();
 				}
 			}
 		});
+	}
+}
+
+const get_items_on_change_of_sales_order = (frm) => {
+	if (!frm.doc.patient_encounter || frm.is_new()) { return }
+
+	if (frm.doc.sales_order) {
+		frm.disable_save();
+		frappe.call({
+			method: 'hms_tz.nhif.doctype.medication_change_request.medication_change_request.get_items_on_change_of_sales_order',
+			args: {
+				name: frm.doc.name,
+				encounter: frm.doc.patient_encounter,
+				sales_order: frm.doc.sales_order
+			},
+			callback: function (r) {
+				if (r.message) {
+					frm.refresh_field('sales_order');
+					frm.refresh_field('drug_prescription');
+					frm.reload_doc();
+
+					if (!frm.is_dirty()) {
+						frm.enable_save();
+					}
+				}
+			}
+		})
 	}
 }
 
@@ -232,5 +250,49 @@ var auto_calculate_drug_quantity = (frm, drug_item) => {
 		}
 	}).then(r => {
 		frappe.model.set_value(drug_item.doctype, drug_item.name, "quantity", r.message);
+	});
+}
+
+const set_query_filters = (frm) => {
+	frm.set_query('appointment', function () {
+		return {
+			filters: { 'patient': frm.doc.patient }
+		};
+	});
+	frm.set_query('patient_encounter', function () {
+		return {
+			filters: {
+				'patient': frm.doc.patient,
+				'docstatus': 1,
+			}
+		};
+	});
+	frm.set_query('delivery_note', function () {
+		return {
+			filters: {
+				'patient': frm.doc.patient,
+				'reference_name': frm.doc.patient_encounter,
+				'reference_doctype': 'Patient Encounter',
+				'docstatus': 0,
+			}
+		};
+	});
+	frm.set_query('sales_order', function () {
+		return {
+			filters: {
+				'patient': frm.doc.patient,
+				'patient_encounter': frm.doc.patient_encounter,
+				'allow_med_change_request': 1,
+				'docstatus': 0,
+			}
+		};
+	});
+
+	frm.set_query('drug_code', 'drug_prescription', function () {
+		return {
+			filters: {
+				disabled: 0
+			}
+		};
 	});
 }
