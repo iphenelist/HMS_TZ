@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "naming_series:",
- "creation": "2021-12-11 10:43:22.393583",
+ "creation": "2024-03-27 12:05:48.759179",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -33,6 +33,7 @@
    "fieldname": "patient",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
    "reqd": 1
@@ -41,6 +42,8 @@
    "fetch_from": "patient.patient_name",
    "fieldname": "patient_name",
    "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Patient Name",
    "read_only": 1,
    "read_only_depends_on": "eval: doc.patient_name != \"\""
@@ -54,6 +57,8 @@
    "fetch_from": "appointment.company",
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Company",
    "options": "Company"
   },
@@ -62,6 +67,8 @@
    "fieldname": "inpatient_record",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Inpatient Record",
    "options": "Inpatient Record",
    "read_only": 1
@@ -161,6 +168,8 @@
    "fieldname": "appointment",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Patient Appointment",
    "options": "Patient Appointment"
   }
@@ -168,10 +177,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-04-29 18:22:45.789471",
+ "modified": "2024-03-27 12:09:57.779364",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "LRPMT Returns",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -189,5 +199,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
