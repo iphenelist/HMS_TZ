@@ -1,6 +1,10 @@
 import frappe
 
 
+def before_insert(doc, method):
+    validate_not_serviced(doc)
+
+
 def after_insert(doc, method):
     if doc.therapy_plan:
         plan = frappe.get_doc("Therapy Plan", doc.therapy_plan)
@@ -20,3 +24,17 @@ def after_insert(doc, method):
                 break
 
     doc.save(ignore_permissions=True)
+
+
+def before_submit(doc, method):
+    validate_not_serviced(doc)
+
+
+def validate_not_serviced(doc):
+    if doc.therapy_plan:
+        status = frappe.db.get_value("Therapy Plan", doc.therapy_plan, "status")
+        if status == "Not Serviced":
+            frappe.throw(
+                f"This Therapy Plan: {frappe.bold(doc.therapy_plan)} is Not Serviced,\
+                    Please select another Therapy Plan. or cancel this therapy session"
+            )
