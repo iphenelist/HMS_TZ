@@ -209,11 +209,14 @@ doc_events = {
         "validate": "hms_tz.nhif.api.sales_order.validate",
         "before_submit": "hms_tz.nhif.api.sales_order.before_submit",
     },
-    #    "Therapy Plan": {
-    #        "validate": "hms_tz.nhif.api.therapy_plan.validate",
-    #    },
+    "Therapy Plan": {
+        "before_insert": "hms_tz.nhif.api.therapy_plan.before_insert",
+        "validate": "hms_tz.nhif.api.therapy_plan.validate",
+    },
     "Therapy Session": {
+        "before_insert": "hms_tz.nhif.api.therapy_session.before_insert",
         "after_insert": "hms_tz.nhif.api.therapy_session.after_insert",
+        "before_submit": "hms_tz.nhif.api.therapy_session.before_submit",
     },
 }
 
