@@ -28,7 +28,6 @@
    "default": "1",
    "fieldname": "quantity",
    "fieldtype": "Int",
-   "in_list_view": 1,
    "label": "Quantity",
    "non_negative": 1,
    "read_only": 1
@@ -76,7 +75,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2022-01-10 11:51:17.676628",
+ "modified": "2024-04-02 22:51:39.983491",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Item Return",
@@ -84,5 +83,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
