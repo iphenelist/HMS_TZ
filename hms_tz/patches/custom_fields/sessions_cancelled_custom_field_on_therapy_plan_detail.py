@@ -10,7 +10,14 @@ def execute():
                 "label": "Sessions Cancelled",
                 "insert_after": "no_of_sessions",
                 "read_only": 1,
-            }
+            },
+            {
+                "fieldname": "therapy_plan_created",
+                "fieldtype": "Check",
+                "label": "Therapy Plan Created",
+                "insert_after": "section_break_20",
+                "read_only": 1,
+            },
         ],
         "Therapy Plan": [
             {
