@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-03-27 15:10:16.749568",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "therapy_type",
+  "sessions_prescribed",
+  "sessions_cancelled",
+  "sessions_to_cancel",
+  "reason",
+  "encounter_no",
+  "therapy_plan",
+  "therapy_session",
+  "encounter_child_table_id",
+  "plan_child_table_id"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "therapy_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Therapy Type",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Reason",
+   "options": "Healthcare Return Reason",
+   "search_index": 1
+  },
+  {
+   "fieldname": "encounter_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient Encounter",
+   "options": "Patient Encounter",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "therapy_plan",
+   "fieldtype": "Data",
+   "label": "Therapy Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "therapy_session",
+   "fieldtype": "Data",
+   "label": "Therapy Session",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "sessions_prescribed",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sessions Prescribed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sessions_to_cancel",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sessions to Cancel"
+  },
+  {
+   "fieldname": "encounter_child_table_id",
+   "fieldtype": "Data",
+   "label": "Encounter Child Table ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "plan_child_table_id",
+   "fieldtype": "Data",
+   "label": "Therapy Plan Child Table ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sessions_cancelled",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sessions Cancelled",
+   "non_negative": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-04-03 19:36:23.703640",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Therapy Return",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

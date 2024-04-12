@@ -8,6 +8,7 @@
  "field_order": [
   "drug_name",
   "quantity_prescribed",
+  "qty_returned",
   "quantity_to_return",
   "reason",
   "drug_condition",
@@ -28,6 +29,7 @@
    "reqd": 1
   },
   {
+   "columns": 1,
    "fieldname": "reason",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -36,6 +38,7 @@
    "options": "Healthcare Return Reason"
   },
   {
+   "columns": 1,
    "fieldname": "drug_condition",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -65,11 +68,12 @@
    "read_only": 1
   },
   {
+   "columns": 2,
    "default": "1",
    "fieldname": "quantity_prescribed",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Quantity Prescribed",
+   "label": "Qty Prescribed",
    "non_negative": 1,
    "read_only": 1
   },
@@ -90,12 +94,21 @@
    "fieldtype": "Data",
    "label": "Delivery Note Status",
    "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "qty_returned",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty Returned",
+   "non_negative": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2022-04-05 11:00:30.856037",
+ "modified": "2024-04-04 00:35:44.137138",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Medication Return",
@@ -103,5 +116,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
