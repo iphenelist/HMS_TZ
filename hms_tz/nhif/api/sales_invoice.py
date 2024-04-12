@@ -10,6 +10,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     create_individual_lab_test,
     create_individual_radiology_examination,
     create_individual_procedure_prescription,
+    create_therapy_plan
 )
 from hms_tz.nhif.api.sales_order import validate_stock_item
 
@@ -100,6 +101,8 @@ def create_healthcare_docs(doc, method):
             )
         )
         return
+
+    therapy_items = []
     if doc.get("items"):
         for item in doc.items:
             if item.reference_dt and item.reference_dt in [
@@ -108,6 +111,12 @@ def create_healthcare_docs(doc, method):
                 "Procedure Prescription",
             ]:
                 child = frappe.get_doc(item.reference_dt, item.reference_dn)
+                if child.is_cancelled == 1:
+                    frappe.throw(
+                        f"Item: {frappe.bold(item.item_code)} RowNo#: {frappe.bold(item.idx)} is already cancelled,\
+                        Please confirm cancellation of this item on Patient Encounter and remove this item from sales invoice"
+                    )
+
                 patient_encounter_doc = frappe.get_doc(
                     "Patient Encounter", child.parent
                 )
@@ -127,6 +136,10 @@ def create_healthcare_docs(doc, method):
 
                 item.hms_tz_is_lrp_item_created = 1
                 item.db_update()
+
+            elif item.reference_dt and item.reference_dt == "Therapy Plan Detail":
+                therapy_items.append(item)
+
             elif item.reference_dt and item.reference_dt in [
                 "Inpatient Occupancy",
                 "Inpatient Consultancy",
@@ -143,6 +156,8 @@ def create_healthcare_docs(doc, method):
                         "sales_invoice_number": doc.name,
                     },
                 )
+
+        create_therapy_plan(invoice_therapy_dict=therapy_items)
 
     if method == "From Front End":
         frappe.db.commit()

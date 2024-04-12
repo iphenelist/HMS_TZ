@@ -134,6 +134,11 @@ def get_healthcare_service_order_to_invoice(
                     )
 
                     qty = 1
+                    if value.get("doctype") == "Therapy Plan Detail":
+                        qty = (row.get("no_of_sessions") or 0) - (
+                            row.get("sessions_cancelled") or 0
+                        )
+
                     if value.get("doctype") == "Drug Prescription":
                         qty = (row.get("quantity") or 0) - (
                             row.get("quantity_returned") or 0
@@ -804,6 +809,158 @@ def create_individual_procedure_prescription(source_doc, child):
         child.db_update()
 
 
+def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
+    therapies = []
+    encounter_ids = []
+    patient_encounter_docs = []
+
+    if not enc_doc and len(invoice_therapy_dict) == 0:
+        return
+
+    if len(invoice_therapy_dict) > 0:
+        # These invoice_therapy_dict comes from sales invoice items
+        for row in invoice_therapy_dict:
+            therapy_child = frappe.get_cached_doc(
+                "Therapy Plan Detail", row.reference_dn
+            )
+            if therapy_child.is_cancelled == 1:
+                frappe.throw(
+                    f"Item: {frappe.bold(therapy_child.therapy_type)} RowNo#: {frappe.bold(row.idx)} is already cancelled,\
+                      Please confirm cancellation of this item on Patient Encounter and remove this item from sales invoice"
+                )
+
+            if therapy_child.parent not in encounter_ids:
+                encounter_ids.append(therapy_child.parent)
+                enc_doc = frappe.get_doc("Patient Encounter", therapy_child.parent)
+                patient_encounter_docs.append(enc_doc)
+
+            if (
+                therapy_child.therapy_plan_created
+                or therapy_child.is_not_available_inhouse
+                or therapy_child.hms_tz_is_limit_exceeded
+            ):
+                continue
+
+            therapy_child.invoiced = 1
+            therapy_child.sales_invoice_number = row.parent
+            therapy_child.save(ignore_permissions=True)
+            therapies.append(therapy_child)
+
+            row.hms_tz_is_lrp_item_created = 1
+            row.db_update()
+
+    elif len(enc_doc.therapies) > 0:
+        if enc_doc.docstatus != 1:
+            frappe.msgprint(
+                _(
+                    "Cannot process Patient Encounter that is not submitted! Please submit"
+                    " and try again."
+                ),
+                alert=True,
+            )
+            return
+        if not enc_doc.appointment:
+            frappe.msgprint(
+                _(
+                    "Patient Encounter does not have patient appointment number! Request"
+                    " for support with this message."
+                ),
+                alert=True,
+            )
+            return
+
+        if not enc_doc.insurance_subscription and not enc_doc.inpatient_record:
+            return
+
+        patient_encounter_docs.append(enc_doc)
+        for row in enc_doc.therapies:
+            if (
+                row.is_cancelled
+                or row.hms_tz_is_limit_exceeded
+                or row.is_not_available_inhouse
+                or row.therapy_plan_created
+            ):
+                continue
+
+            # ignore uncovered therapies for insurance patients
+            if enc_doc.insurance_subscription and row.prescribe == 1:
+                continue
+
+            # ignore therapies that won't be paid by cash
+            if not enc_doc.insurance_subscription and row.prescribe == 0:
+                continue
+
+            is_disabled = frappe.get_cached_value(
+                "Therapy Type", row.therapy_type, "disabled"
+            )
+            if is_disabled == 1:
+                frappe.throw(
+                    _(
+                        f"Therapy Type: <b>{row.therapy_type}</b> selected at Row#: {row.idx} is <b>disabled</b>. Please select an enabled item."
+                    )
+                )
+
+            therapies.append(row)
+
+    if len(therapies) == 0:
+        return
+
+    create_plan(patient_encounter_docs, therapies)
+
+
+def create_plan(patient_encounter_docs, therapies):
+    for encounter_doc in patient_encounter_docs:
+        item_counts = 0
+        doc = frappe.new_doc("Therapy Plan")
+        doc.patient = encounter_doc.patient
+        doc.company = encounter_doc.company
+        doc.start_date = encounter_doc.encounter_date
+        doc.hms_tz_appointment = encounter_doc.appointment
+        doc.hms_tz_patient_age = encounter_doc.patient_age
+        doc.hms_tz_patient_sex = encounter_doc.patient_sex
+        doc.hms_tz_insurance_coverage_plan = encounter_doc.insurance_coverage_plan
+        doc.insurance_company = encounter_doc.insurance_company
+        doc.ref_doctype = encounter_doc.doctype
+        doc.ref_docname = encounter_doc.name
+        for entry in therapies:
+            if entry.parent == encounter_doc.name:
+                item_counts += 1
+                doc.append(
+                    "therapy_plan_details",
+                    {
+                        "therapy_type": entry.therapy_type,
+                        "prescribe": entry.prescribe or 0,
+                        "is_restricted": entry.is_restricted or 0,
+                        "hms_tz_ref_childname": entry.name,
+                        "no_of_sessions": entry.no_of_sessions
+                        - entry.sessions_cancelled,
+                    },
+                )
+        if item_counts == 0:
+            continue
+
+        doc.save(ignore_permissions=True)
+        if doc.get("name"):
+            # April 09, 2024
+            # stopping updating therapy plan on encounter,
+            # since single encounter may have multiple therapy plans,
+            # this may happen when insurance patient pay cash for some therapies and insurance for other therapies
+
+            # encounter_doc.db_set("therapy_plan", doc.name)
+            for entry in therapies:
+                if entry.parent == encounter_doc.name:
+                    entry.therapy_plan_created = 1
+                    entry.delivered_quantity = (
+                        entry.no_of_sessions - entry.sessions_cancelled
+                    )
+                    entry.db_update()
+
+            frappe.msgprint(
+                _(f"Therapy Plan {frappe.bold(doc.name)} created successfully."),
+                alert=True,
+            )
+
+
 def msgThrow(msg, method="throw", alert=True):
     if method == "validate":
         frappe.msgprint(msg, alert=alert)
@@ -1060,6 +1217,8 @@ def create_invoiced_items_if_not_created():
     for invoice in si_invoices:
         si_doc = frappe.get_doc("Sales Invoice", invoice.name)
 
+        therapy_items = []
+
         for item in si_doc.items:
             if item.reference_dt in [
                 "Lab Prescription",
@@ -1195,6 +1354,14 @@ def create_invoiced_items_if_not_created():
                 except Exception:
                     traceback = frappe.get_traceback()
                     frappe.log_error(traceback)
+
+            elif item.reference_dt == "Therapy Plan Detail":
+                if item.hms_tz_is_lrp_item_created == 1:
+                    continue
+
+                therapy_items.append(item)
+
+        create_therapy_plan(invoice_therapy_dict=therapy_items)
 
         frappe.db.commit()
 
