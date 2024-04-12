@@ -436,13 +436,22 @@ class NHIFPatientClaim(Document):
                     for row in encounter_doc.get(child.get("table")):
                         if row.prescribe or row.is_cancelled:
                             continue
+
                         item_code = frappe.get_value(
                             child.get("doctype"), row.get(child.get("item")), "item"
                         )
 
-                        delivered_quantity = (row.get("quantity") or 0) - (
-                            row.get("quantity_returned") or 0
-                        )
+                        delivered_quantity = 0
+                        if row.get("doctype") == "Drug Prescription":
+                            delivered_quantity = (row.get("quantity") or 0) - (
+                                row.get("quantity_returned") or 0
+                            )
+                        elif row.get("doctype") == "Therapy Plan Detail":
+                            delivered_quantity = (row.get("no_of_sessions") or 0) - (
+                                row.get("sessions_cancelled") or 0
+                            )
+                        else:
+                            delivered_quantity = 1
 
                         new_row = self.append("nhif_patient_claim_item", {})
                         new_row.item_name = row.get(child.get("item_name"))
@@ -575,15 +584,24 @@ class NHIFPatientClaim(Document):
                         for row in encounter_doc.get(child.get("table")):
                             if row.prescribe or row.is_cancelled:
                                 continue
+                            
                             item_code = frappe.get_value(
                                 child.get("doctype"),
                                 row.get(child.get("item")),
                                 "item",
                             )
 
-                            delivered_quantity = (row.get("quantity") or 0) - (
-                                row.get("quantity_returned") or 0
-                            )
+                            delivered_quantity = 0
+                            if row.get("doctype") == "Drug Prescription":
+                                delivered_quantity = (row.get("quantity") or 0) - (
+                                    row.get("quantity_returned") or 0
+                                )
+                            elif row.get("doctype") == "Therapy Plan Detail":
+                                delivered_quantity = (row.get("no_of_sessions") or 0) - (
+                                    row.get("sessions_cancelled") or 0
+                                )
+                            else:
+                                delivered_quantity = 1
 
                             new_row = self.append("nhif_patient_claim_item", {})
                             new_row.item_name = row.get(child.get("item"))
