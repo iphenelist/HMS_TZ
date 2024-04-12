@@ -1,5 +1,32 @@
 frappe.ui.form.on('Therapy Session', {
 
+    refresh: function (frm) {
+        $('[data-label="Not%20Serviced"]').parent().hide();
+        if (!frm.doc.__islocal && (frm.doc.status == 'Not Serviced')) {
+            frm.clear_custom_buttons();
+            // frm.remove_custom_button("Create")
+        }
+        if (frm.doc.patient) {
+            frm.add_custom_button(__('Patient History'), () => {
+                frappe.route_options = { 'patient': frm.doc.patient };
+                frappe.set_route('tz-patient-history');
+            });
+        }
+    },
+    onload: function (frm) {
+        $('[data-label="Not%20Serviced"]').parent().hide();
+        if (!frm.doc.__islocal && (frm.doc.status == 'Not Serviced')) {
+            frm.clear_custom_buttons();
+            // frm.remove_custom_button("Create")
+        }
+        if (frm.doc.patient) {
+            frm.add_custom_button(__('Patient History'), () => {
+                frappe.route_options = { 'patient': frm.doc.patient };
+                frappe.set_route('tz-patient-history');
+            });
+        }
+    },
+
     approval_number: (frm) => {
         frm.fields_dict.approval_number.$input.focusout(() => {
             if (frm.doc.approval_number != "" && frm.doc.approval_number != undefined) {
