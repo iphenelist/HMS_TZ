@@ -191,11 +191,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
-<<<<<<< HEAD
  "modified": "2024-04-02 22:41:54.900854",
-=======
- "modified": "2024-03-27 12:09:57.779364",
->>>>>>> 7cbbae1e (chore: add list view filters for patient, patient_name, appointment, company and inpatient_record)
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "LRPMT Returns",
