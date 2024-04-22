@@ -408,7 +408,9 @@ def get_exceeded_therapy_items(encounters):
             therapy.therapy_type.as_("description"),
             (therapy.no_of_sessions - therapy.sessions_cancelled).as_("quantity"),
             therapy.amount.as_("rate"),
-            ((therapy.no_of_sessions - therapy.sessions_cancelled) * therapy.amount).as_("amount"),
+            (
+                (therapy.no_of_sessions - therapy.sessions_cancelled) * therapy.amount
+            ).as_("amount"),
         )
         .where(
             (therapy.prescribe == 0)
@@ -745,7 +747,7 @@ def get_cash_lrpmt_transaction(filters):
 			DATE(lrpmt.creation) AS date,
 			item_template.item_group AS category,
 			lrpmt.therapy_type AS description,
-			(lrpmt.no_of_sessions - lrpmt.sessions_cancelled) AS quantity, AS quantity,
+			(lrpmt.no_of_sessions - lrpmt.sessions_cancelled) AS quantity,
 			lrpmt.amount AS rate,
 			((lrpmt.no_of_sessions - lrpmt.sessions_cancelled) * lrpmt.amount) AS amount,
 			pa.patient AS patient,
