@@ -15,6 +15,7 @@ from frappe.utils import (
     add_to_date,
     get_url_to_form,
     add_days,
+    create_batch,
 )
 from datetime import timedelta
 import base64
@@ -1645,8 +1646,9 @@ def auto_finalize_patient_encounters():
             },
             ["name", "reference_encounter", "inpatient_record"],
         )
-        if len(encounters) > 0:
-            finalize_encounter(encounters)
+        for encounter_batch in create_batch(encounters, 100):
+            finalize_encounter(encounter_batch)
+            frappe.db.commit()
 
 
 def validate_nhif_patient_claim_status(
