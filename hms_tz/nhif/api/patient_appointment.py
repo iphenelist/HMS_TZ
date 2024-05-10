@@ -503,6 +503,7 @@ def set_follow_up(appointment_doc, method):
         "name": ["!=", appointment_doc.name],
         "department": appointment_doc.department,
         "status": ["in", ["Open", "Closed"]],
+        "invoiced": 1,
     }
     if appointment_doc.insurance_subscription:
         filters["insurance_subscription"] = appointment_doc.insurance_subscription
