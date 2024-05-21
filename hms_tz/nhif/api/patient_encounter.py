@@ -23,6 +23,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     create_individual_lab_test,
     create_individual_radiology_examination,
     create_individual_procedure_prescription,
+    create_therapy_plan,
     msgThrow,
     msgPrint,
     validate_nhif_patient_claim_status,
@@ -400,7 +401,7 @@ def on_submit_validation(doc, method):
         healthcare_insurance_coverage_plan,
         ["coverage_plan_name", "is_exclusions"],
     )
-    
+
     validate_item_coverage(
         doc,
         method,
@@ -411,13 +412,9 @@ def on_submit_validation(doc, method):
     )
     validate_totals(doc, method)
 
+
 def validate_item_coverage(
-    doc,
-    method,
-    healthcare_service_templates,
-    hsic_map,
-    hicp_name,
-    is_exclusions
+    doc, method, healthcare_service_templates, hsic_map, hicp_name, is_exclusions
 ):
     for template in healthcare_service_templates:
         """
@@ -735,7 +732,7 @@ def on_submit(doc, method):
 
     if (
         doc.healthcare_package_order
-        and not doc.insurance_subscription
+        # and not doc.insurance_subscription
         and not doc.inpatient_record
     ):
         create_items_from_healthcare_package_orders(doc, method)
@@ -765,6 +762,7 @@ def create_healthcare_docs(patient_encounter_doc, method="event"):
         create_healthcare_docs_per_encounter(
             frappe.get_doc("Patient Encounter", encounter)
         )
+        create_therapy_plan(enc_doc=frappe.get_doc("Patient Encounter", encounter))
     if method == "from_button":
         frappe.msgprint(
             _(
@@ -1661,16 +1659,17 @@ def inpatient_billing(patient_encounter_doc, method):
             "item_field": "procedure",
             "doctype": "Clinical Procedure Template",
         },
-        {
-            "table_field": "drug_prescription",
-            "item_field": "drug_code",
-            "doctype": "Medication",
-        },
-        {
-            "table_field": "therapies",
-            "item_field": "therapy_type",
-            "doctype": "Therapy Type",
-        },
+        # unused part
+        # {
+        #     "table_field": "drug_prescription",
+        #     "item_field": "drug_code",
+        #     "doctype": "Medication",
+        # },
+        # {
+        #     "table_field": "therapies",
+        #     "item_field": "therapy_type",
+        #     "doctype": "Therapy Type",
+        # },
     ]
     for child_table_field in child_tables_list:
         if patient_encounter_doc.get(child_table_field.get("table_field")):
@@ -1706,6 +1705,8 @@ def inpatient_billing(patient_encounter_doc, method):
                     create_individual_procedure_prescription(
                         patient_encounter_doc, child
                     )
+
+    create_therapy_plan(enc_doc=patient_encounter_doc)
     create_delivery_note(patient_encounter_doc, method)
 
 
@@ -2546,6 +2547,8 @@ def create_items_from_healthcare_package_orders(doc, method):
                     create_individual_radiology_examination(doc, child)
                 elif child.doctype == "Procedure Prescription":
                     create_individual_procedure_prescription(doc, child)
+
+    create_therapy_plan(enc_doc=doc)
     create_delivery_note(doc, method)
 
 
