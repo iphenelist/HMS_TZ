@@ -1645,6 +1645,8 @@ def auto_finalize_patient_encounters():
                 "company": row.name,
             },
             ["name", "reference_encounter", "inpatient_record"],
+            order_by="modified desc", 
+            limit=100
         )
         for encounter_batch in create_batch(encounters, 100):
             finalize_encounter(encounter_batch)
