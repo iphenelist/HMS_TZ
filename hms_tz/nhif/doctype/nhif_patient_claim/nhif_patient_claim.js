@@ -34,12 +34,14 @@ frappe.ui.form.on('NHIF Patient Claim', {
 			});
 
 			frm.add_custom_button(__("Merge Claims"), function () {
+				const original_practitioner_name = frm.doc.practitioner_name ;
 				frm.dirty()
 				frm.call('get_appointments', {
 					self: frm.doc,
 					freeze: true,
                 	freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
 				}).then(r => {
+					frm.doc.practitioner_name = original_practitioner_name;
 					frm.save();
 					frm.refresh();
 				});
