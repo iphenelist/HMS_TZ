@@ -20,6 +20,7 @@ def execute():
                 "label": "Has No Consultation Charge",
                 "insert_after": "follow_up",
                 "read_only": 1,
+                "fetch_from": "appointment_type.has_no_consultation_charges",
                 "description": "If checked, Consultation Charges will not be applied for appointments of NHIF Patients",
             }
         ],

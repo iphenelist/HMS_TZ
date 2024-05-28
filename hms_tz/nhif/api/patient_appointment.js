@@ -193,6 +193,7 @@ frappe.ui.form.on('Patient Appointment', {
                     'mop': frm.doc.mode_of_payment,
                     'company': frm.doc.company,
                     'patient': frm.doc.patient,
+                    "has_no_consultation_charges": frm.doc.has_no_consultation_charges
                 },
                 callback: function (data) {
                     if (data.message) {
