@@ -21,8 +21,17 @@ from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_serv
 
 from time import sleep
 
+
 @frappe.whitelist()
 def enqueue_get_nhif_price_package(company):
+    """Enqueue the get_nhif_price_package function to be executed in the background
+
+    Args:
+        company (str): The company name to get the NHIF price package for
+
+    Returns:
+        None
+    """
     enqueue(
         method=get_nhif_price_package,
         queue="long",
@@ -34,6 +43,14 @@ def enqueue_get_nhif_price_package(company):
 
 
 def get_nhif_price_package(kwargs):
+    """Get NHIF Price Package from NHIF API and insert into NHIF Price Package and NHIF Excluded Services
+
+    Args:
+        company (str): The company name to get the NHIF price package for
+
+    Returns:
+        None
+    """
     company = kwargs
     user = frappe.session.user
     token = get_claimsservice_token(company)
@@ -53,18 +70,16 @@ def get_nhif_price_package(kwargs):
             request_url=url,
             request_header=headers,
             response_data=r.text,
-            status_code=r.status_code
+            status_code=r.status_code,
         )
         frappe.throw(json.loads(r.text))
     else:
         if json.loads(r.text):
             frappe.db.sql(
-                """DELETE FROM `tabNHIF Price Package` WHERE company = '{0}' """.format(company)
+                f"""DELETE FROM `tabNHIF Price Package` WHERE company = '{company}'"""
             )
             frappe.db.sql(
-                """DELETE FROM `tabNHIF Excluded Services` WHERE company = '{0}' """.format(
-                    company
-                )
+                f"""DELETE FROM `tabNHIF Excluded Services` WHERE company = '{company}'"""
             )
             frappe.db.commit()
 
@@ -76,7 +91,7 @@ def get_nhif_price_package(kwargs):
                 request_url=url,
                 request_header=headers,
                 response_data=r.text,
-                status_code=r.status_code
+                status_code=r.status_code,
             )
             time_stamp = now()
             data = json.loads(r.text)
@@ -170,6 +185,14 @@ def get_nhif_price_package(kwargs):
 
 @frappe.whitelist()
 def process_nhif_records(company):
+    """Process NHIF Price Package and NHIF Excluded Services to create Item Price and Healthcare Service Insurance Coverage records
+
+    Args:
+        company (str): The company name to process NHIF records for
+
+    Returns:
+        None
+    """
     enqueue(
         method=process_prices_list,
         queue="long",
@@ -188,22 +211,32 @@ def process_nhif_records(company):
     frappe.msgprint(_("Queued Processing NHIF Insurance Coverages"), alert=True)
 
 
-def process_prices_list(kwargs):
+def process_prices_list(kwargs, item=None):
+    """Process NHIF Price Package to create Item Price records
+
+    Args:
+        company (str): The company name to process NHIF records for
+        item (str): The item code to process NHIF records for
+
+    Returns:
+        None
+    """
     company = kwargs
-    facility_code = frappe.get_cached_value("Company NHIF Settings", company, "facility_code")
+    facility_code = frappe.get_cached_value(
+        "Company NHIF Settings", company, "facility_code"
+    )
     currency = frappe.get_cached_value("Company", company, "default_currency")
     schemeid_list = frappe.db.sql(
-        """
+        f"""
             SELECT packageid, schemeid from `tabNHIF Price Package`
-                WHERE facilitycode = {0}
-                AND company = '{1}'
+                WHERE facilitycode = {facility_code}
+                AND company = '{company}'
                 GROUP BY packageid, schemeid
-        """.format(
-            facility_code, company
-        ),
+        """,
         as_dict=1,
     )
 
+    # Create Price Lists for missing prices
     for scheme in schemeid_list:
         price_list_name = "NHIF-" + scheme.packageid + "-" + facility_code
         if not frappe.db.exists("Price List", price_list_name):
@@ -214,11 +247,14 @@ def process_prices_list(kwargs):
             price_list_doc.selling = 1
             price_list_doc.save(ignore_permissions=True)
 
+    condition = ""
+    if item:
+        condition += f""" AND icd.parent = "{item}" """
     item_list = frappe.db.sql(
-        """
+        f"""
             SELECT icd.ref_code, icd.parent as item_code, npp.schemeid from `tabItem Customer Detail` icd
                 INNER JOIN `tabNHIF Price Package` npp ON icd.ref_code = npp.itemcode
-                WHERE icd.customer_name = 'NHIF'
+                WHERE icd.customer_name = 'NHIF' {condition}
                 GROUP by icd.ref_code, icd.parent, npp.schemeid
         """,
         as_dict=1,
@@ -231,16 +267,14 @@ def process_prices_list(kwargs):
                 continue
             price_list_name = "NHIF-" + scheme.packageid + "-" + facility_code
             package_list = frappe.db.sql(
-                """
+                f"""
                     SELECT schemeid, itemcode, unitprice, isactive
                     FROM `tabNHIF Price Package` 
-                    WHERE facilitycode = {0} and schemeid = {1} and itemcode = {2}
+                    WHERE facilitycode = {facility_code} and schemeid = {schemeid} and itemcode = {item.ref_code}
                     GROUP BY itemcode, schemeid, facilitylevelcode
                     ORDER BY facilitylevelcode
                     LIMIT 1
-                """.format(
-                    facility_code, schemeid, item.ref_code
-                ),
+                """,
                 as_dict=1,
             )
             if len(package_list) > 0:
@@ -257,20 +291,20 @@ def process_prices_list(kwargs):
                     )
                     if len(item_price_list) > 0:
                         for price in item_price_list:
-                            #2023-05-16 
+                            # 2023-05-16
                             # remove condition for isactive
                             # if package.isactive and int(package.isactive) == 1:
-                            
-                            if float(price.price_list_rate) != float(
-                                package.unitprice
-                            ):
+
+                            if float(price.price_list_rate) != float(package.unitprice):
                                 # delete Item Price if no package.unitprice or it is 0
                                 if (
                                     not float(package.unitprice)
                                     or float(package.unitprice) == 0
                                 ):
                                     frappe.delete_doc("Item Price", price.name)
+                                    print(f"Deleted the item {item}")
                                 else:
+                                    print(f"Updated the item {item}")
                                     frappe.set_value(
                                         "Item Price",
                                         price.name,
@@ -278,10 +312,13 @@ def process_prices_list(kwargs):
                                         float(package.unitprice),
                                     )
                             # else:
-                                # frappe.delete_doc("Item Price", price.name)
+                            # frappe.delete_doc("Item Price", price.name)
 
                     # elif package.isactive and int(package.isactive) == 1:
                     else:
+                        print(
+                            f"Created the item price {price.name} for {price_list_name}"
+                        )
                         item_price_doc = frappe.new_doc("Item Price")
                         item_price_doc.update(
                             {
@@ -295,12 +332,21 @@ def process_prices_list(kwargs):
                         )
                         item_price_doc.insert(ignore_permissions=True)
                         item_price_doc.save(ignore_permissions=True)
-    frappe.db.commit()
+        frappe.db.commit()
 
 
 def get_insurance_coverage_items(company):
+    """Get all items that are covered by NHIF
+
+    Args:
+        company (str): The company name to get the NHIF price package for
+
+    Returns:
+        list: List of items that are covered by NHIF
+    """
+    company = frappe.db.escape(company)
     items_list = frappe.db.sql(
-        """
+        f"""
             SELECT 'Appointment Type' as dt, m.name as healthcare_service_template, icd.ref_code, icd.parent as item_code, npp.schemeid
                 FROM `tabItem Customer Detail` icd
                 INNER JOIN `tabItem` i ON i.name = icd.parent and i.disabled = 0
@@ -363,13 +409,22 @@ def get_insurance_coverage_items(company):
                 WHERE icd.customer_name = 'NHIF'
                 AND npp.company = {company}
                 GROUP BY dt, m.name, icd.ref_code , icd.parent, npp.schemeid
-        """.format(company=frappe.db.escape(company)),
+        """,
         as_dict=1,
     )
     return items_list
 
 
 def get_excluded_services(itemcode, company):
+    """Get excluded services for a given itemcode and company
+
+    Args:
+        itemcode (str): The item code to get the excluded services for
+        company (str): The company name to get the excluded services for
+
+    Returns:
+        dict: The excluded services for the given itemcode and company
+    """
     excluded_services = None
     excluded_services_list = frappe.get_all(
         "NHIF Excluded Services",
@@ -382,6 +437,16 @@ def get_excluded_services(itemcode, company):
 
 
 def get_price_package(itemcode, schemeid, company):
+    """Get price package for a given itemcode, schemeid and company
+
+    Args:
+        itemcode (str): The item code to get the price package for
+        schemeid (str): The scheme id to get the price package for
+        company (str): The company name to get the price package for
+
+    Returns:
+        dict: The price package for the given itemcode, schemeid and company
+    """
     price_package = ""
     price_package_list = frappe.get_all(
         "NHIF Price Package",
@@ -393,25 +458,40 @@ def get_price_package(itemcode, schemeid, company):
     return price_package
 
 
-def process_insurance_coverages(kwargs):
+def process_insurance_coverages(kwargs, coverage_plan=None):
+    """Process NHIF Excluded Services to create Healthcare Service Insurance Coverage records
+
+    Args:
+        company (str): The company name to process NHIF records for
+        coverage_plan (str): The coverage plan to process NHIF records for
+
+    Returns:
+        None
+    """
     company = kwargs
+    print(f"Gettign Insurance Coverage Items")
     items_list = get_insurance_coverage_items(company)
 
+    filters = {
+        "insurance_company": ["like", "NHIF%"],
+        "is_active": 1,
+        "company": company,
+    }
+    if coverage_plan:
+        filters["name"] = {coverage_plan}
     coverage_plan_list = frappe.get_all(
         "Healthcare Insurance Coverage Plan",
         fields={"name", "nhif_scheme_id", "code_for_nhif_excluded_services"},
-        filters={
-            "insurance_company": ["like", "NHIF%"],
-            "is_active": 1,
-            "company": company,
-        },
+        filters=filters,
     )
 
     for plan in coverage_plan_list:
+        print(f"Processing Insurance Coverage {plan}")
         insert_data = []
         time_stamp = now()
         user = frappe.session.user
         for item in items_list:
+            print(f"Processing Item {item.healthcare_service_template} for {plan}")
             if plan.nhif_scheme_id != item.schemeid:
                 continue
             excluded_services = get_excluded_services(item.ref_code, company)
@@ -487,12 +567,10 @@ def process_insurance_coverages(kwargs):
         if insert_data:
             if plan.name:
                 frappe.db.sql(
-                        "DELETE FROM `tabHealthcare Service Insurance Coverage` WHERE is_auto_generated = 1 AND healthcare_insurance_coverage_plan = '{0}'".format(
-                            plan.name
-                        )
-                    )
+                    f"""DELETE FROM `tabHealthcare Service Insurance Coverage` WHERE is_auto_generated = 1 AND healthcare_insurance_coverage_plan = '{plan.name}'"""
+                )
                 frappe.db.commit()
-                
+
             # wait for 60 seconds before creating HSIC records again
             sleep(60)
 
@@ -526,10 +604,18 @@ def process_insurance_coverages(kwargs):
                 ),
                 tuple(insert_data),
             )
-    frappe.db.commit()
+        frappe.db.commit()
 
 
 def set_nhif_diff_records(FacilityCode):
+    """Get the difference between the current and previous NHIF Price Package and NHIF Excluded Services and create NHIF Update record
+
+    Args:
+        FacilityCode (str): The facility code to get the NHIF Price Package for
+
+    Returns:
+        None
+    """
     logs = frappe.get_all(
         "NHIF Response Log",
         filters={
@@ -662,6 +748,16 @@ def set_nhif_diff_records(FacilityCode):
 
 
 def add_price_packages_records(doc, rec, type):
+    """Add NHIF Price Package records to NHIF Update document
+
+    Args:
+        doc (object): The NHIF Update document
+        rec (list): The list of NHIF Price Package records
+        type (str): The type of NHIF Price Package records (Changed, New, Deleted)
+
+    Returns:
+        None
+    """
     if not len(rec) > 0:
         return
     for e in rec:
@@ -691,6 +787,15 @@ def add_price_packages_records(doc, rec, type):
 
 
 def add_excluded_services_records(doc, rec, type):
+    """Add NHIF Excluded Services records to NHIF Update document
+
+    Args:
+        doc (object): The NHIF Update document
+        rec (list): The list of NHIF Excluded Services records
+        type (str): The type of NHIF Excluded Services records (Changed, New, Deleted)
+
+    Returns:
+        None"""
     if not len(rec) > 0:
         return
     for e in rec:

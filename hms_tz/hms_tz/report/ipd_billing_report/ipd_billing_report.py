@@ -285,7 +285,7 @@ def get_transaction_data(args):
 		union all
 
 		select 0 as lab_amount, 0 as radiology_amount, 0 as procedure_amount, 0 as drug_amount,
-			sum(lrpmt.amount) as therapy_amount, date(pe.encounter_date) as date, "" as service_unit,
+			sum(lrpmt.amount * (lrpmt.no_of_sessions - lrpmt.sessions_cancelled)) as therapy_amount, date(pe.encounter_date) as date, "" as service_unit,
 			0 as bed_charges, 0 as cons_charges
 		from `tabTherapy Plan Detail` lrpmt
 		inner join `tabPatient Encounter` pe on lrpmt.parent = pe.name
@@ -793,9 +793,9 @@ def get_cash_lrpmt_transaction(filters):
 			DATE(lrpmt.creation) AS date,
 			item_template.item_group AS category,
 			lrpmt.therapy_type AS description,
-			1 AS quantity,
+			(lrpmt.no_of_sessions - lrpmt.sessions_cancelled) AS quantity,
 			lrpmt.amount AS rate,
-			lrpmt.amount AS total_amount,
+			((lrpmt.no_of_sessions - lrpmt.sessions_cancelled) * lrpmt.amount) AS total_amount,
 			pa.patient AS patient,
 			pa.patient_name AS patient_name,
 			pa.appointment_type AS appointment_type,
@@ -969,9 +969,9 @@ def get_insurance_lrpmt_transaction(filters):
 			DATE(lrpmt.creation) AS date,
 			item_template.item_group AS category,
 			lrpmt.therapy_type AS description,
-			1 AS quantity,
+			(lrpmt.no_of_sessions - lrpmt.sessions_cancelled) AS quantity,
 			lrpmt.amount AS rate,
-			lrpmt.amount AS total_amount,
+			((lrpmt.no_of_sessions - lrpmt.sessions_cancelled) * lrpmt.amount) AS total_amount,
 			pa.patient AS patient,
 			pa.patient_name AS patient_name,
 			pa.appointment_type AS appointment_type,

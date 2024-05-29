@@ -1372,9 +1372,9 @@ def get_insurance_therapy_data(filters, appoints):
             tt.item_group.as_("service_type"),
             tpd.therapy_type.as_("service_name"),
             tp.hms_tz_insurance_coverage_plan.as_("payment_method"),
-            ValueWrapper(1).as_("qty"),
+            (tpd.no_of_sessions - tpd.sessions_cancelled).as_("qty"),
             tpd.amount.as_("rate"),
-            tpd.amount.as_("amount"),
+            ((tpd.no_of_sessions - tpd.sessions_cancelled) * tpd.amount).as_("amount"),
             Case()
             .when(tp.status == "Completed", "Submitted")
             .else_("Draft")
@@ -1460,7 +1460,7 @@ def get_cash_therapy_data(filters, appoints):
             tt.item_group.as_("service_type"),
             tpd.therapy_type.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
-            ValueWrapper(1).as_("qty"),
+            (tpd.no_of_sessions - tpd.sessions_cancelled).as_("qty"),
             tpd.amount.as_("rate"),
             (sii.amount - sii.net_amount).as_("discount_amount"),
             sii.net_amount.as_("amount"),
@@ -1526,9 +1526,9 @@ def get_cash_therapy_data(filters, appoints):
             tt.item_group.as_("service_type"),
             tpd.therapy_type.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
-            ValueWrapper(1).as_("qty"),
+            (tpd.no_of_sessions - tpd.sessions_cancelled).as_("qty"),
             tpd.amount.as_("rate"),
-            tpd.amount.as_("amount"),
+            ((tpd.no_of_sessions - tpd.sessions_cancelled) * tpd.amount).as_("amount"),
             Case()
             .when(tp.status == "Completed", "Submitted")
             .else_("Draft")
@@ -1910,7 +1910,7 @@ def get_cancelled_lab_items(filters):
         .inner_join(pe)
         .on(ireturn.encounter_no == pe.name)
         .select(
-            fn.Date(lreturn.modified).as_("date"),
+            Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
             Case()
@@ -1980,7 +1980,7 @@ def get_cancelled_radiology_items(filters):
         .inner_join(pe)
         .on(ireturn.encounter_no == pe.name)
         .select(
-            fn.Date(lreturn.modified).as_("date"),
+            Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
             Case()
@@ -2050,7 +2050,7 @@ def get_cancelled_procedure_items(filters):
         .inner_join(pe)
         .on(ireturn.encounter_no == pe.name)
         .select(
-            fn.Date(lreturn.modified).as_("date"),
+            Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
             Case()
@@ -2119,7 +2119,7 @@ def get_cancelled_drug_items(filters):
         .inner_join(pe)
         .on(mreturn.encounter_no == pe.name)
         .select(
-            fn.Date(lreturn.modified).as_("date"),
+            Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
             Case()

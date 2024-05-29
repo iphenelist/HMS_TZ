@@ -209,11 +209,14 @@ doc_events = {
         "validate": "hms_tz.nhif.api.sales_order.validate",
         "before_submit": "hms_tz.nhif.api.sales_order.before_submit",
     },
-    #    "Therapy Plan": {
-    #        "validate": "hms_tz.nhif.api.therapy_plan.validate",
-    #    },
+    "Therapy Plan": {
+        "before_insert": "hms_tz.nhif.api.therapy_plan.before_insert",
+        "validate": "hms_tz.nhif.api.therapy_plan.validate",
+    },
     "Therapy Session": {
+        "before_insert": "hms_tz.nhif.api.therapy_session.before_insert",
         "after_insert": "hms_tz.nhif.api.therapy_session.after_insert",
+        "before_submit": "hms_tz.nhif.api.therapy_session.before_submit",
     },
 }
 
@@ -244,8 +247,8 @@ scheduler_events = {
         "*/10 * * * *": [
             "hms_tz.nhif.api.healthcare_utils.create_invoiced_items_if_not_created"
         ],
-        # Routine for day 03:00am at night
-        "0 3 * * *": [
+        # Routine for every day every after 30min from 03:00am to 05:00am
+        "*/30 3-4 * * *": [
             "hms_tz.nhif.api.healthcare_utils.auto_finalize_patient_encounters"
         ],
     },

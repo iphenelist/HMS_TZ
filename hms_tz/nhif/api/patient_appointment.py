@@ -65,7 +65,16 @@ def get_insurance_amount(
 
 
 @frappe.whitelist()
-def get_mop_amount(billing_item, mop=None, company=None, patient=None):
+def get_mop_amount(
+    billing_item,
+    mop=None,
+    company=None,
+    patient=None,
+    has_no_consultation_charges=False,
+):
+    if has_no_consultation_charges:
+        return 0
+
     price_list = None
     if mop:
         price_list = frappe.get_cached_value("Mode of Payment", mop, "price_list")
@@ -122,6 +131,7 @@ def invoice_appointment(name):
                 appointment_doc.mode_of_payment,
                 appointment_doc.company,
                 appointment_doc.patient,
+                appointment_doc.has_no_consultation_charges,
             )
         else:
             # TODO to be removed since on creating sales invoice we don't need insurance amount
@@ -503,6 +513,7 @@ def set_follow_up(appointment_doc, method):
         "name": ["!=", appointment_doc.name],
         "department": appointment_doc.department,
         "status": ["in", ["Open", "Closed"]],
+        "invoiced": 1,
     }
     if appointment_doc.insurance_subscription:
         filters["insurance_subscription"] = appointment_doc.insurance_subscription

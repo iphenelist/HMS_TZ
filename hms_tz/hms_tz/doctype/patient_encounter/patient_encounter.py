@@ -34,7 +34,6 @@ class PatientEncounter(Document):
 
     def on_submit(self):
         update_encounter_medical_record(self)
-        create_therapy_plan(self)
         create_healthcare_service_order(self)
         # make_insurance_claim(self)
 
@@ -50,54 +49,6 @@ class PatientEncounter(Document):
             self.patient_name or self.patient,
             self.practitioner_name or self.practitioner,
         )[:100]
-
-
-def create_therapy_plan(encounter):
-    if len(encounter.therapies):
-        therapies = []
-        for row in encounter.therapies:
-            if (
-                row.is_cancelled
-                or row.hms_tz_is_limit_exceeded
-                or row.is_not_available_inhouse
-            ):
-                continue
-
-            therapies.append(row)
-        if len(therapies) == 0:
-            return
-
-        doc = frappe.new_doc("Therapy Plan")
-        doc.patient = encounter.patient
-        doc.company = encounter.company
-        doc.start_date = encounter.encounter_date
-        doc.hms_tz_appointment = encounter.appointment
-        doc.hms_tz_patient_age = encounter.patient_age
-        doc.hms_tz_patient_sex = encounter.patient_sex
-        doc.hms_tz_insurance_coverage_plan = encounter.insurance_coverage_plan
-        doc.insurance_company = encounter.insurance_company
-        doc.ref_doctype = "Patient Encounter"
-        doc.ref_docname = encounter.name
-        for entry in therapies:
-            doc.append(
-                "therapy_plan_details",
-                {
-                    "therapy_type": entry.therapy_type,
-                    "no_of_sessions": entry.no_of_sessions,
-                    "prescribe": entry.prescribe or 0,
-                    "is_restricted": entry.is_restricted or 0,
-                    "hms_tz_ref_childname": entry.name
-                },
-            )
-        doc.save(ignore_permissions=True)
-        if doc.get("name"):
-            encounter.db_set("therapy_plan", doc.name)
-            frappe.msgprint(
-                _(
-                    f"Therapy Plan {frappe.bold(doc.name)} created successfully."
-                ),
-                alert=True
-            )
 
 
 def insert_encounter_to_medical_record(doc):

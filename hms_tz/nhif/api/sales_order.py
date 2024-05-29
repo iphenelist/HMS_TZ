@@ -132,6 +132,8 @@ def get_items_from_encounter(doc, warehouse):
                 drug_items.append(new_row)
 
             else:
+                if row.doctype == "Therapy Plan Detail":
+                    new_row.update({"qty": row.no_of_sessions - row.sessions_cancelled,})
                 lrpt_items.append(new_row)
 
     return drug_items, lrpt_items
