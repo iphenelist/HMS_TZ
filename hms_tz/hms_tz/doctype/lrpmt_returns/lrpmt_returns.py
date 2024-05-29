@@ -1118,13 +1118,12 @@ def get_therapies(patient, appointment, company):
             if len(sessions_info) == 0:
                 therapies.append(record)
 
-            elif item.no_of_sessions > len(sessions_info):
-                record.update(
-                    {
+            else:
+                if item.no_of_sessions > len(sessions_info):
+                    record.update({
                         "sessions": item.no_of_sessions - len(sessions_info),
-                    }
-                )
-                therapies.append(record)
+                    })
+                    therapies.append(record)
 
                 for session in sessions_info:
                     session_dict = record.copy()
