@@ -220,4 +220,4 @@ class LimitChangeRequest(Document):
             encounter_doc.reload()
             create_healthcare_docs_per_encounter(encounter_doc)
             create_delivery_note_per_encounter(encounter_doc, "on_submit")
-            create_therapy_plan(encounter_doc)
+            create_therapy_plan(enc_doc=encounter_doc)
