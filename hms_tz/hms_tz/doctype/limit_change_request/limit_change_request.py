@@ -6,10 +6,9 @@ from hms_tz.nhif.api.patient_encounter import (
     create_healthcare_docs_per_encounter,
     create_delivery_note_per_encounter,
 )
-from hms_tz.hms_tz.doctype.patient_encounter.patient_encounter import (
+from hms_tz.nhif.api.healthcare_utils import (
     create_therapy_plan,
 )
-
 
 
 class LimitChangeRequest(Document):
