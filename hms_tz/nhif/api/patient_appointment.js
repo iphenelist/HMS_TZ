@@ -819,8 +819,7 @@ const add_btns = (frm) => {
     let filters = {
         name: ["!=", frm.doc.name],
         department: frm.doc.department,
-        status: ["in", ["Open", "Closed"]],
-        invoiced: 1
+        status: ["in", ["Open", "Closed"]]
     }
     if (frm.doc.insurance_subscription) {
         filters.insurance_subscription = frm.doc.insurance_subscription;
