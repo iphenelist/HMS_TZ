@@ -512,14 +512,14 @@ def set_follow_up(appointment_doc, method):
     filters = {
         "name": ["!=", appointment_doc.name],
         "department": appointment_doc.department,
-        "status": ["in", ["Open", "Closed"]],
-        "invoiced": 1,
+        "status": ["in", ["Open", "Closed"]]
     }
     if appointment_doc.insurance_subscription:
         filters["insurance_subscription"] = appointment_doc.insurance_subscription
     else:
         filters["mode_of_payment"] = ["!=", ""]
-
+        filters["invoiced"] = 1
+    
     appointment = get_previous_appointment(appointment_doc.patient, filters)
     if appointment and appointment_doc.appointment_date:
         diff = date_diff(appointment_doc.appointment_date, appointment.appointment_date)
