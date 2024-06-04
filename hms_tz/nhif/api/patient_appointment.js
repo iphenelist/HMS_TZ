@@ -825,6 +825,7 @@ const add_btns = (frm) => {
         filters.insurance_subscription = frm.doc.insurance_subscription;
     } else {
         filters.mode_of_payment = ["!=", ""]
+        filters.invoiced = 1
     }
     const appointment = get_previous_appointment(frm, filters);
     if (typeof appointment != "undefined") {
