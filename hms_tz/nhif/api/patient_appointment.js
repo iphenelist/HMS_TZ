@@ -193,6 +193,7 @@ frappe.ui.form.on('Patient Appointment', {
                     'mop': frm.doc.mode_of_payment,
                     'company': frm.doc.company,
                     'patient': frm.doc.patient,
+                    "has_no_consultation_charges": frm.doc.has_no_consultation_charges
                 },
                 callback: function (data) {
                     if (data.message) {
@@ -824,6 +825,7 @@ const add_btns = (frm) => {
         filters.insurance_subscription = frm.doc.insurance_subscription;
     } else {
         filters.mode_of_payment = ["!=", ""]
+        filters.invoiced = 1
     }
     const appointment = get_previous_appointment(frm, filters);
     if (typeof appointment != "undefined") {
