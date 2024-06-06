@@ -11,7 +11,17 @@ from hms_tz.nhif.api.healthcare_utils import (
     get_restricted_LRPT,
 )
 from frappe.utils import getdate, get_fullname, nowdate
+from hms_tz.nhif.api.lab_test import check_cash_payments_from_encounter
 
+def onload(doc, method):
+    check_cash_payments_from_encounter(
+    doc=doc,
+    ref_doctype="ref_doctype",
+    ref_docname_field="ref_docname",
+    prescription_field="procedure_prescription",
+    item_name_field="procedure_name",
+    item_descriptor="Clinical Procedures"
+)
 
 def validate(doc, methd):
     if not doc.prescribe:

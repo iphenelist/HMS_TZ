@@ -21,6 +21,15 @@ def validate(doc, method):
         doc.is_restricted = is_restricted
     set_normals(doc)
 
+def onload(doc, method):
+    check_cash_payments_from_encounter(
+    doc=doc,
+    ref_doctype="ref_doctype",
+    ref_docname_field="ref_docname",
+    prescription_field="lab_test_prescription",
+    item_name_field="lab_test_name",
+    item_descriptor="Lab Tests",
+)
 
 def set_normals(doc):
     dob = frappe.get_cached_value("Patient", doc.patient, "dob")
@@ -303,3 +312,34 @@ def send_sms_for_lab_results(doc):
         if sms_sent:
             for row in all_labs_per_encounter:
                 frappe.db.set_value("Lab Test", row.name, "sms_sent", 1)
+
+def check_cash_payments_from_encounter(doc, ref_doctype, ref_docname_field, prescription_field, item_name_field, item_descriptor, additional_checks=None):
+    # Ensure there is a valid reference to an encounter
+    if getattr(doc, ref_docname_field) and getattr(doc, ref_doctype) == "Patient Encounter":
+        encounter_doc = frappe.get_doc("Patient Encounter", getattr(doc, ref_docname_field))
+        
+        # Check for insurance subscription
+        if encounter_doc.insurance_subscription:
+            # Filter items based on prescription details and additional checks
+            cash_items = [
+                getattr(row, item_name_field)
+                for row in getattr(encounter_doc, prescription_field)
+                if (
+                    row.prescribe == 1
+                    and row.invoiced == 0
+                    and row.is_cancelled == 0
+                    and (additional_checks(row) if additional_checks else True)
+                )
+            ]
+
+            # If there are any items to be paid in cash, display a message
+            if len(cash_items) > 0:
+                items_list = ", ".join(cash_items)
+                msg = f"""<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+                    <h4 style="font-weight: bold; color: #856404;"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Payment Alert</h4>
+                    <p style="font-size: 16px;">This patient: <strong>{doc.patient}</strong> has <strong>{len(cash_items)}</strong> more {item_descriptor} to be paid in cash:</p>
+                    <h4 style="font-style: italic; font-weight: bold; color: #856404;">{items_list}</h4>
+                    <p style="font-size: 16px;">Please inform the patient to pay in cash for these {item_descriptor}.</p>
+                </div>"""
+
+                frappe.msgprint(msg)
