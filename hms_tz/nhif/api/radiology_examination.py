@@ -8,7 +8,18 @@ from frappe import _
 from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
 from hms_tz.nhif.api.healthcare_utils import get_restricted_LRPT
 from frappe.utils import getdate, get_fullname, nowdate
+from hms_tz.nhif.api.lab_test import check_cash_payments_from_encounter
 
+
+def onload(doc, method):
+    check_cash_payments_from_encounter(
+    doc=doc,
+    ref_doctype="ref_doctype",
+    ref_docname_field="ref_docname",
+    prescription_field="radiology_procedure_prescription",
+    item_name_field="radiology_procedure_name",
+    item_descriptor="Radiology Examinations"
+)
 
 def validate(doc, method):
     if not doc.prescribe:

@@ -498,10 +498,11 @@ def check_cash_drugs_from_encounter(doc):
             ]
             if len(cash_drugs) > 0:
                 drug_list = ", ".join(cash_drugs)
-                msg = f"""<div style="border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin: 10px;">
-                    <p style="font-weight: normal; font-size: 15px;">This patient: <span style="font-weight: bold;">{doc.patient}</span> has <span style="font-weight: bold;">{len(cash_drugs)}</span> more drugs to be paid in cash:</p>
-                    <p style="font-style: italic; font-weight: bold; font-size: 15px;">{drug_list}</p>
-                    <p style="font-size: 15px;">Please inform the patient to pay in cash for these drugs.</p>
+                msg = f"""<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+                    <h4 style="font-weight: bold; color: #856404;"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Payment Alert</h4>
+                    <p style="font-size: 16px;">This patient: <strong>{doc.patient}</strong> has <strong>{len(cash_drugs)}</strong> more drugs to be paid in cash:</p>
+                    <p style="font-style: italic; font-weight: bold; color: #856404;">{drug_list}</p>
+                    <p style="font-size: 16px;">Please inform the patient to pay in cash for these drugs.</p>
                 </div>"""
 
                 frappe.msgprint(msg)
