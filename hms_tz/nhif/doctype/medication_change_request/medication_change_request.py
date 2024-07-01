@@ -50,14 +50,17 @@ class MedicationChangeRequest(Document):
 
             for row in encounter_doc.drug_prescription:
                 if (
-                    self.delivery_note and
-                    self.warehouse != get_warehouse_from_service_unit(
-                        row.healthcare_service_unit
-                    )
+                    self.delivery_note
+                    and self.warehouse
+                    != get_warehouse_from_service_unit(row.healthcare_service_unit)
                 ):
                     continue
 
-                self.set_drugs(row, encounter_doc.insurance_subscription)
+                self.set_drugs(
+                    row,
+                    insurance_subscription=encounter_doc.insurance_subscription,
+                    inpatient_record=encounter_doc.inpatient_record,
+                )
 
             if not self.patient_encounter_final_diagnosis:
                 for d in encounter_doc.patient_encounter_final_diagnosis:
@@ -114,7 +117,9 @@ class MedicationChangeRequest(Document):
 
                 if not self.sales_order:
                     self.validate_item_insurance_coverage(drug, "validate")
-                    validate_healthcare_service_unit(self.warehouse, drug, method="validate")
+                    validate_healthcare_service_unit(
+                        self.warehouse, drug, method="validate"
+                    )
 
     def before_submit(self):
         if not self.sales_order:
@@ -162,12 +167,11 @@ class MedicationChangeRequest(Document):
                 "Sales Order", self.sales_order, "med_change_request_status", ""
             )
 
-    def set_drugs(self, row, insurance_subscription=None):
+    def set_drugs(self, row, insurance_subscription=None, inpatient_record=None):
         is_so_from_encounter = frappe.get_cached_value(
             "Company", self.company, "auto_create_sales_order_from_encounter"
         )
-        if is_so_from_encounter == 1 and insurance_subscription:
-
+        if insurance_subscription:
             # add only covered items unser insurance coverage, means items that reached to delivery note
             if self.delivery_note and row.prescribe == 0:
                 new_row = row.as_dict()
@@ -180,7 +184,7 @@ class MedicationChangeRequest(Document):
                 self.append("drug_prescription", new_row)
 
             # add only uncovered items that are prescribed, means items that reached to sales order
-            if self.sales_order and row.prescribe == 1:
+            if is_so_from_encounter == 1 and self.sales_order and row.prescribe == 1:
                 new_row = row.as_dict()
                 new_row["name"] = None
                 new_row["parent"] = None
@@ -189,16 +193,30 @@ class MedicationChangeRequest(Document):
 
                 self.append("original_pharmacy_prescription", new_row)
                 self.append("drug_prescription", new_row)
-        else:
-            # add all items regardless of insurance coverage
-            new_row = row.as_dict()
-            new_row["name"] = None
-            new_row["parent"] = None
-            new_row["parentfield"] = None
-            new_row["parenttype"] = None
 
-            self.append("original_pharmacy_prescription", new_row)
-            self.append("drug_prescription", new_row)
+        elif not insurance_subscription:
+            # add all cash items from sales order for OPD patient
+            if is_so_from_encounter == 1 and self.sales_order and row.prescribe == 1:
+                new_row = row.as_dict()
+                new_row["name"] = None
+                new_row["parent"] = None
+                new_row["parentfield"] = None
+                new_row["parenttype"] = None
+
+                self.append("original_pharmacy_prescription", new_row)
+                self.append("drug_prescription", new_row)
+
+            # add all cash items from pe for ipd patient
+            if inpatient_record and row.prescribe == 1:
+                frappe.msgprint("not insurance_subscription inpatient_record prescribe=1")
+                new_row = row.as_dict()
+                new_row["name"] = None
+                new_row["parent"] = None
+                new_row["parentfield"] = None
+                new_row["parenttype"] = None
+
+                self.append("original_pharmacy_prescription", new_row)
+                self.append("drug_prescription", new_row)
 
     def validate_drug_quantity(self, row):
         # auto calculating quantity
@@ -671,7 +689,11 @@ def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
         ):
             continue
 
-        doc.set_drugs(item_line)
+        doc.set_drugs(
+            item_line,
+            insurance_subscription=patient_encounter_doc.insurance_subscription,
+            inpatient_record=patient_encounter_doc.inpatient_record,
+        )
 
     doc.delivery_note = delivery_note
     doc.save(ignore_permissions=True)
