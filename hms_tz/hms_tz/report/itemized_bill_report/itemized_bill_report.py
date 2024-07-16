@@ -28,11 +28,10 @@ def execute(filters=None):
             "status",
         ],
     )
-    appointment_date = (
-        frappe.db.get_value(
-            "Patient Appointment", filters.patient_appointment, "appointment_date"
-        ),
+    appointment_date = frappe.db.get_value(
+        "Patient Appointment", filters.patient_appointment, "appointment_date"
     )
+
     if details[0]["docstatus"] == 0 and details[0]["status"] != "Closed":
         frappe.throw(frappe.bold("This Appointment is not Closed..!!"))
 
@@ -43,6 +42,14 @@ def execute(filters=None):
             ["admitted_datetime as admitted_date", "discharge_date", "scheduled_date"],
             as_dict=True,
         )
+        
+        _date = ""  # Initialize _date with an empty string
+        if admitted_discharge_date:
+            if admitted_discharge_date.admitted_date:
+                _date = admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
+            else:
+                _date = admitted_discharge_date.scheduled_date
+        
         if not filters.get("patient_type"):
             appointments_data = get_appointment_consultancy(filters)
             if appointments_data:
@@ -69,8 +76,8 @@ def execute(filters=None):
             if not data:
                 frappe.throw(
                     "No Record found for the filters Patient: {0}, Appointment: {1},\
-					Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
-					Please change your filters and try again..!!".format(
+                    Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
+                    Please change your filters and try again..!!".format(
                         frappe.bold(filters.patient),
                         frappe.bold(filters.patient_appointment),
                         frappe.bold(filters.patient_type),
@@ -82,13 +89,6 @@ def execute(filters=None):
             total_amount = 0
             for n in range(0, len(data)):
                 total_amount += data[n]["amount"]
-
-            _date = ""
-            if admitted_discharge_date:
-                if admitted_discharge_date.admitted_date:
-                    _date = admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-                else:
-                    _date = admitted_discharge_date.scheduled_date
 
             last_row = {
                 "date": "Total",
@@ -145,8 +145,8 @@ def execute(filters=None):
             if not data:
                 frappe.throw(
                     "No Record found for the filters Patient: {0}, Appointment: {1},\
-					Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
-					Please change your filters and try again..!!".format(
+                    Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
+                    Please change your filters and try again..!!".format(
                         frappe.bold(filters.patient),
                         frappe.bold(filters.patient_appointment),
                         frappe.bold(filters.patient_type),
@@ -218,8 +218,8 @@ def execute(filters=None):
             if not data:
                 frappe.throw(
                     "No Record found for the filters Patient: {0}, Appointment: {1},\
-					Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
-					Please change your filters and try again..!!".format(
+                    Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
+                    Please change your filters and try again..!!".format(
                         frappe.bold(filters.patient),
                         frappe.bold(filters.patient_appointment),
                         frappe.bold(filters.patient_type),
