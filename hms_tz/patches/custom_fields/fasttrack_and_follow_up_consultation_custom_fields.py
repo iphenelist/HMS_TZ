@@ -1,0 +1,113 @@
+import frappe
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+
+def execute():
+    removed_type_custom_field()
+
+    fields = {
+        "Appointment Type": [
+            {
+                "fieldname": "source_sec",
+                "fieldtype": "Section Break",
+                "insert_after": "items",
+            },
+            {
+                "fieldname": "source",
+                "label": "Source",
+                "fieldtype": "Data",
+                "insert_after": "source_sec",
+                "translatable": 1,
+            },
+            {
+                "fieldname": "has_no_consultation_charges",
+                "fieldtype": "Check",
+                "label": "Has No Consultation Charge",
+                "insert_after": "source",
+                "description": "If checked, Consultation Charges will not be applied for Insurance appointments",
+            },
+            {
+                "fieldname": "visit_type_id",
+                "label": "Visit Type ID",
+                "fieldtype": "Select",
+                "insert_after": "has_no_consultation_charges",
+                "translatable": 1,
+                "options": """\n1-Normal Visit\n2-Emergency\n3-Referral\n4-Follow up Visit\n5-Investigation Only\n6-Occupational Visit\n7-Medicine Only""",
+            },
+            {
+                "fieldname": "followup_cb",
+                "fieldtype": "Column Break",
+                "insert_after": "visit_type_id",
+            },
+            {
+                "fieldname": "gp_followup_item",
+                "fieldtype": "Link",
+                "options": "Item",
+                "label": "GP Followup Item",
+                "insert_after": "followup_cb",
+            },
+            {
+                "fieldname": "specialist_followup_item",
+                "fieldtype": "Link",
+                "options": "Item",
+                "label": "Specialist Followup Item",
+                "insert_after": "gp_followup_item",
+            },
+            {
+                "fieldname": "super_specialist_followup_item",
+                "fieldtype": "Link",
+                "options": "Item",
+                "label": "Super Specialist Followup Item",
+                "insert_after": "specialist_followup_item",
+            },
+            {
+                "fieldname": "fasttrack_cb",
+                "fieldtype": "Column Break",
+                "insert_after": "super_specialist_followup_item",
+            },
+            {
+                "fieldname": "gp_fasttrack_item",
+                "fieldtype": "Link",
+                "options": "Item",
+                "label": "GP Fasttrack Item",
+                "insert_after": "fasttrack_cb",
+            },
+            {
+                "fieldname": "specialist_fasttrack_item",
+                "fieldtype": "Link",
+                "options": "Item",
+                "label": "Specialist Fasttrack Item",
+                "insert_after": "gp_fasttrack_item",
+            },
+            {
+                "fieldname": "super_specialist_fasttrack_item",
+                "fieldtype": "Link",
+                "options": "Item",
+                "label": "Super Specialist Fasttrack Item",
+                "insert_after": "specialist_fasttrack_item",
+            },
+        ],
+    }
+
+    create_custom_fields(fields, update=True)
+
+
+def removed_type_custom_field():
+    fields = [
+        {
+            "Appointment Type": ["follow_up_item"],
+        },
+        {
+            "Patient Appointment": ["apply_fasttrack_charge"],
+        },
+    ]
+    for row in fields:
+        for key, value in row.items():
+            for fieldname in value:
+                custom_field = frappe.get_value(
+                    "Custom Field", {"fieldname": fieldname, "dt": key}, "name"
+                )
+                if custom_field:
+                    frappe.delete_doc("Custom Field", custom_field)
+
+    frappe.db.commit()
