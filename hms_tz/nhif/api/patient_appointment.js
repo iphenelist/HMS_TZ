@@ -107,24 +107,6 @@ frappe.ui.form.on('Patient Appointment', {
         frm.toggle_display(['referral_no'], false);
         frm.toggle_display(['remarks'], false);
 
-        const insurance_company = frm.doc.insurance_company;
-        const coverage_plan_name = frm.doc.coverage_plan_name;
-        const appointment_type = frm.doc.appointment_type;
-        if (
-            insurance_company && coverage_plan_name &&
-            insurance_company.includes("NHIF") &&
-            !appointment_type.includes("Follow") &&
-            (coverage_plan_name.includes("Option") || coverage_plan_name.includes("NMB"))
-        ) {
-            frm.toggle_display("apply_fasttrack_charge", true);
-            frm.toggle_enable("apply_fasttrack_charge", true);
-            frm.set_value("apply_fasttrack_charge", 1);
-        } else {
-            frm.toggle_display('apply_fasttrack_charge', false);
-            frm.toggle_enable('apply_fasttrack_charge', false);
-            frm.set_value("apply_fasttrack_charge", 0);
-        }
-
         if (frm.doc.appointment_type == "NHIF External Referral") {
             if (frm.doc.insurance_subscription) {
                 frm.toggle_display(['referral_no'], true);
@@ -231,9 +213,9 @@ frappe.ui.form.on('Patient Appointment', {
             args: {
                 'appointment_type': frm.doc.appointment_type,
                 'practitioner': frm.doc.practitioner,
-                "insurance_company": frm.doc.insurance_company,
                 "inpatient_record": frm.doc.inpatient_record,
-                "apply_fasttrack_charge": frm.doc.apply_fasttrack_charge,
+                "insurance_company": frm.doc.insurance_company,
+                "insurance_subscription": frm.doc.insurance_subscription,
             },
             callback: function (data) {
                 if (data.message) {
