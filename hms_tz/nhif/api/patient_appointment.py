@@ -19,7 +19,7 @@ from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
 from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
-from frappe.utils import date_diff, getdate, nowdate
+from frappe.utils import date_diff, getdate, nowdate, cint
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
 from csf_tz import console
 
@@ -46,8 +46,7 @@ def get_insurance_amount(
     has_no_consultation_charges=False,
 ):
     # SHM Rock: 202
-    if frappe.utils.cint(has_no_consultation_charges) == 1:
-
+    if cint(has_no_consultation_charges) == 1:
         return 0, 0
 
     item_price = get_item_rate(
@@ -73,7 +72,7 @@ def get_mop_amount(
     patient=None,
     has_no_consultation_charges=False,
 ):
-    if frappe.utils.cint(has_no_consultation_charges) == 1:
+    if cint(has_no_consultation_charges) == 1:
         return 0
 
     price_list = None
@@ -204,16 +203,18 @@ def invoice_appointment(name):
 def get_consulting_charge_item(
     appointment_type,
     practitioner,
-    insurance_company=None,
     inpatient_record=None,
-    apply_fasttrack_charge=False,
+    insurance_company=None,
+    insurance_subscription=None,
 ):
     charge_item = ""
     app_type_details = frappe.get_cached_value(
         "Appointment Type",
         appointment_type,
         [
-            "follow_up_item",
+            "gp_followup_item",
+            "specialist_followup_item",
+            "super_specialist_followup_item",
             "gp_fasttrack_item",
             "specialist_fasttrack_item",
             "super_specialist_fasttrack_item",
@@ -232,24 +233,44 @@ def get_consulting_charge_item(
 
     charge_item = cons_item
 
-    if (
-        appointment_type == "Follow up Visit"
-        and insurance_company
-        and "NHIF" in insurance_company
-    ):
-        charge_item = app_type_details.get("follow_up_item")
+    scheme_id = None
+    if "NHIF" in insurance_company:
+        plan_name = frappe.get_cached_value(
+            "Healthcare Insurance Subscription",
+            insurance_subscription,
+            "healthcare_insurance_coverage_plan",
+        )
+        scheme_id = frappe.get_cached_value(
+            "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
+        )
 
-    if (
-        frappe.utils.cint(apply_fasttrack_charge) == 1
-        and insurance_company
-        and "NHIF" in insurance_company
-    ):
-        if "General Practitioner" in cons_item:
-            charge_item = app_type_details.get("gp_fasttrack_item")
-        elif "Super Specialist" in cons_item:
-            charge_item = app_type_details.get("super_specialist_fasttrack_item")
-        elif "Specialist" in cons_item:
-            charge_item = app_type_details.get("specialist_fasttrack_item")
+    if insurance_company and "NHIF" in insurance_company and scheme_id:
+        if appointment_type == "Follow up Visit" and cint(scheme_id) in [
+            1001,
+            4001,
+            5001,
+            6001,
+            8001,
+        ]:
+            if "General Practitioner" in cons_item:
+                charge_item = app_type_details.get("gp_followup_item")
+            elif "Super Specialist" in cons_item:
+                charge_item = app_type_details.get("super_specialist_followup_item")
+            elif "Specialist" in cons_item:
+                charge_item = app_type_details.get("specialist_followup_item")
+
+        elif cint(scheme_id) in [4001, 5001, 6001, 8001] and appointment_type in [
+            "Outpatient Visit",
+            "Normal Visit",
+            "Emergency",
+            "NHIF External Referral",
+        ]:
+            if "General Practitioner" in cons_item:
+                charge_item = app_type_details.get("gp_fasttrack_item")
+            elif "Super Specialist" in cons_item:
+                charge_item = app_type_details.get("super_specialist_fasttrack_item")
+            elif "Specialist" in cons_item:
+                charge_item = app_type_details.get("specialist_fasttrack_item")
 
     return charge_item
 
@@ -293,22 +314,41 @@ def make_vital(appointment_doc, method):
 
     set_follow_up(appointment_doc, "invoice_appointment")
     # SHM Rock: 202
-    if "NHIF" in appointment_doc.insurance_company and appointment_doc.appointment_type:
-        appointment_doc.has_no_consultation_charges = frappe.get_cached_value(
-            "Appointment Type",
-            appointment_doc.appointment_type,
-            "has_no_consultation_charges",
-        )
-        if appointment_doc.has_no_consultation_charges:
-            if appointment_doc.paid_amount > 0:
-                appointment_doc.paid_amount = 0
-
-            frappe.msgprint(
-                _(
-                    f"This appointment type: <b>{appointment_doc.appointment_type}</b> has no consultation charges."
-                ),
-                alert=True,
+    if appointment_doc.insurance_company and appointment_doc.appointment_type:
+        # Helpdesk: https://support.aakvatech.com/helpdesk/tickets/239
+        # NHIF introduce follow up item and its price, therefore not need to set has not consultation charges for NHIF patient
+        # 2024-07-19
+        scheme_id = None
+        if "NHIF" in appointment_doc.insurance_company:
+            plan_name = frappe.get_cached_value(
+                "Healthcare Insurance Subscription",
+                appointment_doc.insurance_subscription,
+                "healthcare_insurance_coverage_plan",
             )
+            scheme_id = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
+            )
+
+        if not (
+            "NHIF" in appointment_doc.insurance_company
+            and scheme_id
+            and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
+        ):
+            appointment_doc.has_no_consultation_charges = frappe.get_cached_value(
+                "Appointment Type",
+                appointment_doc.appointment_type,
+                "has_no_consultation_charges",
+            )
+            if appointment_doc.has_no_consultation_charges:
+                if appointment_doc.paid_amount > 0:
+                    appointment_doc.paid_amount = 0
+
+                frappe.msgprint(
+                    _(
+                        f"This appointment type: <b>{appointment_doc.appointment_type}</b> has no consultation charges."
+                    ),
+                    alert=True,
+                )
 
     if (not appointment_doc.ref_vital_signs) and (
         appointment_doc.invoiced
@@ -566,13 +606,13 @@ def set_follow_up(appointment_doc, method):
     if appointment and appointment_doc.appointment_date:
         diff = date_diff(appointment_doc.appointment_date, appointment.appointment_date)
         if appointment_doc.mode_of_payment:
-            valid_days = int(
+            valid_days = cint(
                 frappe.get_cached_value(
                     "Healthcare Settings", "Healthcare Settings", "valid_days"
                 )
             )
         else:
-            valid_days = int(
+            valid_days = cint(
                 frappe.get_cached_value(
                     "Healthcare Insurance Coverage Plan",
                     {"coverage_plan_name": appointment_doc.coverage_plan_name},
@@ -580,7 +620,7 @@ def set_follow_up(appointment_doc, method):
                 )
             )
             if valid_days == 0:
-                valid_days = int(
+                valid_days = cint(
                     frappe.get_cached_value(
                         "Healthcare Insurance Company",
                         appointment_doc.insurance_company,
@@ -641,9 +681,9 @@ def make_next_doc(doc, method, from_hook=True):
         doc.billing_item = get_consulting_charge_item(
             doc.appointment_type,
             doc.practitioner,
-            insurance_company=doc.insurance_company,
             inpatient_record=doc.inpatient_record,
-            apply_fasttrack_charge=doc.apply_fasttrack_charge,
+            insurance_company=doc.insurance_company,
+            insurance_subscription=doc.insurance_subscription,
         )
         if not doc.billing_item:
             frappe.throw(
@@ -668,8 +708,21 @@ def make_next_doc(doc, method, from_hook=True):
             # Helpdesk: https://support.aakvatech.com/helpdesk/tickets/239
             # NHIF introduce follow up item and its price, therefore not need to set has not consultation charges for NHIF patient
             # 2024-07-19
+            scheme_id = None
+            if "NHIF" in doc.insurance_company:
+                plan_name = frappe.get_cached_value(
+                    "Healthcare Insurance Subscription",
+                    doc.insurance_subscription,
+                    "healthcare_insurance_coverage_plan",
+                )
+                scheme_id = frappe.get_cached_value(
+                    "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
+                )
+
             if not (
-                "NHIF" in doc.insurance_company and "Follow" in doc.appointment_type
+                "NHIF" in doc.insurance_company
+                and scheme_id
+                and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
             ):
                 doc.has_no_consultation_charges = frappe.get_cached_value(
                     "Appointment Type",
