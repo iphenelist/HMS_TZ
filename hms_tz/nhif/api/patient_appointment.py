@@ -259,18 +259,18 @@ def get_consulting_charge_item(
             elif "Specialist" in cons_item:
                 charge_item = app_type_details.get("specialist_followup_item")
 
-        elif cint(scheme_id) in [4001, 5001, 6001, 8001] and appointment_type in [
-            "Outpatient Visit",
-            "Normal Visit",
-            "Emergency",
-            "NHIF External Referral",
-        ]:
-            if "General Practitioner" in cons_item:
-                charge_item = app_type_details.get("gp_fasttrack_item")
-            elif "Super Specialist" in cons_item:
-                charge_item = app_type_details.get("super_specialist_fasttrack_item")
-            elif "Specialist" in cons_item:
-                charge_item = app_type_details.get("specialist_fasttrack_item")
+        # elif cint(scheme_id) in [4001, 5001, 6001, 8001] and appointment_type in [
+        #     "Outpatient Visit",
+        #     "Normal Visit",
+        #     "Emergency",
+        #     "NHIF External Referral",
+        # ]:
+        #     if "General Practitioner" in cons_item:
+        #         charge_item = app_type_details.get("gp_fasttrack_item")
+        #     elif "Super Specialist" in cons_item:
+        #         charge_item = app_type_details.get("super_specialist_fasttrack_item")
+        #     elif "Specialist" in cons_item:
+        #         charge_item = app_type_details.get("specialist_fasttrack_item")
 
     return charge_item
 
@@ -331,6 +331,7 @@ def make_vital(appointment_doc, method):
 
         if not (
             "NHIF" in appointment_doc.insurance_company
+            and appointment_doc.appointment_type == "Follow up Visit"
             and scheme_id
             and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
         ):
@@ -721,6 +722,7 @@ def make_next_doc(doc, method, from_hook=True):
 
             if not (
                 "NHIF" in doc.insurance_company
+                and doc.appointment_type == "Follow up Visit"
                 and scheme_id
                 and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
             ):
