@@ -21,8 +21,12 @@ def execute():
                 fieldtype="Select",
                 insert_after="medical_code",
                 translatable=1,
+<<<<<<< HEAD
                 options="1-Normal Visit\n2-Emergency Visit\n3-Referral Visit\n4-Vifurushi Follow-Up Visit\n5- Investigation Visit\n6-Occupational Visit\n7-Medicine Re-fill Visit\n8-Other Visit\n9-Follow-Up Visit\n10-New case Visit:",
 
+=======
+                options="""\n1-Normal Visit\n2-Emergency Visit\n3-Referral Visit\n4-Vifurushi Follow up Visit\n5-Investigation Visit\n6-Occupational Visit\n7-Medicine Re-fill Visit\n8-Other Visit\n9-Follow up Visit\n10-New case Visit""",
+>>>>>>> fe66d4bf (feat: allow manual selecting or ticking of 'apply fasttrack charge' for some of the NHIF patient appointment)
             ),
         ],
         "Clinical Procedure Template": [
