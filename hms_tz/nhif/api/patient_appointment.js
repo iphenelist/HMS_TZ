@@ -107,6 +107,10 @@ frappe.ui.form.on('Patient Appointment', {
         frm.toggle_display(['referral_no'], false);
         frm.toggle_display(['remarks'], false);
 
+        // Helpdesk: 2024-07-22
+        // https://support.aakvatech.com/helpdesk/tickets/239
+        frm.trigger("apply_fasttrack");
+
         if (frm.doc.appointment_type == "NHIF External Referral") {
             if (frm.doc.insurance_subscription) {
                 frm.toggle_display(['referral_no'], true);
@@ -216,6 +220,7 @@ frappe.ui.form.on('Patient Appointment', {
                 "inpatient_record": frm.doc.inpatient_record,
                 "insurance_company": frm.doc.insurance_company,
                 "insurance_subscription": frm.doc.insurance_subscription,
+                "apply_fasttrack_charge": frm.doc.apply_fasttrack_charge
             },
             callback: function (data) {
                 if (data.message) {
@@ -402,6 +407,56 @@ frappe.ui.form.on('Patient Appointment', {
         } else {
             frm.set_df_property("get_authorization_number", "hidden", 0)
             frm.set_df_property("authorization_number", "hidden", 0)
+        }
+    },
+    apply_fasttrack_charge: (frm) => {
+        // Helpdesk: 2024-07-22
+        // https://support.aakvatech.com/helpdesk/tickets/239
+        frm.trigger("apply_fasttrack");
+    },
+    apply_fasttrack: (frm) => {
+        if (["Cancelled", "Closed"].includes(frm.doc.status)) {
+            return;
+        }
+        const insurance_company = frm.doc.insurance_company;
+        const coverage_plan_name = frm.doc.coverage_plan_name;
+        const appointment_type = frm.doc.appointment_type;
+        if (
+            insurance_company && coverage_plan_name &&
+            insurance_company.includes("NHIF") &&
+            (coverage_plan_name.includes("Option") || coverage_plan_name.includes("NMB"))
+        ) {
+            applyFasttrackCheck(frm, appointment_type);
+        } else {
+            frm.toggle_display('apply_fasttrack_charge', false);
+            frm.toggle_enable('apply_fasttrack_charge', false);
+            if (frm.apply_fasttrack_charge == 1 && !["Cancelled", "Closed"].includes(frm.doc.status)) {
+                frm.set_value("apply_fasttrack_charge", 0);
+            }
+            frm.trigger("get_consulting_charge_item");
+            frm.trigger('get_insurance_amount');
+        }
+
+        if (frm.doc.ref_vital_signs || frm.doc.ref_patient_encounter) {
+            frm.toggle_display('apply_fasttrack_charge', false);
+            frm.toggle_enable('apply_fasttrack_charge', false);
+        }
+
+        function applyFasttrackCheck(frm, appointment_type) {
+            if (appointment_type.includes("Follow")) {
+                if (frm.apply_fasttrack_charge == 1 && !["Cancelled", "Closed"].includes(frm.doc.status)) {
+                    frm.set_value("apply_fasttrack_charge", 0);
+                }
+                frm.toggle_display('apply_fasttrack_charge', false);
+                frm.toggle_enable('apply_fasttrack_charge', false);
+                frm.trigger("get_consulting_charge_item");
+                frm.trigger('get_insurance_amount');
+            } else {
+                frm.toggle_display("apply_fasttrack_charge", true);
+                frm.toggle_enable("apply_fasttrack_charge", true);
+                frm.trigger("get_consulting_charge_item");
+                frm.trigger('get_insurance_amount');
+            }
         }
     }
 });
