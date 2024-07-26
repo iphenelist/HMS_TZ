@@ -6,6 +6,15 @@ def execute():
     removed_type_custom_field()
 
     fields = {
+        "Patient Appointment": [
+            {
+                "fieldname": "apply_fasttrack_charge",
+                "fieldtype": "Check",
+                "label": "Apply Fasttrack Charge",
+                "insert_after": "column_break_49",
+                "default": 1,
+            },
+        ],
         "Appointment Type": [
             {
                 "fieldname": "source_sec",
@@ -32,7 +41,7 @@ def execute():
                 "fieldtype": "Select",
                 "insert_after": "has_no_consultation_charges",
                 "translatable": 1,
-                "options": """\n1-Normal Visit\n2-Emergency\n3-Referral\n4-Follow up Visit\n5-Investigation Only\n6-Occupational Visit\n7-Medicine Only""",
+                "options": """\n1-Normal Visit\n2-Emergency Visit\n3-Referral Visit\n4-Vifurushi Follow up Visit\n5-Investigation Visit\n6-Occupational Visit\n7-Medicine Re-fill Visit\n8-Other Visit\n9-Follow up Visit\n10-New case Visit""",
             },
             {
                 "fieldname": "followup_cb",
@@ -91,15 +100,14 @@ def execute():
 
     create_custom_fields(fields, update=True)
 
+    frappe.reload_doc("hms_tz", "doctype", "patient_appointment", force=True)
+
 
 def removed_type_custom_field():
     fields = [
         {
             "Appointment Type": ["follow_up_item"],
-        },
-        {
-            "Patient Appointment": ["apply_fasttrack_charge"],
-        },
+        }
     ]
     for row in fields:
         for key, value in row.items():
