@@ -206,6 +206,7 @@ def get_consulting_charge_item(
     inpatient_record=None,
     insurance_company=None,
     insurance_subscription=None,
+    apply_fasttrack_charge=False,
 ):
     charge_item = ""
     app_type_details = frappe.get_cached_value(
@@ -259,18 +260,22 @@ def get_consulting_charge_item(
             elif "Specialist" in cons_item:
                 charge_item = app_type_details.get("specialist_followup_item")
 
-        # elif cint(scheme_id) in [4001, 5001, 6001, 8001] and appointment_type in [
-        #     "Outpatient Visit",
-        #     "Normal Visit",
-        #     "Emergency",
-        #     "NHIF External Referral",
-        # ]:
-        #     if "General Practitioner" in cons_item:
-        #         charge_item = app_type_details.get("gp_fasttrack_item")
-        #     elif "Super Specialist" in cons_item:
-        #         charge_item = app_type_details.get("super_specialist_fasttrack_item")
-        #     elif "Specialist" in cons_item:
-        #         charge_item = app_type_details.get("specialist_fasttrack_item")
+        elif (
+            cint(apply_fasttrack_charge) == 1
+            and cint(scheme_id) in [4001, 5001, 6001, 8001]
+            and appointment_type in [
+                "Outpatient Visit",
+                "Normal Visit",
+                "Emergency",
+                "NHIF External Referral",
+            ]
+        ):
+            if "General Practitioner" in cons_item:
+                charge_item = app_type_details.get("gp_fasttrack_item")
+            elif "Super Specialist" in cons_item:
+                charge_item = app_type_details.get("super_specialist_fasttrack_item")
+            elif "Specialist" in cons_item:
+                charge_item = app_type_details.get("specialist_fasttrack_item")
 
     return charge_item
 
@@ -685,6 +690,7 @@ def make_next_doc(doc, method, from_hook=True):
             inpatient_record=doc.inpatient_record,
             insurance_company=doc.insurance_company,
             insurance_subscription=doc.insurance_subscription,
+            apply_fasttrack_charge=doc.apply_fasttrack_charge,
         )
         if not doc.billing_item:
             frappe.throw(

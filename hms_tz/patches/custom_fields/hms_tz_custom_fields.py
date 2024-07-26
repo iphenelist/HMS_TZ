@@ -21,13 +21,7 @@ def execute():
                 fieldtype="Select",
                 insert_after="medical_code",
                 translatable=1,
-                options="1-Normal Visit\
-                        2-Emergency\
-                        3-Referral\
-                        4-Follow up Visit\
-                        5-Investigation Only\
-                        6-Occupational Visit\
-                        7-Medicine Only"
+                options="""\n1-Normal Visit\n2-Emergency Visit\n3-Referral Visit\n4-Vifurushi Follow up Visit\n5-Investigation Visit\n6-Occupational Visit\n7-Medicine Re-fill Visit\n8-Other Visit\n9-Follow up Visit\n10-New case Visit""",
             ),
         ],
         "Clinical Procedure Template": [
