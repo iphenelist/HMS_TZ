@@ -13,11 +13,11 @@
     "modified": "2022-03-02 12:00:14.936487",
     "modified_by": "Administrator",
     "module": "Hms Tz",
-    "name": "New VC Payment Report",
+    "name": "VC Payment Report",
     "owner": "Administrator",
     "prepared_report": 0,
     "ref_doctype": "Patient Appointment",
-    "report_name": "New VC Payment Report",
+    "report_name": "VC Payment Report",
     "report_type": "Script Report",
     "roles": [
         {
