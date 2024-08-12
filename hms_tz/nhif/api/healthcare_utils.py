@@ -24,7 +24,7 @@ import json
 from frappe.model.workflow import apply_workflow
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.token import get_nhifservice_token
-
+from frappe.query_builder import DocType
 
 @frappe.whitelist()
 def get_healthcare_services_to_invoice(
@@ -1703,3 +1703,88 @@ def validate_nhif_patient_claim_status(
                     title="<b>NHIF Patient Claim Already Submitted",
                     exc=frappe.ValidationError,
                 )
+
+
+def enqueue_auto_create_nhif_patient_claims():
+    frappe.enqueue(
+        method=auto_create_nhif_patient_claims,
+        job_name="auto_create_nhif_patient_claims",
+        queue="default",
+        timeout=100000,
+        is_async=True,
+    )
+
+def auto_create_nhif_patient_claims():
+    """Auto create NHIF patient claims after a number of days set in company settings
+
+    This routine runs every day at 01: 30am at night
+    """
+
+    pa = DocType("Patient Appointment")
+    pe = DocType("Patient Encounter")
+    ip = DocType("Inpatient Record")
+
+    def get_appointments():
+        today = frappe.utils.getdate("2022-12-07")
+        before_1_day = add_days(today, -1)
+
+        appointments = (
+            frappe.qb.from_(pa)
+            .inner_join(pe)
+            .on(pa.name == pe.appointment)
+            .select(
+                pa.name.as_("appointment"),
+            )
+            .where(
+                (pa.status == "Closed")
+                & (pa.nhif_patient_claim.isnull())
+                # (pa.insurance_company.like("NHIF"))
+                & (pa.insurance_company == "NHIF")
+                & (pa.company == "Shree Hindu Mandal Hospital - Dar es Salaam")
+                & (pa.appointment_date == before_1_day)
+                & (pe.docstatus == 1)
+                & (pe.duplicated == 0)
+            )
+        ).run(as_dict=True)
+
+        appointment_ids = [i.appointment for i in appointments]
+        return appointment_ids
+
+    def get_ongoiong_appointments():
+        inpatient_appointmens = (
+            frappe.qb.from_(ip)
+            .select(ip.patient_appointment)
+            .where(
+                # (ip.insurance_company.like("NHIF"))
+                (ip.insurance_company == "NHIF")
+                & (ip.company == "Shree Hindu Mandal Hospital - Dar es Salaam")
+                & (ip.patient_appointment.isnotnull())
+                & (ip.status != "Discharged")
+            )
+        ).run(as_dict=True)
+
+        ongoing_appointments = [i.patient_appointment for i in inpatient_appointmens]
+
+        return ongoing_appointments
+
+    def create_claims(appointment_ids):
+        for appointment in appointment_ids:
+            try:
+                doc = frappe.new_doc("NHIF Patient Claim")
+                doc.patient_appointment = appointment
+                doc.save(ignore_permissions=True)
+                doc.reload()
+            
+            except Exception as e:
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    f"Error in creating NHIF Patient Claim for appointment: {appointment}",
+                )
+                continue
+    
+
+    appointment_names = get_appointments()
+    ongoing_appointments = get_ongoiong_appointments()
+    appointment_ids = list(set(appointment_names) - set(ongoing_appointments))
+
+    create_claims(appointment_ids)
