@@ -1724,10 +1724,7 @@ def auto_create_nhif_patient_claims():
     pe = DocType("Patient Encounter")
     ip = DocType("Inpatient Record")
 
-    def get_appointments():
-        today = frappe.utils.getdate("2022-12-07")
-        before_1_day = add_days(today, -1)
-
+    def get_appointments(appointment_date):
         appointments = (
             frappe.qb.from_(pa)
             .inner_join(pe)
@@ -1737,11 +1734,11 @@ def auto_create_nhif_patient_claims():
             )
             .where(
                 (pa.status == "Closed")
-                & (pa.nhif_patient_claim.isnull())
                 # (pa.insurance_company.like("NHIF"))
                 & (pa.insurance_company == "NHIF")
                 & (pa.company == "Shree Hindu Mandal Hospital - Dar es Salaam")
-                & (pa.appointment_date == before_1_day)
+                & (pa.appointment_date == appointment_date)
+                & (pa.nhif_patient_claim.isnull() | (pa.nhif_patient_claim == ""))
                 & (pe.docstatus == 1)
                 & (pe.duplicated == 0)
             )
@@ -1750,8 +1747,8 @@ def auto_create_nhif_patient_claims():
         appointment_ids = [i.appointment for i in appointments]
         return appointment_ids
 
-    def get_ongoiong_appointments():
-        inpatient_appointmens = (
+    def get_ongoiong_inpatients():
+        inpatient_appointments = (
             frappe.qb.from_(ip)
             .select(ip.patient_appointment)
             .where(
@@ -1763,9 +1760,36 @@ def auto_create_nhif_patient_claims():
             )
         ).run(as_dict=True)
 
-        ongoing_appointments = [i.patient_appointment for i in inpatient_appointmens]
+        ongoing_inpatients = [i.patient_appointment for i in inpatient_appointments]
 
-        return ongoing_appointments
+        return ongoing_inpatients
+    
+    def get_discharged_inpatients(discharge_date):
+        inpatient_appointments = (
+            frappe.qb.from_(ip)
+            .inner_join(pa)
+            .on(ip.patient_appointment == pa.name)
+            .inner_join(pe)
+            .on(ip.patient_appointment == pe.appointment)
+            .select(ip.patient_appointment)
+            .where(
+                # (ip.insurance_company.like("NHIF"))
+                (ip.insurance_company == "NHIF")
+                & (ip.company == "Shree Hindu Mandal Hospital - Dar es Salaam")
+                & (ip.patient_appointment.isnotnull())
+                & (ip.status == "Discharged")
+                & (ip.discharge_date == discharge_date)
+                & (pa.status == "Closed")
+                & (pa.nhif_patient_claim.isnull() | (pa.nhif_patient_claim == ""))
+                & (pe.docstatus == 1)
+                & (pe.duplicated == 0)
+            )
+        ).run(as_dict=True)
+
+        discharged_appointments = [i.patient_appointment for i in inpatient_appointments]
+
+        return discharged_appointments
+
 
     def create_claims(appointment_ids):
         for appointment in appointment_ids:
@@ -1782,9 +1806,10 @@ def auto_create_nhif_patient_claims():
                 )
                 continue
     
-
-    appointment_names = get_appointments()
-    ongoing_appointments = get_ongoiong_appointments()
-    appointment_ids = list(set(appointment_names) - set(ongoing_appointments))
+    before_1_day = add_days(nowdate(), -1)
+    appointment_names = get_appointments(before_1_day)
+    ongoing_inpatients = get_ongoiong_inpatients()
+    discharged_appointments = get_discharged_inpatients(before_1_day)
+    appointment_ids = list(set(list(set(appointment_names) - set(ongoing_inpatients)) + list(set(discharged_appointments))))
 
     create_claims(appointment_ids)
