@@ -35,6 +35,13 @@ from PyPDF2 import PdfFileWriter
 from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import (
     track_changes_of_claim_items,
 )
+from frappe.query_builder import DocType
+
+
+pa = DocType("Patient Appointment")
+pe = DocType("Patient Encounter")
+ct = DocType("Codification Table")
+
 
 
 class NHIFPatientClaim(Document):
@@ -59,16 +66,9 @@ class NHIFPatientClaim(Document):
         if not self.is_new():
             update_original_patient_claim(self)
 
-            frappe.db.sql(
-                "UPDATE `tabPatient Appointment` SET nhif_patient_claim = '' WHERE nhif_patient_claim = '{0}'".format(
-                    self.name
-                )
-            )
-            frappe.db.sql(
-                "UPDATE `tabPatient Appointment` SET nhif_patient_claim = '{0}' WHERE name = '{1}'".format(
-                    self.name, self.patient_appointment
-                )
-            )
+            frappe.qb.update(pa).set(pa.nhif_patient_claim, self.name).where(
+                pa.name == self.patient_appointment
+            ).run()
 
     def on_trash(self):
         # check if claim number exist in appointment record
@@ -76,12 +76,9 @@ class NHIFPatientClaim(Document):
             "Patient Appointment", self.patient_appointment, "nhif_patient_claim"
         )
         if nhif_patient_claim == self.name:
-            frappe.db.set_value(
-                "Patient Appointment",
-                self.patient_appointment,
-                "nhif_patient_claim",
-                "",
-            )
+            frappe.qb.update(pa).set(pa.nhif_patient_claim, "").where(
+                pa.name == self.patient_appointment
+            ).run()
 
     def before_submit(self):
         try:
