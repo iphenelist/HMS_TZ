@@ -10,9 +10,9 @@ from frappe.utils import cint
 
 
 @frappe.whitelist()
-def get_feed(name, document_types=None, date_range=None, start=0, page_length=20):
+def get_feed(name, document_types=None, date_range=None, practitioner=None, start=0, page_length=20):
 	"""get feed"""
-	filters = get_filters(name, document_types, date_range)
+	filters = get_filters(name, document_types, date_range, practitioner)
 
 	result = frappe.db.get_all(
 		"Patient Medical Record",
@@ -26,7 +26,7 @@ def get_feed(name, document_types=None, date_range=None, start=0, page_length=20
 	return result
 
 
-def get_filters(name, document_types=None, date_range=None):
+def get_filters(name, document_types=None, date_range=None, practitioner=None):
 	filters = {"patient": name}
 	if document_types:
 		document_types = json.loads(document_types)
@@ -40,6 +40,9 @@ def get_filters(name, document_types=None, date_range=None):
 				filters["communication_date"] = ["between", [date_range[0], date_range[1]]]
 		except json.decoder.JSONDecodeError:
 			pass
+	
+	if practitioner:
+		filters["practitioner"] = practitioner
 
 	return filters
 
