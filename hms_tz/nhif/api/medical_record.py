@@ -155,3 +155,21 @@ def get_formatted_value_for_table_field(items, df):
     )
 
     return html
+
+
+def before_insert(doc, method):
+    set_practitioner(doc)
+
+
+def set_practitioner(doc):
+    if doc.reference_doctype and doc.reference_name:
+        meta = frappe.get_meta(doc.reference_doctype)
+
+        for field in ["practitioner", "healthcare_practitioner", "referring_practitioner"]:
+            if meta.get_field(field):
+                practitioner = frappe.db.get_value(
+                    doc.reference_doctype, doc.reference_name, field
+                )
+                if practitioner:
+                    doc.practitioner = practitioner
+                    break
