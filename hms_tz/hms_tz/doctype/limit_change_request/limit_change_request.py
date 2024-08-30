@@ -5,6 +5,7 @@ from erpnext.accounts.utils import get_balance_on
 from hms_tz.nhif.api.patient_encounter import (
     create_healthcare_docs_per_encounter,
     create_delivery_note_per_encounter,
+    validate_totals,
 )
 from hms_tz.nhif.api.healthcare_utils import (
     create_therapy_plan,
@@ -119,8 +120,9 @@ class LimitChangeRequest(Document):
             enc = frappe.qb.DocType("Patient Encounter")
             encounters = (
                 frappe.qb.from_(enc)
-                .select(enc.name)
+                .select(enc.name, enc.duplicated)
                 .where((enc.appointment == self.appointment_no) & (enc.docstatus == 1))
+                .orderby(enc.creation)
             ).run(as_dict=True)
             if len(encounters) == 0:
                 return
@@ -221,3 +223,10 @@ class LimitChangeRequest(Document):
             create_healthcare_docs_per_encounter(encounter_doc)
             create_delivery_note_per_encounter(encounter_doc, "on_submit")
             create_therapy_plan(enc_doc=encounter_doc)
+
+            if encounter.get("duplicated") == 0:
+                encounter_doc.daily_limit = self.daily_limit
+                validate_totals(encounter_doc, method="validate", show_alert=False)
+
+                encounter_doc.db_update_all()
+                encounter_doc.reload()
