@@ -495,6 +495,7 @@ def get_authorization_num(
         + remarks
     )
 
+    url = set_nhif_url(url)
     r = requests.get(url, headers=headers, timeout=5)
     r.raise_for_status()
     frappe.logger().debug({"webhook_success": r.text})
