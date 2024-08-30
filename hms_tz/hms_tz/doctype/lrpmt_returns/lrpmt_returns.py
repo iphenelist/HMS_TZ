@@ -17,6 +17,7 @@ from frappe.utils import (
     get_url_to_form,
 )
 from hms_tz.nhif.api.healthcare_utils import validate_nhif_patient_claim_status
+from hms_tz.nhif.api.patient_encounter import validate_totals
 
 
 class LRPMTReturns(Document):
@@ -46,6 +47,7 @@ class LRPMTReturns(Document):
 
     def on_submit(self):
         self.get_sales_return()
+        self.update_totals()
 
     def validate_reason(self):
         def check_reason(item_table):
@@ -287,6 +289,48 @@ class LRPMTReturns(Document):
             self.reload()
 
         return self.name
+    
+    def update_totals(self):
+        encounters = frappe.db.get_all(
+            "Patient Encounter",
+            filters={"appointment": self.appointment, "duplicated": 0},
+            page_length=1,
+        )
+        if len(encounters) > 0:
+            cost_amount = 0
+            lrp_rows = [item for item in self.lrpt_items if item.encounter_no != encounters[0].name]
+            therapy_rows = [item for item in self.therapy_items if item.encounter_no != encounters[0].name]
+            drug_rows = [item for item in self.drug_items if item.encounter_no != encounters[0].name]
+            
+            ref_docs = [
+                {"Lab Test": "Lab Prescription"},
+                {"Radiology Examination": "Radiology Procedure Prescription"},
+                {"Clinical Procedure": "Procedure Prescription"},
+            ]
+
+            for d in lrp_rows:
+                if d.reference_doctype:
+                    for refd in ref_docs:
+                        if refd.get(d.reference_doctype):
+                            cost_amount += frappe.get_cached_value(refd[d.reference_doctype], d.child_name, "amount") or 0
+            
+            for row in therapy_rows:
+                cost_amount += frappe.get_cached_value("Therapy Plan Detail", row.encounter_child_table_id, "amount") or 0
+            
+            for item in drug_rows:
+                amount = frappe.get_cached_value("Drug Prescription", item.child_name, "amount")
+                cost_amount += (amount * (item.quantity_prescribed - item.quantity_to_return)) or 0
+
+            encounter_doc = frappe.get_doc("Patient Encounter", encounters[0].name)
+            validate_totals(encounter_doc, method="validate", show_alert=False)
+
+            encounter_doc.current_total = abs(encounter_doc.current_total - cost_amount)
+
+            encounter_doc.db_update_all()
+            encounter_doc.reload()
+
+
+
 
 def combine_therapy_info(therapy_items):
     therapy_detail_map = []
