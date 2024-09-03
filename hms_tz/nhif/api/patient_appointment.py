@@ -12,7 +12,7 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
     get_receivable_account,
 )
 from frappe.model.mapper import get_mapped_doc
-from hms_tz.nhif.api.token import get_nhifservice_token
+from hms_tz.nhif.api.token import get_nhifservice_token, get_nhif_url
 import json
 import requests
 from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
@@ -455,10 +455,11 @@ def get_authorization_num(
     referral_no="",
     remarks="",
 ):
-    enable_nhif_api, nhifservice_url = frappe.get_cached_value(
-        "Company NHIF Settings", company, ["enable", "nhifservice_url"]
-    )
-    if not enable_nhif_api:
+    setting_doc = frappe.get_cached_doc("Company NHIF Settings", company)
+    # enable_nhif_api, nhifservice_url = frappe.get_cached_value(
+    #     "Company NHIF Settings", company, ["enable", "nhifservice_url"]
+    # )
+    if not setting_doc.enable:
         frappe.msgprint(
             _("Company {0} not enabled for NHIF Integration".format(company))
         )
@@ -486,16 +487,27 @@ def get_authorization_num(
     token = get_nhifservice_token(company)
 
     headers = {"Content-Type": "application/json", "Authorization": "Bearer " + token}
+    # url = (
+    #     str(setting_doc.nhifservice_url)
+    #     + "/nhifservice/breeze/verification/AuthorizeCard?"
+    #     + card_no
+    #     + visit_type_id
+    #     + referral_no
+    #     + remarks
+    # )
+
+    url, extra_params = get_nhif_url(setting_doc, caller="AuthorizeCard")
+
     url = (
-        str(nhifservice_url)
-        + "/nhifservice/breeze/verification/AuthorizeCard?"
+        url
         + card_no
         + visit_type_id
         + referral_no
         + remarks
     )
+    if extra_params:
+        url = url + extra_params
 
-    url = set_nhif_url(url)
     r = requests.get(url, headers=headers, timeout=5)
     r.raise_for_status()
     frappe.logger().debug({"webhook_success": r.text})
