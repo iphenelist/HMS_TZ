@@ -208,7 +208,7 @@ frappe.ui.form.on('Patient Appointment', {
         }
     },
     get_consulting_charge_item: function (frm) {
-        if (!frm.doc.practitioner || !frm.doc.appointment_type || frm.doc.healthcare_package_order) {
+        if (!frm.doc.practitioner || !frm.doc.appointment_type || frm.doc.healthcare_package_order || frm.doc.invoiced) {
             return;
         }
 
@@ -416,8 +416,22 @@ frappe.ui.form.on('Patient Appointment', {
     },
     apply_fasttrack: (frm) => {
         if (["Cancelled", "Closed"].includes(frm.doc.status)) {
+            if (frm.doc.apply_fasttrack_charge == 1) {
+                frappe.show_alert("Fasttrack Charge can not be applied for cancelled or closed appointments");
+            }
             return;
         }
+
+        if (
+            frm.doc.invoiced ||
+            frm.doc.healthcare_package_order
+        ) {
+            if (frm.doc.apply_fasttrack_charge == 1) {
+                frappe.show_alert("Fasttrack Charge can not be applied for invoiced appointments");
+            }
+            return;
+        }
+
         const insurance_company = frm.doc.insurance_company;
         const coverage_plan_name = frm.doc.coverage_plan_name;
         const appointment_type = frm.doc.appointment_type;
@@ -430,21 +444,29 @@ frappe.ui.form.on('Patient Appointment', {
         } else {
             frm.toggle_display('apply_fasttrack_charge', false);
             frm.toggle_enable('apply_fasttrack_charge', false);
-            if (frm.apply_fasttrack_charge == 1 && !["Cancelled", "Closed"].includes(frm.doc.status)) {
+            if (
+                frm.doc.apply_fasttrack_charge == 1
+                && !["Cancelled", "Closed"].includes(frm.doc.status)
+                && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+            ) {
                 frm.set_value("apply_fasttrack_charge", 0);
             }
             frm.trigger("get_consulting_charge_item");
             frm.trigger('get_insurance_amount');
         }
 
-        if (frm.doc.ref_vital_signs || frm.doc.ref_patient_encounter) {
-            frm.toggle_display('apply_fasttrack_charge', false);
-            frm.toggle_enable('apply_fasttrack_charge', false);
-        }
+        // if (frm.doc.ref_vital_signs || frm.doc.ref_patient_encounter) {
+        //     frm.toggle_display('apply_fasttrack_charge', false);
+        //     frm.toggle_enable('apply_fasttrack_charge', false);
+        // }
 
         function applyFasttrackCheck(frm, appointment_type) {
             if (appointment_type.includes("Follow")) {
-                if (frm.apply_fasttrack_charge == 1 && !["Cancelled", "Closed"].includes(frm.doc.status)) {
+                if (
+                    frm.doc.apply_fasttrack_charge == 1
+                    && !["Cancelled", "Closed"].includes(frm.doc.status)
+                    && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+                ) {
                     frm.set_value("apply_fasttrack_charge", 0);
                 }
                 frm.toggle_display('apply_fasttrack_charge', false);

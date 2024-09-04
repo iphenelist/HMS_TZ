@@ -246,14 +246,13 @@ def get_consulting_charge_item(
         )
 
     if insurance_company and "NHIF" in insurance_company and scheme_id:
-        if appointment_type == "Follow up Visit" and cint(scheme_id) in [
-            1001,
-            4001,
-            5001,
-            6001,
-            8001,
-        ]:
-            if "General Practitioner" in cons_item:
+        if (
+            appointment_type == "Follow up Visit" and
+            cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
+        ):
+            if "Assistant Medical Officer" in cons_item:
+                charge_item = app_type_details.get("assistant_md_followup_item")
+            elif "General Practitioner" in cons_item:
                 charge_item = app_type_details.get("gp_followup_item")
             elif "Super Specialist" in cons_item:
                 charge_item = app_type_details.get("super_specialist_followup_item")
@@ -270,7 +269,9 @@ def get_consulting_charge_item(
                 "NHIF External Referral",
             ]
         ):
-            if "General Practitioner" in cons_item:
+            if "Assistant Medical Officer" in cons_item:
+                charge_item = app_type_details.get("assistant_md_fasttrack_item")
+            elif "General Practitioner" in cons_item:
                 charge_item = app_type_details.get("gp_fasttrack_item")
             elif "Super Specialist" in cons_item:
                 charge_item = app_type_details.get("super_specialist_fasttrack_item")
