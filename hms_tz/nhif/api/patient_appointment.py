@@ -317,44 +317,7 @@ def make_vital(appointment_doc, method):
                 alert=True,
             )
 
-    set_follow_up(appointment_doc, "invoice_appointment")
-    # SHM Rock: 202
-    if appointment_doc.insurance_company and appointment_doc.appointment_type:
-        # Helpdesk: https://support.aakvatech.com/helpdesk/tickets/239
-        # NHIF introduce follow up item and its price, therefore not need to set has not consultation charges for NHIF patient
-        # 2024-07-19
-        scheme_id = None
-        if "NHIF" in appointment_doc.insurance_company:
-            plan_name = frappe.get_cached_value(
-                "Healthcare Insurance Subscription",
-                appointment_doc.insurance_subscription,
-                "healthcare_insurance_coverage_plan",
-            )
-            scheme_id = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
-            )
-
-        if not (
-            "NHIF" in appointment_doc.insurance_company
-            and appointment_doc.appointment_type == "Follow up Visit"
-            and scheme_id
-            and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
-        ):
-            appointment_doc.has_no_consultation_charges = frappe.get_cached_value(
-                "Appointment Type",
-                appointment_doc.appointment_type,
-                "has_no_consultation_charges",
-            )
-            if appointment_doc.has_no_consultation_charges:
-                if appointment_doc.paid_amount > 0:
-                    appointment_doc.paid_amount = 0
-
-                frappe.msgprint(
-                    _(
-                        f"This appointment type: <b>{appointment_doc.appointment_type}</b> has no consultation charges."
-                    ),
-                    alert=True,
-                )
+    validate_has_no_consultation(appointment_doc, method)
 
     if (not appointment_doc.ref_vital_signs) and (
         appointment_doc.invoiced
@@ -671,6 +634,7 @@ def make_next_doc(doc, method, from_hook=True):
     validate_insurance_subscription(doc)
     check_multiple_appointments(doc)
     if doc.is_new():
+        validate_has_no_consultation(doc, method)
         return
     if doc.insurance_subscription:
         is_active, his_patient, coverage_plan = frappe.get_cached_value(
@@ -722,44 +686,7 @@ def make_next_doc(doc, method, from_hook=True):
                 )
             )
     if from_hook:
-        set_follow_up(doc, method)
-        # SHM Rock: 202
-        if doc.insurance_company and doc.appointment_type:
-            # Helpdesk: https://support.aakvatech.com/helpdesk/tickets/239
-            # NHIF introduce follow up item and its price, therefore not need to set has not consultation charges for NHIF patient
-            # 2024-07-19
-            scheme_id = None
-            if "NHIF" in doc.insurance_company:
-                plan_name = frappe.get_cached_value(
-                    "Healthcare Insurance Subscription",
-                    doc.insurance_subscription,
-                    "healthcare_insurance_coverage_plan",
-                )
-                scheme_id = frappe.get_cached_value(
-                    "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
-                )
-
-            if not (
-                "NHIF" in doc.insurance_company
-                and doc.appointment_type == "Follow up Visit"
-                and scheme_id
-                and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
-            ):
-                doc.has_no_consultation_charges = frappe.get_cached_value(
-                    "Appointment Type",
-                    doc.appointment_type,
-                    "has_no_consultation_charges",
-                )
-                if doc.has_no_consultation_charges:
-                    if doc.paid_amount > 0:
-                        doc.paid_amount = 0
-
-                    frappe.msgprint(
-                        _(
-                            f"This appointment type: <b>{doc.appointment_type}</b> has no consultation charges."
-                        ),
-                        alert=True,
-                    )
+        validate_has_no_consultation(doc, method)
 
     if not doc.patient_age:
         doc.patient_age = calculate_patient_age(doc.patient)
@@ -885,3 +812,56 @@ def check_multiple_appointments(doc):
                 f"Patient already has an appointment for <b>{appointments[0].practitioner}</b>",
                 alert=True,
             )
+
+
+def validate_has_no_consultation(doc, method):
+    set_follow_up(doc, method)
+
+    # SHM Rock: 202
+    if doc.appointment_type:
+        # Helpdesk: https://support.aakvatech.com/helpdesk/tickets/239
+        # NHIF introduce follow up item and its price, therefore not need to set has not consultation charges for NHIF patient
+        # 2024-07-19
+        scheme_id = None
+        if doc.insurance_company and "NHIF" in doc.insurance_company:
+            plan_name = frappe.get_cached_value(
+                "Healthcare Insurance Subscription",
+                doc.insurance_subscription,
+                "healthcare_insurance_coverage_plan",
+            )
+            scheme_id = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
+            )
+
+        if not (
+            doc.insurance_company
+            and "NHIF" in doc.insurance_company
+            and doc.appointment_type == "Follow up Visit"
+            and scheme_id
+            and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
+        ):
+            if doc.mode_of_payment:
+                doc.has_no_consultation_charges = frappe.get_cached_value(
+                    "Appointment Type",
+                    doc.appointment_type,
+                    "has_no_consultation_charges_for_cash",
+                )
+            elif doc.insurance_subscription:
+                doc.has_no_consultation_charges = frappe.get_cached_value(
+                    "Appointment Type",
+                    doc.appointment_type,
+                    "has_no_consultation_charges_for_insurance",
+                )
+            if doc.has_no_consultation_charges:
+                if doc.paid_amount and doc.paid_amount > 0:
+                    doc.paid_amount = 0
+
+                if not doc.invoiced:
+                    doc.invoiced = 1
+
+                frappe.msgprint(
+                    _(
+                        f"This appointment type: <b>{doc.appointment_type}</b> has no consultation charges."
+                    ),
+                    alert=True,
+                )

@@ -907,7 +907,7 @@ const add_btns = (frm) => {
 };
 
 const add_invoice_btn = (frm) => {
-    if (frm.doc.invoiced) return;
+    if (frm.doc.invoiced || frm.doc.has_no_consultation_charges) return;
     frm.add_custom_button(__('Create Sales Invoice'), function () {
         frm.save();
         frappe.call({
