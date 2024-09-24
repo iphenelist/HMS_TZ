@@ -481,7 +481,16 @@ class MedicationChangeRequest(Document):
             if warehouse != dn_doc.set_warehouse:
                 continue
 
-            if row.prescribe and not encounter_doc.inpatient_record:
+            if (
+                row.prescribe and 
+                (
+                    encounter_doc.insurance_subscription or
+                    (
+                        not encounter_doc.inpatient_record and
+                        not encounter_doc.insurance_subscription
+                    )
+                )
+            ):
                 continue
 
             if row.is_not_available_inhouse or row.is_cancelled:
