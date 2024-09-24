@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from hms_tz.nhif.api.token import get_nhifservice_token
+from hms_tz.nhif.api.token import get_nhifservice_token, get_nhif_url
 from erpnext import get_default_company
 import json
 import requests
@@ -69,15 +69,24 @@ def get_patient_info(card_no=None):
         frappe.throw(_("No companies found to connect to NHIF"))
     token = get_nhifservice_token(company)
 
-    nhifservice_url = frappe.get_cached_value(
-        "Company NHIF Settings", company, "nhifservice_url"
-    )
+    # nhifservice_url = frappe.get_cached_value(
+    #     "Company NHIF Settings", company, "nhifservice_url"
+    # )
+    
     headers = {"Authorization": "Bearer " + token}
+
+    setting_doc = frappe.get_cached_doc("Company NHIF Settings", company)
     url = (
-        str(nhifservice_url)
-        + "/nhifservice/breeze/verification/GetCardDetails?CardNo="
-        + str(card_no)
+        get_nhif_url(setting_doc, "GetCardDetails")
+        + card_no
     )
+
+    # url = (
+    #     str(setting_doc.nhifservice_url)
+    #     + "/nhifservice/breeze/verification/GetCardDetails?CardNo="
+    #     + str(card_no)
+    # )
+
     for i in range(3):
         try:
             r = requests.get(url, headers=headers, timeout=5)
@@ -89,17 +98,19 @@ def get_patient_info(card_no=None):
                     request_url=url,
                     request_header=headers,
                     response_data=json.loads(r.text),
+                    status_code=r.status_code,
                 )
                 card = json.loads(r.text)
                 frappe.msgprint(_(card["Remarks"]), alert=True)
                 add_scheme(card.get("SchemeID"), card.get("SchemeName"))
-                add_product(card.get("ProductCode"), card.get("ProductName"))
+                add_product(company, card.get("ProductCode"), card.get("ProductName"))
                 return card
             else:
                 add_log(
                     request_type="GetCardDetails",
                     request_url=url,
                     request_header=headers,
+                    status_code=r.status_code,
                 )
                 frappe.msgprint(json.loads(r.text))
                 frappe.msgprint(
