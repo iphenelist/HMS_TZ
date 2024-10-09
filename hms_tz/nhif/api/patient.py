@@ -224,7 +224,11 @@ def get_coverage_plan(doc=None, card=None, company=None):
 
     product_code = data.get("product_code") or data["ProductCode"]
     scheme_id = data.get("scheme_id") or data["SchemeID"]
-    nhif_employername = data.get("nhif_employername") or data["EmployerName"]
+    nhif_employername = None
+    if card:
+        nhif_employername = data["EmployerName"]
+    elif doc:
+        nhif_employername = data.get("nhif_employername")
 
     nhif_product_filters = {
         "nhif_product_code": product_code,
