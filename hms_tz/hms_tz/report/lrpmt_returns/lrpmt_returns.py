@@ -21,19 +21,19 @@ def get_columns():
         },
         {
             "fieldname": "encounter_no",
-            "fieldtype": "Data",
+            "fieldtype": "Link",
             "label": _("Encounter Number"),
             "width": "115px",
         },
         {
             "fieldname": "reference_docname",
-            "fieldtype": "Data",
+            "fieldtype": "Dynamic Link",
             "label": _("Reference Docname"),
             "width": "140px",
         },
         {
             "fieldname": "reference_doctype",
-            "fieldtype": "Data",
+            "fieldtype": "Link",
             "label": _("Reference Doctype"),
             "width": "140px",
         },

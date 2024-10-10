@@ -1174,7 +1174,7 @@ def add_chronic_medications(patient, encounter, items):
         frappe.msgprint("Chronic medication already exist")
 
 
-def validate_totals(doc, method):
+def validate_totals(doc, method, show_alert=True):
     def get_field_map():
         childs_map = [
             {
@@ -1288,7 +1288,7 @@ def validate_totals(doc, method):
             doc.insurance_coverage_plan,
             "hms_tz_submit_encounter_on_limit_exceed",
         )
-        if allow_submit_of_encounter_on_limit_exceed == 0:
+        if allow_submit_of_encounter_on_limit_exceed == 0 and show_alert:
             msgThrow(
                 _(
                     f"The total daily limit of <b>{doc.daily_limit}</b> for the Insurance Subscription <b>{doc.insurance_subscription}</b> has \
@@ -1299,13 +1299,14 @@ def validate_totals(doc, method):
             )
         else:
             mark_limit_exceeded(doc)
-            msgPrint(
-                _(
-                    f"The total daily limit of <b>{doc.daily_limit}</b> for the Insurance Subscription <b>{doc.insurance_subscription}</b> has \
-                        been exceeded by <b>{diff}</b>. <br> Please contact the reception to increase limit"
-                ),
-                method=method,
-            )
+            if show_alert:
+                msgPrint(
+                    _(
+                        f"The total daily limit of <b>{doc.daily_limit}</b> for the Insurance Subscription <b>{doc.insurance_subscription}</b> has \
+                            been exceeded by <b>{diff}</b>. <br> Please contact the reception to increase limit"
+                    ),
+                    method=method,
+                )
     else:
         unmark_limit_exceeded(doc)
 

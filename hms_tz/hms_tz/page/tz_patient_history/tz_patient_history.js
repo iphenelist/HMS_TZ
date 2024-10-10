@@ -83,7 +83,7 @@ class PatientHistory {
 					change: () => {
 						me.start = 0;
 						me.page.main.find('.patient_documents_list').html('');
-						this.setup_documents(doctype_filter.get_value(), date_range_field.get_value());
+						this.setup_documents(doctype_filter.get_value(), date_range_field.get_value(), practitioner_filter.get_value());
 					},
 					get_data: () => {
 						return document_types.map(document_type => {
@@ -109,17 +109,34 @@ class PatientHistory {
 						if (selected_date_range && selected_date_range.length === 2) {
 							me.start = 0;
 							me.page.main.find('.patient_documents_list').html('');
-							this.setup_documents(doctype_filter.get_value(), date_range_field.get_value());
+							this.setup_documents(doctype_filter.get_value(), date_range_field.get_value(), practitioner_filter.get_value());
 						}
 					}
 				},
 				parent: $('.date-filter')
 			});
 			date_range_field.refresh();
+
+			$('.practitioner-filter').empty();
+			let practitioner_filter = frappe.ui.form.make_control({
+				df: {
+					fieldtype: 'Link',
+					options: 'Healthcare Practitioner',
+					fieldname: 'practitioner',
+					placeholder: __('Select Practitioner'),
+					change: () => {
+						me.start = 0;
+						me.page.main.find('.patient_documents_list').html('');
+						this.setup_documents(doctype_filter.get_value(), date_range_field.get_value(), practitioner_filter.get_value());
+					}
+				},
+				parent: $('.practitioner-filter')
+			});
+			practitioner_filter.refresh();
 		});
 	}
 
-	setup_documents (document_types = "", selected_date_range = "") {
+	setup_documents (document_types = "", selected_date_range = "", selected_practitioner = "") {
 		let filters = {
 			name: this.patient_id,
 			start: this.start,
@@ -129,6 +146,8 @@ class PatientHistory {
 			filters['document_types'] = document_types;
 		if (selected_date_range)
 			filters['date_range'] = selected_date_range;
+		if (selected_practitioner)
+			filters['practitioner'] = selected_practitioner;
 
 		let me = this;
 		frappe.call({
