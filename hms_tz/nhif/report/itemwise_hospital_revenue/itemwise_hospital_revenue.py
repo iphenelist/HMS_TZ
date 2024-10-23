@@ -1223,7 +1223,7 @@ def get_cash_drug_data(filters, appoints):
         # .inner_join(si)
         # .on(sii.parent == si.name)
         .inner_join(dn)
-        .on(pe.name == dn.reference_name)
+        .on(sii.parent == dn.form_sales_invoice)
         .select(
             pe.encounter_date.as_("date"),
             pe.appointment.as_("appointment_no"),
@@ -1290,7 +1290,7 @@ def get_cash_drug_data(filters, appoints):
         .inner_join(md)
         .on(dp.drug_code == md.name)
         .inner_join(dn)
-        .on(pe.name == dn.reference_name)
+        .on(pe.name == dn.reference_name) # reference to encounter since every inpatient encounter will have a delivery note created
         .select(
             pe.encounter_date.as_("date"),
             pe.appointment.as_("appointment_no"),
