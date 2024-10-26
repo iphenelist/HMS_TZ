@@ -73,7 +73,7 @@ def get_nhifservice_token(company):
     payload = f"grant_type=password&username={username}&password={password}"
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     
-    url, extra_params = get_nhif_url(setting_doc, caller="Token")
+    url, extra_params = get_nhif_url(setting_doc, caller="Token", tkn_category="nhifservice")
     # url = str(setting_doc.nhifservice_url) + "/nhifservice/Token"
 
     nhifservice_fields = {
@@ -97,15 +97,18 @@ def get_claimsservice_token(company):
 
     username = setting_doc.username
     password = get_decrypted_password("Company NHIF Settings", company, "password")
-    payload = "grant_type=password&username={0}&password={1}".format(username, password)
+    payload = f"grant_type=password&username={username}&password={password}"
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    url = get_nhif_url(setting_doc, caller="Token")
+    url, extra_params = get_nhif_url(setting_doc, caller="Token", tkn_category="claimsserver")
     # url = str(setting_doc.claimsserver_url) + "/claimsserver/Token"
 
     claimserver_fields = {
         "token": "claimsserver_token",
         "expiry": "claimsserver_expiry",
     }
+
+    if extra_params:
+        payload = payload + extra_params
 
     return make_token_request(setting_doc, url, headers, payload, claimserver_fields)
 
@@ -123,11 +126,11 @@ def get_formservice_token(company):
 
     username = company_nhif_doc.username
     password = get_decrypted_password("Company NHIF Settings", company, "password")
-    payload = "grant_type=password&username={0}&password={1}".format(username, password)
+    payload = f"grant_type=password&username={username}&password={password}"
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-    url = get_nhif_url(setting_doc, caller="Token")
+    url, extra_params = get_nhif_url(setting_doc, caller="Token", tkn_category="formposting")
     # url = cstr(company_nhif_doc.nhifform_url) + "/formposting/Token"
 
     nhifform_fields = {
@@ -135,10 +138,13 @@ def get_formservice_token(company):
         "expiry": "nhifform_expiry",
     }
 
+    if extra_params:
+        payload = payload + extra_params
+    
     return make_token_request(company_nhif_doc, url, headers, payload, nhifform_fields)
 
 
-def get_nhif_url(setting_doc, caller):
+def get_nhif_url(setting_doc, caller, tkn_category=None):
     """Get NHIF URL
     param setting_doc: Company NHIF Settings Doc
     param caller: The caller of the function
@@ -152,8 +158,18 @@ def get_nhif_url(setting_doc, caller):
         extra_params = "&client_id=serviceportal&client_secret=serviceportal&scope=MedicalService"
         
         if not url:
-            extra_params = ""
-            url = str(setting_doc.nhifservice_url) + "/nhifservice/Token"
+            if tkn_category == "nhifservice":
+                extra_params = None
+                url = str(setting_doc.nhifservice_url) + "/nhifservice/Token"
+
+            elif tkn_category == "claimsserver":
+                extra_params = None
+                url = str(setting_doc.claimsserver_url) + "/claimsserver/Token"
+
+            elif tkn_category == "formposting":
+                extra_params = None
+                url = str(company_nhif_doc.nhifform_url) + "/formposting/Token"
+
         
         return url, extra_params
     
@@ -168,7 +184,7 @@ def get_nhif_url(setting_doc, caller):
         extra_params = "&EnforceOnlineForm=true&Narration=undefined&MethodUsed=Online&BiometricMethod=None"
         
         if not url:
-            extra_params = ""
+            extra_params = None
             url = str(setting_doc.nhifservice_url) + "/nhifservice/breeze/verification/AuthorizeCard?"
         
         return url, extra_params
