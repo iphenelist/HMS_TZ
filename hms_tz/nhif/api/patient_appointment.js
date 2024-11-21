@@ -29,6 +29,17 @@ frappe.ui.form.on('Patient Appointment', {
                 check_and_set_availability(frm);
             });
         }
+
+        // If appointment is invoiced but does not have a vital sign or patient encounter
+        // Make appointment unsaved till vital sign or patient encounter is created
+        // Especially for follow up patients
+        if (
+            frm.doc.invoiced &&
+            !frm.doc.ref_vital_signs && 
+            !frm.doc.ref_patient_encounter
+        ) {
+            frm.dirty();
+        }
     },
     referring_practitioner: function (frm) {
         frm.set_value("healthcare_referrer", frm.doc.referring_practitioner);
@@ -454,11 +465,6 @@ frappe.ui.form.on('Patient Appointment', {
             frm.trigger("get_consulting_charge_item");
             frm.trigger('get_insurance_amount');
         }
-
-        // if (frm.doc.ref_vital_signs || frm.doc.ref_patient_encounter) {
-        //     frm.toggle_display('apply_fasttrack_charge', false);
-        //     frm.toggle_enable('apply_fasttrack_charge', false);
-        // }
 
         function applyFasttrackCheck(frm, appointment_type) {
             if (appointment_type.includes("Follow")) {
