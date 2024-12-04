@@ -892,6 +892,16 @@ class NHIFPatientClaim(Document):
         self.clinical_notes += f"<br>PractitionerName: <i>{encounter_doc.practitioner_name},</i> Speciality: <i>{department},</i> DateofService: <i>{encounter_doc.encounter_date} {encounter_doc.encounter_time}</i> <br>"
         self.clinical_notes += encounter_doc.examination_detail or ""
 
+        if len(encounter_doc.get("procedure_prescription")) > 0:
+            procedure_notes = ""
+            for row in encounter_doc.get("procedure_prescription"):
+                if row.clinical_procedure:
+                    notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
+                    procedure_notes += f"Procedure: {row.procedure} {notes}<br>"
+            
+            if procedure_notes:
+                self.clinical_notes += f"<br>{procedure_notes}<br>"
+        
         if len(encounter_doc.get("drug_prescription")) > 0:
             self.clinical_notes += "<br>Medication(s): <br>"
             for row in encounter_doc.get("drug_prescription"):
