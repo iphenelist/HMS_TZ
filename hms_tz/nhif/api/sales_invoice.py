@@ -183,7 +183,9 @@ def update_drug_prescription(doc):
                         "sales_invoice_number": doc.name,
                         "drug_prescription_created": 1,
                         "invoiced": 1,
+                        "delivery_note": dn_name,
                     },
+                    update_modified=False,
                 )
 
 

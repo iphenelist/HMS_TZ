@@ -544,6 +544,9 @@ class MedicationChangeRequest(Document):
             "Changes Made", "Make Changes", dn_doc=dn_doc
         )
 
+        self.update_drug_prescription(encounter_doc, dn_doc)
+
+
     def update_delivery_note_workflow(self, state, action, dn_doc=None):
         if not dn_doc:
             dn_doc = frappe.get_doc("Delivery Note", self.delivery_note)
@@ -587,6 +590,20 @@ class MedicationChangeRequest(Document):
                     f"Apply workflow error for delivery note: {frappe.bold(dn_doc.name)}"
                 )
                 frappe.throw("Medication Change Request was not created, try again")
+
+
+    def update_drug_prescription(patient_encounter_doc, dn_doc):
+        for d in patient_encounter_doc.drug_prescription:
+            for item in dn_doc.items:
+                if d.name == item.reference_name:
+                    frappe.db.set_value(
+                        "Drug Prescription",
+                        item.reference_name, {
+                            "dn_detail": item.name,
+                            "delivery_note": dn_doc.name,
+                        },
+                        update_modified=False
+                    )
 
 
 @frappe.whitelist()
