@@ -136,6 +136,13 @@ def get_columns(filters):
                 "width": 120,
             },
             {
+                "fieldname": "sales_invoice",
+                "label": "Sales Invoice",
+                "fieldtype": "Link",
+                "options": "Sales Invoice",
+                "width": 120,
+            },
+            {
                 "fieldname": "status",
                 "label": "Status",
                 "fieldtype": "Data",
@@ -404,6 +411,7 @@ def get_cash_appointment_data(filters, appoints):
             pa.department.as_("department"),
             pa.service_unit.as_("service_unit"),
             pa.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (pa.company == filters.company)
@@ -536,8 +544,8 @@ def get_cash_lab_data(filters, appoints):
         .on(lab.template == template.name)
         .inner_join(sii)
         .on(lab.hms_tz_ref_childname == sii.reference_dn)
-        .inner_join(si)
-        .on(sii.parent == si.name)
+        # .inner_join(si)
+        # .on(sii.parent == si.name)
         .inner_join(pe)
         .on(lab.ref_docname == pe.name)
         .select(
@@ -562,6 +570,7 @@ def get_cash_lab_data(filters, appoints):
             lab.department.as_("department"),
             lab_prescription.department_hsu.as_("service_unit"),
             lab.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (lab.company == filters.company)
@@ -573,9 +582,10 @@ def get_cash_lab_data(filters, appoints):
             & (lab_prescription.is_cancelled == 0)
             & (lab_prescription.is_not_available_inhouse == 0)
             & (lab_prescription.lab_test_created == 1)
-            & ((sii.reference_dn.isnotnull()) & (sii.reference_dn != ""))
-            & Not(si.status.isin(["Credit Note Issued", "Return"]))
-            & (si.docstatus == 1)
+            & (sii.docstatus == 1)
+            & ((sii.sales_invoice_item.isnull()) | (sii.sales_invoice_item == ""))
+            # & Not(si.status.isin(["Credit Note Issued", "Return"]))
+            # & (si.docstatus == 1)
         )
     )
 
@@ -626,6 +636,7 @@ def get_cash_lab_data(filters, appoints):
             lab.department.as_("department"),
             lab_prescription.department_hsu.as_("service_unit"),
             lab.modified.as_("date_modified"),
+            lab_prescription.sales_invoice_number.as_("sales_invoice"),
         )
         .where(
             (lab.company == filters.company)
@@ -761,8 +772,8 @@ def get_cash_radiology_data(filters, appoints):
         .on(rad.radiology_examination_template == template.name)
         .inner_join(sii)
         .on(rad.hms_tz_ref_childname == sii.reference_dn)
-        .inner_join(si)
-        .on(sii.parent == si.name)
+        # .inner_join(si)
+        # .on(sii.parent == si.name)
         .inner_join(pe)
         .on(rad.ref_docname == pe.name)
         .select(
@@ -787,6 +798,7 @@ def get_cash_radiology_data(filters, appoints):
             rad.medical_department.as_("department"),
             rad_prescription.department_hsu.as_("service_unit"),
             rad.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (rad.company == filters.company)
@@ -797,8 +809,11 @@ def get_cash_radiology_data(filters, appoints):
             & (rad_prescription.prescribe == 1)
             & (rad_prescription.is_cancelled == 0)
             & (rad_prescription.is_not_available_inhouse == 0)
-            & Not(si.status.isin(["Credit Note Issued", "Return"]))
-            & (si.docstatus == 1)
+            & (rad_prescription.radiology_examination_created == 1)
+            & (sii.docstatus == 1)
+            & ((sii.sales_invoice_item.isnull()) | (sii.sales_invoice_item == ""))
+            # & Not(si.status.isin(["Credit Note Issued", "Return"]))
+            # & (si.docstatus == 1)
         )
     )
 
@@ -849,6 +864,7 @@ def get_cash_radiology_data(filters, appoints):
             rad.medical_department.as_("department"),
             rad_prescription.department_hsu.as_("service_unit"),
             rad.modified.as_("date_modified"),
+            rad_prescription.sales_invoice_number.as_("sales_invoice"),
         )
         .where(
             (rad.company == filters.company)
@@ -990,8 +1006,8 @@ def get_cash_procedure_data(filters, appoints):
         .on(procedure.procedure_template == template.name)
         .inner_join(sii)
         .on(procedure.hms_tz_ref_childname == sii.reference_dn)
-        .inner_join(si)
-        .on(sii.parent == si.name)
+        # .inner_join(si)
+        # .on(sii.parent == si.name)
         .inner_join(pe)
         .on(procedure.ref_docname == pe.name)
         .select(
@@ -1019,6 +1035,7 @@ def get_cash_procedure_data(filters, appoints):
             procedure.medical_department.as_("department"),
             pp.department_hsu.as_("service_unit"),
             procedure.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (procedure.company == filters.company)
@@ -1030,8 +1047,11 @@ def get_cash_procedure_data(filters, appoints):
             & (pp.prescribe == 1)
             & (pp.is_cancelled == 0)
             & (pp.is_not_available_inhouse == 0)
-            & Not(si.status.isin(["Credit Note Issued", "Return"]))
-            & (si.docstatus == 1)
+            & (pp.procedure_created == 1)
+            & (sii.docstatus == 1)
+            & ((sii.sales_invoice_item.isnull()) | (sii.sales_invoice_item == ""))
+            # & Not(si.status.isin(["Credit Note Issued", "Return"]))
+            # & (si.docstatus == 1)
         )
     )
 
@@ -1085,6 +1105,7 @@ def get_cash_procedure_data(filters, appoints):
             procedure.medical_department.as_("department"),
             pp.department_hsu.as_("service_unit"),
             procedure.modified.as_("date_modified"),
+            pp.sales_invoice_number.as_("sales_invoice"),
         )
         .where(
             (procedure.company == filters.company)
@@ -1218,12 +1239,12 @@ def get_cash_drug_data(filters, appoints):
         .on(dp.parent == pe.name)
         .inner_join(md)
         .on(dp.drug_code == md.name)
+        .inner_join(dn)
+        .on(dp.delivery_note == dn.name)
         .inner_join(sii)
         .on(dp.name == sii.reference_dn)
         # .inner_join(si)
         # .on(sii.parent == si.name)
-        .inner_join(dn)
-        .on(sii.parent == dn.form_sales_invoice)
         .select(
             pe.encounter_date.as_("date"),
             pe.appointment.as_("appointment_no"),
@@ -1445,8 +1466,8 @@ def get_cash_therapy_data(filters, appoints):
         .on(tpd.therapy_type == tt.name)
         .inner_join(sii)
         .on(tpd.name == sii.reference_dn)
-        .inner_join(si)
-        .on(sii.parent == si.name)
+        # .inner_join(si)
+        # .on(sii.parent == si.name)
         .select(
             tp.start_date.as_("date"),
             tp.hms_tz_appointment.as_("appointment_no"),
@@ -1472,6 +1493,7 @@ def get_cash_therapy_data(filters, appoints):
             tt.medical_department.as_("department"),
             tpd.department_hsu.as_("service_unit"),
             tp.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (tp.company == filters.company)
@@ -1479,8 +1501,11 @@ def get_cash_therapy_data(filters, appoints):
             & (tpd.is_cancelled == 0)
             & (tpd.is_not_available_inhouse == 0)
             & (tpd.invoiced == 1)
-            & Not(si.status.isin(["Credit Note Issued", "Return"]))
-            & (si.docstatus == 1)
+            & (tpd.therapy_plan_created == 1)
+            & (sii.docstatus == 1)
+            & ((sii.sales_invoice_item.isnull()) | (sii.sales_invoice_item == ""))
+            # & Not(si.status.isin(["Credit Note Issued", "Return"]))
+            # & (si.docstatus == 1)
         )
     )
 
@@ -1537,6 +1562,7 @@ def get_cash_therapy_data(filters, appoints):
             tt.medical_department.as_("department"),
             tpd.department_hsu.as_("service_unit"),
             tp.modified.as_("date_modified"),
+            tpd.sales_invoice_number.as_("sales_invoice"),
         )
         .where(
             (tp.company == filters.company)
@@ -1545,6 +1571,7 @@ def get_cash_therapy_data(filters, appoints):
             & (tpd.is_not_available_inhouse == 0)
             & (tpd.invoiced == 0)
             & ((pe.inpatient_record.isnotnull()) & (pe.inpatient_record != ""))
+            & (tpd.therapy_plan_created == 1)
         )
     )
 
@@ -1647,7 +1674,9 @@ def get_cash_ipd_beds_data(filters, appoints):
     hsut = DocType("Healthcare Service Unit Type")
     sii = DocType("Sales Invoice Item")
 
-    cash_ipd_beds_query = (
+    # Paid Beds Data for Admitted and Discharged Patients
+    # Link to Sales invoice
+    paid_cash_ipd_beds_query = (
         frappe.qb.from_(io)
         .inner_join(ip)
         .on(io.parent == ip.name)
@@ -1674,6 +1703,7 @@ def get_cash_ipd_beds_data(filters, appoints):
             hsu.service_unit_type.as_("department"),
             hsu.parent_healthcare_service_unit.as_("service_unit"),
             io.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (ip.company == filters.company)
@@ -1686,27 +1716,86 @@ def get_cash_ipd_beds_data(filters, appoints):
     )
 
     if filters.show_only_prev_items_for_discharged_ipds == 1 and len(appoints) > 0:
-        cash_ipd_beds_query = cash_ipd_beds_query.where(
-            (io.check_in < filters.from_date) & (ip.patient_appointment.isin(appoints))
+        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(
+            (Date(io.check_in) < filters.from_date) & (ip.patient_appointment.isin(appoints))
         )
     else:
-        cash_ipd_beds_query = cash_ipd_beds_query.where(
-            (io.check_in.between(filters.from_date, filters.to_date))
+        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(
+            (Date(io.check_in).between(filters.from_date, filters.to_date))
         )
 
     if filters.service_type:
-        cash_ipd_beds_query = cash_ipd_beds_query.where(
+        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(
             hsut.item_group == filters.service_type
         )
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        cash_ipd_beds_query = cash_ipd_beds_query.where(
+        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(
             ip.patient_appointment.isin(appoints)
         )
 
-    cash_ipd_beds_data = cash_ipd_beds_query.run(as_dict=True)
+    paid_cash_ipd_beds_data = paid_cash_ipd_beds_query.run(as_dict=True)
 
-    return cash_ipd_beds_data
+
+    # UnPaid Beds Data for ongoing Admitted Patients
+    # No Link to Sales invoice
+    unpaid_cash_ipd_beds_query = (
+        frappe.qb.from_(io)
+        .inner_join(ip)
+        .on(io.parent == ip.name)
+        .inner_join(hsu)
+        .on(io.service_unit == hsu.name)
+        .inner_join(hsut)
+        .on(hsu.service_unit_type == hsut.name)
+        .select(
+            Date(io.check_in).as_("date"),
+            ip.patient_appointment.as_("appointment_no"),
+            ip.name.as_("bill_no"),
+            ip.patient.as_("patient"),
+            ip.patient_name.as_("patient_name"),
+            ValueWrapper("In-Patient").as_("patient_type"),
+            hsut.item_group.as_("service_type"),
+            hsu.service_unit_type.as_("service_name"),
+            ValueWrapper("Cash").as_("payment_method"),
+            ValueWrapper(1).as_("qty"),
+            io.amount.as_("rate"),
+            io.amount.as_("amount"),
+            hsu.service_unit_type.as_("department"),
+            hsu.parent_healthcare_service_unit.as_("service_unit"),
+            io.modified.as_("date_modified"),
+            io.sales_invoice_number.as_("sales_invoice"),
+        )
+        .where(
+            (ip.company == filters.company)
+            & (ip.status != "Discharged")
+            & (io.is_confirmed == 1)
+            & (io.invoiced == 0)
+            & (ip.insurance_coverage_plan.isnull() | (ip.insurance_coverage_plan == ""))
+        )
+    )
+
+    if filters.show_only_prev_items_for_discharged_ipds == 1 and len(appoints) > 0:
+        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(
+            (Date(io.check_in) < filters.from_date) & (ip.patient_appointment.isin(appoints))
+        )
+    else:
+        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(
+            (Date(io.check_in).between(filters.from_date, filters.to_date))
+        )
+
+    if filters.service_type:
+        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(
+            hsut.item_group == filters.service_type
+        )
+
+    if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
+        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(
+            ip.patient_appointment.isin(appoints)
+        )
+
+    unpaid_cash_ipd_beds_data = unpaid_cash_ipd_beds_query.run(as_dict=True)
+
+    return paid_cash_ipd_beds_data + unpaid_cash_ipd_beds_data
 
 
 def get_insurance_ipd_cons_data(filters, appoints):
@@ -1787,7 +1876,9 @@ def get_cash_ipd_cons_data(filters, appoints):
     pe = DocType("Patient Encounter")
     sii = DocType("Sales Invoice Item")
 
-    cash_ipd_cons_query = (
+    # Paid IPD Cons Data for Admitted and Discharged Patients
+    # Link to Sales invoice
+    paid_cash_ipd_cons_query = (
         frappe.qb.from_(ic)
         .inner_join(ip)
         .on(ic.parent == ip.name)
@@ -1815,12 +1906,76 @@ def get_cash_ipd_cons_data(filters, appoints):
             ic.healthcare_practitioner.as_("practitioner"),
             pe.healthcare_service_unit.as_("service_unit"),
             ic.modified.as_("date_modified"),
+            sii.parent.as_("sales_invoice"),
         )
         .where(
             (ip.company == filters.company)
-            & (ic.date.between(filters.from_date, filters.to_date))
             & (ic.is_confirmed == 1)
             & (ic.hms_tz_invoiced == 1)
+            & (
+                (ip.insurance_coverage_plan.isnull())
+                | (ip.insurance_coverage_plan == "")
+            )
+            & ((sii.sales_invoice_item.isnull()) | (sii.sales_invoice_item == ""))
+        )
+    )
+
+    if filters.show_only_prev_items_for_discharged_ipds == 1 and len(appoints) > 0:
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
+            (ic.date < filters.from_date) & (ip.patient_appointment.isin(appoints))
+        )
+    else:
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
+            (ic.date.between(filters.from_date, filters.to_date))
+        )
+
+    if filters.service_type:
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
+            it.item_group == filters.service_type
+        )
+
+    if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
+            ip.patient_appointment.isin(appoints)
+        )
+
+    paid_cash_ipd_cons_data = paid_cash_ipd_cons_query.run(as_dict=True)
+
+
+    # Unpaid IPD Cons Data for Admitted and Discharged Patients
+    # No Link to Sales invoice
+    unpaid_cash_ipd_cons_query = (
+        frappe.qb.from_(ic)
+        .inner_join(ip)
+        .on(ic.parent == ip.name)
+        .inner_join(it)
+        .on(ic.consultation_item == it.name)
+        .inner_join(pe)
+        .on(ic.encounter == pe.name)
+        .select(
+            ic.date.as_("date"),
+            ip.patient_appointment.as_("appointment_no"),
+            ip.name.as_("bill_no"),
+            ip.patient.as_("patient"),
+            ip.patient_name.as_("patient_name"),
+            ValueWrapper("In-Patient").as_("patient_type"),
+            it.item_group.as_("service_type"),
+            ic.consultation_item.as_("service_name"),
+            ValueWrapper("Cash").as_("payment_method"),
+            ValueWrapper(1).as_("qty"),
+            ic.rate.as_("rate"),
+            ic.rate.as_("amount"),
+            pe.medical_department.as_("department"),
+            ic.healthcare_practitioner.as_("practitioner"),
+            pe.healthcare_service_unit.as_("service_unit"),
+            ic.modified.as_("date_modified"),
+            ic.sales_invoice_number.as_("sales_invoice"),
+        )
+        .where(
+            (ip.company == filters.company)
+            & (ip.status != "Discharged")
+            & (ic.is_confirmed == 1)
+            & (ic.hms_tz_invoiced == 0)
             & (
                 (ip.insurance_coverage_plan.isnull())
                 | (ip.insurance_coverage_plan == "")
@@ -1829,27 +1984,27 @@ def get_cash_ipd_cons_data(filters, appoints):
     )
 
     if filters.show_only_prev_items_for_discharged_ipds == 1 and len(appoints) > 0:
-        cash_ipd_cons_query = cash_ipd_cons_query.where(
+        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(
             (ic.date < filters.from_date) & (ip.patient_appointment.isin(appoints))
         )
     else:
-        cash_ipd_cons_query = cash_ipd_cons_query.where(
+        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(
             (ic.date.between(filters.from_date, filters.to_date))
         )
 
     if filters.service_type:
-        cash_ipd_cons_query = cash_ipd_cons_query.where(
+        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(
             it.item_group == filters.service_type
         )
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        cash_ipd_cons_query = cash_ipd_cons_query.where(
+        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(
             ip.patient_appointment.isin(appoints)
         )
 
-    cash_ipd_cons_data = cash_ipd_cons_query.run(as_dict=True)
+    unpaid_cash_ipd_cons_data = unpaid_cash_ipd_cons_query.run(as_dict=True)
 
-    return cash_ipd_cons_data
+    return paid_cash_ipd_cons_data + unpaid_cash_ipd_cons_data
 
 
 def get_direct_sales_from_invoices(filters):
@@ -1875,6 +2030,7 @@ def get_direct_sales_from_invoices(filters):
             (sii.amount - sii.net_amount).as_("discount_amount"),
             ValueWrapper("Submitted").as_("status"),
             si.modified.as_("date_modified"),
+            si.name.as_("sales_invoice"),
         )
         .where(
             (si.company == filters.company)
