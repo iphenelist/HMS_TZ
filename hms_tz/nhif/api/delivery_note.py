@@ -291,6 +291,7 @@ def update_drug_prescription(doc):
                                     "quantity": quantity,
                                     "delivered_quantity": quantity,
                                 },
+                                update_modified=False,
                             )
 
                     for original_item in doc.hms_tz_original_items:
@@ -308,6 +309,7 @@ def update_drug_prescription(doc):
                                     "hms_tz_is_out_of_stock": 1,
                                     "is_cancelled": 1,
                                 },
+                                update_modified=False
                             )
 
         else:
@@ -351,7 +353,6 @@ def update_drug_prescription(doc):
                                 drug_item.hms_tz_is_out_of_stock = 1
                                 drug_item.is_cancelled = 1
                                 drug_item.db_update()
-                patient_encounter_doc.save(ignore_permissions=True)
 
 
 def check_item_for_out_of_stock(doc):
