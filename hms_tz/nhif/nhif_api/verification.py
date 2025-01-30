@@ -20,12 +20,9 @@ def get_visit_types():
         "Authorization": f"Bearer {token}"
     }
 
-    r = requests.request("Get", url, headers=headers, timeout=5)
-    r.raise_for_status()
-
-    data = json.loads(r.text)
-
-    if data:
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code == 200:
+        data = json.loads(r.text)
         add_log(
             request_type="VisitTypes",
             request_url=url,
@@ -87,3 +84,13 @@ def get_visit_types():
                     title="GetVisitTypes",
                     message=traceback
                 )
+    else:
+        add_log(
+            request_type="VisitTypes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+        )
+
