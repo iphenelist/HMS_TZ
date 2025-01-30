@@ -1,0 +1,40 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-30 15:12:41.611387",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "card_type_id",
+  "card_type_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "card_type_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Card Type ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "card_type_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Card Type Name",
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-30 15:12:41.611387",
+ "modified_by": "Administrator",
+ "module": "NHIF",
+ "name": "Healthcare Card Verifier Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
