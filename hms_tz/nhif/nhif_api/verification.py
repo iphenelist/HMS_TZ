@@ -23,7 +23,7 @@ def get_visit_types():
     if r.status_code == 200:
         data = json.loads(r.text)
         add_log(
-            request_type="VisitTypes",
+            request_type="GetVisitTypes",
             request_url=url,
             request_header=headers,
             request_body="",
@@ -34,30 +34,39 @@ def get_visit_types():
         for visit in data:
             try:
                 if frappe.db.exists("Appointment Type", visit.get("VisitTypeName"), cache=True):
+                    has_changed = False
                     appointment_type_doc = frappe.get_cached_doc("Appointment Type", visit.get("VisitTypeName"))
 
                     if appointment_type_doc.visit_type_id != visit.get("VisitTypeID"):
+                        has_changed = True
                         appointment_type_doc.visit_type_id = visit.get("VisitTypeID")
 
                     if appointment_type_doc.required_input != visit.get("RequiredInput"):
+                        has_changed = True
                         appointment_type_doc.required_input = visit.get("RequiredInput")
                         
                     if appointment_type_doc.visit_type_name_alias != visit.get("Alias"):
+                        has_changed = True
                         appointment_type_doc.visit_type_name_alias = visit.get("Alias")
                         
                     if appointment_type_doc.requires_remarks != visit.get("RequiresRemarks"):
+                        has_changed = True
                         appointment_type_doc.requires_remarks = visit.get("RequiresRemarks")
                         
                     if appointment_type_doc.requires_referral_no != visit.get("RequiresReferralNo"):
+                        has_changed = True
                         appointment_type_doc.requires_referral_no = visit.get("RequiresReferralNo")
 
                     if appointment_type_doc.maximum_visit_per_month != visit.get("MaximumVisitPerMonth"):
+                        has_changed = True
                         appointment_type_doc.maximum_visit_per_month = visit.get("MaximumVisitPerMonth")
 
                     if appointment_type_doc.description != visit.get("Description"):
+                        has_changed = True
                         appointment_type_doc.description = visit.get("Description")
                     
-                    appointment_type_doc.save(ignore_permissions=True)
+                    if has_changed:
+                        appointment_type_doc.save(ignore_permissions=True)
                 
                 else:
                     appointment_type_doc = frappe.new_doc("Appointment Type")
@@ -85,7 +94,7 @@ def get_visit_types():
                 )
     else:
         add_log(
-            request_type="VisitTypes",
+            request_type="GetVisitTypes",
             request_url=url,
             request_header=headers,
             request_body="",
@@ -114,7 +123,7 @@ def get_card_verifier():
     if r.status_code == 200:
         data = json.loads(r.text)
         add_log(
-            request_type="CardVerifiers",
+            request_type="GetCardVerifiers",
             request_url=url,
             request_header=headers,
             request_body="",
@@ -124,21 +133,24 @@ def get_card_verifier():
         for record in data:
             try:
                 if frappe.db.exists("Healthcare Card Verifier", str(record.get("verifierName")), cache=True):
-                    frappe.throw(str(record))
+                    has_changed = False
                     hcv_doc = frappe.get_cached_doc("Healthcare Card Verifier", record.get("verifierName"))
                     
                     if hcv_doc.verifier_id != record.get("verifierID"):
+                        has_changed = True
                         hcv_doc.verifier_id = record.get("verifierID")
                     
                     hcv_doc.card_types = []
                     
                     for row in record.get("cardTypes"):
+                        has_changed = True
                         hcv_doc.append("card_types", {
                             "card_type_id": row.get("cardTypeID"),
                             "card_type_name": row.get("cardTypeName")
                         })
                     
-                    hcv_doc.save(ignore_permissions=True)
+                    if has_changed:
+                        hcv_doc.save(ignore_permissions=True)
                 
                 else:
                     hcv_doc = frappe.new_doc("Healthcare Card Verifier")
@@ -161,7 +173,7 @@ def get_card_verifier():
                 )
     else:
         add_log(
-            request_type="CardVerifiers",
+            request_type="GetCardVerifiers",
             request_url=url,
             request_header=headers,
             request_body="",
