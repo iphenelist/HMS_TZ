@@ -1,5 +1,6 @@
 import json
 import frappe
+import base64
 import requests
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -180,3 +181,62 @@ def get_card_verifier():
             response_data=r.text,
             status_code=r.status_code,
         )
+
+
+@frappe.whitelist()
+def get_member_picture(company, card_no, ref_doctype, ref_docname):
+    setting_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = setting_doc.get_nhif_token()
+
+    url = f"{setting_doc.nhifservice_url}/api/Verification/GetMemberPicture?CardNo={card_no}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Get", url, headers=headers, timeout=60)
+
+    if r.status_code == 200:
+        add_log(
+            request_type="GetMemberPicture",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+
+        mime_type = None
+        base64_image = r.text
+        decoded_data = base64.b64decode(base64_image)
+    
+        if decoded_data.startswith(b'\xFF\xD8\xFF'):
+            mime_type = "image/jpeg"  # JPEG
+        elif decoded_data.startswith(b'\x89PNG\r\n\x1a\n'):
+            mime_type = "image/png"   # PNG
+        elif decoded_data.startswith(b'GIF87a') or decoded_data.startswith(b'GIF89a'):
+            mime_type = "image/gif"   # GIF
+        elif decoded_data.startswith(b'RIFF') and decoded_data[8:12] == b'WEBP':
+            mime_type = "image/webp"  # WEBP
+        elif decoded_data.startswith(b'\x42\x4D'):
+            mime_type = "image/bmp"   # BMP
+        else:
+            mime_type = "application/octet-stream"
+
+        prefixed_base64 = f"data:{mime_type};base64,{base64_image}"
+        return prefixed_base64
+    else:
+        add_log(
+            request_type="GetMemberPicture",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return None
