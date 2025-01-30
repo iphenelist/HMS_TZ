@@ -13,6 +13,8 @@
   "nhif_tab",
   "nhif_user",
   "nhif_client_secret",
+  "nhif_grant_type",
+  "nhif_scope",
   "column_break_xexyf",
   "enable_nhif_api",
   "validate_service_approval_number_on_lrpm_documents",
@@ -153,11 +155,23 @@
    "fieldname": "nhif_token_url",
    "fieldtype": "Data",
    "label": "NHIF Token URL"
+  },
+  {
+   "fieldname": "nhif_grant_type",
+   "fieldtype": "Data",
+   "label": "NHIF Grant Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "nhif_scope",
+   "fieldtype": "Data",
+   "label": "NHIF Scope",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-28 23:29:52.809031",
+ "modified": "2025-01-29 15:15:44.364898",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "HMS TZ Settings",

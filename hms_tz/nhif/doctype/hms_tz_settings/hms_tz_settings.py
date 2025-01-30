@@ -17,15 +17,22 @@ class HMSTZSettings(Document):
 			frappe.msgprint("Please Enable NHIF API to proceed..")
 			return
 		
-		if self.nhif_token_expiry:
-			expiry_datetime = datetime.strptime(self.nhif_token_expiry, '%Y-%m-%d %H:%M:%S.%f')
-			
-			if expiry_datetime > now_datetime():
-				return self.nhif_token
+		if (
+			self.nhif_token_expiry and 
+			self.nhif_token_expiry > now_datetime()
+		):
+			return self.nhif_token
 
-		client_secret = self.get_password("nhif_client_secret")
-		payload = f"grant_type=client_credentials&client_id={self.facility_code}&client_secret={client_secret}&scope=OnlineServices&user={self.nhif_user}"
+		payload = {
+            "grant_type": self.nhif_grant_type,
+            "client_id": self.facility_code,
+            "client_secret": self.get_password("nhif_client_secret"),
+            "scope": self.nhif_scope,
+            "user": self.nhif_user
+        }
+
 		headers = {
+			"Accept": "application/json",
 			'Content-Type': 'application/x-www-form-urlencoded'
 		}
 
@@ -59,7 +66,7 @@ class HMSTZSettings(Document):
 					})
 
 					self.db_update()
-					frappe.db.commit()
+					self.reload()
 					return token
 				else:
 					add_log(
