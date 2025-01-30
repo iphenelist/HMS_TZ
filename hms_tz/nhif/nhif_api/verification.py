@@ -4,7 +4,6 @@ import requests
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
-@frappe.whitelist()
 def get_visit_types():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
@@ -34,7 +33,7 @@ def get_visit_types():
 
         for visit in data:
             try:
-                if frappe.db.exists("Appointment Type", str(visit.get("VisitTypeName")), cache=True):
+                if frappe.db.exists("Appointment Type", visit.get("VisitTypeName"), cache=True):
                     appointment_type_doc = frappe.get_cached_doc("Appointment Type", visit.get("VisitTypeName"))
 
                     if appointment_type_doc.visit_type_id != visit.get("VisitTypeID"):
@@ -94,3 +93,78 @@ def get_visit_types():
             status_code=r.status_code,
         )
 
+
+def get_card_verifier():
+    settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+    if len(settings) == 0:
+        return
+    
+    setting_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+
+    token = setting_doc.get_nhif_token()
+
+    url = f"{setting_doc.nhifservice_url}/api/Verification/GetCardVerifiers"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="CardVerifiers",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code
+        )
+        for record in data:
+            try:
+                if frappe.db.exists("Healthcare Card Verifier", str(record.get("verifierName")), cache=True):
+                    frappe.throw(str(record))
+                    hcv_doc = frappe.get_cached_doc("Healthcare Card Verifier", record.get("verifierName"))
+                    
+                    if hcv_doc.verifier_id != record.get("verifierID"):
+                        hcv_doc.verifier_id = record.get("verifierID")
+                    
+                    hcv_doc.card_types = []
+                    
+                    for row in record.get("cardTypes"):
+                        hcv_doc.append("card_types", {
+                            "card_type_id": row.get("cardTypeID"),
+                            "card_type_name": row.get("cardTypeName")
+                        })
+                    
+                    hcv_doc.save(ignore_permissions=True)
+                
+                else:
+                    hcv_doc = frappe.new_doc("Healthcare Card Verifier")
+                    hcv_doc.verifier_name = record.get("verifierName")
+                    hcv_doc.verifier_id = record.get("verifierID")
+                    
+                    for row in record.get("cardTypes"):
+                        hcv_doc.append("card_types", {
+                            "card_type_id": row.get("cardTypeID"),
+                            "card_type_name": row.get("cardTypeName")
+                        })
+                    
+                    hcv_doc.save(ignore_permissions=True)
+                    hcv_doc.reload()
+            except:
+                traceback = frappe.get_traceback()
+                frappe.log_error(
+                    title="CardVerifiers",
+                    message=traceback
+                )
+    else:
+        add_log(
+            request_type="CardVerifiers",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+        )
