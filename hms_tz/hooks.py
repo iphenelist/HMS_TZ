@@ -60,6 +60,8 @@ doctype_js = {
 
 doctype_list_js = {
     "Therapy Plan": ["nhif/api/therapy_plan_list.js"],
+    "Custom Field": "hms_tz/patches/custom_fields/custom_field.js",
+    "Property Setter": "hms_tz/patches/property_setter/property_setter.js",
 }
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -89,6 +91,12 @@ doctype_list_js = {
 
 # before_install = "hms_tz.install.before_install"
 # after_install = "hms_tz.install.after_install"
+
+
+after_migrate = [
+    "hms_tz.patches.custom_fields.create_custom_fields.execute",
+    "hms_tz.patches.property_setter.create_property_setters.execute",
+]
 
 # Desk Notifications
 # ------------------
