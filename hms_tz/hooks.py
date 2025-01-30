@@ -273,6 +273,7 @@ scheduler_events = {
         "0 1 * * 6": [
             "hms_tz.nhif.nhif_api.verification.get_visit_types",
             "hms_tz.nhif.nhif_api.verification.get_card_verifier",
+            "hms_tz.nhif.nhif_api.reference.get_points_of_care",
         ],
     },
     # 	"hourly": [
