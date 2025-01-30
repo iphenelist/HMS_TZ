@@ -269,6 +269,10 @@ scheduler_events = {
         "*/30 3-4 * * *": [
             "hms_tz.nhif.api.healthcare_utils.auto_finalize_patient_encounters"
         ],
+        # Routine for every Saturday 01:00 am at night
+        "0 1 * * 6": [
+            "hms_tz.nhif.nhif_api.verification.get_visit_types"
+        ],
     },
     # 	"hourly": [
     # 		"hms_tz.tasks.hourly"
