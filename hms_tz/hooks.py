@@ -271,7 +271,8 @@ scheduler_events = {
         ],
         # Routine for every Saturday 01:00 am at night
         "0 1 * * 6": [
-            "hms_tz.nhif.nhif_api.verification.get_visit_types"
+            "hms_tz.nhif.nhif_api.verification.get_visit_types",
+            "hms_tz.nhif.nhif_api.verification.get_card_verifier",
         ],
     },
     # 	"hourly": [
