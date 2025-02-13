@@ -228,6 +228,50 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None)
 
 
 @frappe.whitelist()
+def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docname=None):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetardDetailsByNIN?nationalID={national_id}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Get", url, headers=headers, timeout=60)
+
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetardDetailsByNIN",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=national_id
+        )
+        member_picture = get_member_picture(company, data.get("CardNo"), ref_doctype, ref_docname, settings_doc)
+        data["MemberPicture"] = member_picture
+        return data
+    else:
+        add_log(
+            request_type="GetardDetailsByNIN",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=national_id
+        )
+        return None
+
+
+@frappe.whitelist()
 def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=None):
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
