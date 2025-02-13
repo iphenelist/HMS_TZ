@@ -224,7 +224,13 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None)
             ref_docname=ref_docname,
             card_no=card_no
         )
-        return None
+        data = json.loads(r.text)
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('reasonPhrase')}<b>",
+            indicator="red"
+        )
+        return 'Error'
 
 
 @frappe.whitelist()
@@ -268,7 +274,13 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
             ref_docname=ref_docname,
             card_no=national_id
         )
-        return None
+        data = json.loads(r.text)
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('message')}<b>",
+            indicator="red"
+        )
+        return 'Error'
 
 
 @frappe.whitelist()
