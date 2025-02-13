@@ -54,7 +54,13 @@ def validate_mobile_number(doc_name, mobile=None):
 
 
 @frappe.whitelist()
-def get_nhif_patient_info(card_no=None, national_id=None, ref_doctype=None, ref_docname=None):
+def get_nhif_patient_info(
+    card_no=None,
+    national_id=None,
+    ref_doctype=None,
+    ref_docname=None,
+    check_patient_info_from_his=False
+):
     if not card_no and not national_id:
         frappe.msgprint(_("Please provide either Card No or National ID"))
         return
@@ -63,19 +69,31 @@ def get_nhif_patient_info(card_no=None, national_id=None, ref_doctype=None, ref_
     company = get_default_company()
     if not company:
         company = frappe.defaults.get_user_default("Company")
+    
     if not company:
         company = frappe.get_list(
             "HMS TZ Settings", fields=["company"], filters={"enable_nhif_api": 1}
         )[0].company
+    
     if not company:
         frappe.throw(_("No companies found to connect to NHIF"))
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    if settings_doc.enable_nhif_api == 0:
+        frappe.msgprint("Please Enable NHIF API to proceed..")
+        return
+
+    if check_patient_info_from_his and settings_doc.check_patient_info_on_his == 0:
+        frappe.msgprint("Please Enable Check Patient Info on HIS to proceed..")
+        return
 
     if card_no:
         card_details = get_card_details_by_card_no(
             company,
             card_no,
             ref_doctype,
-            ref_docname=ref_docname
+            ref_docname=ref_docname,
+            settings_doc=settings_doc
         )
         return card_details
     elif national_id:
@@ -83,7 +101,8 @@ def get_nhif_patient_info(card_no=None, national_id=None, ref_doctype=None, ref_
             company,
             national_id,
             ref_doctype,
-            ref_docname=ref_docname
+            ref_docname=ref_docname,
+            settings_doc=settings_doc
         )
         return card_details
 
