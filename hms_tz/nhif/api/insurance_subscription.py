@@ -10,6 +10,17 @@ from frappe import _
 from hms_tz.nhif.api.patient import get_nhif_patient_info
 
 
+
+def before_insert(doc, method):
+    validate_card_no(doc)
+    validate_national_id(doc)
+
+
+def validate(doc, method):
+    validate_card_no(doc)
+    validate_national_id(doc)
+
+
 def on_submit(doc, method):
     set_insurance_card_detail_in_patient(doc)
 
@@ -21,6 +32,42 @@ def on_update_after_submit(doc, method):
 
 def on_cancel(doc, method):
     set_insurance_card_detail_in_patient(doc)
+
+
+def validate_card_no(doc):
+    if not doc.coverage_plan_card_number:
+        return
+    
+    filters = {
+        "is_active": 1,
+        "docstatus": 1,
+        "coverage_plan_card_number": doc.coverage_plan_card_number,
+        "name": ["!=", doc.name]
+    }
+    
+    his = frappe.db.get_all("Healthcare Insurance Subscription", filters=filters, fields=["name", "patient_name"])
+    if len(his) > 0:
+        frappe.throw(
+            f"Cardno: <b>{doc.coverage_plan_card_number}</b> used with HIS: {his[0].name} patient: <b>{his[0].patient_name}</b>, Please change Cardno to Proceed"
+        )
+
+
+def validate_national_id(doc):
+    if not doc.national_id:
+        return
+    
+    filters = {
+        "is_active": 1,
+        "docstatus": 1,
+        "national_id": doc.national_id,
+        "name": ["!=", doc.name]
+    }
+    
+    his = frappe.db.get_all("Healthcare Insurance Subscription", filters=filters, fields=["name", "patient_name"])
+    if len(his) > 0:
+        frappe.throw(
+            f"NationalID: <b>{doc.national_id}</b> used with HIS: {his[0].name} Patient: <b>{his[0].patient_name}</b>, Please change NationalID to Proceed"
+        )
 
 
 def set_insurance_card_detail_in_patient(doc):
@@ -90,30 +137,3 @@ def check_patient_info(
     
     return None
 
-
-def before_insert(doc, method):
-    validate_card_info(doc)
-
-
-def validate(doc, method):
-    validate_card_info(doc)
-
-
-def validate_card_info(doc):
-    his_list = frappe.get_all(
-        "Healthcare Insurance Subscription",
-        filters={
-            "patient": doc.patient,
-            "docstatus": 1,
-            "is_active": 1,
-            "healthcare_insurance_coverage_plan": doc.healthcare_insurance_coverage_plan,
-            "coverage_plan_card_number": doc.coverage_plan_card_number,
-        },
-        fields=["coverage_plan_card_number", "coverage_plan_name"],
-    )
-    if len(his_list) > 0:
-        frappe.throw(
-            _(
-                f"The card {doc.coverage_plan_card_number} already exists for plan {doc.coverage_plan_name}"
-            )
-        )
