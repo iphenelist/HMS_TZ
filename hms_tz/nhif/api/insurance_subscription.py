@@ -52,12 +52,29 @@ def set_insurance_card_detail_in_patient(doc):
 
 
 @frappe.whitelist()
-def check_patient_info(patient, card_no, patient_name):
-    if not patient or not card_no:
+def check_patient_info(
+    patient,
+    patient_name,
+    card_no=None,
+    national_id=None,
+    ref_doctype=None,
+    ref_docname=None
+):
+    if not patient or (not card_no and not national_id):
         return
         
-    patient_info = get_patient_info(card_no)
-    if patient_name != patient_info.get("FullName"):
+    patient_info = get_nhif_patient_info(
+        card_no=card_no,
+        national_id=national_id,
+        ref_doctype=ref_doctype,
+        ref_docname=ref_docname,
+        check_patient_info_from_his=True,
+    )
+
+    if (
+        patient_info and 
+        patient_name != patient_info.get("FullName")
+    ):
         patient_doc = frappe.get_cached_doc("Patient", patient)
         patient_doc.patient_name = patient_info.get("FullName")
         patient_doc.first_name = patient_info.get("FirstName")
@@ -68,7 +85,10 @@ def check_patient_info(patient, card_no, patient_name):
         patient_doc.product_code = patient_info.get("ProductCode")
         patient_doc.membership_no = patient_info.get("membership_no")
         patient_doc.save(ignore_permissions=True)
-    return patient_info.get("FullName")
+
+        return patient_info.get("FullName")
+    
+    return None
 
 
 def before_insert(doc, method):
