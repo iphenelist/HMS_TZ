@@ -9,7 +9,7 @@ from erpnext import get_default_company
 import json
 import requests
 from time import sleep
-from frappe.utils import getdate, nowdate, flt
+from frappe.utils import getdate, nowdate, flt, cstr
 from hms_tz.nhif.api.healthcare_utils import remove_special_characters
 from datetime import date
 from frappe.utils.background_jobs import enqueue
@@ -50,7 +50,6 @@ def validate_mobile_number(doc_name, mobile=None):
         )
         if len(mobile_patients_list) > 0:
             frappe.msgprint(_("This mobile number is used by another patient"))
-
 
 
 @frappe.whitelist()
@@ -105,7 +104,6 @@ def get_nhif_patient_info(
             settings_doc=settings_doc
         )
         return card_details
-
 
 
 def update_patient_history(doc):
@@ -181,6 +179,7 @@ def create_subscription(doc):
             add_product(company, doc.get("product_code"), None)
 
         return
+    
     subscription_list = frappe.get_list(
         "Healthcare Insurance Subscription",
         filters={"patient": doc.name, "is_active": 1},
@@ -205,6 +204,7 @@ def create_subscription(doc):
     sub_doc.insurance_company = plan_doc.insurance_company
     sub_doc.healthcare_insurance_coverage_plan = plan_doc.name
     sub_doc.coverage_plan_card_number = doc.card_no
+    sub_doc.national_id = doc.national_id
     sub_doc.hms_tz_product_code = doc.product_code
     sub_doc.hms_tz_scheme_id = doc.scheme_id
     sub_doc.save(ignore_permissions=True)
@@ -217,8 +217,6 @@ def create_subscription(doc):
 
 
 def get_coverage_plan(doc=None, card=None, company=None):
-    from frappe.utils import cstr
-
     data = None
     if not doc and card:
         data = card
@@ -298,9 +296,12 @@ def get_coverage_plan(doc=None, card=None, company=None):
 
 
 def after_insert(doc, method):
-    if not doc.card_no:
+    if doc.card_no:
+        doc.insurance_card_detail = (doc.card_no or "") + ", "
+
+    if not doc.product_code:
         return
-    doc.insurance_card_detail = (doc.card_no or "") + ", "
+
     create_subscription(doc)
 
 
