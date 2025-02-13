@@ -10,11 +10,11 @@ def get_visit_types():
     if len(settings) == 0:
         return
     
-    setting_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
 
-    token = setting_doc.get_nhif_token()
+    token = settings_doc.get_nhif_token()
 
-    url = f"{setting_doc.nhifservice_url}/api/Verification/GetVisitTypes"
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetVisitTypes"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
@@ -109,11 +109,11 @@ def get_card_verifier():
     if len(settings) == 0:
         return
     
-    setting_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
 
-    token = setting_doc.get_nhif_token()
+    token = settings_doc.get_nhif_token()
 
-    url = f"{setting_doc.nhifservice_url}/api/Verification/GetCardVerifiers"
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetCardVerifiers"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
@@ -184,13 +184,59 @@ def get_card_verifier():
 
 
 @frappe.whitelist()
-def get_member_picture(company, card_no, ref_doctype, ref_docname):
-    setting_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
-    token = setting_doc.get_nhif_token()
+    token = settings_doc.get_nhif_token()
 
-    url = f"{setting_doc.nhifservice_url}/api/Verification/GetMemberPicture?CardNo={card_no}"
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetCardDetails?cardNo={card_no}"
     headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Get", url, headers=headers, timeout=60)
+
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetCardDetails",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        member_picture = get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc)
+        data["MemberPicture"] = member_picture
+        return data
+    else:
+        add_log(
+            request_type="GetCardDetails",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return None
+
+
+@frappe.whitelist()
+def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=None):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetMemberPicture?CardNo={card_no}"
+    headers = {
+        "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
     }
     r = requests.request("Get", url, headers=headers, timeout=60)
