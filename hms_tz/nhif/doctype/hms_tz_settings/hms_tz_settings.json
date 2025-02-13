@@ -17,6 +17,7 @@
   "nhif_scope",
   "column_break_xexyf",
   "enable_nhif_api",
+  "check_patient_info_on_his",
   "validate_service_approval_number_on_lrpm_documents",
   "enable_auto_submit_of_claims",
   "auto_submit_patient_claim",
@@ -167,11 +168,18 @@
    "fieldtype": "Data",
    "label": "NHIF Scope",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.enable_nhif_api",
+   "fieldname": "check_patient_info_on_his",
+   "fieldtype": "Check",
+   "label": "Check Patient Info on HIS"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-29 15:15:44.364898",
+ "modified": "2025-02-13 14:30:26.125232",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "HMS TZ Settings",
