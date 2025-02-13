@@ -5,19 +5,18 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from hms_tz.nhif.api.token import get_nhifservice_token, get_nhif_url
 from erpnext import get_default_company
 import json
 import requests
 from time import sleep
-from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
-from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 from frappe.utils import getdate, nowdate, flt
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.healthcare_utils import remove_special_characters
 from datetime import date
 from frappe.utils.background_jobs import enqueue
+from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.nhif.nhif_api.verification import get_card_details_by_card_no, get_card_details_by_national_id
 
 
 def validate(doc, method):
@@ -25,6 +24,7 @@ def validate(doc, method):
     if date.today() < getdate(doc.dob):
         frappe.throw(_("The date of birth cannot be later than today's date"))
 
+    check_national_id(doc.national_id, doc.is_new(), doc.name, "validate")
     check_card_number(doc.card_no, doc.is_new(), doc.name, "validate")
 
     # replace initial 0 with 255 and remove all the unnecessray characters
@@ -67,7 +67,6 @@ def get_patient_info(card_no=None):
         )[0].company
     if not company:
         frappe.throw(_("No companies found to connect to NHIF"))
-    token = get_nhifservice_token(company)
 
     # nhifservice_url = frappe.get_cached_value(
     #     "Company NHIF Settings", company, "nhifservice_url"
@@ -154,13 +153,35 @@ def update_patient_history(doc):
 
 
 @frappe.whitelist()
+def check_national_id(national_id, is_new=None, patient=None, caller=None):
+    if not national_id:
+        return False
+    
+    filters = {"national_id": national_id}
+    if not is_new and patient:
+        filters["name"] = ["!=", patient]
+    
+    patients = frappe.db.get_all("Patient", filters=filters)
+    if len(patients):
+        if caller:
+            frappe.throw(
+                f"NationalID: <b>{national_id}</b> used with patient: <b>{patient}</b>, Please change NationalID to Proceed"
+            )
+        return patients[0].name
+    else:
+        return False
+
+
+@frappe.whitelist()
 def check_card_number(card_no, is_new=None, patient=None, caller=None):
     if not card_no:
-        return "false"
+        return False
+    
     filters = {"insurance_card_detail": ["like", "%" + card_no + "%"]}
     if not is_new and patient:
         filters["name"] = ["!=", patient]
-    patients = frappe.get_all("Patient", filters=filters)
+    
+    patients = frappe.db.get_all("Patient", filters=filters)
     if len(patients):
         if caller:
             frappe.throw(
@@ -168,7 +189,7 @@ def check_card_number(card_no, is_new=None, patient=None, caller=None):
             )
         return patients[0].name
     else:
-        return "false"
+        return False
 
 
 def create_subscription(doc):
