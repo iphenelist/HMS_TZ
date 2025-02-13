@@ -184,8 +184,9 @@ def get_card_verifier():
 
 
 @frappe.whitelist()
-def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None):
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None, settings_doc=None):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -234,8 +235,9 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None)
 
 
 @frappe.whitelist()
-def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docname=None):
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docname=None, settings_doc=None):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
 
