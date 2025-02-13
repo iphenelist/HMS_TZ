@@ -52,78 +52,41 @@ def validate_mobile_number(doc_name, mobile=None):
             frappe.msgprint(_("This mobile number is used by another patient"))
 
 
+
 @frappe.whitelist()
-def get_patient_info(card_no=None):
-    if not card_no:
-        frappe.msgprint(_("Please set Card No"))
+def get_nhif_patient_info(card_no=None, national_id=None, ref_doctype=None, ref_docname=None):
+    if not card_no and not national_id:
+        frappe.msgprint(_("Please provide either Card No or National ID"))
         return
+    
     # TODO: need to be fixed to support multiple company
     company = get_default_company()
     if not company:
         company = frappe.defaults.get_user_default("Company")
     if not company:
         company = frappe.get_list(
-            "Company NHIF Settings", fields=["company"], filters={"enable": 1}
+            "HMS TZ Settings", fields=["company"], filters={"enable_nhif_api": 1}
         )[0].company
     if not company:
         frappe.throw(_("No companies found to connect to NHIF"))
 
-    # nhifservice_url = frappe.get_cached_value(
-    #     "Company NHIF Settings", company, "nhifservice_url"
-    # )
-    
-    headers = {"Authorization": "Bearer " + token}
+    if card_no:
+        card_details = get_card_details_by_card_no(
+            company,
+            card_no,
+            ref_doctype,
+            ref_docname=ref_docname
+        )
+        return card_details
+    elif national_id:
+        card_details = get_card_details_by_national_id(
+            company,
+            national_id,
+            ref_doctype,
+            ref_docname=ref_docname
+        )
+        return card_details
 
-    setting_doc = frappe.get_cached_doc("Company NHIF Settings", company)
-    url = (
-        get_nhif_url(setting_doc, "GetCardDetails")
-        + card_no
-    )
-
-    # url = (
-    #     str(setting_doc.nhifservice_url)
-    #     + "/nhifservice/breeze/verification/GetCardDetails?CardNo="
-    #     + str(card_no)
-    # )
-
-    for i in range(3):
-        try:
-            r = requests.get(url, headers=headers, timeout=5)
-            r.raise_for_status()
-            frappe.logger().debug({"webhook_success": r.text})
-            if json.loads(r.text):
-                add_log(
-                    request_type="GetCardDetails",
-                    request_url=url,
-                    request_header=headers,
-                    response_data=json.loads(r.text),
-                    status_code=r.status_code,
-                )
-                card = json.loads(r.text)
-                frappe.msgprint(_(card["Remarks"]), alert=True)
-                add_scheme(card.get("SchemeID"), card.get("SchemeName"))
-                add_product(company, card.get("ProductCode"), card.get("ProductName"))
-                return card
-            else:
-                add_log(
-                    request_type="GetCardDetails",
-                    request_url=url,
-                    request_header=headers,
-                    status_code=r.status_code,
-                )
-                frappe.msgprint(json.loads(r.text))
-                frappe.msgprint(
-                    _(
-                        "Getting information from NHIF failed. Try again after sometime, or continue manually."
-                    )
-                )
-        except Exception as e:
-            frappe.logger().debug({"webhook_error": e, "try": i + 1})
-            sleep(3 * i + 1)
-            if i != 2:
-                continue
-            else:
-                raise e
 
 
 def update_patient_history(doc):

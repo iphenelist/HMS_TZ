@@ -28,7 +28,7 @@ class HMSTZSettings(Document):
             "client_id": self.facility_code,
             "client_secret": self.get_password("nhif_client_secret"),
             "scope": self.nhif_scope,
-            "user": self.nhif_user
+            "username": self.nhif_user
         }
 
 		headers = {
