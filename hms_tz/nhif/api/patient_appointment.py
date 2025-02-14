@@ -248,7 +248,7 @@ def get_consulting_charge_item(
     if insurance_company and "NHIF" in insurance_company and scheme_id:
         if (
             appointment_type == "Follow up Visit" and
-            cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
+            cint(scheme_id) in [1001, 1003, 1005, 1006, 1007, 1008, 3001, 4001, 5001, 6001, 8001]
         ):
             if "Assistant Medical Officer" in cons_item:
                 charge_item = app_type_details.get("assistant_md_followup_item")
@@ -261,7 +261,7 @@ def get_consulting_charge_item(
 
         elif (
             cint(apply_fasttrack_charge) == 1
-            and cint(scheme_id) in [4001, 5001, 6001, 8001]
+            and cint(scheme_id) in [3001, 4001, 5001, 6001, 8001]
             and appointment_type in [
                 "Outpatient Visit",
                 "Normal Visit",
@@ -839,7 +839,7 @@ def validate_has_no_consultation(doc, method):
             and "NHIF" in doc.insurance_company
             and doc.appointment_type == "Follow up Visit"
             and scheme_id
-            and cint(scheme_id) in [1001, 4001, 5001, 6001, 8001]
+            and cint(scheme_id) in [1001, 1003, 1005, 1006, 1007, 1008, 3001, 4001, 5001, 6001, 8001]
         ):
             if doc.mode_of_payment:
                 doc.has_no_consultation_charges = frappe.get_cached_value(
