@@ -18,6 +18,8 @@ from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.nhif_api.verification import get_card_details_by_card_no, get_card_details_by_national_id
 
+from frappe.query_builder import DocType
+
 
 def validate(doc, method):
     # validate date of birth
@@ -207,6 +209,15 @@ def create_subscription(doc):
     sub_doc.national_id = doc.national_id
     sub_doc.hms_tz_product_code = doc.product_code
     sub_doc.hms_tz_scheme_id = doc.scheme_id
+
+    
+    verifier_entry = get_card_verifier(doc)
+
+    if verifier_entry:
+        sub_doc.verifier_id = verifier_entry,verifier_id
+        sub_doc.card_type_id = verifier_entry,card_type_id
+        sub_doc.card_type_name = verifier_entry,card_type_name
+
     sub_doc.save(ignore_permissions=True)
     sub_doc.submit()
     frappe.msgprint(
@@ -346,3 +357,55 @@ def validate_missing_patient_dob(patient: str):
     if not dob:
         return False
     return True
+
+
+def get_card_verifier(doc, card_no=None, national_id=None):
+    card_type_name = ""
+    card_no = card_no or doc.card_no
+    national_id = national_id or doc.national_id
+
+    if 'Workers' in doc.nhif_employername:
+        card_type_name = 'WCF'
+    elif (
+        'Zanzibar' in doc.nhif_employername
+        and card_no
+    ):
+        card_type_name = 'ZHSF'
+    elif (
+        'Zanzibar' in doc.nhif_employername
+        and not card_no
+        and national_id
+    ):
+        card_type_name = 'ID'
+    elif (
+        'Zanzibar' not in doc.nhif_employername
+        and 'Workers' not in doc.nhif_employername
+        and card_no
+    ):
+        card_type_name = 'NHIF'
+    elif (
+        'Zanzibar' not in doc.nhif_employername
+        and 'Workers' not in doc.nhif_employername
+        and card_no
+        and national_id
+    ):
+        card_type_name = 'ID'
+    
+    hcv = DocType("Healthcare Card Verifier")
+    hcvd = DocType("Healthcare Card Verifier Detail")
+
+    verifiers = (
+        frappe.qb.from_(hcv)
+        .inner_join(hcvd)
+        .on(hcv.name == hcvd.parent)
+        .select(
+            hcv.verifier_id,
+            hcvd.card_type_id,
+            hcvd.card_type_name
+        )
+        .where(
+            hcvd.card_type_name.like(card_type_name)
+        )
+    ).run(as_dict=True)
+
+    return verifiers[0]
