@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 
 # from frappe import _
-from hms_tz.nhif.api.patient import get_nhif_patient_info
+from hms_tz.nhif.api.patient import get_nhif_patient_info, get_card_verifier
 
 
 
@@ -130,10 +130,15 @@ def check_patient_info(
         patient_doc.sex = patient_info.get("Gender")
         patient_doc.dob = patient_info.get("DateOfBirth")
         patient_doc.product_code = patient_info.get("ProductCode")
+        patient_doc.scheme_id = patient_info.get("SchemeID")
+        patient_doc.nhif_employername = patient_info.get("EmployerName")
         patient_doc.membership_no = patient_info.get("membership_no")
         patient_doc.save(ignore_permissions=True)
 
-        return patient_info.get("FullName")
+        verifier_entry = get_card_verifier(patient_doc, card_no, national_id)
+        verifier_entry['full_name'] = patient_info.get("FullName")
+
+        return verifier_entry
     
     return None
 

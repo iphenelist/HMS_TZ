@@ -60,12 +60,16 @@ frappe.ui.form.on('Healthcare Insurance Subscription', {
             args: args,
             freeze: true,
             freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-        }).then(data => {
+        }).then(r => {
             frappe.utils.play_sound("submit");
 
-            if (data.message) {
-                if (data.message != frm.doc.patient_name){
-                    frm.set_value("patient_name", data.message);
+            if (r.message) {
+                let data = r.message;
+                if (data.full_name != frm.doc.patient_name){
+                    frm.set_value("patient_name", data.full_name);
+                    frm.set_value("verifier_id", data.verifier_id);
+                    frm.set_value("card_type_id", data.card_type_id);
+                    frm.set_value("card_type_name", data.card_type_name);
                     frm.save("Submit")
                 }
             } else {
