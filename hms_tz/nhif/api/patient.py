@@ -214,9 +214,9 @@ def create_subscription(doc):
     verifier_entry = get_card_verifier(doc)
 
     if verifier_entry:
-        sub_doc.verifier_id = verifier_entry,verifier_id
-        sub_doc.card_type_id = verifier_entry,card_type_id
-        sub_doc.card_type_name = verifier_entry,card_type_name
+        sub_doc.verifier_id = verifier_entry.verifier_id
+        sub_doc.card_type_id = verifier_entry.card_type_id
+        sub_doc.card_type_name = verifier_entry.card_type_name
 
     sub_doc.save(ignore_permissions=True)
     sub_doc.submit()
@@ -364,28 +364,28 @@ def get_card_verifier(doc, card_no=None, national_id=None):
     card_no = card_no or doc.card_no
     national_id = national_id or doc.national_id
 
-    if 'Workers' in doc.nhif_employername:
+    if 'workers' in doc.nhif_employername.lower():
         card_type_name = 'WCF'
     elif (
-        'Zanzibar' in doc.nhif_employername
+        'zanzibar' in doc.nhif_employername.lower()
         and card_no
     ):
         card_type_name = 'ZHSF'
     elif (
-        'Zanzibar' in doc.nhif_employername
+        'zanzibar' in doc.nhif_employername.lower()
         and not card_no
         and national_id
     ):
         card_type_name = 'ID'
     elif (
-        'Zanzibar' not in doc.nhif_employername
-        and 'Workers' not in doc.nhif_employername
+        'zanzibar' not in doc.nhif_employername.lower()
+        and 'workers' not in doc.nhif_employername.lower()
         and card_no
     ):
         card_type_name = 'NHIF'
     elif (
-        'Zanzibar' not in doc.nhif_employername
-        and 'Workers' not in doc.nhif_employername
+        'zanzibar' not in doc.nhif_employername.lower()
+        and 'workers' not in doc.nhif_employername.lower()
         and card_no
         and national_id
     ):
@@ -404,8 +404,11 @@ def get_card_verifier(doc, card_no=None, national_id=None):
             hcvd.card_type_name
         )
         .where(
-            hcvd.card_type_name.like(card_type_name)
+            hcvd.card_type_name.like(f"%{card_type_name}%")
         )
     ).run(as_dict=True)
+
+    if len(verifiers) == 0:
+        frappe.throw(f"No Card verifier found for EmployerName: {doc.nhif_employername}")
 
     return verifiers[0]
