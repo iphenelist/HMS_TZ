@@ -170,7 +170,9 @@ class dpFingerprint {
             }
 
             if (this.fingerprintPromiseResolve) {
-                this.fingerprintPromiseResolve(this.samples[0].Data);
+                const data = this.samples[0];
+                data.fpCode = this.selectedFinger;
+                this.fingerprintPromiseResolve(data);
             }
 
             this.destroy();
