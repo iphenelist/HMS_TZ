@@ -271,14 +271,11 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_df_property("follow_up", "read_only", 0);
         }
     },
-    get_authorization_number: function (frm) {
+    get_authorization_number: (frm) => {
         if (frm.doc.status == "Cancelled") {
             frappe.msgprint("Appointment is already cancelled")
-            return
+            return;
         }
-        frm.trigger("get_authorization_num");
-    },
-    get_authorization_num: function (frm) {
         if (!frm.doc.insurance_company.includes("NHIF")) {
             frappe.show_alert({
                 message: __("This feature is not applicable for non NHIF insurance"),
@@ -293,42 +290,67 @@ frappe.ui.form.on('Patient Appointment', {
         if (frm.is_dirty()) {
             frm.save();
         }
-        frappe.call({
-            method: 'hms_tz.nhif.api.patient_appointment.get_authorization_num',
-            args: {
-                'insurance_subscription': frm.doc.insurance_subscription,
-                'company': frm.doc.company,
-                'appointment_type': frm.doc.appointment_type,
-                'card_no': frm.doc.coverage_plan_card_number,
-                'referral_no': frm.doc.referral_no,
-                'remarks': frm.doc.remarks
-            },
-            async: true,
-            freeze: true,
-            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            callback: function (data) {
-                if (data.message) {
-                    const card = data.message;
-                    if (card.AuthorizationStatus == 'ACCEPTED') {
-                        frm.set_value("coverage_plan_name", card.CoveragePlanName);
-                        frm.set_value("authorization_number", card.AuthorizationNo);
-                        frm.set_value("nhif_employer_name", card.EmployerName);
-                        frm.save();
-                        frappe.show_alert({
-                            message: __("Authorization Number is updated"),
-                            indicator: 'green'
-                        }, 5);
+
+        frm.trigger('authorize_patient')
+    },
+    
+    authorize_patient: async (frm) => {
+        try {
+            let fingerprint = await new dpFingerprint({label: 'Authorize'});
+  
+            if (!fingerprint) {
+                frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
+                return;
+            }
+  
+            frappe.call({
+                method: 'hms_tz.nhif.nhif_api.verification.authorize_patient',
+                args: {
+                    'insurance_subscription': frm.doc.insurance_subscription,
+                    'appointment_type': frm.doc.appointment_type,
+                    'company': frm.doc.company,
+                    'card_no': frm.doc.coverage_plan_card_number,
+                    'national_id': frm.doc.national_id,
+                    'fingerprint': fingerprint,
+                    'referral_no': frm.doc.referral_no,
+                    'remarks': frm.doc.remarks,
+                    'ref_docname': frm.doc.name
+                },
+                async: true,
+                freeze: true,
+                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                callback: (data) => {
+                    if (data.message && data.message !== 'Error') {
+                        frappe.utils.play_sound("submit");
+                        const card = data.message;
+                        if (card.AuthorizationStatus == 'ACCEPTED') {
+                            frm.set_value("coverage_plan_name", card.CoveragePlanName);
+                            frm.set_value("authorization_number", card.AuthorizationNo);
+                            frm.set_value("nhif_employer_name", card.EmployerName);
+                            frm.save();
+                            frappe.show_alert({
+                                message: __("Authorization Number is updated"),
+                                indicator: 'green'
+                            }, 5);
+                        } else {
+                            frm.set_value("insurance_subscription", "");
+                            frm.set_value("authorization_number", "");
+                        }
                     } else {
+                        frappe.utils.play_sound("error");
                         frm.set_value("insurance_subscription", "");
                         frm.set_value("authorization_number", "");
                     }
+                },
+                onerror: function (data) {
+                    frappe.utils.play_sound("error");
                 }
-                else {
-                    frm.set_value("insurance_subscription", "");
-                    frm.set_value("authorization_number", "");
-                }
-            }
-        });
+            });
+  
+        } catch (error) {
+            console.error("Fingerprint capture error:", error);
+            frappe.msgprint(__('Failed to capture fingerprint. Please try again.'));
+        }
     },
     invoiced: function (frm) {
         frm.trigger("mandatory_fields");
