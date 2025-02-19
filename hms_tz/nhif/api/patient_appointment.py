@@ -11,13 +11,9 @@ from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import (
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
     get_receivable_account,
 )
-from frappe.model.mapper import get_mapped_doc
-from hms_tz.nhif.api.token import get_nhifservice_token, get_nhif_url
 import json
 import requests
-from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
-from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from frappe.model.mapper import get_mapped_doc
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from frappe.utils import date_diff, getdate, nowdate, cint
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
@@ -408,98 +404,6 @@ def make_encounter(doc, method):
 
         if doc.healthcare_package_order:
             return encounter_doc.name
-
-
-@frappe.whitelist()
-def get_authorization_num(
-    insurance_subscription,
-    company,
-    appointment_type,
-    card_no,
-    referral_no="",
-    remarks="",
-):
-    setting_doc = frappe.get_cached_doc("Company NHIF Settings", company)
-    # enable_nhif_api, nhifservice_url = frappe.get_cached_value(
-    #     "Company NHIF Settings", company, ["enable", "nhifservice_url"]
-    # )
-    if not setting_doc.enable:
-        frappe.msgprint(
-            _("Company {0} not enabled for NHIF Integration".format(company))
-        )
-        return
-
-    if not card_no:
-        frappe.msgprint(
-            _(
-                "Please set Card No in Healthcare Insurance Subscription {0}".format(
-                    insurance_subscription
-                )
-            )
-        )
-        return
-    card_no = "CardNo=" + str(card_no)
-    visit_type_id = (
-        "&VisitTypeID="
-        + frappe.get_cached_value(
-            "Appointment Type", appointment_type, "visit_type_id"
-        )[:1]
-    )
-    referral_no = "&ReferralNo=" + str(referral_no)
-    remarks = "&Remarks=" + str(remarks)
-
-    token = get_nhifservice_token(company)
-
-    headers = {"Content-Type": "application/json", "Authorization": "Bearer " + token}
-    # url = (
-    #     str(setting_doc.nhifservice_url)
-    #     + "/nhifservice/breeze/verification/AuthorizeCard?"
-    #     + card_no
-    #     + visit_type_id
-    #     + referral_no
-    #     + remarks
-    # )
-
-    url, extra_params = get_nhif_url(setting_doc, caller="AuthorizeCard")
-
-    url = (
-        url
-        + card_no
-        + visit_type_id
-        + referral_no
-        + remarks
-    )
-    if extra_params:
-        url = url + extra_params
-
-    r = requests.get(url, headers=headers, timeout=5)
-    r.raise_for_status()
-    frappe.logger().debug({"webhook_success": r.text})
-    if json.loads(r.text):
-        add_log(
-            request_type="AuthorizeCard",
-            request_url=url,
-            request_header=headers,
-            response_data=json.loads(r.text),
-            status_code=r.status_code,
-        )
-        card = json.loads(r.text)
-        # console(card)
-        if card.get("AuthorizationStatus") != "ACCEPTED":
-            frappe.throw(title=card.get("AuthorizationStatus"), msg=card["Remarks"])
-        frappe.msgprint(_(card["Remarks"]), alert=True)
-        add_scheme(card.get("SchemeID"), card.get("SchemeName"))
-        add_product(company, card.get("ProductCode"), card.get("ProductName"))
-        update_insurance_subscription(insurance_subscription, card, company)
-        return card
-    else:
-        add_log(
-            request_type="AuthorizeCard",
-            request_url=url,
-            request_header=headers,
-            status_code=r.status_code,
-        )
-        frappe.throw(json.loads(r.text))
 
 
 def update_insurance_subscription(insurance_subscription, card, company):
