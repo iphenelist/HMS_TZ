@@ -2,7 +2,10 @@ import json
 import frappe
 import base64
 import requests
+from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
+from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.nhif.api.patient_appointment import update_insurance_subscription
 
 
 def get_visit_types():
@@ -344,3 +347,56 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
             card_no=card_no
         )
         return None
+
+
+@frappe.whitelist()
+def get_patient_detail(card_no, ref_doctype, ref_docname, settings_doc=None):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("Please Enable NHIF API to proceed..")
+        return
+    
+    if not card_no:
+        frappe.throw("Card No or National ID is mandatory")
+        return
+    
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetPatientDetails?CardNo={card_no}"
+
+    token = settings_doc.get_nhif_token()
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetPatientDetails",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+
+        return data
+    else:
+        add_log(
+            request_type="GetPatientDetails",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return None
+
