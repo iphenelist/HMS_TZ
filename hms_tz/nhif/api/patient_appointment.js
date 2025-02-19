@@ -63,8 +63,11 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_value("coverage_plan_name", "");
             frm.set_value("coverage_plan_card_number", "");
             frm.set_value("insurance_company_name", "");
+            // frm.set_value("require_fingerprint", "");
+            // frm.set_value("require_facial_recognation", "");
             frm.trigger('get_mop_amount');
         }
+        // frm.trigger('get_patient_details_from_nhif');
     },
     mode_of_payment: function (frm) {
         frm.trigger("mandatory_fields");
@@ -271,6 +274,9 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_df_property("follow_up", "read_only", 0);
         }
     },
+    authorization_number: function (frm) {
+        frm.trigger("insurance_subscription");
+    },
     get_authorization_number: (frm) => {
         if (frm.doc.status == "Cancelled") {
             frappe.msgprint("Appointment is already cancelled")
@@ -293,7 +299,6 @@ frappe.ui.form.on('Patient Appointment', {
 
         frm.trigger('authorize_patient')
     },
-    
     authorize_patient: async (frm) => {
         try {
             let fingerprint = await new dpFingerprint({label: 'Authorize'});
@@ -335,11 +340,15 @@ frappe.ui.form.on('Patient Appointment', {
                         } else {
                             frm.set_value("insurance_subscription", "");
                             frm.set_value("authorization_number", "");
+                            // frm.set_value("require_fingerprint", false);
+                            // frm.set_value("require_facial_recognation", false);
                         }
                     } else {
                         frappe.utils.play_sound("error");
                         frm.set_value("insurance_subscription", "");
                         frm.set_value("authorization_number", "");
+                        // frm.set_value("require_fingerprint", false);
+                        // frm.set_value("require_facial_recognation", false);
                     }
                 },
                 onerror: function (data) {
@@ -352,11 +361,44 @@ frappe.ui.form.on('Patient Appointment', {
             frappe.msgprint(__('Failed to capture fingerprint. Please try again.'));
         }
     },
+    get_patient_details_from_nhif: (frm) => {
+        if (!frm.doc.insurance_company.includes('NHIF')) {
+            return;
+        }
+        if (
+            !frm.doc.insurance_subscription && 
+            (
+                !frm.doc.card_no && !frm.doc.national_id
+        )) {
+            return;
+        }
+
+        if (frm.doc.require_fingerprint == 1 || frm.doc.require_facial_recognation == 1) {
+            return;
+        }
+
+        frappe.call({
+            method: 'hms_tz.nhif.nhif_api.verification.get_patient_detail',
+            args: {
+                card_no: frm.doc.card_no || frm.doc.national_id,
+                ref_doctype: frm.doc.doctype,
+                ref_docname: frm.doc.name
+            },
+            callback: (r) => {
+                if (r.message) {
+                    if (r.message.RequiresBiometricVerification) {
+                        frm.set_value('require_fingerprint', r.message.RequiresBiometricVerification);
+                    }
+
+                    if (r.message.RequiresBiometricVerification) {
+                        frm.set_value('require_facial_recognation', r.message.RequiresBiometricVerification);
+                    }
+                }
+            }
+        })
+    },
     invoiced: function (frm) {
         frm.trigger("mandatory_fields");
-    },
-    authorization_number: function (frm) {
-        frm.trigger("insurance_subscription");
     },
     insurance_claim: function (frm) {
         frm.trigger("mandatory_fields");
