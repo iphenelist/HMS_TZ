@@ -350,17 +350,16 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
 
 
 @frappe.whitelist()
-def get_patient_detail(card_no, ref_doctype, ref_docname, settings_doc=None):
+def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings_doc=None):
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("Please Enable NHIF API to proceed..")
-        return
+        return;
     
     if not card_no:
-        frappe.throw("Card No or National ID is mandatory")
-        return
+        return;
     
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetPatientDetails?CardNo={card_no}"
 

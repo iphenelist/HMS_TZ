@@ -65,6 +65,7 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_value("insurance_company_name", "");
             frm.set_value("require_fingerprint", false);
             frm.set_value("require_facial_recognation", false);
+            frm.set_value('biometric_method', "");
             frm.trigger('get_mop_amount');
         }
         frm.trigger('get_patient_details_from_nhif');
@@ -293,6 +294,10 @@ frappe.ui.form.on('Patient Appointment', {
             frappe.msgprint("Select Insurance Subscription to get authorization number");
             return;
         }
+        if (!frm.doc.biometric_method) {
+            frappe.msgprint("Please select a Biomatric Method");
+            return;
+        }
         if (frm.is_dirty()) {
             frm.save();
         }
@@ -332,6 +337,8 @@ frappe.ui.form.on('Patient Appointment', {
                             frm.set_value("coverage_plan_name", card.CoveragePlanName);
                             frm.set_value("authorization_number", card.AuthorizationNo);
                             frm.set_value("nhif_employer_name", card.EmployerName);
+                            frm.set_value("fpcode", fingerprint.fpCode);
+                            frm.set_value("biometric_data", fingerprint.Data);
                             frm.save();
                             frappe.show_alert({
                                 message: __("Authorization Number is updated"),
@@ -342,6 +349,9 @@ frappe.ui.form.on('Patient Appointment', {
                             frm.set_value("authorization_number", "");
                             frm.set_value("require_fingerprint", false);
                             frm.set_value("require_facial_recognation", false);
+                            frm.set_value("fpcode", "");
+                            frm.set_value("biometric_data", "");
+                            frm.set_value('biometric_method', "");
                         }
                     } else {
                         frappe.utils.play_sound("error");
@@ -349,6 +359,9 @@ frappe.ui.form.on('Patient Appointment', {
                         frm.set_value("authorization_number", "");
                         frm.set_value("require_fingerprint", false);
                         frm.set_value("require_facial_recognation", false);
+                        frm.set_value("fpcode", "");
+                        frm.set_value("biometric_data", "");
+                        frm.set_value('biometric_method', "");
                     }
                 },
                 onerror: function (data) {
@@ -368,7 +381,7 @@ frappe.ui.form.on('Patient Appointment', {
         if (
             !frm.doc.insurance_subscription && 
             (
-                !frm.doc.card_no && !frm.doc.national_id
+                !frm.doc.coverage_plan_card_number && !frm.doc.national_id
         )) {
             return;
         }
@@ -377,21 +390,28 @@ frappe.ui.form.on('Patient Appointment', {
             return;
         }
 
+        let args = {
+            card_no: frm.doc.coverage_plan_card_number || frm.doc.national_id,
+            company: frm.doc.company,
+            ref_doctype: frm.doc.doctype
+        }
+        if (!frm.is_new()){
+            args['ref_docname'] = frm.doc.name
+        }
+
         frappe.call({
             method: 'hms_tz.nhif.nhif_api.verification.get_patient_detail',
-            args: {
-                card_no: frm.doc.card_no || frm.doc.national_id,
-                ref_doctype: frm.doc.doctype,
-                ref_docname: frm.doc.name
-            },
+            args: args,
             callback: (r) => {
                 if (r.message) {
                     if (r.message.RequiresBiometricVerification) {
                         frm.set_value('require_fingerprint', r.message.RequiresBiometricVerification);
+                        frm.set_value('biometric_method', 'Fingerprint');
                     }
 
-                    if (r.message.RequiresBiometricVerification) {
-                        frm.set_value('require_facial_recognation', r.message.RequiresBiometricVerification);
+                    if (r.message.RequiresFacialRecognition) {
+                        frm.set_value('require_facial_recognation', r.message.RequiresFacialRecognition);
+                        frm.set_value('biometric_method', 'Facial Recognition');
                     }
                 }
             }
