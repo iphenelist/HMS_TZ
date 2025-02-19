@@ -63,11 +63,11 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_value("coverage_plan_name", "");
             frm.set_value("coverage_plan_card_number", "");
             frm.set_value("insurance_company_name", "");
-            // frm.set_value("require_fingerprint", "");
-            // frm.set_value("require_facial_recognation", "");
+            frm.set_value("require_fingerprint", false);
+            frm.set_value("require_facial_recognation", false);
             frm.trigger('get_mop_amount');
         }
-        // frm.trigger('get_patient_details_from_nhif');
+        frm.trigger('get_patient_details_from_nhif');
     },
     mode_of_payment: function (frm) {
         frm.trigger("mandatory_fields");
@@ -340,15 +340,15 @@ frappe.ui.form.on('Patient Appointment', {
                         } else {
                             frm.set_value("insurance_subscription", "");
                             frm.set_value("authorization_number", "");
-                            // frm.set_value("require_fingerprint", false);
-                            // frm.set_value("require_facial_recognation", false);
+                            frm.set_value("require_fingerprint", false);
+                            frm.set_value("require_facial_recognation", false);
                         }
                     } else {
                         frappe.utils.play_sound("error");
                         frm.set_value("insurance_subscription", "");
                         frm.set_value("authorization_number", "");
-                        // frm.set_value("require_fingerprint", false);
-                        // frm.set_value("require_facial_recognation", false);
+                        frm.set_value("require_fingerprint", false);
+                        frm.set_value("require_facial_recognation", false);
                     }
                 },
                 onerror: function (data) {
