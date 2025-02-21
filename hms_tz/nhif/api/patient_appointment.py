@@ -406,21 +406,21 @@ def make_encounter(doc, method):
             return encounter_doc.name
 
 
-def update_insurance_subscription(insurance_subscription, card, company):
+def update_insurance_subscription(insurance_subscription, data, company):
     subscription_doc = frappe.get_cached_doc(
         "Healthcare Insurance Subscription", insurance_subscription
     )
 
     if (
-        subscription_doc.hms_tz_product_code != card["ProductCode"]
-        or subscription_doc.hms_tz_scheme_id != card["SchemeID"]
+        subscription_doc.hms_tz_product_code != data["ProductCode"]
+        or subscription_doc.hms_tz_scheme_id != data["SchemeID"]
     ):
         from hms_tz.nhif.api.patient import get_coverage_plan
 
-        coverage_plan = get_coverage_plan(card, company)
+        coverage_plan = get_coverage_plan(data, company)
 
         if coverage_plan:
-            card["CoveragePlanName"] = coverage_plan
+            data["CoveragePlanName"] = coverage_plan
             plan_doc = frappe.get_cached_doc(
                 "Healthcare Insurance Coverage Plan", coverage_plan
             )
@@ -430,11 +430,11 @@ def update_insurance_subscription(insurance_subscription, card, company):
                 subscription_doc.healthcare_insurance_coverage_plan = plan_doc.name
                 subscription_doc.coverage_plan_name = plan_doc.coverage_plan_name
 
-        subscription_doc.hms_tz_product_code = card["ProductCode"]
-        subscription_doc.hms_tz_product_name = card["ProductName"]
+        subscription_doc.hms_tz_product_code = data["ProductCode"]
+        subscription_doc.hms_tz_product_name = data["ProductName"]
 
-        subscription_doc.hms_tz_scheme_id = card["SchemeID"]
-        subscription_doc.hms_tz_scheme_name = card["SchemeName"]
+        subscription_doc.hms_tz_scheme_id = data["SchemeID"]
+        subscription_doc.hms_tz_scheme_name = data["SchemeName"]
 
         subscription_doc.save(ignore_permissions=True)
 
