@@ -399,3 +399,133 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
         )
         return None
 
+@frappe.whitelist()
+def authorize_patient(
+    insurance_subscription,
+    appointment_type,
+    company,
+    card_no,
+    national_id,
+    fingerprint,
+    biometric_method,
+    referral_no="",
+    remarks="",
+    settings_doc=None,
+    ref_doctype='Patient Appointment',
+    ref_docname=None
+):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("Please Enable NHIF API to proceed..")
+        return
+
+    if not card_no and not national_id:
+        frappe.msgprint(f"Please set Card No or National ID in Healthcare Insurance Subscription {insurance_subscription}")
+        return
+    
+    fingerprint = json.loads(fingerprint)
+    fingerprint_data = fingerprint.get("Data").replace("-", "+").replace("_", "/")
+    image_data = base64.b64encode(fingerprint_data.encode('utf-8')).decode('utf-8')
+    
+    visit_type_id = frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")
+
+    url = ""
+    payload = {}
+    request_type = ""
+    card_type_info = frappe.get_cached_value(
+        "Healthcare Insurance Subscription", insurance_subscription, 
+        ['verifier_id', 'card_type_id', 'card_type_name'],
+        as_dict=True
+    )
+    
+    if (
+        card_type_info and (
+            not card_type_info.verifier_id or
+            card_type_info.verifier_id == 'NHIF'
+        )
+    ):
+        request_type = 'AuthorizeCard'
+        url = f"{settings_doc.nhifservice_url}/api/Verification/AuthorizeCard"
+        payload.update({
+            "cardNo": card_no,
+            "biometricMethod": biometric_method,
+            "nationalID": national_id,
+            "fpCode": fingerprint.get("fpCode"),
+            "imageData": image_data,
+            "visitTypeID": visit_type_id,
+            "referralNo": referral_no,
+            "remarks": remarks
+        })
+
+    elif (
+        card_type_info and
+        card_type_info.verifier_id in ('WCF', 'ZHSF')
+    ):
+        request_type = 'VerifyCard'
+        url = f"{settings_doc.nhifservice_url}/api/Verification/VerifyCard"
+        payload.update({
+            "cardNo": card_no,
+            "verifierID": card_type_info.verifier_id,
+            "cardTypeID": card_type_info.card_type_id,
+            "biometricMethod": biometric_method,
+            "fpCode": fingerprint.get("fpCode"),
+            "imageData": image_data,
+            "visitTypeID": visit_type_id,
+            "referralNo": referral_no,
+            "remarks": remarks
+        })
+
+    payload = json.dumps(payload)
+    
+    token = settings_doc.get_nhif_token()
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Post", url, headers=headers, data=payload, timeout=180)
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type=request_type,
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no or national_id
+        )
+
+        if data.get("AuthorizationStatus") != "ACCEPTED":
+            frappe.throw(title=data.get("AuthorizationStatus"), msg=data["Remarks"])
+        
+        frappe.msgprint(_(data["Remarks"]), alert=True)
+        add_scheme(data.get("SchemeID"), data.get("SchemeName"))
+        add_product(company, data.get("ProductCode"), data.get("ProductName"))
+        update_insurance_subscription(insurance_subscription, data, company)
+
+        return data
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type=request_type,
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no or national_id
+        )
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Failed to AuthorizePatient<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('errors') or data.get('message')}<b>",
+            indicator="red"
+        )
+        return 'Error'
