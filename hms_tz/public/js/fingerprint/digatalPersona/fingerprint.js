@@ -1,5 +1,5 @@
 import { loadDigitalPersonaSDK } from "../../utils";
-import { FingerprintReader, SampleFormat } from '@digitalpersona/devices';
+import { FingerprintReader, SampleFormat, QualityCode } from '@digitalpersona/devices';
 
 loadDigitalPersonaSDK('/assets/hms_tz/js/fingerprint/digatalPersona/modules/WebSdk/index.js')
     .then(() => {
@@ -18,6 +18,7 @@ class dpFingerprint {
         this.selectedFinger = null;
         this.samples = null;
         this.fingerprintAcquired = false;
+        this.qualityReported = null;
 
         return new Promise((resolve, reject) => {
             this.fingerprintPromiseResolve = resolve;
@@ -27,17 +28,19 @@ class dpFingerprint {
     }
 
     async init() {
-        this.reader.on("onCommunicationFailed", this.onCommunicationFailed);
+        this.reader.on("CommunicationFailed", this.onCommunicationFailed);
         this.reader.on("DeviceConnected", this.onDeviceConnected);
         this.reader.on("DeviceDisconnected", this.onDeviceDisconnected);
-        this.reader.on("onAcquisitionStarted", this.onAcquisitionStarted);
-        this.reader.on("onQualityReported", this.onQualityReported);
+        this.reader.on("AcquisitionStarted", this.onAcquisitionStarted);
+        this.reader.on("QualityReported", this.onQualityReported);
         this.reader.on("SamplesAcquired", this.onSamplesAcquired);
         this.reader.on("ErrorOccurred", this.onReaderError);
 
+        this.showDialog();
+
         try {
             this.devices = await this.reader.enumerateDevices();
-            this.showDialog();
+            this.updateDialog();
         } catch (err) {
             this.handleError(err, 'init');
         }
@@ -56,12 +59,17 @@ class dpFingerprint {
     }
 
     onSamplesAcquired = async (event) => {
+        if (this.qualityReported !== QualityCode.Good) {
+            frappe.msgprint(__('Fingerprint quality is poor. Please try again.'));
+            return;
+        }
+
         try {
             this.samples = event.samples;
             this.showFingerprintImage(this.samples[0]); 
             this.fingerprintAcquired = true;
             this.updatePrimaryLabel();
-    } catch (error) {
+        } catch (error) {
             this.handleError(error, 'SampleAcquired');
             frappe.msgprint(__('Fingerprint scan failed. Please try again.'));
         }
@@ -73,6 +81,10 @@ class dpFingerprint {
 
     onCommunicationFailed = (event) => {
         console.error("Communication Error:", event);
+        frappe.show_alert({
+            message: __("Failed to communicate with device, please try again..!"),
+            indicator: 'red'
+        });
     }
 
     onAcquisitionStarted = (event) => {
@@ -80,16 +92,34 @@ class dpFingerprint {
     }
 
     onQualityReported = (event) => {
-        console.log("QualityReported started", event)
+        console.log("QualityReported started", event);
+
+        this.qualityReported = event.quality;
+        if (event.quality !== QualityCode.Good) {
+            console.log(`fingerprint quality is poor: ${event.quality}`);
+            this.resetDeviceState();
+        }
     }
 
     handleError = (error, stage) => {
         console.error(`Error at ${stage}:`, error);
+        this.resetDeviceState();
     }
 
+    resetDeviceState = async () => {
+        try {
+            if (this.reader) {
+                await this.reader.stopAcquisition();
+            }
+        } catch (error) {
+            console.error("Error resetting device state:", error);
+        }
+    }
+    
     destroy = () => {
         this.dialog.hide();
         this.reader.off();
+        this.resetDeviceState();
         delete this.reader;
     }
 
@@ -170,8 +200,10 @@ class dpFingerprint {
             }
 
             if (this.fingerprintPromiseResolve) {
-                const data = this.samples[0];
-                data.fpCode = this.selectedFinger;
+                const data = {
+                    'Data': this.samples[0],
+                    'fpCode': this.selectedFinger
+                }
                 this.fingerprintPromiseResolve(data);
             }
 
@@ -201,8 +233,10 @@ class dpFingerprint {
     showFingerprintImage = (sample) => {
         const d = this.dialog.get_field('fingerprint').$wrapper;
 
-        if (sample?.Data) {
-            let imageSrc = "/assets/hms_tz/images/fingerprint.png";
+        if (sample) {
+            // let imageSrc = "/assets/hms_tz/images/fingerprint.png";
+            let base64Data = sample.replace(/-/g, '+').replace(/_/g, '/');
+            let imageSrc = `data:image/png;base64,${base64Data}`
 
             d.html(`
                 <div id="fingerprint-image" 
@@ -231,7 +265,12 @@ class dpFingerprint {
             this.selectedDevice = device;
         }
 
-        await this.reader.startAcquisition(SampleFormat.Intermediate, this.selectedDevice);
+        try {
+            await this.reader.startAcquisition(SampleFormat.PngImage, this.selectedDevice);
+        } catch (error) {
+            this.handleError(error, 'startScan');
+        }
+
     }
 }
 
