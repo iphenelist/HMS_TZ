@@ -307,7 +307,6 @@ frappe.ui.form.on('Patient Appointment', {
     authorize_patient: async (frm) => {
         try {
             let fingerprint = await new dpFingerprint({label: 'Authorize'});
-  
             if (!fingerprint) {
                 frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
                 return;
@@ -319,9 +318,10 @@ frappe.ui.form.on('Patient Appointment', {
                     'insurance_subscription': frm.doc.insurance_subscription,
                     'appointment_type': frm.doc.appointment_type,
                     'company': frm.doc.company,
-                    'card_no': frm.doc.coverage_plan_card_number,
-                    'national_id': frm.doc.national_id,
+                    'card_no': frm.doc.coverage_plan_card_number || "",
+                    'national_id': frm.doc.national_id || "",
                     'fingerprint': fingerprint,
+                    "biometric_method": frm.doc.biometric_method || 'NaN',
                     'referral_no': frm.doc.referral_no,
                     'remarks': frm.doc.remarks,
                     'ref_docname': frm.doc.name
