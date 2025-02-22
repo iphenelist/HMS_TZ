@@ -399,6 +399,7 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
         )
         return None
 
+
 @frappe.whitelist()
 def authorize_patient(
     insurance_subscription,
@@ -407,7 +408,9 @@ def authorize_patient(
     card_no,
     national_id,
     fingerprint,
+    fpcode,
     biometric_method,
+    practitioner,
     referral_no="",
     remarks="",
     settings_doc=None,
@@ -425,8 +428,7 @@ def authorize_patient(
         frappe.msgprint(f"Please set Card No or National ID in Healthcare Insurance Subscription {insurance_subscription}")
         return
     
-    fingerprint = json.loads(fingerprint)
-    fingerprint_data = fingerprint.get("Data").replace("-", "+").replace("_", "/")
+    fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     image_data = base64.b64encode(fingerprint_data.encode('utf-8')).decode('utf-8')
     
     visit_type_id = frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")
@@ -452,7 +454,7 @@ def authorize_patient(
             "cardNo": card_no,
             "biometricMethod": biometric_method,
             "nationalID": national_id,
-            "fpCode": fingerprint.get("fpCode"),
+            "fpCode": fpcode,
             "imageData": image_data,
             "visitTypeID": visit_type_id,
             "referralNo": referral_no,
@@ -470,7 +472,7 @@ def authorize_patient(
             "verifierID": card_type_info.verifier_id,
             "cardTypeID": card_type_info.card_type_id,
             "biometricMethod": biometric_method,
-            "fpCode": fingerprint.get("fpCode"),
+            "fpCode": fpcode,
             "imageData": image_data,
             "visitTypeID": visit_type_id,
             "referralNo": referral_no,
@@ -486,38 +488,53 @@ def authorize_patient(
         "Authorization": f"Bearer {token}"
     }
 
-    r = requests.request("Post", url, headers=headers, data=payload, timeout=180)
+    r = requests.request("Post", url, headers=headers, data=payload, timeout=60)
     if r.status_code == 200:
-        data = json.loads(r.text)
+        auth_data = json.loads(r.text)
         add_log(
             request_type=request_type,
             request_url=url,
             request_header=headers,
             request_body=payload,
-            response_data=data,
+            response_data=auth_data,
             status_code=r.status_code,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no or national_id
         )
 
-        if data.get("AuthorizationStatus") != "ACCEPTED":
-            frappe.throw(title=data.get("AuthorizationStatus"), msg=data["Remarks"])
+        if auth_data.get("AuthorizationStatus") != "ACCEPTED":
+            frappe.throw(title=auth_data.get("AuthorizationStatus"), msg=auth_data["Remarks"])
         
-        frappe.msgprint(_(data["Remarks"]), alert=True)
-        add_scheme(data.get("SchemeID"), data.get("SchemeName"))
-        add_product(company, data.get("ProductCode"), data.get("ProductName"))
-        update_insurance_subscription(insurance_subscription, data, company)
+        frappe.msgprint(auth_data["Remarks"], alert=True)
+        add_scheme(auth_data.get("SchemeID"), auth_data.get("SchemeName"))
+        add_product(company, auth_data.get("ProductCode"), auth_data.get("ProductName"))
+        update_insurance_subscription(insurance_subscription, auth_data, company)
 
-        return data
+        reference_data = get_poc_reference_no(
+            auth_data.get("AuthorizationNo"),
+            "Registration",
+            practitioner,
+            image_data,
+            fpcode,
+            biometric_method,
+            company,
+            card_no or national_id,
+            settings_doc=settings_doc,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+        auth_data.update(reference_data)
+        return auth_data
     else:
-        data = json.loads(r.text)
+        auth_data = json.loads(r.text)
         add_log(
             request_type=request_type,
             request_url=url,
             request_header=headers,
             request_body=payload,
-            response_data=data,
+            response_data=auth_data,
             status_code=r.status_code,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
@@ -529,3 +546,83 @@ def authorize_patient(
             indicator="red"
         )
         return 'Error'
+
+
+@frappe.whitelist()
+def get_poc_reference_no(
+    authorization_no,
+    point_of_care,
+    practitioner,
+    fingerprint,
+    fpcode,
+    biometric_method,
+    company,
+    card_no,
+    settings_doc=None,
+    ref_doctype=None,
+    ref_docname=None
+):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    
+    point_of_care_id = frappe.get_cached_value("Healthcare Points of Care", {'name': ['like', point_of_care]}, "point_of_care_id")
+    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, 'tz_mct_code')
+
+    image_data = None
+    if ref_doctype != "Patient Appointment":
+        fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
+        image_data = base64.b64encode(fingerprint_data.encode('utf-8')).decode('utf-8')
+    else:
+        image_data = fingerprint
+
+    payload = {
+        "pointOfCareID": point_of_care_id,
+        "authorizationNo": authorization_no,
+        "practitionerNo": practitioner_no,
+        "biometricMethod": biometric_method,
+        "fpCode": fpcode,
+        "imageData": image_data
+    }
+
+    payload = json.dumps(payload)
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GeneratePOCReferenceNo"
+
+    token = settings_doc.get_nhif_token()
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Post", url, headers=headers, data=payload, timeout=60)
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GeneratePOCReferenceNo",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return data
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GeneratePOCReferenceNo",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        frappe.throw(
+            title="NHIF API Error",
+            msg=f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('errors') or data.get('message')}<b>",
+        )
