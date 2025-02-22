@@ -320,8 +320,10 @@ frappe.ui.form.on('Patient Appointment', {
                     'company': frm.doc.company,
                     'card_no': frm.doc.coverage_plan_card_number || "",
                     'national_id': frm.doc.national_id || "",
-                    'fingerprint': fingerprint,
+                    'fingerprint': fingerprint.Data,
+                    'fpcode': fingerprint.fpCode,
                     "biometric_method": frm.doc.biometric_method || 'NaN',
+                    "practitioner": frm.doc.practitioner,
                     'referral_no': frm.doc.referral_no,
                     'remarks': frm.doc.remarks,
                     'ref_docname': frm.doc.name
