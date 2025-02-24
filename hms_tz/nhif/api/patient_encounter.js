@@ -1500,7 +1500,7 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                                 </button>
                             </li>
                             <li>
-                                <button class="btn btn-sm btn-outline-primary nhif-logout-btn icon-btn">
+                                <button class="btn btn-sm btn-outline-primary nhif-confirm-btn icon-btn">
                                     ${__("Confirm Consultation")}
                                 </button>
                             </li>
@@ -1513,7 +1513,8 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     </div>
                 `);
                 $attachment.before($container);
-
+                
+                // Bind the Login click event
                 $container.find(".nhif-login-btn").on("click", async function () {
                     let fingerprint = await new dpFingerprint({ label: 'Login To NHIF' });
                     if (!fingerprint) {
@@ -1535,6 +1536,30 @@ var practitioner_login_out_to_from_nhif = (frm) => {
 
                                 $container.find(".nhif-login-btn").hide();
                                 $container.find(".nhif-logout-btn").show();
+                            } else {
+                                frappe.utils.play_sound("error");
+                            }
+                        },
+                        onerror: function (data) {
+                            frappe.utils.play_sound("error");
+                        }
+                    });
+                });
+
+                // Bind the logout click event
+                $container.find(".nhif-logout-btn").on("click", function () {
+                    frappe.call({
+                        method: 'hms_tz.nhif.nhif_api.attendance.logout_practitioner',
+                        args: {},
+                        async: true,
+                        freeze: true,
+                        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                        callback: function (data) {
+                            if (data.message && data.message !== 'Error') {
+                                frappe.utils.play_sound("submit");
+
+                                $container.find(".nhif-login-btn").show();
+                                $container.find(".nhif-logout-btn").hide();
                             } else {
                                 frappe.utils.play_sound("error");
                             }
