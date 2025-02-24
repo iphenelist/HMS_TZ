@@ -1,4 +1,7 @@
 frappe.ui.form.on('Patient Encounter', {
+    setup: (frm) => {
+        practitioner_login_out_to_from_nhif(frm);
+    },
     on_submit: function (frm) {
         if (!frm.doc.patient_encounter_final_diagnosis) {
             frappe.throw(__("Final diagnosis mandatory before submit"));
@@ -18,6 +21,8 @@ frappe.ui.form.on('Patient Encounter', {
         set_btn_properties(frm);
         set_empty_row_on_all_child_tables(frm);
         validate_healthcare_package_order_items(frm);
+
+        practitioner_login_out_to_from_nhif(frm);
     },
     refresh: function (frm) {
         control_practitioners_to_submit_others_encounters(frm);
@@ -1451,4 +1456,95 @@ var filter_drug_prescriptions = (frm) => {
                 });
             }
         });
+}
+
+
+var practitioner_login_out_to_from_nhif = (frm) => {
+    if (!frappe.user.has_role("Healthcare Practitioner")) {
+        return;
+    }
+    if (!frm.doc.insurance_company || (frm.doc.insurance_company && !frm.doc.insurance_company.includes('NHIF'))) {
+        $(".form-assignments").hide();
+        $(".form-shared").hide();
+        $(".form-tags").hide();
+        $(".form-reviews").hide();
+        $(".form-sidebar-stats").hide();
+        return;
+    }
+
+    frappe.call({
+        method: 'hms_tz.nhif.api.healthcare_practitioner.get_nhif_loggedin_practitioner_info',
+        args: {},
+        callback: (r) => {
+            if (!r.message) {
+                return;
+            }
+
+            $(".form-assignments").hide();
+            $(".form-shared").hide();
+            $(".form-tags").hide();
+            $(".form-reviews").hide();
+            $(".form-sidebar-stats").hide();
+
+            if (frm.sidebar.sidebar.find('.nhif-buttons').length > 0) {
+                return;
+            }
+            let $attachment = frm.sidebar.sidebar.find(".form-attachments");
+            if ($attachment.length > 0) {
+                let $container = $(`
+                    <div class="nhif-buttons" style="margin: 10px 0;">
+                        <ul class="list-unstyled sidebar-menu">
+                            <li>
+                                <button class="btn btn-sm btn-outline-primary nhif-login-btn icon-btn" style="${r.message ? 'display: none;' : ''}">
+                                    ${__("Login To NHIF")}
+                                </button>
+                            </li>
+                            <li>
+                                <button class="btn btn-sm btn-outline-primary nhif-logout-btn icon-btn">
+                                    ${__("Confirm Consultation")}
+                                </button>
+                            </li>
+                            <li>
+                                <button class="btn btn-sm btn-outline-primary nhif-logout-btn icon-btn" style="${r.message ? '' : 'display: none;'}">
+                                    ${__("Logout From NHIF")}
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                `);
+                $attachment.before($container);
+
+                $container.find(".nhif-login-btn").on("click", async function () {
+                    let fingerprint = await new dpFingerprint({ label: 'Login To NHIF' });
+                    if (!fingerprint) {
+                        frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
+                        return;
+                    }
+                    frappe.call({
+                        method: 'hms_tz.nhif.nhif_api.attendance.login_practitioner',
+                        args: {
+                            'fingerprint': fingerprint.Data,
+                            'fpcode': fingerprint.fpCode,
+                        },
+                        async: true,
+                        freeze: true,
+                        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                        callback: function (data) {
+                            if (data.message && data.message !== 'Error') {
+                                frappe.utils.play_sound("submit");
+
+                                $container.find(".nhif-login-btn").hide();
+                                $container.find(".nhif-logout-btn").show();
+                            } else {
+                                frappe.utils.play_sound("error");
+                            }
+                        },
+                        onerror: function (data) {
+                            frappe.utils.play_sound("error");
+                        }
+                    });
+                });
+            }
+        }
+    });
 }
