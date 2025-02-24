@@ -235,10 +235,6 @@ doc_events = {
     },
 }
 
-# standard_queries = {
-# 	"Healthcare Practitioner": "hms_tz.nhif.api.healthcare_practitioner.get_practitioner_list"
-# }
-
 # Scheduled Tasks
 # ---------------
 

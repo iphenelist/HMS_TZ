@@ -1,23 +1,21 @@
 import frappe
 from frappe import _
+from frappe.utils import nowdate, getdate
 
 
 @frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_practitioner_list(doctype, txt, searchfield, start, page_len, filters=None):
-    frappe.throw(str(doctype))
-    fields = searchfield + ["name", "practitioner_name"]
-
-    # filters.update({
-    #     'name': ('like', '%%%s%%' % txt)
-    # })
-
-    return frappe.get_all(
-        "Healthcare Practitioner",
-        fields=fields,
-        filters=filters,
-        start=start,
-        page_length=page_len,
-        order_by="name, practitioner_name",
-        as_list=1,
+def get_nhif_loggedin_practitioner_info():
+    date_loggedin = frappe.get_cached_value(
+        'Healthcare Practitioner',
+        {'user_id': frappe.session.user},
+        'date_loggedin_to_nhif'
     )
+
+    if (
+        not date_loggedin or (
+            getdate(date_loggedin) != getdate(nowdate())
+        )
+    ):
+        return True
+    
+    return False
