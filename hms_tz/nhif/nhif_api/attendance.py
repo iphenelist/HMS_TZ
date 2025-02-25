@@ -104,6 +104,9 @@ def logout_practitioner(settings_doc=None):
     if not practitioner:
         frappe.throw(f"No healthcare practitioner found for user id: {frappe.session.user}, Please set user id to healthcare practitioner")
     
+    if not practitioner.national_id:
+        frappe.throw(f"Please set National ID for a practitioner: <b>{practitioner.name}</b>")
+    
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", practitioner.hms_tz_company)
     

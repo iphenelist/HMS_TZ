@@ -1463,12 +1463,14 @@ var practitioner_login_out_to_from_nhif = (frm) => {
     if (!frappe.user.has_role("Healthcare Practitioner")) {
         return;
     }
+    $(".form-assignments").hide();
+    $(".form-shared").hide();
+    $(".form-tags").hide();
+    $(".form-reviews").hide();
+    $(".form-sidebar-stats").hide();
+
     if (!frm.doc.insurance_company || (frm.doc.insurance_company && !frm.doc.insurance_company.includes('NHIF'))) {
-        $(".form-assignments").hide();
-        $(".form-shared").hide();
-        $(".form-tags").hide();
-        $(".form-reviews").hide();
-        $(".form-sidebar-stats").hide();
+        
         return;
     }
 
@@ -1479,12 +1481,6 @@ var practitioner_login_out_to_from_nhif = (frm) => {
             if (!r.message) {
                 return;
             }
-
-            $(".form-assignments").hide();
-            $(".form-shared").hide();
-            $(".form-tags").hide();
-            $(".form-reviews").hide();
-            $(".form-sidebar-stats").hide();
 
             if (frm.sidebar.sidebar.find('.nhif-buttons').length > 0) {
                 return;
