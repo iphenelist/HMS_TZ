@@ -1495,7 +1495,7 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     <div class="nhif-buttons" style="margin: 10px 0;">
                         <ul class="list-unstyled sidebar-menu">
                             <li>
-                                <button class="btn btn-sm btn-outline-primary nhif-login-btn icon-btn" style="${r.message ? 'display: none;' : ''}">
+                                <button class="btn btn-sm btn-outline-primary nhif-login-btn icon-btn" style="${r.message ? '' : 'display: none;'}">
                                     ${__("Login To NHIF")}
                                 </button>
                             </li>
@@ -1505,7 +1505,7 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                                 </button>
                             </li>
                             <li>
-                                <button class="btn btn-sm btn-outline-primary nhif-logout-btn icon-btn" style="${r.message ? '' : 'display: none;'}">
+                                <button class="btn btn-sm btn-outline-primary nhif-logout-btn icon-btn" style="${r.message ? 'display: none;' : ''}">
                                     ${__("Logout From NHIF")}
                                 </button>
                             </li>
@@ -1569,6 +1569,44 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         }
                     });
                 });
+
+                // Bind the consultancy confirmation click event
+                $container.find(".nhif-confirm-btn").on("click", async function () {
+                    let fingerprint = await new dpFingerprint({ label: 'Confirm Consulation' });
+                    if (!fingerprint) {
+                        frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
+                        return;
+                    }
+                    frappe.call({
+                        method: 'hms_tz.nhif.nhif_api.verification.get_poc_reference_no',
+                        args: {
+                            'point_of_care': 'Consultation',
+                            'practitioner': frm.doc.practitioner,
+                            'fingerprint': fingerprint.Data,
+                            'fpcode': fingerprint.fpCode,
+                            'biometric_method': 'Fingerprint',
+                            'company': frm.doc.company,
+                            'appointment_id': frm.doc.appointment,
+                            'ref_doctype': frm.doc.doctype,
+                            'ref_docname': frm.doc.name
+                        },
+                        async: true,
+                        freeze: true,
+                        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                        callback: function (data) {
+                            if (data.message && data.message !== 'Error') {
+                                frappe.utils.play_sound("submit");
+                                $container.find(".nhif-confirm-btn").hide();
+                            } else {
+                                frappe.utils.play_sound("error");
+                            }
+                        },
+                        onerror: function (data) {
+                            frappe.utils.play_sound("error");
+                        }
+                    });
+                });
+                
             }
         }
     });
