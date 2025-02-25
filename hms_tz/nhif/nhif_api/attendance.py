@@ -23,6 +23,9 @@ def login_practitioner(
     )
     if not practitioner:
         frappe.throw(f"No healthcare practitioner found for user id: {frappe.session.user}, Please set user id to healthcare practitioner")
+        
+    if not practitioner.national_id:
+        frappe.throw(f"Please set National ID for a practitioner: <b>{practitioner.name}</b>")
     
     payload = {
         "nationalID": practitioner.national_id,
