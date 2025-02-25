@@ -512,7 +512,6 @@ def authorize_patient(
         update_insurance_subscription(insurance_subscription, auth_data, company)
 
         reference_data = get_poc_reference_no(
-            auth_data.get("AuthorizationNo"),
             "Registration",
             practitioner,
             image_data,
@@ -520,6 +519,8 @@ def authorize_patient(
             biometric_method,
             company,
             card_no or national_id,
+            appointment_id=ref_docname,
+            authorization_no=auth_data.get("AuthorizationNo"),
             settings_doc=settings_doc,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname
@@ -550,14 +551,15 @@ def authorize_patient(
 
 @frappe.whitelist()
 def get_poc_reference_no(
-    authorization_no,
     point_of_care,
     practitioner,
     fingerprint,
     fpcode,
     biometric_method,
     company,
-    card_no,
+    card_no=None,
+    appointment_id=None,
+    authorization_no=None,
     settings_doc=None,
     ref_doctype=None,
     ref_docname=None
@@ -568,6 +570,14 @@ def get_poc_reference_no(
     point_of_care_id = frappe.get_cached_value("Healthcare Points of Care", {'name': ['like', point_of_care]}, "point_of_care_id")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, 'tz_mct_code')
 
+    appointment_info=None
+    if appointment_id:
+        appointment_info = frappe.get_cached_value(
+            "Patient Appointment", appointment_id, 
+            ["authorization_number", "coverage_plan_card_number", "national_id"],
+            as_dict=True
+        )
+
     image_data = None
     if ref_doctype != "Patient Appointment":
         fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
@@ -577,7 +587,7 @@ def get_poc_reference_no(
 
     payload = {
         "pointOfCareID": point_of_care_id,
-        "authorizationNo": authorization_no,
+        "authorizationNo": authorization_no or appointment_info.authorization_number,
         "practitionerNo": practitioner_no,
         "biometricMethod": biometric_method,
         "fpCode": fpcode,
@@ -606,7 +616,7 @@ def get_poc_reference_no(
             status_code=r.status_code,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
         )
         return data
     else:
@@ -620,7 +630,7 @@ def get_poc_reference_no(
             status_code=r.status_code,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
         )
         frappe.throw(
             title="NHIF API Error",
