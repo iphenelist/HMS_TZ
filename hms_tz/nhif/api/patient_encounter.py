@@ -2439,16 +2439,25 @@ def validate_medication_class(company, encounter, patient, drug_item, caller="Ba
 
 
 def set_practitioner_name(doc, method):
-    submitting_healthcare_practitioner = frappe.db.get_value(
+    practitioner_info = frappe.get_cached_value(
         "Healthcare Practitioner",
         {"user_id": frappe.session.user, "hms_tz_company": doc.company},
-        ["name", "practitioner_name"],
+        ["name", "practitioner_name", "date_loggedin_to_nhif"],
         as_dict=1,
     )
 
-    if submitting_healthcare_practitioner:
-        doc.practitioner = submitting_healthcare_practitioner.name
-        doc.practitioner_name = submitting_healthcare_practitioner.practitioner_name
+    if practitioner_info.name:
+        doc.practitioner = practitioner_info.name
+        doc.practitioner_name = practitioner_info.practitioner_name
+
+        if (
+            'NHIF' in doc.insurance_company and (
+                not practitioner_info.date_loggedin_to_nhif or 
+                getdate(practitioner_info.date_loggedin_to_nhif) != getdate(nowdate()) 
+            )
+        ):
+            if method not in ("before_insert", "validate"):
+                frappe.throw("Please Login to NHIF, to proceed attending NHIF Patients..")
 
     elif (
         doc.encounter_category == "Appointment"
