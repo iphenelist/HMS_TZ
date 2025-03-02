@@ -1,0 +1,276 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:naming_series",
+ "creation": "2025-02-28 16:35:45.623856",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "patient_name",
+  "gender",
+  "mobile",
+  "column_break_wjpco",
+  "company",
+  "appointment",
+  "posting_datetime",
+  "column_break_ajyuv",
+  "practitioner",
+  "source_doctype",
+  "source_docname",
+  "section_break_ozjxj",
+  "payment_type",
+  "insurance_subscription",
+  "column_break_nrm8z",
+  "insurance_company",
+  "insurance_coverage_plan",
+  "column_break_omjjl",
+  "card_no",
+  "national_id",
+  "service_detail_section",
+  "services",
+  "payment_details_section",
+  "payments",
+  "section_break_xjev8",
+  "naming_series",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "label": "Patient Name",
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.sex",
+   "fieldname": "gender",
+   "fieldtype": "Data",
+   "label": "Gender",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.mobile",
+   "fieldname": "mobile",
+   "fieldtype": "Data",
+   "label": "Mobile",
+   "options": "Phone",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wjpco",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Appointment",
+   "options": "Patient Appointment",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "now",
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "label": "Posting Datetime",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_ajyuv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Link",
+   "label": "Source Doctype",
+   "options": "DocType",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "source_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Source Docname",
+   "options": "source_doctype",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_ozjxj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Cash",
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Payment Type",
+   "options": "Cash\nInsurance",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "label": "Insurance Subscription",
+   "options": "Healthcare Insurance Subscription",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_nrm8z",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.insurance_company",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.healthcare_insurance_coverage_plan",
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Link",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Insurance Coverage Plan",
+   "options": "Healthcare Insurance Coverage Plan",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_omjjl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.coverage_plan_card_number",
+   "fieldname": "card_no",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Card No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.national_id",
+   "fieldname": "national_id",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "National ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "service_detail_section",
+   "fieldtype": "Section Break",
+   "label": "Service Detail"
+  },
+  {
+   "fieldname": "services",
+   "fieldtype": "Table",
+   "options": "Healthcare Service Request Item"
+  },
+  {
+   "fieldname": "payment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Details"
+  },
+  {
+   "fieldname": "payments",
+   "fieldtype": "Table",
+   "options": "Healthcare Service Request Payment"
+  },
+  {
+   "fieldname": "section_break_xjev8",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "HSR-.YYYY.-",
+   "search_index": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Healthcare Service Request",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-02 23:22:04.278726",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Healthcare Service Request",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

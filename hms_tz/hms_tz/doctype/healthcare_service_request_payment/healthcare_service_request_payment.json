@@ -1,0 +1,226 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-28 19:06:25.730147",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "service_name",
+  "item_code",
+  "column_break_wm5t9",
+  "payor_plan",
+  "percent_covered",
+  "column_break_ltlnk",
+  "qty",
+  "rate",
+  "amount",
+  "payment_details_section",
+  "payment_type",
+  "price_list",
+  "column_break_awtju",
+  "insurance_subscription",
+  "insurance_company",
+  "column_break_s5uxp",
+  "card_no",
+  "national_id",
+  "get_authorization_no",
+  "authorization_number",
+  "references_section",
+  "request_id",
+  "column_break_mmptd",
+  "ref_doctype",
+  "ref_docname"
+ ],
+ "fields": [
+  {
+   "fieldname": "service_name",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Service Name",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wm5t9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Cash",
+   "fieldname": "payor_plan",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Payor Plan",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "percent_covered",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "% Covered",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_ltlnk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty",
+   "non_negative": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Float",
+   "label": "Rate",
+   "non_negative": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Amount",
+   "non_negative": 1,
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "payment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Details"
+  },
+  {
+   "default": "Cash",
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "label": "Payment Type",
+   "options": "Cash\nInsurance",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "price_list",
+   "fieldtype": "Link",
+   "label": "Price List",
+   "options": "Price List",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_awtju",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "label": "Insurance Subscription",
+   "mandatory_depends_on": "eval: doc.payment_type == 'Insurance'",
+   "options": "Healthcare Insurance Subscription",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.insurance_company",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_s5uxp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.coverage_plan_card_number",
+   "fieldname": "card_no",
+   "fieldtype": "Data",
+   "label": "Card No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "insurance_subscription.national_id",
+   "fieldname": "national_id",
+   "fieldtype": "Data",
+   "label": "National ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance' && !doc.authorization_number",
+   "fieldname": "get_authorization_no",
+   "fieldtype": "Button",
+   "label": "Get Authorization No"
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fieldname": "authorization_number",
+   "fieldtype": "Data",
+   "label": "Authorization Number",
+   "mandatory_depends_on": "eval: doc.insurance_subscription",
+   "search_index": 1
+  },
+  {
+   "fieldname": "references_section",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "request_id",
+   "fieldtype": "Link",
+   "label": "Request ID",
+   "options": "Healthcare Service Request Item",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_mmptd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Link",
+   "label": "Ref Doctype",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "ref_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Ref Docname",
+   "options": "ref_doctype"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-02 23:20:09.848631",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Healthcare Service Request Payment",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
