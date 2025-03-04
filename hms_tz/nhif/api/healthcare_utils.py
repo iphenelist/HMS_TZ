@@ -209,7 +209,13 @@ def get_item_price(item_code, price_list, company):
 
 
 @frappe.whitelist()
-def get_item_rate(item_code, company, insurance_subscription, insurance_company=None):
+def get_item_rate(
+    item_code,
+    company,
+    insurance_subscription,
+    insurance_company=None,
+    for_service_request=False
+):
     price_list = None
     price_list_rate = None
     hic_plan = None
@@ -227,7 +233,10 @@ def get_item_rate(item_code, company, insurance_subscription, insurance_company=
         if price_list:
             price_list_rate = get_item_price(item_code, price_list, company)
             if price_list_rate and price_list_rate != 0:
-                return price_list_rate
+                if for_service_request:
+                    return price_list_rate, price_list
+                else:
+                    return price_list_rate
             else:
                 price_list_rate = None
         elif not price_list:
@@ -245,7 +254,10 @@ def get_item_rate(item_code, company, insurance_subscription, insurance_company=
                 )
             price_list_rate = get_item_price(item_code, secondary_price_list, company)
             if price_list_rate and price_list_rate != 0:
-                return price_list_rate
+                if for_service_request:
+                    return price_list_rate, price_list
+                else:
+                    return price_list_rate
             else:
                 price_list_rate = None
 
@@ -262,7 +274,10 @@ def get_item_rate(item_code, company, insurance_subscription, insurance_company=
     else:
         price_list_rate = get_item_price(item_code, price_list, company)
     if price_list_rate and price_list_rate != 0:
-        return price_list_rate
+        if for_service_request:
+            return price_list_rate, price_list
+        else:
+            return price_list_rate
     else:
         frappe.throw(
             _(f"Please set Price List for item: {item_code} in price list {price_list}")
