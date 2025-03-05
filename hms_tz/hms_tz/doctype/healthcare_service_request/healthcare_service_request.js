@@ -3,13 +3,47 @@
 
 frappe.ui.form.on('Healthcare Service Request', {
 	setup: (frm) => {
+		frm.trigger('get_services');
 		control_add_remove_btns(frm);
 	},
 	refresh: (frm) => {
+		frm.trigger('get_services');
 		control_add_remove_btns(frm);
 	},
 	onload: (frm) => {
+		frm.trigger('get_services');
 		control_add_remove_btns(frm);
+	},
+	get_services: (frm) => {
+		frm.call('get_services', {})
+			.then(r => {
+				if (r.message && r.message.length > 0) {
+
+					const grid = frm.fields_dict.payments.grid;
+
+					grid.visible_columns = undefined;
+                	grid.setup_visible_columns();
+
+					grid.fields_map.service_name.options = r.message;
+					grid.refresh();
+
+					frm.fields_dict.payments.grid.grid_rows.forEach(row => {
+						row.docfields.forEach(docfield => {
+							if (docfield.fieldname === 'service_name') {
+								docfield.options = options;
+							}
+						});
+					});
+
+					frm.refresh_field(payments);
+					grid.refresh();
+					grid.setup_visible_columns();
+
+					// frm.fields_dict.payments.grid.fields_map.service_name.options = r.message;
+                    // frm.refresh_field("payments");
+				}
+			})
+
 	}
 });
 
@@ -17,6 +51,9 @@ frappe.ui.form.on('Healthcare Service Request Item', {
 	form_render: (frm, cdt, cdn) => {
 		control_add_remove_btns(frm, true);
 	},
+});
+
+frappe.ui.form.on('Healthcare Service Request Payment', {
 });
 
 var control_add_remove_btns = (frm, for_child=false) => {

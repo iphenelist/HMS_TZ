@@ -46,6 +46,10 @@ class HealthcareServiceRequest(Document):
 					row.name != d.request_id
 				):
 					d.request_id = row.name
+	
+	@frappe.whitelist()
+	def get_services(self):
+		return set([d.service_name for d in self.services])
 
 
 @frappe.whitelist()
