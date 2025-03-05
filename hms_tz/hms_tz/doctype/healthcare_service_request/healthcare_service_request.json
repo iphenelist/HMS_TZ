@@ -206,22 +206,22 @@
   },
   {
    "fieldname": "service_detail_section",
-   "fieldtype": "Section Break",
-   "label": "Service Detail"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "services",
    "fieldtype": "Table",
+   "label": "Service Detail",
    "options": "Healthcare Service Request Item"
   },
   {
    "fieldname": "payment_details_section",
-   "fieldtype": "Section Break",
-   "label": "Payment Details"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "payments",
    "fieldtype": "Table",
+   "label": "Payment Detail",
    "options": "Healthcare Service Request Payment"
   },
   {
@@ -249,7 +249,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-02 23:22:04.278726",
+ "modified": "2025-03-05 16:49:11.521890",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request",
