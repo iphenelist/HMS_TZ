@@ -3,6 +3,7 @@
 import json
 import frappe
 from frappe.query_builder import DocType
+from frappe.utils import get_link_to_form
 from frappe.model.document import Document
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.api.patient_appointment import get_discount_percent
@@ -11,6 +12,9 @@ from hms_tz.nhif.api.patient_appointment import get_discount_percent
 hsr = DocType("Healthcare Service Request")
 
 class HealthcareServiceRequest(Document):
+	def before_save(self):
+		self.set_request_id()
+
 	def validate(self):
 		self.validate_duplicate()
 
@@ -28,11 +32,20 @@ class HealthcareServiceRequest(Document):
 			)
 		).run(as_dict=True)
 
-		if len(hsr_dupl) > 1:
+		if len(hsr_dupl) > 0:
 			url = get_link_to_form(self.doctype, hsr_dupl[0].name)
 			frappe.throw(
 				f"Another Healthcare Service Request with the same Source Docname: <b>{self.source_docname}</b> already exists: <a href='{url}'><b>{hsr_dupl[0].name}</b></a>"
 			)
+	
+	def set_request_id(self):
+		for row in self.services:
+			for d in self.payments:
+				if (
+					row.service_name == d.service_name and
+					row.name != d.request_id
+				):
+					d.request_id = row.name
 
 
 @frappe.whitelist()
@@ -44,24 +57,42 @@ def create_service_request(doc):
 	if doc.doctype == "Patient Encounter":
 		services += get_encounter_services(doc)
 	
-	if len(services) > 0:
-		hsr = frappe.new_doc("Healthcare Service Request")
-		hsr.patient = doc.patient
-		hsr.appointment = doc.appointment,
-		hsr.company = doc.company,
-		hsr.practitioner = doc.practitioner
-		hsr.source_doctype = doc.doctype
-		hsr.source_docname = doc.name
-		hsr.payment_type = 'Cash' if not doc.insurance_subscription else 'Insurance'
+	if len(services) == 0:
+		return
+	
+	hsr = frappe.new_doc("Healthcare Service Request")
+	hsr.patient = doc.patient
+	hsr.appointment = doc.appointment,
+	hsr.company = doc.company,
+	hsr.practitioner = doc.practitioner
+	hsr.source_doctype = doc.doctype
+	hsr.source_docname = doc.name
+	payment_type = 'Cash' if not doc.insurance_subscription else 'Insurance'
+	hsr.payment_type = payment_type
 
-		if doc.insurance_subscription:
-			hsr.insurance_subscription = doc.insurance_subscription
-			hsr.insurance_company = doc.insurance_company
+	if doc.insurance_subscription:
+		hsr.insurance_subscription = doc.insurance_subscription
+		hsr.insurance_company = doc.insurance_company
+	
+	for d in services:
+		hsr.append("services", d)
+
+		item = frappe.get_cached_value(d.get("service_type"), d.get("service_name"), "item")
+		new_row = {
+			"item_code": get_item_refcode(item),
+			"base_amount": d.get("amount"),
+			"payment_type": payment_type,
+			"price_list": d.get("price_list"),
+			"insurance_subscription": doc.insurance_subscription,
+			"insurance_company": doc.insurance_company,
+			"payor_plan": doc.insurance_coverage_plan,
+			"authorization_number": frappe.get_cached_value("Patient Appointment", doc.appointment, "authorization_number")
+		}
 		
-		for d in services:
-			hsr.append("services", d)
+		new_row.update(d.copy())
+		hsr.append("payments", new_row)
 
-		hsr.insert(ignore_permissions=True)
+	hsr.insert(ignore_permissions=True)
 		
 
 def get_encounter_services(doc):
@@ -224,3 +255,19 @@ def set_service_amounts(
 	row["price_list"] = price_list
 
 	return row
+
+
+def get_item_refcode(item_code):
+    code_list = frappe.db.get_all(
+        "Item Customer Detail",
+        filters={"parent": item_code, "customer_name": "NHIF"},
+        fields=["ref_code"],
+    )
+    if len(code_list) == 0:
+        frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+	
+    ref_code = code_list[0].ref_code
+    if not ref_code:
+        frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+	
+    return ref_code
