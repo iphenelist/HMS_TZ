@@ -67,17 +67,25 @@ class HealthcareServiceRequest(Document):
 			row.amount = (row.percent_covered / 100 * row.rate) * row.qty if row.percent_covered else row.rate * row.qty
 
 	@frappe.whitelist()
-	def get_service_rate(self, row):
-		row = frappe._dict(row)
+	def get_service_rate(self, row_obj):
+		row = None
+		if isinstance(row_obj, str):
+			row = frappe._dict(json.loads(row_obj))
+		else:
+			row = row_obj
 
 		service_type = ''
 		if row.request_id:
 			service_type = frappe.get_cached_value("Healthcare Service Request Item", row.request_id, "service_type")
+
 		else:
 			for d in self.services:
 				if row.service_name == d.service_name:
 					service_type = d.service_type
 					break
+		
+		if not service_type:
+			return {"item_rate": 0, "discount_percent": 0}
 		
 		item = frappe.get_cached_value(service_type, row.service_name, "item")
 		if not item:
@@ -86,29 +94,29 @@ class HealthcareServiceRequest(Document):
 		item_rate = 0
 		discount_percent = 0
 
-		if row.payor_plan == 'Cash' and row.price_list:
+		if row.payment_type == 'Cash' and row.price_list:
 			item_rate = get_item_price(
 				item,
 				row.price_list,
 				self.company
 			)
 
-		elif row.payor_plan == 'Insurance':
+		elif row.payment_type == 'Insurance':
 			if not row.insurance_subscription:
 				frappe.throw("Insurance Subscription is required to get the item rate")
 
 			if row.price_list:
 				item_price_rate = get_item_price(
 					item,
-					self.company,
-					row.price_list
+					row.price_list,
+					self.company
 				)
 			else:
 				item_price_rate = get_item_rate(
 					item,
 					self.company,
 					row.insurance_subscription,
-					row.insurance_company,
+					row.insurance_company
 				)
 
 			# apply discount if it is available on Heathcare Insurance Company
@@ -123,10 +131,18 @@ class HealthcareServiceRequest(Document):
 
 
 @frappe.whitelist()
-def create_service_request(doc):
+def create_service_request(doc_obj=None, data=None):
+	doc = None
 	services = []
 
-	doc = frappe._dict(json.loads(doc))
+	if not doc_obj and not data:
+		frappe.throw("Please provide a valid document object or data")
+
+	if data:
+		data = json.loads(data)
+		doc = frappe.get_doc(data.get("source_doctype"), data.get("source_docname"))
+	else:
+		doc = frappe._dict(json.loads(doc_obj))
 	
 	if doc.doctype == "Patient Encounter":
 		services += get_encounter_services(doc)
@@ -167,12 +183,12 @@ def create_service_request(doc):
 		hsr.append("payments", new_row)
 
 	hsr.insert(ignore_permissions=True)
+	return hsr.name
 		
 
 def get_encounter_services(doc):
 	services = []
-	for item in doc.lab_test_prescription:
-		item = frappe._dict(item)
+	for item in doc.get("lab_test_prescription"):
 		if (
 			item.prescribe == 1
 			or item.is_cancelled == 1
@@ -196,7 +212,7 @@ def get_encounter_services(doc):
 		)
 		services.append(new_row)
 
-	for item in doc.radiology_procedure_prescription:
+	for item in doc.get("radiology_procedure_prescription"):
 		if (
 			item.prescribe == 1
 			or item.is_cancelled == 1
@@ -219,7 +235,7 @@ def get_encounter_services(doc):
 		)
 		services.append(new_row)
 
-	for item in doc.procedure_prescription:
+	for item in doc.get("procedure_prescription"):
 		if (
 			item.prescribe == 1
 			or item.is_cancelled == 1
@@ -242,7 +258,7 @@ def get_encounter_services(doc):
 		)
 		services.append(new_row)
 
-	for item in doc.drug_prescription:
+	for item in doc.get("drug_prescription"):
 		if (
 			item.prescribe == 1
 			or item.is_cancelled == 1
@@ -265,7 +281,7 @@ def get_encounter_services(doc):
 		)
 		services.append(new_row)
 
-	for item in doc.therapies:
+	for item in doc.get("therapies"):
 		if (
 			item.prescribe == 1
 			or item.is_cancelled == 1
