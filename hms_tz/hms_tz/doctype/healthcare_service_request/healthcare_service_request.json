@@ -246,10 +246,11 @@
    "search_index": 1
   }
  ],
+ "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-05 16:49:11.521890",
+ "modified": "2025-03-06 16:47:34.890016",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request",
