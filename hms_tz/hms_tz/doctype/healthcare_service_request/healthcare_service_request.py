@@ -129,6 +129,14 @@ class HealthcareServiceRequest(Document):
 
 		return {"item_rate": item_rate, "discount_percent": discount_percent}
 
+	@frappe.whitelist()
+	def get_coverage_plan(self, insurance_subscription):
+		plan = frappe.get_cached_value("Healthcare Insurance Subscription", insurance_subscription, "healthcare_insurance_coverage_plan")
+		if not plan:
+			frappe.throw(f"Insurance Coverage Plan is not set for Insurance Subscription: {insurance_subscription}")
+		
+		return plan
+
 
 @frappe.whitelist()
 def create_service_request(doc_obj=None, data=None):
