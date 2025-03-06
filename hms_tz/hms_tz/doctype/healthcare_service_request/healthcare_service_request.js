@@ -3,14 +3,17 @@
 
 frappe.ui.form.on('Healthcare Service Request', {
 	setup: (frm) => {
+		set_filters(frm);
 		frm.trigger('get_services');
 		control_add_remove_btns(frm);
 	},
 	refresh: (frm) => {
+		set_filters(frm);
 		frm.trigger('get_services');
 		control_add_remove_btns(frm);
 	},
 	onload: (frm) => {
+		set_filters(frm);
 		frm.trigger('get_services');
 		control_add_remove_btns(frm);
 
@@ -28,6 +31,17 @@ frappe.ui.form.on('Healthcare Service Request', {
 					}
 				});
 		}
+
+		frm.get_plan_name = (row) => {
+			let insurance_subscription = row.insurance_subscription;
+			frm.call('get_coverage_plan', {insurance_subscription})
+				.then(r => {
+					if (r.message) {
+						frappe.model.set_value(row.doctype, row.name, "payor_plan", r.message);
+						frm.refresh_field("payments");
+					}
+				});
+		};
 	},
 	get_services: (frm) => {
 		frm.call('get_services', {})
@@ -105,6 +119,16 @@ frappe.ui.form.on('Healthcare Service Request Payment', {
 		frappe.model.set_value(cdt, cdn, "amount", amount);
 		frm.refresh_field("payments");
 	},
+	insurance_subscription: (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		if (row.insurance_subscription) {
+			frm.get_plan_name(row);
+		} else {
+			frappe.model.set_value(cdt, cdn, "payor_plan", 'Cash');
+			frm.refresh_field("payments");
+		}
+		
+	}
 });
 
 var control_add_remove_btns = (frm, for_child=false) => {
@@ -123,3 +147,24 @@ var control_add_remove_btns = (frm, for_child=false) => {
 		frm.fields_dict.services.grid.wrapper.find('.grid-move-row').hide();
 	}
 }
+
+var set_filters = (frm) => {
+	frm.set_query("insurance_subscription", "payments", () => {
+		return {
+			filters: {
+				'is_active': 1,
+				'patient': frm.doc.patient,
+				'name': ['!=', frm.doc.insurance_subscription]
+			}
+		}
+	});
+
+	frm.set_query("price_list", "payments", () => {
+		return {
+			filters: {
+				'enabled': 1,
+				'selling': 1
+			}
+		}
+	});
+};
