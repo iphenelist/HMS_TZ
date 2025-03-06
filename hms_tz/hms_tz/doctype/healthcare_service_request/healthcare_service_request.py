@@ -5,7 +5,7 @@ import frappe
 from frappe.query_builder import DocType
 from frappe.utils import get_link_to_form
 from frappe.model.document import Document
-from hms_tz.nhif.api.healthcare_utils import get_item_rate
+from hms_tz.nhif.api.healthcare_utils import get_item_rate, get_item_price
 from hms_tz.nhif.api.patient_appointment import get_discount_percent
 
 
@@ -14,6 +14,7 @@ hsr = DocType("Healthcare Service Request")
 class HealthcareServiceRequest(Document):
 	def before_save(self):
 		self.set_request_id()
+		self.set_service_price_rate()
 
 	def validate(self):
 		self.validate_duplicate()
@@ -50,6 +51,75 @@ class HealthcareServiceRequest(Document):
 	@frappe.whitelist()
 	def get_services(self):
 		return set([d.service_name for d in self.services])
+	
+	def set_service_price_rate(self):
+		for row in self.payments:
+			if not row.service_name:
+				continue
+
+			if not row.price_list:
+				frappe.throw("Please select price list on payment table, row: {row.idx}")
+			
+			item_rate_details = self.get_service_rate(row)
+
+			row.rate = item_rate_details.get("item_rate")
+			row.discount_applied = 1 if item_rate_details.get("discount_percent") > 0 else 0
+			row.amount = (row.percent_covered / 100 * row.rate) * row.qty if row.percent_covered else row.rate * row.qty
+
+	@frappe.whitelist()
+	def get_service_rate(self, row):
+		row = frappe._dict(row)
+
+		service_type = ''
+		if row.request_id:
+			service_type = frappe.get_cached_value("Healthcare Service Request Item", row.request_id, "service_type")
+		else:
+			for d in self.services:
+				if row.service_name == d.service_name:
+					service_type = d.service_type
+					break
+		
+		item = frappe.get_cached_value(service_type, row.service_name, "item")
+		if not item:
+			frappe.throw(f"Item code for {service_type}: {row.service_name} was not found.<br>Please set the item code to proceed...")
+		
+		item_rate = 0
+		discount_percent = 0
+
+		if row.payor_plan == 'Cash' and row.price_list:
+			item_rate = get_item_price(
+				item,
+				row.price_list,
+				self.company
+			)
+
+		elif row.payor_plan == 'Insurance':
+			if not row.insurance_subscription:
+				frappe.throw("Insurance Subscription is required to get the item rate")
+
+			if row.price_list:
+				item_price_rate = get_item_price(
+					item,
+					self.company,
+					row.price_list
+				)
+			else:
+				item_price_rate = get_item_rate(
+					item,
+					self.company,
+					row.insurance_subscription,
+					row.insurance_company,
+				)
+
+			# apply discount if it is available on Heathcare Insurance Company
+			if row.insurance_company and "NHIF" not in row.insurance_company:
+				discount_percent = get_discount_percent(row.insurance_company)
+			
+			item_rate = item_price_rate - (
+				item_price_rate * (discount_percent / 100)
+			)
+
+		return {"item_rate": item_rate, "discount_percent": discount_percent}
 
 
 @frappe.whitelist()
@@ -84,7 +154,7 @@ def create_service_request(doc):
 		item = frappe.get_cached_value(d.get("service_type"), d.get("service_name"), "item")
 		new_row = {
 			"item_code": get_item_refcode(item),
-			"base_amount": d.get("amount"),
+			"rate": d.get("rate"),
 			"payment_type": payment_type,
 			"price_list": d.get("price_list"),
 			"insurance_subscription": doc.insurance_subscription,
@@ -233,14 +303,14 @@ def set_service_amounts(
 		discount_percent = get_discount_percent(insurance_company)
 
 	item_rate = 0
-	item_code = frappe.get_cached_value(
+	item = frappe.get_cached_value(
 		row.get("service_type"), row.get("service_name"), "item"
 	)
-	if not item_code:
+	if not item:
 		frappe.throw(f"Item code for {row.get('service_type')}: {row.get('service_name')} was not found.<br>Please set the item code to proceed...")
 
 	item_price_rate, price_list = get_item_rate(
-		item_code,
+		item,
 		company,
 		insurance_subscription,
 		insurance_company,
