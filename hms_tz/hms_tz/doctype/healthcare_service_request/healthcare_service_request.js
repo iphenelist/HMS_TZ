@@ -13,6 +13,21 @@ frappe.ui.form.on('Healthcare Service Request', {
 	onload: (frm) => {
 		frm.trigger('get_services');
 		control_add_remove_btns(frm);
+
+		frm.get_service_rate = (row) => {
+			frm.call('get_service_rate', {row})
+				.then(r => {
+					if (r.message) {
+						frappe.model.set_value(row.doctype, row.name, "rate", r.message.item_rate);
+						if (r.message.discount_percent > 0) {
+							frappe.model.set_value(row.doctype, row.name, "discount_applied", 1);
+						}
+						let amount = (row.percent_covered / 100 * r.message.item_rate) * row.qty;
+						frappe.model.set_value(row.doctype, row.name, "amount", amount);
+						frm.refresh_field("payments");
+					}
+				});
+		}
 	},
 	get_services: (frm) => {
 		frm.call('get_services', {})
@@ -54,6 +69,42 @@ frappe.ui.form.on('Healthcare Service Request Item', {
 });
 
 frappe.ui.form.on('Healthcare Service Request Payment', {
+	service_name: (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		if (row.service_name && row.price_list) {
+			frm.get_service_rate(row);
+		}
+	},
+	price_list: (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		if (row.price_list && row.service_name) {
+			frm.get_service_rate(row);
+		}
+	},
+	percent_covered: (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		if (row.percent_covered > 100) {
+			frappe.msgprint(__("Percent Covered cannot be more than 100"));
+			frappe.model.set_value(cdt, cdn, "percent_covered", 0);
+			frm.refresh_field("payments");
+			return;
+		} else if (row.percent_covered < 0) {
+			frappe.msgprint(__("Percent Covered cannot be less than 0"));
+			frappe.model.set_value(cdt, cdn, "percent_covered", 0);
+			frm.refresh_field("payments");
+			return;
+		} else {
+			let amount = (row.percent_covered / 100 * row.rate) * row.qty;
+			frappe.model.set_value(cdt, cdn, "amount", amount);
+			frm.refresh_field("payments");
+		}
+	},
+	qty: (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		let amount = (row.percent_covered / 100 * row.rate) * row.qty;
+		frappe.model.set_value(cdt, cdn, "amount", amount);
+		frm.refresh_field("payments");
+	},
 });
 
 var control_add_remove_btns = (frm, for_child=false) => {
