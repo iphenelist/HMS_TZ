@@ -34,6 +34,7 @@ def  get_item_types():
             request_body="",
             response_data=data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype="NHIF Item Type",
         )
 
@@ -78,6 +79,7 @@ def  get_item_types():
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype="NHIF Item Type",
         )
 
@@ -113,6 +115,7 @@ def get_price_package(company):
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype="NHIF Price Package",
         )
         frappe.throw(json.loads(r.text))
@@ -125,6 +128,7 @@ def get_price_package(company):
             request_body="",
             response_data=packages,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype="NHIF Price Package",
         )
 
