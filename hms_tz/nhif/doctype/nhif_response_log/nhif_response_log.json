@@ -6,18 +6,20 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
+  "user_id",
   "timestamp",
+  "naming_series",
+  "column_break_eceum",
   "request_type",
   "request_url",
-  "request_header",
-  "column_break_6",
-  "user_id",
   "status_code",
+  "column_break_6",
   "ref_doctype",
   "ref_docname",
   "card_no",
   "authorization_no",
+  "section_break_6mvkh",
+  "request_header",
   "request_section",
   "request_body",
   "section_break_8",
@@ -27,6 +29,7 @@
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Naming Series",
    "options": "NHIF-RES-.YY.-.########",
    "read_only": 1
@@ -142,11 +145,19 @@
    "label": "Authorization No",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "section_break_6mvkh",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_eceum",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-19 23:35:36.047723",
+ "modified": "2025-03-07 11:06:00.388920",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Response Log",
