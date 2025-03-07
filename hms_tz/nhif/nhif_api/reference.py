@@ -29,7 +29,8 @@ def get_points_of_care():
             request_header=headers,
             request_body="",
             response_data=data,
-            status_code=r.status_code
+            status_code=r.status_code,
+            company=settings_doc.name,
         )
 
         for poc in data:
@@ -69,7 +70,8 @@ def get_points_of_care():
             request_header=headers,
             request_body="",
             response_data=r.text,
-            status_code=r.status_code
+            status_code=r.status_code,
+            company=settings_doc.name,
         )
 
 

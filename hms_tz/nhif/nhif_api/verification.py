@@ -32,7 +32,8 @@ def get_visit_types():
             request_header=headers,
             request_body="",
             response_data=data,
-            status_code=r.status_code
+            status_code=r.status_code,
+            company=settings_doc.name,
         )
 
         for visit in data:
@@ -104,6 +105,7 @@ def get_visit_types():
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
         )
 
 
@@ -132,7 +134,8 @@ def get_card_verifier():
             request_header=headers,
             request_body="",
             response_data=data,
-            status_code=r.status_code
+            status_code=r.status_code,
+            company=settings_doc.name,
         )
         for record in data:
             try:
@@ -183,6 +186,7 @@ def get_card_verifier():
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
         )
 
 
@@ -209,6 +213,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
             request_body="",
             response_data=data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no
@@ -224,6 +229,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no
@@ -260,6 +266,7 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
             request_body="",
             response_data=data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=national_id
@@ -275,6 +282,7 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=national_id
@@ -310,6 +318,7 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no
@@ -342,6 +351,7 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no
@@ -379,6 +389,7 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
             request_body="",
             response_data=data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no
@@ -393,6 +404,7 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no
@@ -498,6 +510,7 @@ def authorize_patient(
             request_body=payload,
             response_data=auth_data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no or national_id
@@ -537,6 +550,7 @@ def authorize_patient(
             request_body=payload,
             response_data=auth_data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no or national_id
@@ -614,6 +628,7 @@ def get_poc_reference_no(
             request_body=payload,
             response_data=data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
@@ -628,6 +643,7 @@ def get_poc_reference_no(
             request_body=payload,
             response_data=data,
             status_code=r.status_code,
+            company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
             card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
