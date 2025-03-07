@@ -8,6 +8,7 @@
  "field_order": [
   "user_id",
   "timestamp",
+  "company",
   "naming_series",
   "column_break_eceum",
   "request_type",
@@ -153,11 +154,20 @@
   {
    "fieldname": "column_break_eceum",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-07 11:06:00.388920",
+ "modified": "2025-03-07 11:59:04.645295",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Response Log",
