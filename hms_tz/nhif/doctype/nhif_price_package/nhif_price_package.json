@@ -6,134 +6,114 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "facilitycode",
-  "log_name",
   "time_stamp",
+  "log_name",
   "column_break_4",
   "company",
+  "facilitycode",
   "section_break_3",
   "itemcode",
-  "pricecode",
-  "levelpricecode",
-  "olditemcode",
   "itemtypeid",
+  "pricecode",
+  "column_break_h5s2n",
   "itemname",
+  "column_break_vuuqk",
+  "schemeid",
+  "packageid",
   "strength",
   "dosage",
-  "packageid",
   "column_break_12",
-  "schemeid",
-  "facilitylevelcode",
   "unitprice",
-  "isrestricted",
   "maximumquantity",
-  "availableinlevels",
-  "practitionerqualifications",
-  "isactive"
+  "maximumquantityoutpatient",
+  "maximumquantityinpatient"
  ],
  "fields": [
   {
    "fieldname": "itemcode",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "ItemCode"
+   "label": "ItemCode",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "pricecode",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "PriceCode"
-  },
-  {
-   "fieldname": "levelpricecode",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "LevelPriceCode"
-  },
-  {
-   "fieldname": "olditemcode",
-   "fieldtype": "Data",
-   "label": "OldItemCode"
+   "label": "PriceCode",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "itemtypeid",
-   "fieldtype": "Data",
+   "fieldtype": "Int",
    "in_list_view": 1,
+   "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "ItemTypeID"
+   "label": "ItemTypeID",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "itemname",
    "fieldtype": "Small Text",
    "in_standard_filter": 1,
-   "label": "ItemName"
+   "label": "ItemName",
+   "read_only": 1
   },
   {
    "fieldname": "strength",
    "fieldtype": "Data",
-   "label": "Strength"
+   "label": "Strength",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "dosage",
    "fieldtype": "Data",
-   "label": "Dosage"
+   "label": "Dosage",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "packageid",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "PackageID"
+   "label": "PackageID",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "schemeid",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "SchemeID"
-  },
-  {
-   "fieldname": "facilitylevelcode",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "FacilityLevelCode"
+   "label": "SchemeID",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "unitprice",
-   "fieldtype": "Data",
+   "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "UnitPrice"
-  },
-  {
-   "fieldname": "isrestricted",
-   "fieldtype": "Data",
+   "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "IsRestricted"
+   "label": "UnitPrice",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "maximumquantity",
    "fieldtype": "Data",
-   "label": "MaximumQuantity"
-  },
-  {
-   "fieldname": "availableinlevels",
-   "fieldtype": "Data",
-   "label": "AvailableInLevels"
-  },
-  {
-   "fieldname": "practitionerqualifications",
-   "fieldtype": "Data",
-   "label": "PractitionerQualifications"
-  },
-  {
-   "fieldname": "isactive",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "IsActive"
+   "label": "MaximumQuantity",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "time_stamp",
@@ -145,7 +125,8 @@
   {
    "fieldname": "facilitycode",
    "fieldtype": "Data",
-   "label": "FacilityCode"
+   "label": "FacilityCode",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_3",
@@ -172,14 +153,39 @@
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_h5s2n",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_vuuqk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maximumquantityoutpatient",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "label": "MaximumQuantityOutPatient",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "maximumquantityinpatient",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "label": "MaximumQuantityInPatient",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-09 20:24:48.112184",
+ "modified": "2025-03-07 06:57:45.392488",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Price Package",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -197,5 +203,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "itemname"
 }
