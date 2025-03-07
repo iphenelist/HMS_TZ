@@ -6,170 +6,205 @@
  "engine": "InnoDB",
  "field_order": [
   "type",
-  "section_break_3",
-  "package_item_id",
-  "facilitycode",
-  "itemcode",
-  "pricecode",
-  "levelpricecode",
-  "olditemcode",
-  "itemtypeid",
+  "service_type",
+  "service_name",
   "itemname",
-  "schemename",
+  "column_break_lk9e2",
+  "itemcode",
+  "itemtypeid",
   "strength",
   "dosage",
-  "packageid",
-  "column_break_12",
+  "column_break_zkgnr",
   "schemeid",
-  "facilitylevelcode",
+  "packageid",
+  "pricecode",
   "unitprice",
+  "column_break_b53e2",
   "isrestricted",
+  "hascopayment",
   "maximumquantity",
-  "availableinlevels",
-  "practitionerqualifications",
-  "isactive",
-  "record"
+  "maximumquantityoutpatient",
+  "maximumquantityinpatient",
+  "section_break_suosw",
+  "fields_changed",
+  "column_break_zushp",
+  "previous_item"
  ],
  "fields": [
   {
    "fieldname": "type",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Change Type"
-  },
-  {
-   "fieldname": "section_break_3",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "package_item_id",
-   "fieldtype": "Data",
-   "label": "PackageItemID"
-  },
-  {
-   "fieldname": "facilitycode",
-   "fieldtype": "Data",
-   "label": "FacilityCode"
+   "label": "Change Type",
+   "read_only": 1
   },
   {
    "fieldname": "itemcode",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "ItemCode"
+   "label": "ItemCode",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "pricecode",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "PriceCode"
-  },
-  {
-   "fieldname": "levelpricecode",
-   "fieldtype": "Data",
-   "label": "LevelPriceCode"
-  },
-  {
-   "fieldname": "olditemcode",
-   "fieldtype": "Data",
-   "label": "OldItemCode"
+   "label": "PriceCode",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "itemtypeid",
    "fieldtype": "Data",
-   "label": "ItemTypeID"
+   "label": "ItemTypeID",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "itemname",
    "fieldtype": "Data",
    "in_standard_filter": 1,
-   "label": "ItemName"
-  },
-  {
-   "fieldname": "schemename",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "SchemeName"
+   "label": "ItemName",
+   "read_only": 1
   },
   {
    "fieldname": "strength",
    "fieldtype": "Data",
-   "label": "Strength"
+   "label": "Strength",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "dosage",
    "fieldtype": "Data",
-   "label": "Dosage"
+   "label": "Dosage",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "packageid",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "PackageID"
-  },
-  {
-   "fieldname": "column_break_12",
-   "fieldtype": "Column Break"
+   "label": "PackageID",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "schemeid",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "SchemeID"
-  },
-  {
-   "fieldname": "facilitylevelcode",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "FacilityLevelCode"
+   "label": "SchemeID",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "unitprice",
-   "fieldtype": "Data",
+   "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "UnitPrice"
+   "in_preview": 1,
+   "label": "UnitPrice",
+   "read_only": 1,
+   "search_index": 1
   },
   {
+   "default": "0",
    "fieldname": "isrestricted",
-   "fieldtype": "Data",
+   "fieldtype": "Check",
    "in_standard_filter": 1,
-   "label": "IsRestricted"
+   "label": "IsRestricted",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "maximumquantity",
    "fieldtype": "Data",
-   "label": "MaximumQuantity"
+   "label": "MaximumQuantity",
+   "read_only": 1,
+   "search_index": 1
   },
   {
-   "fieldname": "availableinlevels",
-   "fieldtype": "Data",
-   "label": "AvailableInLevels"
-  },
-  {
-   "fieldname": "practitionerqualifications",
-   "fieldtype": "Data",
-   "label": "PractitionerQualifications"
-  },
-  {
-   "fieldname": "isactive",
+   "fieldname": "service_type",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "IsActive"
+   "label": "Service Type",
+   "read_only": 1,
+   "search_index": 1
   },
   {
-   "fieldname": "record",
+   "fieldname": "service_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Service Name",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "hascopayment",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "HasCoPayment",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "maximumquantityoutpatient",
+   "fieldtype": "Data",
+   "label": "MaximumQuantityOutPatient",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "maximumquantityinpatient",
+   "fieldtype": "Data",
+   "label": "MaximumQuantityInPatient",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "fields_changed",
+   "fieldtype": "Code",
+   "label": "Fields Changed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "previous_item",
    "fieldtype": "Small Text",
-   "label": "Record"
+   "label": "Previous Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lk9e2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_zkgnr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_suosw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_zushp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_b53e2",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-08-09 18:50:18.918685",
+ "modified": "2025-03-07 15:45:17.338170",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "Staging NHIF Price Package",
@@ -177,5 +212,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "itemname"
 }

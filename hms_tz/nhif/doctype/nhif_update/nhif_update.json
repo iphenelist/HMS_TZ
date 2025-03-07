@@ -6,27 +6,17 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "date",
-  "datetime",
+  "timestamp",
+  "column_break_u8zyu",
   "current_log",
   "previous_log",
+  "column_break_6yexl",
+  "company",
+  "user_id",
   "staging_nhif_price_package_section",
-  "price_package",
-  "staging_nhif_excluded_services_section",
-  "excluded_services"
+  "price_package"
  ],
  "fields": [
-  {
-   "default": "Today",
-   "fieldname": "date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Date",
-   "no_copy": 1,
-   "read_only": 1,
-   "reqd": 1
-  },
   {
    "fieldname": "staging_nhif_price_package_section",
    "fieldtype": "Section Break",
@@ -40,18 +30,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "staging_nhif_excluded_services_section",
-   "fieldtype": "Section Break",
-   "label": "Staging NHIF Excluded Services"
-  },
-  {
-   "fieldname": "excluded_services",
-   "fieldtype": "Table",
-   "label": "Staging NHIF Excluded Services",
-   "options": "Staging NHIF Excluded Services",
-   "read_only": 1
-  },
-  {
    "fieldname": "current_log",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -59,7 +37,8 @@
    "label": "Current Log",
    "options": "NHIF Response Log",
    "read_only": 1,
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "previous_log",
@@ -72,19 +51,52 @@
    "reqd": 1
   },
   {
-   "default": "Now",
-   "fieldname": "datetime",
+   "fieldname": "timestamp",
    "fieldtype": "Datetime",
-   "label": "DateTime",
-   "read_only": 1
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Timestamp",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Data",
+   "label": "User ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_u8zyu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_6yexl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   }
  ],
+ "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-09 19:48:19.312713",
+ "modified": "2025-03-07 15:22:56.612231",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Update",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -99,5 +111,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
