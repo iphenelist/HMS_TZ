@@ -14,8 +14,7 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 class HMSTZSettings(Document):
 	def get_nhif_token(self):
 		if self.enable_nhif_api == 0:
-			frappe.msgprint("Please Enable NHIF API to proceed..")
-			return
+			frappe.throw("Please Enable NHIF API to proceed..")
 		
 		if (
 			self.nhif_token_expiry and 
