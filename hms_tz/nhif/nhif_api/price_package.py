@@ -4,7 +4,7 @@ import requests
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
-def  get_nhif_item_types():
+def  get_item_types():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
         return
@@ -28,7 +28,8 @@ def  get_nhif_item_types():
             request_header=headers,
             request_body="",
             response_data=data,
-            status_code=r.status_code
+            status_code=r.status_code,
+            ref_doctype="NHIF Item Type",
         )
 
         for item in data:
@@ -72,5 +73,6 @@ def  get_nhif_item_types():
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
+            ref_doctype="NHIF Item Type",
         )
 
