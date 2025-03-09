@@ -3,6 +3,7 @@ import frappe
 import requests
 from time import sleep
 from frappe.utils import now_datetime
+from pypika.terms import ValueWrapper
 from frappe.query_builder import DocType
 from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
@@ -249,7 +250,6 @@ def set_package_diff(company):
     if len(logs) < 2:
         return
     
-
     new_price_packages = []
     changed_price_packages = []
     deleted_price_packages = []
@@ -278,18 +278,20 @@ def set_package_diff(company):
                 new_row["fields_changed"] = fields_changed
                 new_row["previous_item"] = previous_item
 
-                changed_price_packages.append({new_row})
+                changed_price_packages.append(new_row)
 
     if (
         len(changed_price_packages) > 0
         or len(new_price_packages) > 0
         or len(deleted_price_packages) > 0
     ):
+        service_map = get_insurance_items()
+
         doc = frappe.new_doc("NHIF Update")
 
-        add_price_packages_records(doc, changed_price_packages, "Changed")
-        add_price_packages_records(doc, new_price_packages, "New")
-        add_price_packages_records(doc, deleted_price_packages, "Deleted")
+        add_price_packages_records(doc, changed_price_packages, "Changed", service_map)
+        add_price_packages_records(doc, new_price_packages, "New", service_map)
+        add_price_packages_records(doc, deleted_price_packages, "Deleted", service_map)
 
         if (doc.get("price_package") and len(doc.price_package)) > 0:
             doc.timestamp = now_datetime()
@@ -300,13 +302,18 @@ def set_package_diff(company):
             doc.save(ignore_permissions=True)
 
 
-def add_price_packages_records(doc, rec, type):
+def add_price_packages_records(doc, rec, type, service_map):
     if len(rec) == 0:
         return
 
     for e in rec:
         price_row = doc.append("price_package", {})
         price_row.type = type
+
+        if service_map.get(e.get("ItemCode")):
+            price_row.service_type = service_map.get(e.get("ItemCode")).get("service_type")
+            price_row.service_name = service_map.get(e.get("ItemCode")).get("service_name")
+        
         price_row.itemcode = e.get("ItemCode")
         price_row.itemname = e.get("ItemName")
         price_row.itemtypeid = e.get("ItemTypeID")
@@ -323,4 +330,186 @@ def add_price_packages_records(doc, rec, type):
         price_row.maximumquantityinpatient = e.get("MaximumQuantityInPatient")
         price_row.fields_changed = json.dumps(e.get("fields_changed"))
         price_row.previous_item = json.dumps(e.get("previous_item"))
-        price_row.record = json.dumps(e)
+
+
+def get_insurance_items():
+    services = []
+    consultation_items = []
+
+    it = DocType("Item")
+    icd = DocType("Item Customer Detail")
+    at = DocType("Appointment Type")
+    hp = DocType("Healthcare Practitioner")
+    ltt = DocType("Lab Test Template")
+    ret = DocType("Radiology Examination Template")
+    cpt = DocType("Clinical Procedure Template")
+    med = DocType("Medication")
+    tt = DocType("Therapy Type")
+    hsut = DocType("Healthcare Service Unit Type")
+
+    practitioner_services = (
+        frappe.qb.from_(hp)
+        .select(
+            hp.op_consulting_charge_item,
+            hp.inpatient_visit_charge_item
+        )
+        .distinct()
+    ).run(as_dict=True)
+
+    for row in practitioner_services:
+        for field in row:
+            if row[field]:
+                consultation_items.append(row[field])
+
+    appointment_services = (
+        frappe.qb.from_(at)
+        .select(
+            at.assistant_md_followup_item,
+            at.gp_followup_item,
+            at.specialist_followup_item,
+            at.super_specialist_followup_item,
+            at.assistant_md_fasttrack_item,
+            at.gp_fasttrack_item,
+            at.specialist_fasttrack_item,
+            at.super_specialist_fasttrack_item,
+        )
+        .distinct()
+    ).run(as_dict=True)
+
+    for row in appointment_services:
+        for field in row:
+            if row[field]:
+                consultation_items.append(row[field])
+    
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(it)
+        .on(icd.parent == it.name)
+        .select(
+            icd.ref_code,
+            it.name.as_("service_name"),
+            ValueWrapper("Consulation Charges").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+            & (it.name.isin(consultation_items))
+        )
+    ).run(as_dict=True)
+
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(ltt)
+        .on(icd.parent == ltt.item)
+        .select(
+            icd.ref_code,
+            ltt.name.as_("service_name"),
+            ValueWrapper("Lab Test Template").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+        )
+    ).run(as_dict=True)
+
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(ret)
+        .on(icd.parent == ret.item)
+        .select(
+            icd.ref_code,
+            ret.name.as_("service_name"),
+            ValueWrapper("Radiology Examination Template").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+        )
+    ).run(as_dict=True)
+
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(cpt)
+        .on(icd.parent == cpt.item)
+        .select(
+            icd.ref_code,
+            cpt.name.as_("service_name"),
+            ValueWrapper("Clinical Procedure Template").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+        )
+    ).run(as_dict=True)
+
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(med)
+        .on(icd.parent == med.item)
+        .select(
+            icd.ref_code,
+            med.name.as_("service_name"),
+            ValueWrapper("Medication").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+        )
+    ).run(as_dict=True)
+
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(tt)
+        .on(icd.parent == tt.item)
+        .select(
+            icd.ref_code,
+            tt.name.as_("service_name"),
+            ValueWrapper("Therapy Type").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+        )
+    ).run(as_dict=True)
+
+    services += (
+        frappe.qb.from_(icd)
+        .inner_join(hsut)
+        .on(icd.parent == hsut.item)
+        .select(
+            icd.ref_code,
+            hsut.name.as_("service_name"),
+            ValueWrapper("Healthcare Service Unit Type").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == "NHIF")
+            & (
+                (icd.ref_code.isnotnull()) & 
+                (icd.ref_code != "")
+            )
+        )
+    ).run(as_dict=True)
+
+    service_map = {}
+    for service in services:
+        service_map[service["ref_code"]] = service
+    
+    return service_map
