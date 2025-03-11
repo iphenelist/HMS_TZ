@@ -382,7 +382,7 @@ def on_submit_validation(doc, method):
         "Healthcare Service Insurance Coverage",
         fields={
             "healthcare_service_template",
-            "maximum_number_of_claims",
+            "maximum_quantity",
             "approval_mandatory_for_claim",
         },
         filters={
