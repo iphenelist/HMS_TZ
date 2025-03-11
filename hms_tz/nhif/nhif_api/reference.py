@@ -10,11 +10,11 @@ def get_points_of_care():
     if len(settings) == 0:
         return
     
-    setting_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
 
-    token = setting_doc.get_nhif_token()
+    token = settings_doc.get_nhif_token()
 
-    url = f"{setting_doc.nhifservice_url}/api/Reference/GetPointsOfCare"
+    url = f"{settings_doc.nhifservice_url}/api/Reference/GetPointsOfCare"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
