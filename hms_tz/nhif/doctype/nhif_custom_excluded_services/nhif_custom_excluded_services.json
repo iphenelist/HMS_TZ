@@ -17,7 +17,7 @@
   "column_break_2",
   "itemcode",
   "section_break_2",
-  "excludedforproducts"
+  "excludedforscheme"
  ],
  "fields": [
   {
@@ -25,7 +25,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Company",
-   "options": "Company NHIF Settings",
+   "options": "HMS TZ Settings",
    "reqd": 1
   },
   {
@@ -73,13 +73,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "excludedforproducts",
-   "fieldtype": "Small Text",
-   "in_list_view": 1,
-   "label": "ExcludedForProducts",
-   "reqd": 1
-  },
-  {
    "fieldname": "title",
    "fieldtype": "Data",
    "hidden": 1,
@@ -87,14 +80,20 @@
    "in_standard_filter": 1,
    "label": "Title",
    "read_only": 1
+  },
+  {
+   "fieldname": "excludedforscheme",
+   "fieldtype": "Small Text",
+   "label": "ExcludedForScheme"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-04-09 21:14:50.842195",
+ "modified": "2025-03-10 07:04:26.789762",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Custom Excluded Services",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -112,6 +111,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title",
  "track_changes": 1
 }

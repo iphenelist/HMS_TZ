@@ -35,10 +35,10 @@ def validate_item(company, item, name):
 
 @frappe.whitelist()
 def get_custom_excluded_services(company, item_code):
-    custom_excluded_services = frappe.get_all(
+    custom_excluded_services = frappe.db.get_all(
         "NHIF Custom Excluded Services",
         filters={"company": company, "itemcode": item_code},
-        fields=["excludedforproducts"],
+        fields=["excludedforscheme"],
     )
     if custom_excluded_services:
-        return custom_excluded_services[0].excludedforproducts
+        return custom_excluded_services[0].excludedforscheme
