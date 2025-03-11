@@ -765,30 +765,6 @@ def execute():
                 reqd=1
             )
         ],
-        "Healthcare Service Insurance Coverage": [
-            dict(
-                fieldtype='Check',
-                label='Is Auto Generated',
-                fieldname='is_auto_generated',
-                insert_after='end_date',
-                
-            ),
-            dict(
-                fieldtype='Link',
-                label='Item',
-                fieldname='item',
-                insert_after='healthcare_service_template',
-                
-                options='Item',
-            ),
-            dict(
-                fieldtype='Duration',
-                label='Maximum Claim Duration',
-                fieldname='maximum_claim_duration',
-                insert_after='maximum_number_of_claims',
-                
-            ),
-        ],
         "Healthcare Service Unit Type": [
             # dict(
             #     fieldtype='Check',
