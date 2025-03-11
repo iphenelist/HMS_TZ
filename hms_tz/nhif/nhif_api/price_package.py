@@ -6,9 +6,11 @@ from pypika.terms import ValueWrapper
 from frappe.query_builder import DocType
 from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
-from frappe.utils import now_datetime, flt, cint
+from frappe.utils import now_datetime, nowdate,flt, cint
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-
+from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import (
+    get_custom_excluded_services,
+)
 
 def  get_item_types():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
@@ -99,14 +101,28 @@ def enqueue_get_nhif_price_packages(company):
 
 @frappe.whitelist()
 def process_nhif_records(company):
+    facility_code = frappe.get_cached_value(
+        "HMS TZ Settings", company, "facility_code"
+    )
     enqueue(
         method=process_nhif_prices,
         queue="long",
         timeout=3600,
         is_async=True,
         company=company,
+        facility_code=facility_code,
     )
-    frappe.msgprint(_("Queued Processing NHIF prices"), alert=True)
+    frappe.msgprint("Processing NHIF prices via backaground job", alert=True)
+
+    enqueue(
+        method=process_insurance_coverages,
+        queue="long",
+        timeout=10000000,
+        is_async=True,
+        company=company,
+        facility_code=facility_code,
+    )
+    frappe.msgprint("Processing NHIF Insurance Coverage via backaground job", alert=True)
 
 
 def get_price_package(company):
@@ -139,7 +155,7 @@ def get_price_package(company):
             request_url=url,
             request_header=headers,
             request_body="",
-            response_data=packages,
+            response_data=json.dumps(packages),
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype="NHIF Price Package",
@@ -297,7 +313,7 @@ def set_package_diff(company):
         or len(new_price_packages) > 0
         or len(deleted_price_packages) > 0
     ):
-        service_map = get_insurance_items()
+        service_map = get_insurance_items(for_prices=True)
 
         doc = frappe.new_doc("NHIF Update")
 
@@ -344,13 +360,10 @@ def add_price_packages_records(doc, rec, type, service_map):
         price_row.previous_item = json.dumps(e.get("previous_item"))
 
 
-def process_nhif_prices(company, item_code=None):
-    facility_code = frappe.get_cached_value(
-        "HMS TZ Settings", company, "facility_code"
-    )
+def process_nhif_prices(company, facility_code, item_code=None):
     currency = frappe.get_cached_value("Company", company, "default_currency")
 
-    schemes, price_package_map = get_price_package_map(company, facility_code)
+    schemes, price_package_map = get_price_package_map(company, facility_code, for_prices=True)
 
     for scheme in schemes:
         price_list_name = "NHIF-" + scheme + "-" + facility_code
@@ -363,7 +376,7 @@ def process_nhif_prices(company, item_code=None):
             price_list_doc.selling = 1
             price_list_doc.save(ignore_permissions=True)
 
-    service_map = get_insurance_items()
+    service_map = get_insurance_items(for_prices=True)
 
     for itemcode, item in service_map.items():
         for i, package in price_package_map.items():
@@ -372,11 +385,20 @@ def process_nhif_prices(company, item_code=None):
 
             price_list_name = "NHIF-" + i[1] + "-" + facility_code
             if package:
+                erp_item = None
+                if item.get("service_type") == "Consulation Charges":
+                    erp_item = item.get("service_name")
+                else:
+                    erp_item = frappe.get_cached_value(item.get("service_type"), item.get("service_name"), "item")
+                
+                if not erp_item:
+                    continue
+
                 item_price_list = frappe.db.get_all(
                     "Item Price",
                     filters={
                         "price_list": price_list_name,
-                        "item_code": item.get("service_name"),
+                        "item_code": erp_item,
                         "currency": currency,
                         "selling": 1,
                     },
@@ -402,11 +424,11 @@ def process_nhif_prices(company, item_code=None):
                                 )
 
                 else:
-                    print(f"Created the item price {price.name} for {price_list_name}")
+                    print(f"Create item price for {item.get('service_name')} for {price_list_name}")
                     item_price_doc = frappe.new_doc("Item Price")
                     item_price_doc.update(
                         {
-                            "item_code": item.get("service_name"),
+                            "item_code": erp_item,
                             "price_list": price_list_name,
                             "currency": currency,
                             "price_list_rate": flt(package.unitprice),
@@ -414,13 +436,133 @@ def process_nhif_prices(company, item_code=None):
                             "selling": 1,
                         }
                     )
-                    item_price_doc.insert(ignore_permissions=True)
                     item_price_doc.save(ignore_permissions=True)
         frappe.db.commit()
 
 
+def process_insurance_coverages(company, facility_code, coverage_plan=None):
+    print(f"Gettign Insurance Coverage Items")
+    hsic_data = []
+    plans_for_deletion = []
+    fields = [
+        "name",
+        "creation",
+        "owner",
+        "modified",
+        "modified_by",
+        "healthcare_service",
+        "healthcare_service_template",
+        "is_active",
+        "healthcare_insurance_coverage_plan",
+        "company",
+        "has_copayment",
+        "approval_mandatory_for_claim",
+        "dosage",
+        "strength",
+        "maximum_quantity",
+        "maximum_quantity_outpatient",
+        "maximum_quantity_inpatient",
+        "is_auto_generated",
+        "start_date",
+        "end_date",
+    ]
+    service_map = get_insurance_items()
+    price_package_map = get_price_package_map(company, facility_code)
 
-def get_price_package_map(company, facility_code):
+    filters = {
+        "insurance_company": ["like", "NHIF%"],
+        "is_active": 1,
+        "company": company,
+    }
+    if coverage_plan:
+        filters["name"] = {coverage_plan}
+    
+    coverage_plan_list = frappe.db.get_all(
+        "Healthcare Insurance Coverage Plan",
+        fields={"name", "nhif_scheme_id", "code_for_nhif_excluded_services"},
+        filters=filters,
+    )
+
+    for plan in coverage_plan_list:
+        print(f"Processing Insurance Coverage {plan}")
+        has_data = False
+        for package in price_package_map.values():
+            if plan.nhif_scheme_id != package.schemeid:
+                continue
+            
+            print(f"Processing Item {package.get('itemname')} for {plan}")
+
+            user_excluded_scheme = get_custom_excluded_services(company, package.get("itemcode"))
+            
+            # check if the scheme id is in the excluded products
+            # scheme ids must listed on custom excluded services separated by comma
+            if (
+                user_excluded_scheme
+                and plan.nhif_scheme_id
+                and plan.nhif_scheme_id in user_excluded_scheme
+            ):
+                continue
+            
+            if not service_map.get(package.get("itemcode")):
+                continue
+
+            hsic_name = make_autoname(key='hash')
+
+            row = (
+                    hsic_name,
+                    now_datetime(),
+                    frappe.session.user,
+                    now_datetime(),
+                    frappe.session.user,
+                    service_map.get(package.get("itemcode")).get("service_type"),
+                    service_map.get(package.get("itemcode")).get("service_name"),
+                    1,
+                    plan.name,
+                    company,
+                    cint(package.get("hascopayment")),
+                    cint(package.get("isrestricted")),
+                    package.get("dosage"),
+                    package.get("strength"),
+                    package.get("maximumquantity"),
+                    package.get("maximumquantityoutpatient"),
+                    package.get("maximumquantityinpatient"),
+                    1,
+                    nowdate(),
+                    "2099-12-31",
+                )
+            
+            if not has_data and row:
+                has_data = True
+            
+            hsic_data.append(row)
+
+        if has_data:
+            plans_for_deletion.append(plan.name)
+    
+    delete_hsic_data(plans_for_deletion)
+
+    sleep(30)
+    frappe.db.bulk_insert(
+        "Healthcare Service Insurance Coverage",
+        fields=fields,
+        values=hsic_data,
+        ignore_duplicates=True
+    )
+    frappe.db.commit()
+    return True
+
+
+def delete_hsic_data(coverage_plans):
+    if len(coverage_plans) == 0:
+        return
+    
+    hsic = DocType("Healthcare Service Insurance Coverage")
+    frappe.qb.from_(hsic).delete().where(
+        hsic.healthcare_insurance_coverage_plan.isin(coverage_plans)
+    ).run()
+
+
+def get_price_package_map(company, facility_code, for_prices=False):
     npp = DocType("NHIF Price Package")
     price_packages = (
         frappe.qb.from_(npp)
@@ -453,10 +595,13 @@ def get_price_package_map(company, facility_code):
 
         price_package_map[price_package["facilitycode"], price_package["schemeid"], price_package["itemcode"]] = price_package
     
-    return schemes, price_package_map
+    if for_prices:
+        return schemes, price_package_map
+
+    return price_package_map
 
 
-def get_insurance_items():
+def get_insurance_items(for_prices=False):
     services = []
     consultation_items = []
 
@@ -471,58 +616,59 @@ def get_insurance_items():
     tt = DocType("Therapy Type")
     hsut = DocType("Healthcare Service Unit Type")
 
-    practitioner_services = (
-        frappe.qb.from_(hp)
-        .select(
-            hp.op_consulting_charge_item,
-            hp.inpatient_visit_charge_item
-        )
-        .distinct()
-    ).run(as_dict=True)
-
-    for row in practitioner_services:
-        for field in row:
-            if row[field]:
-                consultation_items.append(row[field])
-
-    appointment_services = (
-        frappe.qb.from_(at)
-        .select(
-            at.assistant_md_followup_item,
-            at.gp_followup_item,
-            at.specialist_followup_item,
-            at.super_specialist_followup_item,
-            at.assistant_md_fasttrack_item,
-            at.gp_fasttrack_item,
-            at.specialist_fasttrack_item,
-            at.super_specialist_fasttrack_item,
-        )
-        .distinct()
-    ).run(as_dict=True)
-
-    for row in appointment_services:
-        for field in row:
-            if row[field]:
-                consultation_items.append(row[field])
-    
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(it)
-        .on(icd.parent == it.name)
-        .select(
-            icd.ref_code,
-            it.name.as_("service_name"),
-            ValueWrapper("Consulation Charges").as_("service_type"),
-        )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
+    if for_prices:
+        practitioner_services = (
+            frappe.qb.from_(hp)
+            .select(
+                hp.op_consulting_charge_item,
+                hp.inpatient_visit_charge_item
             )
-            & (it.name.isin(consultation_items))
-        )
-    ).run(as_dict=True)
+            .distinct()
+        ).run(as_dict=True)
+
+        for row in practitioner_services:
+            for field in row:
+                if row[field]:
+                    consultation_items.append(row[field])
+
+        appointment_services = (
+            frappe.qb.from_(at)
+            .select(
+                at.assistant_md_followup_item,
+                at.gp_followup_item,
+                at.specialist_followup_item,
+                at.super_specialist_followup_item,
+                at.assistant_md_fasttrack_item,
+                at.gp_fasttrack_item,
+                at.specialist_fasttrack_item,
+                at.super_specialist_fasttrack_item,
+            )
+            .distinct()
+        ).run(as_dict=True)
+
+        for row in appointment_services:
+            for field in row:
+                if row[field]:
+                    consultation_items.append(row[field])
+    
+        services += (
+            frappe.qb.from_(icd)
+            .inner_join(it)
+            .on(icd.parent == it.name)
+            .select(
+                icd.ref_code,
+                it.name.as_("service_name"),
+                ValueWrapper("Consulation Charges").as_("service_type"),
+            )
+            .where(
+                (icd.customer_name == "NHIF")
+                & (
+                    (icd.ref_code.isnotnull()) & 
+                    (icd.ref_code != "")
+                )
+                & (it.name.isin(consultation_items))
+            )
+        ).run(as_dict=True)
 
     services += (
         frappe.qb.from_(icd)
