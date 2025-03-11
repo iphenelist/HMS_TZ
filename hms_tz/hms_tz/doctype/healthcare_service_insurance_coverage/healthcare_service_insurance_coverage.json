@@ -15,32 +15,40 @@
   "healthcare_insurance_coverage_plan",
   "company",
   "coverage_deatils_section",
-  "coverage",
-  "discount",
-  "maximum_number_of_claims",
+  "has_copayment",
   "approval_mandatory_for_claim",
-  "manual_approval_only",
+  "dosage",
+  "strength",
+  "column_break_bxzsb",
+  "maximum_quantity",
+  "maximum_quantity_outpatient",
+  "maximum_quantity_inpatient",
   "column_break_12",
+  "is_auto_generated",
   "start_date",
-  "end_date",
-  "amended_from"
+  "end_date"
  ],
  "fields": [
   {
    "fieldname": "healthcare_service",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Healthcare Service",
-   "options": "\nAppointment Type\nClinical Procedure Template\nTherapy Type\nMedication\nLab Test Template\nRadiology Examination Template\nHealthcare Service Unit Type",
-   "reqd": 1
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Service Type",
+   "options": "\nLab Test Template\nRadiology Examination Template\nClinical Procedure Template\nMedication\nTherapy Type\nHealthcare Service Unit Type",
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "healthcare_service_template",
    "fieldtype": "Dynamic Link",
    "in_list_view": 1,
-   "label": "Healthcare Service Template",
+   "in_standard_filter": 1,
+   "label": "Service Name",
    "options": "healthcare_service",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_3",
@@ -51,15 +59,20 @@
    "default": "0",
    "fieldname": "is_active",
    "fieldtype": "Check",
-   "label": "Is Active"
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active",
+   "search_index": 1
   },
   {
    "fieldname": "healthcare_insurance_coverage_plan",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Healthcare Insurance Coverage Plan",
+   "in_standard_filter": 1,
+   "label": "Coverage Plan",
    "options": "Healthcare Insurance Coverage Plan",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "coverage_deatils_section",
@@ -67,33 +80,12 @@
    "label": "Coverage Deatils"
   },
   {
-   "fieldname": "coverage",
-   "fieldtype": "Percent",
-   "label": "Coverage"
-  },
-  {
-   "fieldname": "discount",
-   "fieldtype": "Percent",
-   "label": "Discount"
-  },
-  {
-   "description": "Number of claims allowed per year",
-   "fieldname": "maximum_number_of_claims",
-   "fieldtype": "Int",
-   "label": "Maximum Number of Claims"
-  },
-  {
    "default": "0",
    "fieldname": "approval_mandatory_for_claim",
    "fieldtype": "Check",
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Approval Mandatory for Claim"
-  },
-  {
-   "default": "0",
-   "depends_on": "approval_mandatory_for_claim",
-   "fieldname": "manual_approval_only",
-   "fieldtype": "Check",
-   "label": "Manual Approval Only"
   },
   {
    "fieldname": "column_break_12",
@@ -104,15 +96,6 @@
    "fieldname": "start_date",
    "fieldtype": "Date",
    "label": "Start Date"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Healthcare Service Insurance Coverage",
-   "print_hide": 1,
-   "read_only": 1
   },
   {
    "fieldname": "end_date",
@@ -129,16 +112,72 @@
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Company",
-   "options": "Company"
+   "options": "Company",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_copayment",
+   "fieldtype": "Check",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Has CoPayment",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_bxzsb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maximum_quantity",
+   "fieldtype": "Int",
+   "label": "Maximum Quantity",
+   "search_index": 1
+  },
+  {
+   "fieldname": "maximum_quantity_outpatient",
+   "fieldtype": "Int",
+   "label": "Maximum Quantity OutPatient",
+   "search_index": 1
+  },
+  {
+   "fieldname": "maximum_quantity_inpatient",
+   "fieldtype": "Int",
+   "label": "Maximum Quantity InPatient",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_auto_generated",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Is Auto Generated",
+   "search_index": 1
+  },
+  {
+   "fieldname": "dosage",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Dosage",
+   "search_index": 1
+  },
+  {
+   "fieldname": "strength",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Strength",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-09 20:01:51.430232",
+ "modified": "2025-03-11 23:37:51.653357",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Insurance Coverage",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -156,6 +195,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1,
  "track_seen": 1
 }
