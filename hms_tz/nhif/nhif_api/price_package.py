@@ -51,6 +51,19 @@ def process_nhif_records(company):
     frappe.msgprint("Processing NHIF Insurance Coverage via backaground job", alert=True)
 
 
+@frappe.whitelist()
+def enqueue_fetch_nhif_items(company):
+    enqueue(
+        method=get_nhif_items,
+        job_name="get_nhif_items",
+        queue="default",
+        timeout=1800,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Fetch NHIF Items via backaground job", alert=True)
+
+
 def get_price_package(company):
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
     token = settings_doc.get_nhif_token()
