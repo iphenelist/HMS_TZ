@@ -443,7 +443,7 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
     
     coverage_plan_list = frappe.db.get_all(
         "Healthcare Insurance Coverage Plan",
-        fields={"name", "nhif_scheme_id", "code_for_nhif_excluded_services"},
+        fields=["name", "nhif_scheme_id"],
         filters=filters,
     )
 
