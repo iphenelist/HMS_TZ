@@ -750,6 +750,76 @@ def get_insurance_items(for_prices=False):
 
 
 @frappe.whitelist()
+def  get_nhif_schemes(company=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+    
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Packages/GetBenefitSchemes"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetBenefitSchemes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Scheme",
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetBenefitSchemes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Scheme",
+        )
+
+        if len(data) == 0:
+            return
+        
+        for row in data:
+            scheme_id = frappe.db.get_value("NHIF Scheme", {"scheme_id": row["SchemeID"]}, "name")
+            if scheme_id:
+                has_changed = False
+                doc = frappe.get_doc("NHIF Scheme", scheme_id)
+
+                if doc.scheme_name != row["SchemeName"]:
+                    doc.scheme_name = row["SchemeName"]
+                    has_changed = True
+                
+                if has_changed:
+                    doc.save(ignore_permissions=True)
+                
+            else:
+                doc = frappe.new_doc("NHIF Scheme")
+                doc.scheme_id = row["SchemeID"]
+                doc.scheme_name = row["SchemeName"]
+
+                doc.save(ignore_permissions=True)
+
+
+
+@frappe.whitelist()
 def  get_item_types():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
