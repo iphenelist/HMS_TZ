@@ -750,7 +750,7 @@ def get_insurance_items(for_prices=False):
 
 
 @frappe.whitelist()
-def  get_nhif_schemes(company=None):
+def  get_nhif_schemes(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
         company = settings[0].company
@@ -816,7 +816,177 @@ def  get_nhif_schemes(company=None):
                 doc.scheme_name = row["SchemeName"]
 
                 doc.save(ignore_permissions=True)
+        
+        if company and caller=='Front End':
+            frappe.msgprint("successfully fetched NHIF Schemes", alert=True)
 
+
+@frappe.whitelist()
+def  get_nhif_products(company=None, caller=None):
+    companies = []
+
+    if company:
+        companies = [company]
+    
+    if len(companies) == 0:
+        companies = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+            pluck="company"
+        )
+    
+    if len(companies) == 0:
+        return
+    
+    product_dict =  {
+        "status": False
+    }
+    for company in companies:
+        get_nhif_product_per_company(company, product_dict)
+    
+    if (
+        company and
+        caller == 'Front End' and 
+        product_dict["status"]
+    ):
+        frappe.msgprint("successfully fetched NHIF Products", alert=True)
+
+
+def get_nhif_product_per_company(company, product_dict):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Packages/GetProducts"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetProducts",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Product",
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetProducts",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Product",
+        )
+
+        if len(data) == 0:
+            return
+        
+        abbr = frappe.get_cached_value("Company", company, "abbr")
+
+        for row in data:
+            try:
+                add_nhif_product(row, company, abbr)
+                
+                if not product_dict["status"]:
+                    product_dict["status"] = True
+                
+            except Exception as e:
+                frappe.log_error(
+                    title='NHIF Product Creation Error',
+                    message=frappe.get_traceback()
+                )
+
+def add_nhif_product(row, company, abbr):
+    product_id = str(row["ProductCode"]) + "-" + str(abbr)
+
+    nhif_product_pr_key = frappe.db.get_value("NHIF Product", {"company": company, "nhif_product_code": row["ProductCode"]}, "name")
+    if not nhif_product_pr_key:
+        nhif_product_pr_key = frappe.db.get_value("NHIF Product", {"company": "", "nhif_product_code": row["ProductCode"]})
+
+    has_changed = False
+    if nhif_product_pr_key:
+        if (
+            row["ProductName"]  and
+            row["ProductName"] != "null" and
+            product_id != nhif_product_pr_key 
+        ):
+            doc = frappe.get_doc("NHIF Product", nhif_product_pr_key)
+
+            if doc.product_id != product_id:
+                doc.product_id = product_id
+                has_changed = True
+            
+            if doc.product_name != row["ProductName"]:
+                doc.product_name = row["ProductName"]
+                has_changed = True
+            
+            if doc.schemeid != row["SchemeID"]:
+                doc.schemeid = row["SchemeID"]
+                has_changed = True
+            
+            if doc.productdescription != row["ProductDescription"]:
+                doc.productdescription = row["ProductDescription"]
+                has_changed = True
+            
+            
+            if doc.highestorderwithoutreferral != row["HighestOrderWithoutReferral"]:
+                doc.highestorderwithoutreferral = row["HighestOrderWithoutReferral"]
+                has_changed = True
+            
+            if doc.maximumadmissiondays != row["MaximumAdmissionDays"]:
+                doc.maximumadmissiondays = row["MaximumAdmissionDays"]
+                has_changed = True
+            
+            if doc.requiresnationalid != row["RequiresNationalID"]:
+                doc.requiresnationalid = row["RequiresNationalID"]
+                has_changed = True
+
+            if doc.usespolicy != row["UsesPolicy"]:
+                doc.usespolicy = row["UsesPolicy"]
+                has_changed = True
+
+            doc.company = company
+            doc.healthcare_insurance_coverage_plan = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan",
+                {"nhif_scheme_id": row["SchemeID"], "company": company},
+                "name"
+            )
+
+            if has_changed:
+                doc.save(ignore_permissions=True)
+    else:
+        doc = frappe.new_doc('NHIF Product')
+        doc.product_id = product_id
+        doc.company = company
+
+        doc.nhif_product_code = row["ProductCode"]
+        if row["ProductName"] and row["ProductName"] != "null":
+            doc.product_name = row["ProductName"]
+        
+        doc.schemeid = row["SchemeID"]
+        doc.productdescription = row["ProductDescription"]
+        doc.highestorderwithoutreferral = row["HighestOrderWithoutReferral"]
+        doc.maximumadmissiondays = row["MaximumAdmissionDays"]
+        doc.requiresnationalid = row["RequiresNationalID"]
+        doc.usespolicy = row["UsesPolicy"]
+        doc.healthcare_insurance_coverage_plan = frappe.get_cached_value(
+            "Healthcare Insurance Coverage Plan",
+            {"nhif_scheme_id": row["SchemeID"], "company": company},
+            "name"
+        )
+        
+        doc.save(ignore_permissions=True)
 
 
 @frappe.whitelist()
