@@ -736,6 +736,7 @@ def get_insurance_items(for_prices=False):
     return service_map
 
 
+@frappe.whitelist()
 def  get_item_types():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
