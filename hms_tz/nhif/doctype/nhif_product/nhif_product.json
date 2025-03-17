@@ -11,7 +11,14 @@
   "product_name",
   "healthcare_insurance_coverage_plan",
   "nhif_product_code",
-  "company"
+  "column_break_8itsc",
+  "schemeid",
+  "productdescription",
+  "highestorderwithoutreferral",
+  "column_break_t1nk6",
+  "company",
+  "requiresnationalid",
+  "usespolicy"
  ],
  "fields": [
   {
@@ -20,6 +27,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Product ID",
+   "read_only": 1,
    "unique": 1
   },
   {
@@ -27,33 +35,96 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Product Name"
+   "label": "Product Name",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "healthcare_insurance_coverage_plan",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Healthcare Insurance Coverage Plan",
-   "options": "Healthcare Insurance Coverage Plan"
+   "options": "Healthcare Insurance Coverage Plan",
+   "search_index": 1
   },
   {
    "fieldname": "nhif_product_code",
    "fieldtype": "Data",
-   "label": "NHIF Product Code"
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "NHIF Product Code",
+   "search_index": 1
   },
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Company",
-   "options": "Company"
+   "options": "Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "productdescription",
+   "fieldtype": "Data",
+   "label": "ProductDescription",
+   "search_index": 1
+  },
+  {
+   "fieldname": "schemeid",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "SchemeID",
+   "options": "NHIF Scheme",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "requiresnationalid",
+   "fieldtype": "Check",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "RequiresNationalID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "usespolicy",
+   "fieldtype": "Check",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "UsesPolicy",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "highestorderwithoutreferral",
+   "fieldtype": "Int",
+   "label": "HighestOrderWithoutReferral",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_8itsc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_t1nk6",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-03-28 15:07:28.190017",
+ "modified": "2025-03-17 15:56:05.556917",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Product",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -71,5 +142,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
