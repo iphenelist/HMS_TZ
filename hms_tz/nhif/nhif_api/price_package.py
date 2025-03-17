@@ -808,3 +808,126 @@ def get_insurance_items(for_prices=False):
         service_map[service["ref_code"]] = service
     
     return service_map
+
+
+def  get_nhif_items(company=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+    
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Packages/GetItems"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetItems",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Item",
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetItems",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Item",
+        )
+
+        if len(data) == 0:
+            return
+        
+        ni = DocType("NHIF Item")
+        frappe.qb.from_(ni).delete().run()
+
+        sleep(30)
+
+        values = []
+        fields = [
+            "name",
+            "creation",
+            "owner",
+            "modified",
+            "modified_by",
+            "itemcode",
+            "itemtypeid",
+            "itemname",
+            "subgroup",
+            "strength",
+            "dosage",
+            "isactive",
+            "isrestricted",
+            "calculatedperday",
+            "servicetypeid",
+            "serviceinterval",
+            "typeofinterval",
+            "waitingperiod",
+            "typeofperiod",
+            "eligibility",
+            "commonprice",
+            "percentcovered",
+            "availableinlevels",
+            "practitionerqualifications",
+        ]
+
+
+        for row in data:
+            ni_name = make_autoname(key='hash')
+
+            values.append(
+                (
+                    ni_name,
+                    now_datetime(),
+                    frappe.session.user,
+                    now_datetime(),
+                    frappe.session.user,
+                    row.get("ItemCode"),
+                    row.get("ItemTypeID"),
+                    row.get("ItemName"),
+                    row.get("SubGroup"),
+                    row.get("Strength"),
+                    row.get("Dosage"),
+                    row.get("IsActive"),
+                    row.get("IsRestricted"),
+                    row.get("CalculatedPerDay"),
+                    row.get("ServiceTypeID"),
+                    row.get("ServiceInterval"),
+                    row.get("TypeOfInterval"),
+                    row.get("WaitingPeriod"),
+                    row.get("TypeOfPeriod"),
+                    row.get("Eligibility"),
+                    row.get("CommonPrice"),
+                    row.get("PercentCovered"),
+                    row.get("AvailableInLevels"),
+                    row.get("PractitionerQualifications"),
+                )
+            )
+
+        frappe.db.bulk_insert(
+            "NHIF Item",
+            fields=fields,
+            values=values,
+            ignore_duplicates=True
+        )
+        frappe.db.commit()
+        return True
