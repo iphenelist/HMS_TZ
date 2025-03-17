@@ -1,0 +1,232 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-17 10:25:51.955841",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "itemcode",
+  "itemtypeid",
+  "itemname",
+  "column_break_wrgsi",
+  "subgroup",
+  "strength",
+  "dosage",
+  "column_break_17iy4",
+  "isactive",
+  "isrestricted",
+  "calculatedperday",
+  "section_break_tsmwj",
+  "servicetypeid",
+  "serviceinterval",
+  "typeofinterval",
+  "column_break_ypw2m",
+  "waitingperiod",
+  "typeofperiod",
+  "eligibility",
+  "column_break_72igv",
+  "commonprice",
+  "percentcovered",
+  "availableinlevels",
+  "practitionerqualifications"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "itemcode",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "ItemCode",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "itemtypeid",
+   "fieldtype": "Int",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "ItemTypeID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "itemname",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "ItemName",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wrgsi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "subgroup",
+   "fieldtype": "Data",
+   "label": "SubGroup",
+   "search_index": 1
+  },
+  {
+   "fieldname": "strength",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Strength",
+   "search_index": 1
+  },
+  {
+   "fieldname": "dosage",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Dosage",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_17iy4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "isactive",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "IsActive",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "isrestricted",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "IsRestricted",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "calculatedperday",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "CalculatedPerDay",
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_tsmwj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "servicetypeid",
+   "fieldtype": "Int",
+   "in_standard_filter": 1,
+   "label": "ServiceTypeID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "serviceinterval",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "ServiceInterval",
+   "search_index": 1
+  },
+  {
+   "fieldname": "typeofinterval",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "TypeOfInterval",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_ypw2m",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "waitingperiod",
+   "fieldtype": "Int",
+   "label": "WaitingPeriod",
+   "search_index": 1
+  },
+  {
+   "fieldname": "typeofperiod",
+   "fieldtype": "Data",
+   "label": "TypeOfPeriod",
+   "search_index": 1
+  },
+  {
+   "fieldname": "eligibility",
+   "fieldtype": "Data",
+   "label": "Eligibility",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_72igv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "commonprice",
+   "fieldtype": "Float",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "CommonPrice",
+   "search_index": 1
+  },
+  {
+   "fieldname": "percentcovered",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "PercentCovered",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "availableinlevels",
+   "fieldtype": "Data",
+   "label": "AvailableInLevels"
+  },
+  {
+   "fieldname": "practitionerqualifications",
+   "fieldtype": "Data",
+   "label": "PractitionerQualifications"
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-17 12:01:07.077584",
+ "modified_by": "Administrator",
+ "module": "NHIF",
+ "name": "NHIF Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
