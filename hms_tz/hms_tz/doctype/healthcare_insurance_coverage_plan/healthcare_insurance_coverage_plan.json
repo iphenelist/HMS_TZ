@@ -20,8 +20,10 @@
   "hms_tz_has_nhif_coverage",
   "is_exclusions",
   "price_list",
-  "amended_from",
-  "nhif_employername"
+  "secondary_price_list",
+  "nhif_scheme_id",
+  "nhif_employername",
+  "amended_from"
  ],
  "fields": [
   {
@@ -100,13 +102,26 @@
    "fieldtype": "Check",
    "label": "Has NHIF Coverage",
    "mandatory_depends_on": "eval: doc.insurance_company.includes('NHIF') && doc.is_active == 1"
+  },
+  {
+   "fieldname": "secondary_price_list",
+   "fieldtype": "Link",
+   "label": "Secondary Price List",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "nhif_scheme_id",
+   "fieldtype": "Link",
+   "label": "NHIF Scheme ID",
+   "options": "NHIF Scheme"
   }
  ],
  "links": [],
- "modified": "2022-03-31 10:20:54.064984",
+ "modified": "2025-03-17 13:03:34.797408",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Insurance Coverage Plan",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -186,6 +201,7 @@
  "search_fields": "coverage_plan_name,insurance_company_name",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "coverage_plan_name",
  "track_changes": 1,
  "track_seen": 1
