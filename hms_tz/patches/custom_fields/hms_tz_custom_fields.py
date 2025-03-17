@@ -594,33 +594,11 @@ def execute():
         ],
         "Healthcare Insurance Coverage Plan": [
             dict(
-                fieldtype='Data',
-                label='Code for NHIF Excluded Services',
-                fieldname='code_for_nhif_excluded_services',
-                insert_after='daily_limit',
-                
-            ),
-            dict(
                 fieldtype='Currency',
                 label='Default Daily Limit',
                 fieldname='daily_limit',
                 insert_after='insurance_company_name',
                 
-            ),
-            dict(
-                fieldtype='Data',
-                label='NHIF Scheme ID',
-                fieldname='nhif_scheme_id',
-                insert_after='secondary_price_list',
-                
-            ),
-            dict(
-                fieldtype='Link',
-                label='Secondary Price List',
-                fieldname='secondary_price_list',
-                insert_after='price_list',
-                
-                options='Price List',
             ),
         ],
         "Healthcare Insurance Subscription": [
