@@ -22,7 +22,6 @@ var add_nhif_actions_btn = function (frm) {
                 }
             }
         });
-        frappe.show_alert(__('fetch price package via backgroud job'), 5);
     }, __('NHIF Actions'));
 
     frm.add_custom_button(__('Only Process NHIF Records'), function () {

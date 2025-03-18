@@ -23,6 +23,17 @@ def enqueue_get_nhif_price_packages(company):
         is_async=True,
         company=company,
     )
+    frappe.msgprint("Fetch price package via backgroud job", alert=True)
+
+    enqueue(
+        method=get_nhif_cost_sharing,
+        job_name="get_nhif_cost_sharing",
+        queue="long",
+        timeout=1800,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Fetch NHIF cost sharing via backgroud job", alert=True)
 
 
 @frappe.whitelist()
@@ -749,6 +760,108 @@ def get_insurance_items(for_prices=False):
     return service_map
 
 
+def get_nhif_cost_sharing(company):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Packages/GetCostSharingSchedule"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetCostSharingSchedule",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Cost Sharing",
+        )
+        frappe.throw(json.loads(r.text))
+    else:
+        data = json.loads(r.text)
+        log_name = add_log(
+            request_type="GetCostSharingSchedule",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=json.dumps(data),
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Cost Sharing",
+        )
+
+        sync_cost_sharing(data)
+
+
+def sync_cost_sharing(data):
+    if len(data) == 0:
+        return
+    
+    ncs = DocType("NHIF Cost Sharing")
+    frappe.qb.from_(ncs).delete().run()
+
+    sleep(30)
+    values = []
+    fields = [
+        "name",
+        "owner",
+        "creation",
+        "modified",
+        "modified_by",
+        "service_type",
+        "service_name",
+        "itemcode",
+        "scheduleitemid",
+        "yearno",
+        "productcode",
+        "packageid",
+        "percentcovered"
+    ]
+
+    service_map = get_insurance_items(for_prices=True)
+
+    for row in data:
+        ncs_name = make_autoname(key='hash')
+        service_type = ""
+        service_name = ""
+        if service_map.get(row.get("ItemCode")):
+            service_type = service_map.get(row.get("ItemCode")).get("service_type")
+            service_name = service_map.get(row.get("ItemCode")).get("service_name")
+
+        values.append(
+            (
+                ncs_name,
+                now_datetime(),
+                frappe.session.user,
+                now_datetime(),
+                frappe.session.user,
+                service_type,
+                service_name,
+                row.get("ItemCode"),
+                row.get("ScheduleItemID"),
+                row.get("YearNo"),
+                row.get("ProductCode"),
+                row.get("PackageID"),
+                row.get("PercentCovered")
+            )
+        )
+    
+    frappe.db.bulk_insert(
+        "NHIF Cost Sharing",
+        fields=fields,
+        values=values,
+        ignore_duplicates=True
+    )
+    frappe.db.commit()
+    return True
+
+
 @frappe.whitelist()
 def  get_nhif_schemes(company=None, caller=None):
     if not company:
@@ -906,6 +1019,7 @@ def get_nhif_product_per_company(company, product_dict):
                     title='NHIF Product Creation Error',
                     message=frappe.get_traceback()
                 )
+
 
 def add_nhif_product(row, company, abbr):
     product_id = str(row["ProductCode"]) + "-" + str(abbr)
