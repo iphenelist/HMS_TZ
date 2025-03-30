@@ -29,6 +29,7 @@
   "column_break_omjjl",
   "card_no",
   "national_id",
+  "years_of_insurance",
   "service_detail_section",
   "services",
   "payment_details_section",
@@ -244,13 +245,21 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
+   "fetch_from": "appointment.years_of_insurance",
+   "fieldname": "years_of_insurance",
+   "fieldtype": "Int",
+   "label": "Years of Insurance",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-06 16:47:34.890016",
+ "modified": "2025-03-30 19:58:01.593554",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request",
