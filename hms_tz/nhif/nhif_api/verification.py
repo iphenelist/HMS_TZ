@@ -370,10 +370,10 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
 
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("Please Enable NHIF API to proceed..")
-        return;
+        return
     
     if not card_no:
-        return;
+        return
     
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetPatientDetails?CardNo={card_no}"
 
