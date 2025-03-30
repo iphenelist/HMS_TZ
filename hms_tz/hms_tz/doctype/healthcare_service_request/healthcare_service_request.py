@@ -14,6 +14,7 @@ hsr = DocType("Healthcare Service Request")
 class HealthcareServiceRequest(Document):
 	def before_save(self):
 		self.set_request_id()
+		self.get_percent_covered()
 		self.set_service_price_rate()
 
 	def validate(self):
@@ -74,16 +75,7 @@ class HealthcareServiceRequest(Document):
 		else:
 			row = row_obj
 
-		service_type = ''
-		if row.request_id:
-			service_type = frappe.get_cached_value("Healthcare Service Request Item", row.request_id, "service_type")
-
-		else:
-			for d in self.services:
-				if row.service_name == d.service_name:
-					service_type = d.service_type
-					break
-		
+		service_type = get_service_type(self, row)
 		if not service_type:
 			return {"item_rate": 0, "discount_percent": 0}
 		
@@ -137,6 +129,86 @@ class HealthcareServiceRequest(Document):
 		
 		return plan
 
+	@frappe.whitelist()
+	def get_percent_covered(self, item_obj=None):
+		if item_obj:
+			item = None
+			if isinstance(item_obj, str):
+				item = frappe._dict(json.loads(item_obj))
+			else:
+				item = item_obj
+			
+			if not item.service_name:
+				return
+			
+			if "NHIF" not in item.insurance_company:
+				return
+
+			service_type = get_service_type(self, item)
+			product_code = get_product_code(self, item)
+			ref_code = get_item_refcode(service_type, item.service_name)
+
+			percent_covered = frappe.get_cached_value(
+				"NHIF Cost Sharing", {	
+					"itemcode": ref_code,
+					"productcode": product_code,
+					"yearno": years_of_insurance
+				}, "percentcovered"
+			)
+
+			return percent_covered
+		
+		else:
+			for item in self.payments:
+				if not item.service_name:
+					return
+				
+				if "NHIF" not in item.insurance_company:
+					continue
+				
+				service_type = get_service_type(self, item)
+				product_code = get_product_code(self, item)
+				ref_code = get_item_refcode(service_type, item.service_name)
+
+				percent_covered = frappe.get_cached_value(
+					"NHIF Cost Sharing", {	
+						"itemcode": ref_code,
+						"productcode": product_code,
+						"yearno": years_of_insurance
+					}, "percentcovered"
+				)
+
+				item.percent_covered = percent_covered
+
+	def get_service_type(self, item):
+		service_type = ''
+		if item.request_id:
+			service_type = frappe.get_cached_value("Healthcare Service Request Item", item.request_id, "service_type")
+
+		else:
+			for d in self.services:
+				if item.service_name == d.service_name:
+					service_type = d.service_type
+					break
+		
+		return service_type
+	
+	def get_product_code(self, item):
+		scheme_id = frappe.get_cached_value(
+			"Healthcare Insurance Coverage Plan",
+			item.payor_plan,
+			"nhif_scheme_id"
+		)
+		product_code = frappe.get_cached_value(
+			"NHIF Product", {
+				"schemeid": scheme_id,
+				"company": self.company,
+				"healthcare_insurance_coverage_plan": item.payor_plan
+			}, "nhif_product_code"
+		)
+
+		return product_code
+		
 
 @frappe.whitelist()
 def create_service_request(doc_obj=None, data=None):
@@ -172,19 +244,21 @@ def create_service_request(doc_obj=None, data=None):
 		hsr.insurance_subscription = doc.insurance_subscription
 		hsr.insurance_company = doc.insurance_company
 	
+	authorization_number, years_of_insurance = frappe.get_cached_value("Patient Appointment", doc.appointment, ["authorization_number", "years_of_insurance"])
 	for d in services:
 		hsr.append("services", d)
 
-		item = frappe.get_cached_value(d.get("service_type"), d.get("service_name"), "item")
+		ref_code = get_item_refcode(d.get("service_type"), d.get("service_name"))
 		new_row = {
-			"item_code": get_item_refcode(item),
+			"item_code": ref_code,
 			"rate": d.get("rate"),
 			"payment_type": payment_type,
 			"price_list": d.get("price_list"),
 			"insurance_subscription": doc.insurance_subscription,
 			"insurance_company": doc.insurance_company,
 			"payor_plan": doc.insurance_coverage_plan,
-			"authorization_number": frappe.get_cached_value("Patient Appointment", doc.appointment, "authorization_number")
+			"authorization_number": authorization_number,
+			"years_of_insurance": years_of_insurance
 		}
 		
 		new_row.update(d.copy())
@@ -355,17 +429,19 @@ def set_service_amounts(
 	return row
 
 
-def get_item_refcode(item_code):
-    code_list = frappe.db.get_all(
+def get_item_refcode(service_type, service_name):
+	item = frappe.get_cached_value(service_type, service_name, "item")
+	
+	code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item_code, "customer_name": "NHIF"},
+        filters={"parent": item, "customer_name": "NHIF"},
         fields=["ref_code"],
     )
-    if len(code_list) == 0:
-        frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+	if len(code_list) == 0:
+		frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
 	
-    ref_code = code_list[0].ref_code
-    if not ref_code:
-        frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+	ref_code = code_list[0].ref_code
+	if not ref_code:
+		frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
 	
-    return ref_code
+	return ref_code

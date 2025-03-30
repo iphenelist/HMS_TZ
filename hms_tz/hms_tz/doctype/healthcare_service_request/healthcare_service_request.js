@@ -42,6 +42,17 @@ frappe.ui.form.on('Healthcare Service Request', {
 					}
 				});
 		};
+
+		frm.get_percent_covered = (row) => {
+			frm.call('get_percent_covered', {item_obj: row})
+				.then(r => {
+					if (r.message) {
+						frappe.model.set_value(row.doctype, row.name, "percent_covered", r.message);
+						frm.refresh_field("payments");
+					}
+				});
+		};
+
 	},
 	get_services: (frm) => {
 		frm.call('get_services', {})
@@ -94,8 +105,13 @@ frappe.ui.form.on('Healthcare Service Request Item', {
 frappe.ui.form.on('Healthcare Service Request Payment', {
 	service_name: (frm, cdt, cdn) => {
 		let row = locals[cdt][cdn];
-		if (row.service_name && row.price_list) {
-			frm.get_service_rate(row);
+		
+		if (row.service_name) {
+			frm.get_percent_covered(row);
+
+			if (row.price_list) {
+				frm.get_service_rate(row);
+			}
 		}
 	},
 	price_list: (frm, cdt, cdn) => {
