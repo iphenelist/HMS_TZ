@@ -73,6 +73,15 @@ frappe.ui.form.on('Healthcare Service Request', {
 				}
 			})
 
+	},
+	payment_type: (frm) => {
+		if (frm.doc.payment_type == 'Cash') {
+			frm.set_value("insurance_company", "");
+			frm.set_value("insurance_coverage_plan", "");
+			frm.set_value("insurance_subscription", "");
+			frm.set_value("card_no", "");
+			frm.set_value("national_id", "");
+		}
 	}
 });
 
@@ -93,6 +102,20 @@ frappe.ui.form.on('Healthcare Service Request Payment', {
 		let row = locals[cdt][cdn];
 		if (row.price_list && row.service_name) {
 			frm.get_service_rate(row);
+		}
+	},
+	payment_type: (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		if (row.payment_type == 'Cash') {
+			frappe.model.set_value(cdt, cdn, "insurance_subscription", "")
+			frappe.model.set_value(cdt, cdn, "insurance_company", "")
+			frappe.model.set_value(cdt, cdn, "card_no", "")
+			frappe.model.set_value(cdt, cdn, "national_id", "")
+			frappe.model.set_value(cdt, cdn, "authorization_number", "")
+
+			frappe.model.set_value(cdt, cdn, "payor_plan", "Cash");
+			frappe.model.set_value(cdt, cdn, "percent_covered", 0);
+			frappe.model.set_value(cdt, cdn, "price_list", "");
 		}
 	},
 	percent_covered: (frm, cdt, cdn) => {
