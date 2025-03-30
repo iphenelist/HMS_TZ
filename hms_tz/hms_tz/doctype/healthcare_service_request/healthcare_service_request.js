@@ -59,12 +59,12 @@ frappe.ui.form.on('Healthcare Service Request', {
 					frm.fields_dict.payments.grid.grid_rows.forEach(row => {
 						row.docfields.forEach(docfield => {
 							if (docfield.fieldname === 'service_name') {
-								docfield.options = options;
+								docfield.options = r.message;
 							}
 						});
 					});
 
-					frm.refresh_field(payments);
+					frm.refresh_field("payments");
 					grid.refresh();
 					grid.setup_visible_columns();
 
@@ -127,7 +127,6 @@ frappe.ui.form.on('Healthcare Service Request Payment', {
 			frappe.model.set_value(cdt, cdn, "payor_plan", 'Cash');
 			frm.refresh_field("payments");
 		}
-		
 	}
 });
 
