@@ -165,3 +165,94 @@ def get_discharge_types(company=None, caller=None):
         if company and caller == 'Front End':
             frappe.msgprint("successfully fetched Discharge Types", alert=True, indicator="green")
 
+
+@frappe.whitelist()
+def get_ward_types(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+    
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Admissions/GetWardTypes"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetWardTypes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="Healthcare Ward Type",
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetWardTypes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="Healthcare Ward Type",
+        )
+
+        if len(data) == 0:
+            return
+        
+        for row in data:
+            ward_type = frappe.db.get_value("Healthcare Ward Type", {"ward_type_name": row["WardTypeName"]}, "name")
+            if ward_type:
+                has_changed = False
+                doc = frappe.get_doc("Healthcare Ward Type", ward_type)
+
+                if doc.ward_type_name != row["WardTypeName"]:
+                    doc.ward_type_name = row["WardTypeName"]
+                    has_changed = True
+                
+                if doc.alias != row["Alias"]:
+                    doc.alias = row["Alias"]
+                    has_changed = True
+                
+                if doc.ward_type_id != row["WardTypeID"]:
+                    doc.ward_type_id = row["WardTypeID"]
+                    has_changed = True
+                
+                if doc.notification_required_after != row["NotificationRequiredAfter"]:
+                    doc.notification_required_after = row["NotificationRequiredAfter"]
+                    has_changed = True
+                
+                if doc.item_code != row["ItemCode"]:
+                    doc.item_code = row["ItemCode"]
+                    has_changed = True
+                
+                if has_changed:
+                    doc.save(ignore_permissions=True)
+                
+            else:
+                doc = frappe.new_doc("Healthcare Ward Type")
+                doc.ward_type_name = row["WardTypeName"]
+                doc.alias = row["Alias"]
+                doc.ward_type_id = row["WardTypeID"]
+                doc.notification_required_after = row["NotificationRequiredAfter"]
+                doc.item_code = row["ItemCode"]
+
+                doc.save(ignore_permissions=True)
+        
+        if company and caller == 'Front End':
+            frappe.msgprint("successfully fetched Ward Types", alert=True, indicator="green")
+
