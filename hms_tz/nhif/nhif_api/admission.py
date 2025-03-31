@@ -53,21 +53,21 @@ def get_admission_types(company=None, caller=None):
             return
         
         for row in data:
-            admission = frappe.db.get_value("Healthcare Admission Type", {"admissiontypename": row["AdmissionTypeName"]}, "name")
+            admission = frappe.db.get_value("Healthcare Admission Type", {"admission_type_name": row["AdmissionTypeName"]}, "name")
             if admission:
                 has_changed = False
                 doc = frappe.get_doc("Healthcare Admission Type", admission)
 
-                if doc.admissiontypename != row["AdmissionTypeName"]:
-                    doc.admissiontypename = row["AdmissionTypeName"]
+                if doc.admission_type_name != row["AdmissionTypeName"]:
+                    doc.admission_type_name = row["AdmissionTypeName"]
                     has_changed = True
                 
                 if doc.alias != row["Alias"]:
                     doc.alias = row["Alias"]
                     has_changed = True
                 
-                if doc.admissiontypeid != row["AdmissionTypeID"]:
-                    doc.admissiontypeid = row["AdmissionTypeID"]
+                if doc.admission_type_id != row["AdmissionTypeID"]:
+                    doc.admission_type_id = row["AdmissionTypeID"]
                     has_changed = True
                 
                 if has_changed:
@@ -75,11 +75,12 @@ def get_admission_types(company=None, caller=None):
                 
             else:
                 doc = frappe.new_doc("Healthcare Admission Type")
-                doc.admissiontypename = row["AdmissionTypeName"]
+                doc.admission_type_name = row["AdmissionTypeName"]
                 doc.alias = row["Alias"]
-                doc.admissiontypeid = row["AdmissionTypeID"]
+                doc.admission_type_id = row["AdmissionTypeID"]
 
                 doc.save(ignore_permissions=True)
         
         if company and caller == 'Front End':
-            frappe.msgprint("successfully fetched Admission Types", alert=True)
+            frappe.msgprint("successfully fetched Admission Types", alert=True, indicator="green")
+
