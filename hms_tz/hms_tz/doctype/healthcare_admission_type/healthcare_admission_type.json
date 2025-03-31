@@ -1,25 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:admissiontypename",
+ "autoname": "field:admission_type_name",
  "creation": "2025-03-31 12:05:54.546097",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "admissiontypename",
+  "admission_type_name",
   "alias",
   "column_break_ypkx5",
-  "admissiontypeid"
+  "admission_type_id"
  ],
  "fields": [
-  {
-   "fieldname": "admissiontypename",
-   "fieldtype": "Data",
-   "label": "AdmissionTypeName",
-   "unique": 1
-  },
   {
    "fieldname": "alias",
    "fieldtype": "Data",
@@ -30,14 +24,20 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "admissiontypeid",
+   "fieldname": "admission_type_name",
+   "fieldtype": "Data",
+   "label": "Admission Type Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "admission_type_id",
    "fieldtype": "Int",
-   "label": "AdmissionTypeID"
+   "label": "Admission Type ID"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-31 12:06:33.065409",
+ "modified": "2025-03-31 17:30:07.207699",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Admission Type",
