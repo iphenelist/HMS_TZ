@@ -274,6 +274,7 @@ scheduler_events = {
             "hms_tz.nhif.nhif_api.reference.get_nhif_schemes",
             "hms_tz.nhif.nhif_api.reference.get_nhif_products",
             "hms_tz.nhif.nhif_api.price_package.get_item_types",
+            "hms_tz.nhif.nhif_api.admission.get_admission_types",
         ],
     },
     # 	"hourly": [
