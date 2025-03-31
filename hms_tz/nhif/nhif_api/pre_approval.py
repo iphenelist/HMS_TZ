@@ -93,6 +93,61 @@ def get_service_preapproval(
         return None
 
 
+@frappe.whitelist()
+def cancel_preapproval(
+    request_no,
+    remarks,
+    settings_doc=None,
+    ref_doctype=None, 
+    ref_docname=None,
+    ref_child_doctype=None,
+    ref_child_docnmae=None,
+    card_no=None
+):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
+    
+    url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={request_no}&remarks={remarks}"
+
+    token = settings_doc.get_nhif_token()
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Post", url, headers=headers, timeout=60)
+    if r.status_code == 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="CancelRequest",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        # TODO: update the canceled response on encounter's child doc or service request's child doc
+
+    else:
+        add_log(
+            request_type="CancelRequest",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return None
+
+
 def get_preliminary_diseases(doc):
     diseases = []
     for row in doc.patient_encounter_preliminary_diagnosis:
