@@ -931,7 +931,7 @@ def  get_nhif_schemes(company=None, caller=None):
                 doc.save(ignore_permissions=True)
         
         if company and caller=='Front End':
-            frappe.msgprint("successfully fetched NHIF Schemes", alert=True)
+            frappe.msgprint("successfully fetched NHIF Schemes", alert=True, indicator="green")
 
 
 @frappe.whitelist()
@@ -963,7 +963,7 @@ def  get_nhif_products(company=None, caller=None):
         caller == 'Front End' and 
         product_dict["status"]
     ):
-        frappe.msgprint("successfully fetched NHIF Products", alert=True)
+        frappe.msgprint("successfully fetched NHIF Products", alert=True, indicator="green")
 
 
 def get_nhif_product_per_company(company, product_dict):
@@ -1104,12 +1104,15 @@ def add_nhif_product(row, company, abbr):
 
 
 @frappe.whitelist()
-def  get_item_types():
-    settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
-    if len(settings) == 0:
+def  get_item_types(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+    
+    if not company:
         return
     
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -1165,6 +1168,9 @@ def  get_item_types():
                 doc.display_item = item["DisplayItem"]
 
                 doc.save(ignore_permissions=True)
+
+        if company and caller=='Front End':
+            frappe.msgprint("successfully fetched Item Types", alert=True, indicator="green")
 
     else:
         add_log(
