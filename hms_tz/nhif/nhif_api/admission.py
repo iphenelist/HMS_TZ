@@ -256,3 +256,84 @@ def get_ward_types(company=None, caller=None):
         if company and caller == 'Front End':
             frappe.msgprint("successfully fetched Ward Types", alert=True, indicator="green")
 
+
+@frappe.whitelist()
+def get_room_types(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+    
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Admissions/GetRoomTypes"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetRoomTypes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="Healthcare Room Type",
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetRoomTypes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="Healthcare Room Type",
+        )
+
+        if len(data) == 0:
+            return
+        
+        for row in data:
+            room_type = frappe.db.get_value("Healthcare Room Type", {"room_type_name": row["RoomTypeName"]}, "name")
+            if ward_type:
+                has_changed = False
+                doc = frappe.get_doc("Healthcare Room Type", ward_type)
+
+                if doc.room_type_name != row["RoomTypeName"]:
+                    doc.room_type_name = row["RoomTypeName"]
+                    has_changed = True
+                
+                if doc.alias != row["Alias"]:
+                    doc.alias = row["Alias"]
+                    has_changed = True
+                
+                if doc.room_type_id != row["RoomTypeID"]:
+                    doc.room_type_id = row["RoomTypeID"]
+                    has_changed = True
+                
+                if has_changed:
+                    doc.save(ignore_permissions=True)
+                
+            else:
+                doc = frappe.new_doc("Healthcare Room Type")
+                doc.room_type_name = row["RoomTypeName"]
+                doc.alias = row["Alias"]
+                doc.room_type_id = row["RoomTypeID"]
+
+                doc.save(ignore_permissions=True)
+        
+        if company and caller == 'Front End':
+            frappe.msgprint("successfully fetched Room Types", alert=True, indicator="green")
+
