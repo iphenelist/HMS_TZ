@@ -17,6 +17,8 @@
   {
    "fieldname": "discharge_type_name",
    "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Discharge Type Name",
    "unique": 1
   },
@@ -32,12 +34,16 @@
   {
    "fieldname": "discharge_type_id",
    "fieldtype": "Int",
-   "label": "Discharge Type ID"
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Discharge Type ID",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-31 17:27:41.831501",
+ "modified": "2025-04-02 10:12:08.732329",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Discharge Type",

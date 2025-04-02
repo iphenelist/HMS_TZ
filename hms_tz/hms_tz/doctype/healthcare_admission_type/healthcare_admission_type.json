@@ -26,18 +26,24 @@
   {
    "fieldname": "admission_type_name",
    "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Admission Type Name",
    "unique": 1
   },
   {
    "fieldname": "admission_type_id",
    "fieldtype": "Int",
-   "label": "Admission Type ID"
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Admission Type ID",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-31 17:30:07.207699",
+ "modified": "2025-04-02 10:18:17.895749",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Admission Type",
