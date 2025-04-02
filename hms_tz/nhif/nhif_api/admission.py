@@ -1,8 +1,9 @@
 import json
 import frappe
 import requests
-from frappe.utils import get_url_to_form, get_fullname, now_datetime
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
+from hms_tz.nhif.api.inpatient_record import get_last_encounter
+from frappe.utils import get_url_to_form, get_fullname, now_datetime
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -511,6 +512,102 @@ def discharge_patient(
         data = json.loads(r.text)
         add_log(
             request_type="DishargePatient",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+        return data
+
+
+@frappe.whitelist()
+def transfer_patient(
+    service_unit_type,
+    service_unit,
+    date_transferred,
+    ref_doctype,
+    ref_docname
+):
+    inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
+    
+    # find the last encounter to find the practitioner from the last encounter
+    last_encounter = get_last_encounter(inpatient_doc.patient, inpatient_doc.name)
+    practitioner = frappe.get_cached_value("Patient Encounter", last_encounter, "practitioner")
+
+    mct_code = frappe.get_cached_value(
+        "Healthcare Practitioner",
+        practitioner,
+        ["tz_mct_code"]
+    ),
+
+    ward_type, item_code = frappe.get_cached_value(
+        "Healthcare Service Unit Type",
+        service_unit_type,
+        ["ward_type", "item_code"]
+    )
+    if not ward_type:
+        url = get_url_to_form("Healthcare Service Unit Type", service_unit_type)
+        frappe.throw(
+            f"Please select 'Ward Type' on Service Unit Type: <a href='{url}'><b>{service_unit_type}</b></a>"
+        )
+    
+    ward_type_id = frappe.get_cached_value("Healthcare Ward Type", ward_type, "ward_type_id")
+
+    room_type = frappe.get_cached_value("Healthcare Service Unit", service_unit, "room_type")
+    if not room_type:
+        url = get_url_to_form("Healthcare Service Unit", service_unit)
+        frappe.throw(f"Please select 'Room Type' for Service Unit: <a href='{url}'><b>{service_unit}</b></a>")
+    
+    room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
+
+    bed_charge = get_item_rate(item_code, inpatient_doc.company, npatient_doc.insurance_subscription)
+    
+    payload = {
+        "admissionNo": inpatient_doc.admission_no,
+        "practitionerNo": mct_code,
+        "practitionersRemarks": "",
+        "wardTypeID": ward_type_id,
+        "roomTypeID": room_type_id,
+        "chargesPerDay": bed_charge,
+        "dateTransferred": date_transferred,
+        "createdBy": get_fullname(frappe.session.user)
+    }
+
+    payload = json.dumps(payload)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", inpatient_doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/TransferPatient"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="TransferPatient",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="TransferPatient",
             request_url=url,
             request_header=headers,
             request_body=payload,

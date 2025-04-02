@@ -285,7 +285,7 @@ let nhif_admit_patient = (frm, admission_type, service_unit, check_in, expected_
 				non_nhif_admit_patient(frm, service_unit, check_in, expected_discharge)
 			}
 		})
-	})
+	});
 }
 
 let admit_patient = (frm, service_unit, check_in, expected_discharge) => {
@@ -415,10 +415,35 @@ let transfer_patient_dialog = function (frm) {
 		title: 'Transfer Patient',
 		width: 100,
 		fields: [
-			{ fieldtype: 'Link', label: 'Leave From', fieldname: 'leave_from', options: 'Healthcare Service Unit', reqd: 1, read_only: 1 },
-			{ fieldtype: 'Link', label: 'Service Unit Type', fieldname: 'service_unit_type', options: 'Healthcare Service Unit Type', reqd: 1 },
-			{ fieldtype: 'Link', label: 'Transfer To', fieldname: 'service_unit', options: 'Healthcare Service Unit', reqd: 1 },
-			{ fieldtype: 'Datetime', label: 'Check In', fieldname: 'check_in', reqd: 1, default: frappe.datetime.now_datetime() }
+			{ 
+				fieldtype: 'Link',
+				label: 'Leave From',
+				fieldname: 'leave_from',
+				options: 'Healthcare Service Unit',
+				reqd: 1,
+				read_only: 1
+			},
+			{ 
+				fieldtype: 'Link',
+				label: 'Service Unit Type',
+				fieldname: 'service_unit_type',
+				options: 'Healthcare Service Unit Type',
+				reqd: 1
+			},
+			{ 
+				fieldtype: 'Link',
+				label: 'Transfer To',
+				fieldname: 'service_unit',
+				options: 'Healthcare Service Unit',
+				reqd: 1
+			},
+			{ 
+				fieldtype: 'Datetime',
+				label: 'Check In',
+				fieldname: 'check_in',
+				reqd: 1,
+				default: frappe.datetime.now_datetime()
+			}
 		],
 		primary_action_label: __('Transfer'),
 		primary_action: function () {
@@ -439,22 +464,13 @@ let transfer_patient_dialog = function (frm) {
 				});
 				return;
 			}
-			frappe.call({
-				doc: frm.doc,
-				method: 'transfer',
-				args: {
-					'service_unit': service_unit,
-					'check_in': check_in,
-					'leave_from': leave_from
-				},
-				callback: function (data) {
-					if (!data.exc) {
-						frm.reload_doc();
-					}
-				},
-				freeze: true,
-				freeze_message: __('Process Transfer')
-			});
+			
+			if (frm.doc.insurance_company.includes("NHIF")) {
+				nhif_transfer_patient(frm, service_unit_type, service_unit, check_in);
+			} else {
+				transfer_patient(frm);
+			}
+
 			frm.refresh_fields();
 			dialog.hide();
 		}
@@ -497,6 +513,46 @@ let transfer_patient_dialog = function (frm) {
 		'leave_from': not_left_service_unit
 	});
 };
+
+let nhif_transfer_patient = (frm, service_unit_type, service_unit, check_in) => {
+	frappe.call({
+		method: 'hms_tz.nhif.nhif_api.admission.transfer_patient',
+		args: {
+			service_unit_type: service_unit_type,
+			service_unit: service_unit,
+			date_transferred: check_in,
+			ref_doctype: frm.doc.doctype,
+			ref_docname: frm.doc.name
+		},
+		callback: (r => {
+			if (r.message) {
+				let data = r.message;
+
+				frm.reload_doc();
+				transfer_patient(frm)
+			}
+		})
+	});
+}
+
+let transfer_patient = (frm) => {
+	frappe.call({
+		doc: frm.doc,
+		method: 'transfer',
+		args: {
+			'service_unit': service_unit,
+			'check_in': check_in,
+			'leave_from': leave_from
+		},
+		callback: function (data) {
+			if (!data.exc) {
+				frm.reload_doc();
+			}
+		},
+		freeze: true,
+		freeze_message: __('Process Transfer')
+	});
+}
 
 let set_source_referring_practitioner = function (frm) {
 	if (frm.doc.source == 'Direct') {
