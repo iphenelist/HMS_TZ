@@ -19,7 +19,7 @@ def get_admission_types(company=None, caller=None):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Admissions/GetAdmissionTypes"
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/GetAdmissionTypes"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
@@ -100,7 +100,7 @@ def get_discharge_types(company=None, caller=None):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Admissions/GetDischargeTypes"
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/GetDischargeTypes"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
@@ -181,7 +181,7 @@ def get_ward_types(company=None, caller=None):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Admissions/GetWardTypes"
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/GetWardTypes"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
@@ -272,7 +272,7 @@ def get_room_types(company=None, caller=None):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Admissions/GetRoomTypes"
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/GetRoomTypes"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
