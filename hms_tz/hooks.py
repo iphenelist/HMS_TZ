@@ -252,7 +252,8 @@ scheduler_events = {
         ],
         # Routine for every day 01:30am at night
         "30 1 * * *": [
-            "hms_tz.nhif.api.healthcare_utils.enqueue_auto_create_nhif_patient_claims"
+            "hms_tz.nhif.api.healthcare_utils.enqueue_auto_create_nhif_patient_claims",
+            "hms_tz.nhif.nhif_api.admission.send_overstay_nofication"
         ],
         # Routine for every day 2:30am at night
         "30 2 * * *": [
