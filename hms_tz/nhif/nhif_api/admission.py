@@ -158,9 +158,9 @@ def get_discharge_types(company=None, caller=None):
                 
             else:
                 doc = frappe.new_doc("Healthcare Discharge Type")
-                doc.admission_type_name = row["DischargeTypeName"]
+                doc.discharge_type_name = row["DischargeTypeName"]
                 doc.alias = row["Alias"]
-                doc.admission_type_id = row["DischargeTypeID"]
+                doc.discharge_type_id = row["DischargeTypeID"]
 
                 doc.save(ignore_permissions=True)
         
@@ -309,9 +309,9 @@ def get_room_types(company=None, caller=None):
         
         for row in data:
             room_type = frappe.db.get_value("Healthcare Room Type", {"room_type_name": row["RoomTypeName"]}, "name")
-            if ward_type:
+            if room_type:
                 has_changed = False
-                doc = frappe.get_doc("Healthcare Room Type", ward_type)
+                doc = frappe.get_doc("Healthcare Room Type", room_type)
 
                 if doc.room_type_name != row["RoomTypeName"]:
                     doc.room_type_name = row["RoomTypeName"]
