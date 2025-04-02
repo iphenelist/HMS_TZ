@@ -51,7 +51,7 @@ frappe.ui.form.on('Inpatient Record', {
 
 		if (!frm.doc.__islocal && frm.doc.status == 'Discharge Scheduled') {
 			frm.add_custom_button(__('Discharge'), function () {
-				discharge_patient(frm);
+				discharge_patient_dialog(frm);
 			});
 			frm.add_custom_button(__('Add Bed'), function () {
 				add_bed_dialog(frm);
@@ -109,6 +109,60 @@ frappe.ui.form.on('Inpatient Record', {
 
 });
 
+let discharge_patient_dialog = (frm) => {
+	let d = new frappe.ui.Dialog({
+		title: 'Discharge Patient',
+		width: 100,
+		fields: [
+			{
+				fieldtype: 'Link',
+				label: 'Discharge Type',
+				fieldname: 'discharge_type',
+				options: 'Healthcare Discharge Type',
+				reqd: 1
+			}
+		],
+		primary_action_label: __('Discharge'),
+		primary_action: async function () {
+			let discharge_type =  d.get_value('discharge_type');
+
+			if (!discharge_type) {
+				return;
+			}
+
+			if (frm.doc.insurance_company.includes("NHIF")) {
+				nhif_discharge_patient(frm, discharge_type);
+			} else {
+				discharge_patient(frm);
+			}
+
+			frm.refresh_fields();
+			d.hide();
+		}
+	});
+
+	d.show();
+}
+
+let nhif_discharge_patient = (frm, discharge_type) => {
+	frappe.call({
+		method: 'hms_tz.nhif.nhif_api.admission.discharge_patient',
+		args: {
+			discharge_type: discharge_type,
+			ref_doctype: frm.doc.doctype,
+			ref_docname: frm.doc.name
+		},
+		callback: (r => {
+			if (r.message) {
+				let data = r.message;
+
+				frm.reload_doc();
+				discharge_patient(frm)
+			}
+		})
+	})
+}
+
 let discharge_patient = function (frm) {
 	frappe.call({
 		doc: frm.doc,
@@ -133,13 +187,15 @@ let admit_patient_dialog = function (frm) {
 				label: 'Service Unit Type',
 				fieldname: 'service_unit_type',
 				options: 'Healthcare Service Unit Type',
-				default: frm.doc.admission_service_unit_type
+				default: frm.doc.admission_service_unit_type,
+				reqd: 1
 			},
 			{
 				fieldtype: 'Link',
 				label: 'Admission Type',
 				fieldname: 'admission_type',
-				options: 'Healthcare Admission Type'
+				options: 'Healthcare Admission Type',
+				reqd: 1
 			},
 			{
 				fieldtype: 'Column Break'
@@ -181,7 +237,7 @@ let admit_patient_dialog = function (frm) {
 			if (frm.doc.insurance_company.includes("NHIF")) {
 				nhif_admit_patient(frm, admission_type, service_unit, check_in, expected_discharge)
 			} else {
-				non_nhif_admit_patient(frm, service_unit, check_in, expected_discharge)
+				admit_patient(frm, service_unit, check_in, expected_discharge)
 			}
 
 			frm.refresh_fields();
@@ -208,11 +264,6 @@ let admit_patient_dialog = function (frm) {
 		};
 	};
 
-	if (frm.doc.insurance_company.includes("NHIF")) {
-		dialog.set_df_property("service_unit_type", "reqd", 1);
-		dialog.set_df_property("admission_type", "reqd", 1);
-	}
-
 	dialog.show();
 };
 
@@ -223,7 +274,7 @@ let nhif_admit_patient = (frm, admission_type, service_unit, check_in, expected_
 			admission_type: admission_type,
 			service_unit: service_unit,
 			date_admitted: check_in,
-			ref_doctype: 'Inpatient Record',
+			ref_doctype: frm.doc.doctype,
 			ref_docname: frm.doc.name
 		},
 		callback: (r => {
@@ -237,7 +288,7 @@ let nhif_admit_patient = (frm, admission_type, service_unit, check_in, expected_
 	})
 }
 
-let non_nhif_admit_patient = (frm, service_unit, check_in, expected_discharge) => {
+let admit_patient = (frm, service_unit, check_in, expected_discharge) => {
 	frappe.call({
 		doc: frm.doc,
 		method: 'admit',
