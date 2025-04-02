@@ -126,27 +126,48 @@ let discharge_patient = function (frm) {
 let admit_patient_dialog = function (frm) {
 	let dialog = new frappe.ui.Dialog({
 		title: 'Admit Patient',
-		width: 100,
+		width: 150,
 		fields: [
 			{
-				fieldtype: 'Link', label: 'Service Unit Type', fieldname: 'service_unit_type',
-				options: 'Healthcare Service Unit Type', default: frm.doc.admission_service_unit_type
+				fieldtype: 'Link',
+				label: 'Service Unit Type',
+				fieldname: 'service_unit_type',
+				options: 'Healthcare Service Unit Type',
+				default: frm.doc.admission_service_unit_type
 			},
 			{
-				fieldtype: 'Link', label: 'Service Unit', fieldname: 'service_unit',
-				options: 'Healthcare Service Unit', reqd: 1
+				fieldtype: 'Link',
+				label: 'Admission Type',
+				fieldname: 'admission_type',
+				options: 'Healthcare Admission Type'
 			},
 			{
-				fieldtype: 'Datetime', label: 'Admission Datetime', fieldname: 'check_in',
-				reqd: 1, default: frappe.datetime.now_datetime()
+				fieldtype: 'Column Break'
 			},
 			{
-				fieldtype: 'Date', label: 'Expected Discharge', fieldname: 'expected_discharge',
+				fieldtype: 'Link',
+				label: 'Service Unit',
+				fieldname: 'service_unit',
+				options: 'Healthcare Service Unit',
+				reqd: 1
+			},
+			{
+				fieldtype: 'Datetime',
+				label: 'Admission Datetime',
+				fieldname: 'check_in',
+				reqd: 1,
+				default: frappe.datetime.now_datetime()
+			},
+			{
+				fieldtype: 'Date',
+				label: 'Expected Discharge',
+				fieldname: 'expected_discharge',
 				default: frm.doc.expected_length_of_stay ? frappe.datetime.add_days(frappe.datetime.now_datetime(), frm.doc.expected_length_of_stay) : ''
 			}
 		],
 		primary_action_label: __('Admit'),
-		primary_action: function () {
+		primary_action: async function () {
+			let admission_type =  dialog.get_value('admission_type')
 			let service_unit = dialog.get_value('service_unit');
 			let check_in = dialog.get_value('check_in');
 			let expected_discharge = null;
@@ -156,22 +177,13 @@ let admit_patient_dialog = function (frm) {
 			if (!service_unit && !check_in) {
 				return;
 			}
-			frappe.call({
-				doc: frm.doc,
-				method: 'admit',
-				args: {
-					'service_unit': service_unit,
-					'check_in': check_in,
-					'expected_discharge': expected_discharge
-				},
-				callback: function (data) {
-					if (!data.exc) {
-						frm.reload_doc();
-					}
-				},
-				freeze: true,
-				freeze_message: __('Processing Patient Admission')
-			});
+
+			if (frm.doc.insurance_company.includes("NHIF")) {
+				nhif_admit_patient(frm, admission_type, service_unit, check_in, expected_discharge)
+			} else {
+				non_nhif_admit_patient(frm, service_unit, check_in, expected_discharge)
+			}
+
 			frm.refresh_fields();
 			dialog.hide();
 		}
@@ -196,8 +208,53 @@ let admit_patient_dialog = function (frm) {
 		};
 	};
 
+	if (frm.doc.insurance_company.includes("NHIF")) {
+		dialog.set_df_property("service_unit_type", "reqd", 1);
+		dialog.set_df_property("admission_type", "reqd", 1);
+	}
+
 	dialog.show();
 };
+
+let nhif_admit_patient = (frm, admission_type, service_unit, check_in, expected_discharge) => {
+	frappe.call({
+		method: 'hms_tz.nhif.nhif_api.admission.admit_patient',
+		args: {
+			admission_type: admission_type,
+			service_unit: service_unit,
+			date_admitted: check_in,
+			ref_doctype: 'Inpatient Record',
+			ref_docname: frm.doc.name
+		},
+		callback: (r => {
+			if (r.message) {
+				let data = r.message;
+
+				frm.reload_doc();
+				non_nhif_admit_patient(frm, service_unit, check_in, expected_discharge)
+			}
+		})
+	})
+}
+
+let non_nhif_admit_patient = (frm, service_unit, check_in, expected_discharge) => {
+	frappe.call({
+		doc: frm.doc,
+		method: 'admit',
+		args: {
+			'service_unit': service_unit,
+			'check_in': check_in,
+			'expected_discharge': expected_discharge
+		},
+		callback: function (data) {
+			if (!data.exc) {
+				frm.reload_doc();
+			}
+		},
+		freeze: true,
+		freeze_message: __('Processing Patient Admission')
+	});
+}
 
 let add_bed_dialog = function (frm) {
 	let dialog = new frappe.ui.Dialog({

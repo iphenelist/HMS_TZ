@@ -1,6 +1,8 @@
 import json
 import frappe
 import requests
+from frappe.utils import get_url_to_form, get_fullname
+from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -337,3 +339,110 @@ def get_room_types(company=None, caller=None):
         if company and caller == 'Front End':
             frappe.msgprint("successfully fetched Room Types", alert=True, indicator="green")
 
+
+@frappe.whitelist()
+def admit_patient(
+    admission_type,
+    service_unit,
+    date_admitted,
+    ref_doctype,
+    ref_docname
+):
+    inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
+    mct_code = frappe.get_cached_value(
+        "Healthcare Practitioner",
+        inpatient_doc.admission_practitioner,
+        ["tz_mct_code"]
+    ),
+
+    authorization_no = frappe.get_cached_value(
+        "Patient Appointment",
+        inpatient_doc.patient_appointment,
+        "authorization_number"
+    )
+
+    admission_type_id = frappe.get_cached_value(
+        "Healthcare Admission Type",
+        admission_type,
+        "admission_type_id"
+    )
+
+    service_unit_type = inpatient_doc.admission_service_unit_type
+    ward_type, item_code = frappe.get_cached_value(
+        "Healthcare Service Unit Type",
+        service_unit_type,
+        ["ward_type", "item_code"]
+    )
+    if not ward_type:
+        url = get_url_to_form("Healthcare Service Unit Type", service_unit_type)
+        frappe.throw(
+            f"Please select 'Ward Type' on Service Unit Type: <a href='{url}'><b>{service_unit_type}</b></a>"
+        )
+    
+    ward_type_id = frappe.get_cached_value("Healthcare Ward Type", ward_type, "ward_type_id")
+
+    room_type = frappe.get_cached_value("Healthcare Service Unit", service_unit, "room_type")
+    if not room_type:
+        url = get_url_to_form("Healthcare Service Unit", service_unit)
+        frappe.throw(f"Please select 'Room Type' for Service Unit: <a href='{url}'><b>{service_unit}</b></a>")
+    
+    room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
+
+    bed_charge = get_item_rate(item_code, inpatient_doc.company, npatient_doc.insurance_subscription)
+    payload = {
+        "authorizationNo": authorization_no,
+        "fullName": inpatient_doc.patient_name,
+        "gender": inpatient_doc.gender,
+        "dateOfBirth": inpatient_doc.dob,
+        "admissionTypeID": admission_type_id,
+        "wardTypeID": ward_type_id,
+        "roomTypeID": room_type_id,
+        "chargesPerDay": bed_charge,
+        "practitionerNo": mct_code,
+        "diagnosisAtAdmission": "",
+        "practitionersRemarks": inpatient_doc.admission_instruction or "",
+        "dateAdmitted": date_admitted,
+        "createdBy": get_fullname(inpatient_doc.owner)
+    }
+
+    payload = json.dumps(payload)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", inpatient_doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/AdmitPatient"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="AdmitPatient",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="AdmitPatient",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+        return data
