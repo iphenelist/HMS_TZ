@@ -1,7 +1,7 @@
 import json
 import frappe
 import requests
-from frappe.utils import get_url_to_form, get_fullname
+from frappe.utils import get_url_to_form, get_fullname, now_datetime
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -399,7 +399,7 @@ def admit_patient(
         "roomTypeID": room_type_id,
         "chargesPerDay": bed_charge,
         "practitionerNo": mct_code,
-        "diagnosisAtAdmission": "",
+        "diagnosisAtAdmission": inpatient_doc.diagnosis_at_admission,
         "practitionersRemarks": inpatient_doc.admission_instruction or "",
         "dateAdmitted": date_admitted,
         "createdBy": get_fullname(inpatient_doc.owner)
@@ -446,3 +446,80 @@ def admit_patient(
         )
 
         return data
+
+
+@frappe.whitelist()
+def discharge_patient(
+    discharge_type,
+    ref_doctype,
+    ref_docname,
+    referral_id=""
+):
+    inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
+    mct_code = frappe.get_cached_value(
+        "Healthcare Practitioner",
+        inpatient_doc.discharge_practitioner,
+        ["tz_mct_code"]
+    ),
+
+    discharge_type_id = frappe.get_cached_value(
+        "Healthcare Discharge Type",
+        discharge_type,
+        "discharge_type_id"
+    )
+
+    #TODO: implement referral to facility code after refferal integration is done
+
+    payload = {
+        "admissionNo": inpatient_doc.admission_no,
+        "practitionerNo": mct_code,
+        "practitionersRemarks": inpatient_doc.discharge_instructions,
+        "dischargeTypeID": discharge_type_id,
+        "dateDischarged": now_datetime(),
+        "diagnosisAtDischarge": inpatient_doc.diagnosis_at_discharge,
+        "referredToFacilityCode": "",
+        "createdBy": get_fullname(frappe.session.user)
+    }
+
+    payload = json.dumps(payload)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", inpatient_doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Admissions/DishargePatient"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="DishargePatient",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="DishargePatient",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname
+        )
+
+        return data
+
