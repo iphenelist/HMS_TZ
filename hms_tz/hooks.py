@@ -279,6 +279,7 @@ scheduler_events = {
             "hms_tz.nhif.nhif_api.admission.get_discharge_types",
             "hms_tz.nhif.nhif_api.admission.get_ward_types",
             "hms_tz.nhif.nhif_api.admission.get_room_types",
+            "hms_tz.nhif.nhif_api.facility.get_facilities",
         ],
     },
     # 	"hourly": [
