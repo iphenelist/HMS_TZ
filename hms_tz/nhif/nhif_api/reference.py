@@ -5,12 +5,15 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 @frappe.whitelist()
-def get_points_of_care():
-    settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
-    if len(settings) == 0:
+def get_points_of_care(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+    
+    if not company:
         return
     
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -21,7 +24,18 @@ def get_points_of_care():
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
-    if r.status_code == 200:
+    if r.status_code != 200:
+        add_log(
+            request_type="GetPointsOfCare",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+        )
+        
+    else:
         data = json.loads(r.text)
         add_log(
             request_type="GetPointsOfCare",
@@ -63,15 +77,9 @@ def get_points_of_care():
                     title="GetPointsOfCare",
                     message=traceback
                 )
-    else:
-        add_log(
-            request_type="GetPointsOfCare",
-            request_url=url,
-            request_header=headers,
-            request_body="",
-            response_data=r.text,
-            status_code=r.status_code,
-            company=settings_doc.name,
-        )
+        
+        if company and caller == 'Front End':
+            frappe.msgprint("successfully fetched Points of Care", alert=True, indicator="green")
+
 
 
