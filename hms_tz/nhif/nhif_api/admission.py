@@ -397,7 +397,7 @@ def admit_patient(
     
     room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
 
-    bed_charge = get_item_rate(item_code, inpatient_doc.company, npatient_doc.insurance_subscription)
+    bed_charge = get_item_rate(item_code, inpatient_doc.company, inpatient_doc.insurance_subscription)
     payload = {
         "authorizationNo": authorization_no,
         "fullName": inpatient_doc.patient_name,
@@ -573,7 +573,7 @@ def transfer_patient(
     
     room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
 
-    bed_charge = get_item_rate(item_code, inpatient_doc.company, npatient_doc.insurance_subscription)
+    bed_charge = get_item_rate(item_code, inpatient_doc.company, inpatient_doc.insurance_subscription)
     
     payload = {
         "admissionNo": inpatient_doc.admission_no,
