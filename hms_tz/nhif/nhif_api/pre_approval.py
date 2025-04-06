@@ -1,6 +1,7 @@
 import json
 import frappe
 import requests
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 @frappe.whitelist()
