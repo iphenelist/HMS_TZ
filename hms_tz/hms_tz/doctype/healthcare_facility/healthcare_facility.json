@@ -1,0 +1,267 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:facility_name",
+ "creation": "2025-04-06 17:58:48.636020",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "facility_name",
+  "facility_code",
+  "facility_level_code",
+  "column_break_khixq",
+  "certification_no",
+  "abbreviation_code",
+  "classification",
+  "classification_id",
+  "column_break_dgirg",
+  "ward_code",
+  "postal_address",
+  "section_break_fdqaw",
+  "owner_code",
+  "ownership_type_code",
+  "column_break_zkjr0",
+  "pay_to_code",
+  "percent_sent",
+  "certification_application_date",
+  "column_break_xwdpa",
+  "status",
+  "has_eclaims",
+  "send_amount_to_msd",
+  "section_break_djzm0",
+  "key_contact",
+  "email_address",
+  "telephone_no",
+  "column_break_l3p2a",
+  "fax",
+  "website",
+  "column_break_ksjq5",
+  "longitude",
+  "latitude"
+ ],
+ "fields": [
+  {
+   "fieldname": "facility_name",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Facility Name",
+   "unique": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "facility_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Facility Code",
+   "search_index": 1
+  },
+  {
+   "fieldname": "certification_no",
+   "fieldtype": "Data",
+   "label": "Certification No",
+   "search_index": 1
+  },
+  {
+   "fieldname": "abbreviation_code",
+   "fieldtype": "Data",
+   "label": "Abbreviation Code",
+   "search_index": 1
+  },
+  {
+   "fieldname": "postal_address",
+   "fieldtype": "Small Text",
+   "label": "Postal Address"
+  },
+  {
+   "fieldname": "ward_code",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Ward Code",
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "classification",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Classification",
+   "search_index": 1
+  },
+  {
+   "fieldname": "classification_id",
+   "fieldtype": "Data",
+   "label": "Classification ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "facility_level_code",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Facility Level Code",
+   "search_index": 1
+  },
+  {
+   "fieldname": "ownership_type_code",
+   "fieldtype": "Data",
+   "label": "Ownership Type Code",
+   "search_index": 1
+  },
+  {
+   "fieldname": "owner_code",
+   "fieldtype": "Data",
+   "label": "Owner Code",
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_eclaims",
+   "fieldtype": "Check",
+   "label": "Has E-Claims",
+   "search_index": 1
+  },
+  {
+   "fieldname": "pay_to_code",
+   "fieldtype": "Data",
+   "label": "Pay To Code",
+   "search_index": 1
+  },
+  {
+   "fieldname": "email_address",
+   "fieldtype": "Data",
+   "label": "Email Address",
+   "search_index": 1
+  },
+  {
+   "fieldname": "telephone_no",
+   "fieldtype": "Data",
+   "label": "Telephone No",
+   "search_index": 1
+  },
+  {
+   "fieldname": "website",
+   "fieldtype": "Data",
+   "label": "Website",
+   "search_index": 1
+  },
+  {
+   "fieldname": "key_contact",
+   "fieldtype": "Data",
+   "label": "Key Contact",
+   "search_index": 1
+  },
+  {
+   "fieldname": "fax",
+   "fieldtype": "Data",
+   "label": "Fax",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "send_amount_to_msd",
+   "fieldtype": "Check",
+   "label": "Send Amount To MSD",
+   "search_index": 1
+  },
+  {
+   "fieldname": "percent_sent",
+   "fieldtype": "Percent",
+   "label": "Percent Sent",
+   "search_index": 1
+  },
+  {
+   "fieldname": "longitude",
+   "fieldtype": "Data",
+   "label": "Longitude",
+   "search_index": 1
+  },
+  {
+   "fieldname": "latitude",
+   "fieldtype": "Data",
+   "label": "Latitude",
+   "search_index": 1
+  },
+  {
+   "fieldname": "certification_application_date",
+   "fieldtype": "Date",
+   "label": "Certification Application Date",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_khixq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dgirg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_fdqaw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_zkjr0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xwdpa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_djzm0",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_l3p2a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ksjq5",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-06 18:45:06.140198",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Healthcare Facility",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
