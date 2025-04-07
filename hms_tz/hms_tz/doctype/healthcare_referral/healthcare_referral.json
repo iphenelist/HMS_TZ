@@ -41,8 +41,9 @@
   "practitioner_no",
   "column_break_5moo6",
   "reason_for_referral",
-  "reason_column_break",
-  "referring_diagnosis",
+  "section_break_xwfkf",
+  "select_diagnosis",
+  "diagnosis",
   "referral_section_break",
   "referral_no",
   "referralid",
@@ -167,25 +168,15 @@
    "search_index": 1
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "reason_section",
    "fieldtype": "Section Break",
-   "label": "Referring Reason &Diagnosis"
+   "label": "Referring Reason"
   },
   {
    "fieldname": "reason_for_referral",
    "fieldtype": "Small Text",
-   "label": "Reason For Referral",
-   "reqd": 1
-  },
-  {
-   "fieldname": "reason_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "referring_diagnosis",
-   "fieldtype": "Small Text",
-   "label": "Referring Diagnosis",
-   "reqd": 1
+   "label": "Reason For Referral"
   },
   {
    "fieldname": "referral_section_break",
@@ -272,8 +263,10 @@
    "fetch_from": "appointment.patient",
    "fieldname": "patient",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
+   "read_only": 1,
    "search_index": 1
   },
   {
@@ -362,12 +355,29 @@
    "options": "Healthcare Insurance Company",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "section_break_xwfkf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "diagnosis",
+   "fieldtype": "Table",
+   "label": "Diagnosis",
+   "options": "Healthcare Referral diagnosis"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "select_diagnosis",
+   "fieldtype": "Button",
+   "label": "Select Diagnosis"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-07 19:12:10.319194",
+ "modified": "2025-04-07 21:47:45.898856",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",
