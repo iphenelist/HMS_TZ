@@ -7,26 +7,39 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "encounter",
+  "section_break_urkrb",
   "appointment",
+  "patient",
+  "first_name",
+  "last_name",
   "patient_name",
-  "gender",
   "status_column_break",
-  "referral_status",
   "card_no",
-  "authorization_number",
+  "national_id",
+  "dob",
+  "authorization_no",
+  "column_break_h5k6s",
   "posting_date",
+  "attendance_date",
+  "patient_type_code",
+  "column_break_qasna",
+  "mobile_no",
+  "gender",
+  "insurance_company",
   "facility_section_break",
   "source_facility",
   "source_facility_code",
   "facility_column_break",
   "referrer_facility",
   "referrer_facility_code",
-  "practitioner_section_break",
-  "practitioner",
-  "mobile_no",
-  "qualification_column_break",
-  "nhif_physician_qualification",
+  "column_break_cmshp",
+  "referral_status",
+  "referral_date",
   "reason_section",
+  "practitioner",
+  "practitioner_no",
+  "column_break_5moo6",
   "reason_for_referral",
   "reason_column_break",
   "referring_diagnosis",
@@ -40,12 +53,15 @@
  ],
  "fields": [
   {
+   "fetch_from": "encounter.appointment",
    "fieldname": "appointment",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Patient Appointment",
    "options": "Patient Appointment",
-   "reqd": 1
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "appointment.patient_name",
@@ -54,14 +70,14 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Patient Name",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "appointment.patient_sex",
    "fieldname": "gender",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Gender",
-   "options": "\nFemale\nMale",
    "read_only": 1
   },
   {
@@ -72,9 +88,11 @@
    "fieldname": "referral_status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Referal Status",
    "options": "Pending\nSuccess",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "appointment.coverage_plan_card_number",
@@ -83,23 +101,16 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "CardNo",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "appointment.authorization_number",
-   "fieldname": "authorization_number",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "AuthorizationNo",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "posting_date",
    "fieldtype": "Datetime",
    "in_standard_filter": 1,
    "label": "Posting Date",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "facility_section_break",
@@ -113,14 +124,16 @@
    "in_standard_filter": 1,
    "label": "Source Facility",
    "options": "HMS TZ Settings",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "source_facility.facility_code",
    "fieldname": "source_facility_code",
    "fieldtype": "Data",
    "label": "Source Facility Code",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "facility_column_break",
@@ -131,43 +144,27 @@
    "fieldtype": "Link",
    "label": "Referrer Facility",
    "options": "Healthcare Facility",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "referrer_facility.facility_code",
    "fieldname": "referrer_facility_code",
    "fieldtype": "Data",
    "label": "Referrer Facility Code",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
-   "fieldname": "practitioner_section_break",
-   "fieldtype": "Section Break",
-   "label": "Practitioner Info"
-  },
-  {
+   "fetch_from": "encounter.practitioner",
    "fieldname": "practitioner",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Healthcare Practitioner",
    "options": "Healthcare Practitioner",
-   "reqd": 1
-  },
-  {
-   "fieldname": "mobile_no",
-   "fieldtype": "Data",
-   "label": "Practitioner MobileNo"
-  },
-  {
-   "fieldname": "qualification_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fetch_from": "practitioner.nhif_physician_qualification",
-   "fieldname": "nhif_physician_qualification",
-   "fieldtype": "Data",
-   "label": "NHIF Physician Qualifiaction",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "reason_section",
@@ -234,12 +231,143 @@
    "options": "Healthcare Referral",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fetch_from": "appointment.national_id",
+   "fieldname": "national_id",
+   "fieldtype": "Data",
+   "label": "National ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "appointment.authorization_number",
+   "fieldname": "authorization_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "AuthorizationNo",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "referral_date",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Referral Date",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_cmshp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_h5k6s",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.patient",
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.first_name",
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "First Name",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.last_name",
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Last Name",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.dob",
+   "fieldname": "dob",
+   "fieldtype": "Date",
+   "label": "Date of Birth",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "patient.mobile",
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "appointment.appointment_date",
+   "fieldname": "attendance_date",
+   "fieldtype": "Date",
+   "label": "Attendance Date",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "patient_type_code",
+   "fieldtype": "Data",
+   "label": "Patient Type Code",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "practitioner.tz_mct_code",
+   "fieldname": "practitioner_no",
+   "fieldtype": "Data",
+   "label": "Practitioner No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_5moo6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "encounter",
+   "fieldtype": "Link",
+   "label": "Patient Encounter",
+   "options": "Patient Encounter",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_urkrb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_qasna",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "encounter.insurance_company",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-06 23:48:46.664935",
+ "modified": "2025-04-07 19:12:10.319194",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",
