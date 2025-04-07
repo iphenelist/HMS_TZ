@@ -65,6 +65,18 @@
    "read_only": 1
   },
   {
+   "fieldname": "status_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referral_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Referal Status",
+   "options": "Pending\nSuccess",
+   "read_only": 1
+  },
+  {
    "fetch_from": "appointment.coverage_plan_card_number",
    "fieldname": "card_no",
    "fieldtype": "Data",
@@ -83,11 +95,55 @@
    "read_only": 1
   },
   {
+   "fieldname": "posting_date",
+   "fieldtype": "Datetime",
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "facility_section_break",
+   "fieldtype": "Section Break",
+   "label": "Health Facility info"
+  },
+  {
+   "fetch_from": "appointment.company",
+   "fieldname": "source_facility",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Source Facility",
+   "options": "HMS TZ Settings",
+   "read_only": 1
+  },
+  {
    "fetch_from": "source_facility.facility_code",
    "fieldname": "source_facility_code",
    "fieldtype": "Data",
    "label": "Source Facility Code",
    "read_only": 1
+  },
+  {
+   "fieldname": "facility_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referrer_facility",
+   "fieldtype": "Link",
+   "label": "Referrer Facility",
+   "options": "Healthcare Facility",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "referrer_facility.facility_code",
+   "fieldname": "referrer_facility_code",
+   "fieldtype": "Data",
+   "label": "Referrer Facility Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "practitioner_section_break",
+   "fieldtype": "Section Break",
+   "label": "Practitioner Info"
   },
   {
    "fieldname": "practitioner",
@@ -103,11 +159,20 @@
    "label": "Practitioner MobileNo"
   },
   {
-   "fieldname": "posting_date",
-   "fieldtype": "Datetime",
-   "in_standard_filter": 1,
-   "label": "Posting Date",
+   "fieldname": "qualification_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "practitioner.nhif_physician_qualification",
+   "fieldname": "nhif_physician_qualification",
+   "fieldtype": "Data",
+   "label": "NHIF Physician Qualifiaction",
    "read_only": 1
+  },
+  {
+   "fieldname": "reason_section",
+   "fieldtype": "Section Break",
+   "label": "Referring Reason &Diagnosis"
   },
   {
    "fieldname": "reason_for_referral",
@@ -145,6 +210,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "referringdate_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "referringdate",
    "fieldtype": "Date",
    "label": "ReferringDate",
@@ -158,68 +227,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "status_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "referral_status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Referal Status",
-   "options": "Pending\nSuccess",
-   "read_only": 1
-  },
-  {
-   "fieldname": "facility_section_break",
-   "fieldtype": "Section Break",
-   "label": "Health Facility info"
-  },
-  {
-   "fetch_from": "appointment.company",
-   "fieldname": "source_facility",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Source Facility",
-   "options": "Company NHIF Settings",
-   "read_only": 1
-  },
-  {
-   "fieldname": "facility_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "practitioner_section_break",
-   "fieldtype": "Section Break",
-   "label": "Practitioner Info"
-  },
-  {
-   "fieldname": "qualification_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "reason_section",
-   "fieldtype": "Section Break",
-   "label": "Referring Reason &Diagnosis"
-  },
-  {
-   "fieldname": "referringdate_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "referrer_facility",
-   "fieldtype": "Link",
-   "label": "Referrer Facility",
-   "options": "Healthcare External Referrer",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "referrer_facility.facility_code",
-   "fieldname": "referrer_facility_code",
-   "fieldtype": "Data",
-   "label": "Referrer Facility Code",
-   "read_only": 1
-  },
-  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -227,22 +234,16 @@
    "options": "Healthcare Referral",
    "print_hide": 1,
    "read_only": 1
-  },
-  {
-   "fetch_from": "practitioner.nhif_physician_qualification",
-   "fieldname": "nhif_physician_qualification",
-   "fieldtype": "Data",
-   "label": "NHIF Physician Qualifiaction",
-   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-06-30 12:18:38.471974",
+ "modified": "2025-04-06 23:48:46.664935",
  "modified_by": "Administrator",
- "module": "NHIF",
+ "module": "Hms Tz",
  "name": "Healthcare Referral",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -259,5 +260,7 @@
   }
  ],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
 }
