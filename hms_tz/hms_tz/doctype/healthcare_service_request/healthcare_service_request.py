@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 import json
 import frappe
+from frappe import _
 from frappe.query_builder import DocType
 from frappe.utils import get_link_to_form
 from frappe.model.document import Document
@@ -144,15 +145,15 @@ class HealthcareServiceRequest(Document):
 			if "NHIF" not in item.insurance_company:
 				return
 
-			service_type = get_service_type(self, item)
-			product_code = get_product_code(self, item)
+			service_type = self.get_service_type(item)
+			product_code = self.get_product_code(item)
 			ref_code = get_item_refcode(service_type, item.service_name)
 
 			percent_covered = frappe.get_cached_value(
 				"NHIF Cost Sharing", {	
 					"itemcode": ref_code,
 					"productcode": product_code,
-					"yearno": years_of_insurance
+					"yearno": self.years_of_insurance
 				}, "percentcovered"
 			)
 
@@ -166,15 +167,15 @@ class HealthcareServiceRequest(Document):
 				if "NHIF" not in item.insurance_company:
 					continue
 				
-				service_type = get_service_type(self, item)
-				product_code = get_product_code(self, item)
+				service_type = self.get_service_type(item)
+				product_code = self.get_product_code(item)
 				ref_code = get_item_refcode(service_type, item.service_name)
 
 				percent_covered = frappe.get_cached_value(
 					"NHIF Cost Sharing", {	
 						"itemcode": ref_code,
 						"productcode": product_code,
-						"yearno": years_of_insurance
+						"yearno": self.years_of_insurance
 					}, "percentcovered"
 				)
 
