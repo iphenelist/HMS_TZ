@@ -8,6 +8,9 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
 
 
 class HealthcareReferral(Document):
+	def before_insert(self):
+		self.get_clinical_notes()
+
 	def before_save(self):
 		self.posting_date = now_datetime()
 		self.patient_type_code = "IN" if frappe.get_cached_value("Patient", self.patient, "inpatient_record") else "OUT"
@@ -15,6 +18,16 @@ class HealthcareReferral(Document):
 
 	def before_submit(self):
 		self.posting_date = now_datetime()
+
+
+	def get_clinical_notes(self):
+		"""Get clinical notes from encounter"""
+		
+		if not self.encounter:
+			return
+		
+		clinical_notes = frappe.db.get_value("Patient Encounter", self.encounter, "examination_detail")
+		self.reason_for_referral = clinical_notes.replace('"', " ")
 
 
 	@frappe.whitelist()
