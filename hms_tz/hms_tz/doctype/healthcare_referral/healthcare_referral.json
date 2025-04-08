@@ -8,6 +8,11 @@
  "engine": "InnoDB",
  "field_order": [
   "encounter",
+  "column_break_nbbzj",
+  "referral_type",
+  "column_break_okjqc",
+  "get_referral_no",
+  "update_referral",
   "section_break_urkrb",
   "appointment",
   "patient",
@@ -178,7 +183,7 @@
   },
   {
    "fieldname": "reason_for_referral",
-   "fieldtype": "Small Text",
+   "fieldtype": "Text Editor",
    "label": "Reason For Referral"
   },
   {
@@ -381,23 +386,53 @@
    "fieldtype": "Section Break"
   },
   {
-   "depends_on": "eval: !doc.__islocal",
+   "depends_on": "eval: !doc.__islocal & doc.referral_type == 'Form 2C/2E'",
    "fieldname": "select_service",
    "fieldtype": "Button",
    "label": "Select Service"
   },
   {
-   "depends_on": "eval: !doc.__islocal",
+   "depends_on": "eval: !doc.__islocal & doc.referral_type == 'Form 2C/2E'",
    "fieldname": "services",
    "fieldtype": "Table",
    "label": "Services",
+   "mandatory_depends_on": "eval: !doc.__islocal & doc.referral_type == 'Form 2C/2E'",
    "options": "Healthcare Referral Item"
+  },
+  {
+   "fieldname": "column_break_nbbzj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referral_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Referral Type",
+   "options": "\nForm 2C/2E\nTreatment Referral",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_okjqc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal ",
+   "fieldname": "get_referral_no",
+   "fieldtype": "Button",
+   "label": "Get Referral No"
+  },
+  {
+   "depends_on": "eval: doc.docstatus == 1",
+   "fieldname": "update_referral",
+   "fieldtype": "Button",
+   "label": "Update Referral"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-08 09:18:30.907579",
+ "modified": "2025-04-08 17:47:18.962450",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",
