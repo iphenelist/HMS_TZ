@@ -44,6 +44,9 @@
   "section_break_xwfkf",
   "select_diagnosis",
   "diagnosis",
+  "section_break_kravf",
+  "select_service",
+  "services",
   "referral_section_break",
   "referral_no",
   "referralid",
@@ -372,12 +375,29 @@
    "fieldname": "select_diagnosis",
    "fieldtype": "Button",
    "label": "Select Diagnosis"
+  },
+  {
+   "fieldname": "section_break_kravf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "select_service",
+   "fieldtype": "Button",
+   "label": "Select Service"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "services",
+   "fieldtype": "Table",
+   "label": "Services",
+   "options": "Healthcare Referral Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-07 21:47:45.898856",
+ "modified": "2025-04-08 09:18:30.907579",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",
