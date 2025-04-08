@@ -46,3 +46,70 @@ class HealthcareReferral(Document):
 
 		return reversed(diagnosis)
 
+
+	@frappe.whitelist()
+	def get_services(self):
+		"""Get services from encounter"""
+		
+		if not self.encounter:
+			return
+		
+		services = []
+		childs_map = get_childs_map()
+		encounter_doc = frappe.get_doc("Patient Encounter", self.encounter)
+
+		for child in childs_map:
+			if len(encounter_doc.get(child["table"])) == 0:
+				continue
+			
+			for row in encounter_doc.get(child["table"]):
+				if (
+					row.is_cancelled == 1 or
+					row.is_not_available_inhouse == 1
+				):
+					continue
+
+				if self.insurance_company and row.prescribe == 1:
+					continue
+
+				ref_code = get_item_refcode(child["doctype"], row.get(child["item"]))
+				service = {
+					"service_type": child["doctype"],
+					"service_name": row.get(child["item"]),
+					"qty": row.get("quantity") or 1,
+					"item_code": ref_code,
+				}
+				services.append(service)
+		
+		return services
+
+
+def get_childs_map():
+	childs_map = [
+		{
+			"table": "lab_test_prescription",
+			"doctype": "Lab Test Template",
+			"item": "lab_test_code",
+		},
+		{
+			"table": "radiology_procedure_prescription",
+			"doctype": "Radiology Examination Template",
+			"item": "radiology_examination_template",
+		},
+		{
+			"table": "procedure_prescription",
+			"doctype": "Clinical Procedure Template",
+			"item": "procedure",
+		},
+		{
+			"table": "drug_prescription",
+			"doctype": "Medication",
+			"item": "drug_code",
+		},
+		{
+			"table": "therapies",
+			"doctype": "Therapy Type",
+			"item": "therapy_type",
+		},
+	]
+	return childs_map
