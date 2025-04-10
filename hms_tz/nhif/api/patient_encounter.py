@@ -1788,7 +1788,7 @@ def update_drug_prescription(patient_encounter_doc, dn_doc):
                 frappe.db.set_value(
                     "Drug Prescription",
                     item.reference_name, {
-                        "dn_detail": item.name,
+                        # "dn_detail": item.name,
                         "delivery_note": dn_doc.name,
                     },
                     update_modified=False
