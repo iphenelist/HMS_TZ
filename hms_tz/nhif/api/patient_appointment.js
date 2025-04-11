@@ -444,27 +444,32 @@ frappe.ui.form.on('Patient Appointment', {
         }
 
         const insurance_company = frm.doc.insurance_company;
-        const coverage_plan_name = frm.doc.coverage_plan_name;
-        const appointment_type = frm.doc.appointment_type;
-        if (
-            insurance_company && coverage_plan_name &&
-            insurance_company.includes("NHIF") &&
-            (coverage_plan_name.includes("Option") || coverage_plan_name.includes("NMB"))
-        ) {
-            applyFasttrackCheck(frm, appointment_type);
-        } else {
-            frm.toggle_display('apply_fasttrack_charge', false);
-            frm.toggle_enable('apply_fasttrack_charge', false);
-            if (
-                frm.doc.apply_fasttrack_charge == 1
-                && !["Cancelled", "Closed"].includes(frm.doc.status)
-                && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
-            ) {
-                frm.set_value("apply_fasttrack_charge", 0);
-            }
-            frm.trigger("get_consulting_charge_item");
-            frm.trigger('get_insurance_amount');
+        if (!insurance_company || !insurance_company.includes("NHIF")) {
+            return
         }
+
+        frappe.call('hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups', {
+            insurance_subscription: frm.doc.insurance_subscription,
+            appointment_type: frm.doc.appointment_type,
+            apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
+        })
+            .then(r => {
+                if (r.message) {
+                    applyFasttrackCheck(frm, frm.doc.appointment_type);
+                } else {
+                    frm.toggle_display('apply_fasttrack_charge', false);
+                    frm.toggle_enable('apply_fasttrack_charge', false);
+                    if (
+                        frm.doc.apply_fasttrack_charge == 1
+                        && !["Cancelled", "Closed"].includes(frm.doc.status)
+                        && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+                    ) {
+                        frm.set_value("apply_fasttrack_charge", 0);
+                    }
+                    frm.trigger("get_consulting_charge_item");
+                    frm.trigger('get_insurance_amount');
+                }
+            });
 
         function applyFasttrackCheck(frm, appointment_type) {
             if (appointment_type.includes("Follow")) {
