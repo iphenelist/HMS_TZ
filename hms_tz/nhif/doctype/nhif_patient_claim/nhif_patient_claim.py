@@ -23,7 +23,6 @@ from frappe.utils import (
     get_url_to_form,
     get_time,
 )
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.healthcare_utils import (
     get_item_rate,
     to_base64,
@@ -36,6 +35,7 @@ from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change i
     track_changes_of_claim_items,
 )
 from frappe.query_builder import DocType
+from hms_tz.nhif.nhif_api.patient_claim import submit_folio
 
 
 pa = DocType("Patient Appointment")
@@ -123,9 +123,8 @@ class NHIFPatientClaim(Document):
 
         validate_submit_date(self)
 
-        # self.claim_file_mem = get_claim_pdf_file(self)
         frappe.msgprint("Sending NHIF Claim: " + str(get_datetime()))
-        self.send_nhif_claim()
+        submit_folio(self)
         frappe.msgprint("Got response from NHIF Claim: " + str(get_datetime()))
         end_datetime = get_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
@@ -774,85 +773,6 @@ class NHIFPatientClaim(Document):
         folio_data.entities[0].ClaimFile = "Stripped off"
         jsonStr_wo_files = json.dumps(folio_data)
         return jsonStr, jsonStr_wo_files
-
-    def send_nhif_claim(self):
-        json_data, json_data_wo_files = self.get_folio_json_data()
-        token = get_claimsservice_token(self.company)
-        claimsserver_url = frappe.get_value(
-            "Company NHIF Settings", self.company, "claimsserver_url"
-        )
-        headers = {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json",
-        }
-        url = str(claimsserver_url) + "/claimsserver/api/v1/Claims/SubmitFolios"
-        r = None
-        try:
-            r = requests.post(url, headers=headers, data=json_data, timeout=300)
-
-            if r.status_code != 200:
-                if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
-                    frappe.msgprint(
-                        "This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{0}".format(
-                            r.text
-                        )
-                        + str(get_datetime())
-                    )
-                elif (
-                    str(r)
-                    and r.status_code == 406
-                    and "Folio Number {0} has already been submited.".format(
-                        self.folio_no
-                    )
-                    in r.text
-                ):
-                    frappe.msgprint(
-                        "This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{0}".format(
-                            r.text
-                        )
-                        + str(get_datetime())
-                    )
-                else:
-                    frappe.msgprint(
-                        "NHIF Server responded with HTTP status code: {0}".format(
-                            str(r.status_code if r.status_code else "NONE")
-                        )
-                    )
-                    frappe.throw(str(r.text) if r.text else str(r))
-            else:
-                frappe.msgprint(str(r.text))
-                if r.text:
-                    add_log(
-                        request_type="SubmitFolios",
-                        request_url=url,
-                        request_header=headers,
-                        request_body=json_data_wo_files,
-                        response_data=r.text,
-                        status_code=r.status_code,
-                    )
-                frappe.msgprint(_("The claim has been sent successfully"), alert=True)
-
-        except Exception as e:
-            add_log(
-                request_type="SubmitFolios",
-                request_url=url,
-                request_header=headers,
-                request_body=json_data,
-                response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???")
-                or "NO TEXT",
-                status_code=(r.status_code if str(r) else "NO RESPONSE r. Timeout???")
-                or "NO STATUS CODE",
-            )
-            self.add_comment(
-                comment_type="Comment",
-                text=r.text if str(r) else "NO RESPONSE",
-            )
-            frappe.db.commit()
-
-            frappe.throw(
-                "This folio was NOT submitted due to the error above!. Please retry after resolving the problem. "
-                + str(get_datetime())
-            )
 
     def calculate_totals(self):
         self.total_amount = 0
