@@ -17,7 +17,33 @@ class HealthcareReferral(Document):
 
 
 	def before_submit(self):
+		self.validate_required_fields()
 		self.posting_date = now_datetime()
+
+
+	def validate_required_fields(self):
+		"""Validate required fields"""
+		
+		if not self.referrer_facility_code:
+			frappe.throw("Referrer Facility Code is required")
+		
+		if not self.practitioner_no:
+			frappe.throw("Practitioner No is required")
+		
+		if not self.patient:
+			frappe.throw("Patient is required")
+		
+		if not self.attendance_date:
+			frappe.throw("Attendance Date is required")
+		
+		if not self.reason_for_referral:
+			frappe.throw("Reason for Referral is required")
+		
+		if len(self.diagnosis) == 0:
+			frappe.throw("Diagnosis are required")
+		
+		if self.referral_type == "Service" and len(self.services) == 0:
+			frappe.throw("Services are required")
 
 
 	def get_clinical_notes(self):
