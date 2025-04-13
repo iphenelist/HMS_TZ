@@ -1,7 +1,7 @@
 import json
 import frappe
 import requests
-from frappe import get_fullname, now_datetime, flt
+from frappe.utils import now_datetime, get_fullname, flt
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -46,7 +46,7 @@ def submit_folio(doc):
                 )
             else:
                 frappe.msgprint(
-                    f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else "NONE")}"
+                    f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}"
                 )
                 frappe.throw(str(r.text) if r.text else str(r))
 
@@ -172,8 +172,7 @@ def get_submitted_claims(doc):
         "Authorization": f"Bearer {token}"
     }
 
-
-    r = requests.request("Get", url, headers=headers, timeout=60)
+    r = requests.request("Get", url, headers=headers, timeout=120)
     if r.status_code != 200:
         add_log(
             request_type="GetSubmittedClaims",
