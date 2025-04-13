@@ -83,6 +83,7 @@ def create_treatment_referral(doc):
 
         return True
 
+
 def create_service_referral(doc):
     diseases = []
     services = []
@@ -163,6 +164,69 @@ def create_service_referral(doc):
         if doc.docstatus == 0:
             doc.submit()
         
+        doc.reload()
+
+        return True
+
+
+def update_referral(ref_doctype, ref_docname):
+    """
+    Update referral.
+    """
+    doc = frappe.get_doc(ref_doctype, ref_docname)
+
+    payload = {
+        "referralNo": doc.referral_no,
+        "practitionerNo": doc.practitioner_no,
+        "practitionersRemarks": doc.reason_for_referral,
+        "toFacilityCode": doc.referrer_facility_code,
+        "createdBy": get_fullname(frappe.session.user),
+    }
+
+    payload = json.dumps(payload)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.source_facility)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Referrals/UpdateReferral"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="UpdateReferral",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="UpdateReferral",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        # TODO: update response values to Healthcare Referral doc
+        
+        doc.referral_updated_by = get_fullname(frappe.session.user)
+        doc.save(ignore_permissions=True)
         doc.reload()
 
         return True

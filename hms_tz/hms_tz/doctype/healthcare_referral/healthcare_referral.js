@@ -48,6 +48,38 @@ frappe.ui.form.on('Healthcare Referral', {
 				show_service_dialog(frm, r.message);
 			}
 		});
+	},
+	update_referral: (frm) => {
+		if (!frm.doc.encounter) {
+			frappe.msgprint({
+				title: __('Message'),
+				indicator: 'red',
+				message: __(
+					'<h4 class="text-center" style="background-color: #D3D3D3; font-weight: bold;">\
+					Please select an Encounter before updating the Referral<h4>'
+				)
+			});
+			return;
+		}
+
+		frappe.call({
+			method: "hms_tz.nhif.nhif_api.referral.update_referral",
+			args: {
+				ref_doctype: frm.doc.doctype,
+				ref_docname: frm.doc.name
+			},
+			freeze: true,
+			freeze_message: __('Updating Referral...'),
+			callback: function (r) {
+				if (r.message) {
+					frm.reload_doc();
+					frappe.show_alert({
+						message: __('Referral updated successfully'),
+						indicator: 'green'
+					});
+				}
+			}
+		});
 	}
 });
 
