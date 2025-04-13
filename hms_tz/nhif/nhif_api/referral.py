@@ -5,6 +5,19 @@ from frappe.utils import get_fullname
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
+def create_referral(doc):
+    """
+    Creates a referral to NHIF based on the type of referral.
+    """
+
+    if doc.referral_type == "Form 2C/2E":
+        return create_service_referral(doc)
+    elif doc.referral_type == "Treatment": 
+        return create_treatment_referral(doc)
+    else:
+        frappe.throw("Invalid Referral Type")
+
+
 def create_treatment_referral(doc):
     payload = {
         "cardNo": doc.card_no or doc.national_id,
