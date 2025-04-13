@@ -11,7 +11,6 @@
   "column_break_nbbzj",
   "referral_type",
   "column_break_okjqc",
-  "get_referral_no",
   "update_referral",
   "section_break_urkrb",
   "appointment",
@@ -417,12 +416,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval: !doc.__islocal ",
-   "fieldname": "get_referral_no",
-   "fieldtype": "Button",
-   "label": "Get Referral No"
-  },
-  {
    "depends_on": "eval: doc.docstatus == 1",
    "fieldname": "update_referral",
    "fieldtype": "Button",
@@ -432,7 +425,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-13 12:34:04.856194",
+ "modified": "2025-04-13 14:08:16.983791",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",
