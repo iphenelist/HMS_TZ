@@ -1,7 +1,7 @@
 import json
 import frappe
 import requests
-from frappe import get_fullname, now_datetime
+from frappe import get_fullname, now_datetime, flt
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -159,3 +159,77 @@ def get_payload(doc):
     payload = json.dumps(payload)
 
     return payload
+
+
+def get_submitted_claims(doc):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={settings_doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetSubmittedClaims",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetSubmittedClaims",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        if len(data) == 0:
+            frappe.msgprint(
+                f"No record found for facility: {frappe.bold(doc.company)}, claim year: {frappe.bold(doc.claim_year)} and claim month: {frappe.bold(doc.claim_month)}"
+            )
+            return
+        
+        return update_reconciliation_detail(doc, data)
+
+
+def update_reconciliation_detail(doc, records):
+	total_amount = 0
+	doc.status = "Successful"
+	doc.number_of_submitted_claims = len(records)
+
+	doc.claim_details = []
+	for record in records:
+		total_amount += flt(record["AmountClaimed"])
+		doc.append("claim_details", {
+			"foliono": record["FolioNo"],
+			"billno": record["BillNo"],
+			"datesubmitted": record["DateSubmitted"],
+			"cardno": record["CardNo"],
+			"authorizationno": record["AuthorizationNo"],
+			"amountclaimed": flt(record["AmountClaimed"]),
+			"submissionid": record["SubmissionID"],
+			"submissionno": record["SubmissionNo"],
+			"remarks": record["Remarks"],
+		})
+
+	doc.total_amount_claimed = total_amount
+	return True
+
