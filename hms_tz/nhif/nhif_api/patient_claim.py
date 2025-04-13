@@ -1,9 +1,95 @@
 import json
 import frappe
 import requests
-from frappe import get_fullname
+from frappe import get_fullname, now_datetime
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
+
+def submit_folio(doc):
+    """
+    Submit a patient claim to NHIF
+    """
+
+    payload = get_payload(doc)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/SubmitFolio"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = None
+    try:
+        r = requests.request("Post", url, data=payload, headers=headers, timeout=300)
+        if r.status_code != 200:
+            if (
+                str(r) and 
+                r.status_code == 500 and
+                "A claim with Similar" in r.text
+            ):
+                    frappe.msgprint(
+                        f"This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
+                        + str(now_datetime())
+                    )
+            elif (
+                str(r)
+                and r.status_code == 406
+                and f"Folio Number {doc.folio_no} has already been submited." in r.text
+            ):
+                frappe.msgprint(
+                    f"This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
+                    + str(now_datetime())
+                )
+            else:
+                frappe.msgprint(
+                    f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else "NONE")}"
+                )
+                frappe.throw(str(r.text) if r.text else str(r))
+
+        else:
+            data = json.loads(r.text)
+            add_log(
+                request_type="SubmitFolio",
+                request_url=url,
+                request_header=headers,
+                request_body=payload,
+                response_data=data,
+                status_code=r.status_code,
+                company=settings_doc.name,
+                ref_doctype=doc.doctype,
+                ref_docname=doc.name
+            )
+            frappe.msgprint(str(r.text))
+            frappe.msgprint(_("The claim has been sent successfully"), alert=True)
+
+            # TODO: update response values to Healthcare Referral doc
+
+    except Exception as e:
+        add_log(
+            request_type="SubmitFolio",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???"),
+            status_code=(r.status_code if str(r) else "NO STATUS CODE"),
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+        doc.add_comment(
+            comment_type="Comment",
+            text=r.text if str(r) else "NO RESPONSE",
+        )
+        frappe.db.commit()
+
+        frappe.throw(
+            "This folio was NOT submitted due to the error above!. Please retry after resolving the problem. "
+            + str(now_datetime())
+        )
 
 
 def get_payload(doc):
