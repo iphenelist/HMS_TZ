@@ -4,6 +4,7 @@
 import frappe
 from frappe.utils import now_datetime
 from frappe.model.document import Document
+from hms_tz.nhif.nhif_api.referral import create_referral
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode
 
 
@@ -19,6 +20,9 @@ class HealthcareReferral(Document):
 	def before_submit(self):
 		self.validate_required_fields()
 		self.posting_date = now_datetime()
+
+		if "NHIF" in self.insurance_company:
+			create_referral(self)
 
 
 	def validate_required_fields(self):
