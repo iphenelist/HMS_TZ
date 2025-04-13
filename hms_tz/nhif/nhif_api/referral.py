@@ -75,9 +75,10 @@ def create_treatment_referral(doc):
 
         # TODO: update response values to Healthcare Referral doc
         
+        doc.referral_submitted_by = get_fullname(frappe.session.user)
+        doc.referral_no = data.get("referralNo")
+        doc.referral_status = "Success"
         doc.save(ignore_permissions=True)
-        if doc.docstatus == 0:
-            doc.submit()
         
         doc.reload()
 
@@ -160,9 +161,10 @@ def create_service_referral(doc):
 
         # TODO: update response values to Healthcare Referral doc
         
+        doc.referral_submitted_by = get_fullname(frappe.session.user)
+        doc.referral_no = data.get("referralNo")
+        doc.referral_status = "Success"
         doc.save(ignore_permissions=True)
-        if doc.docstatus == 0:
-            doc.submit()
         
         doc.reload()
 
