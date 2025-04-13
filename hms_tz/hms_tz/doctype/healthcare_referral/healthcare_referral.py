@@ -42,7 +42,7 @@ class HealthcareReferral(Document):
 		if len(self.diagnosis) == 0:
 			frappe.throw("Diagnosis are required")
 		
-		if self.referral_type == "Service" and len(self.services) == 0:
+		if self.referral_type == "Form 2C/2E" and len(self.services) == 0:
 			frappe.throw("Services are required")
 
 
