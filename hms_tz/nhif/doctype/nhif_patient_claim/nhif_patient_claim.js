@@ -89,5 +89,21 @@ frappe.ui.form.on('NHIF Patient Claim', {
 		} else {
 			frm.set_value("reviewed_by", "");
 		}
+	},
+	
+	send_confirmation_code: (frm) => {
+		frappe.call({
+			method: "hms_tz.nhif.nhif_api.patient_claim.send_confirmation_code",
+			args: {
+				ref_doctype: frm.doc.doctype,
+				ref_docname: frm.doc.name,
+			},
+			freeze: true,
+			freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+		}).then(r => {
+			if (r.message) {
+				frm.reload_doc();
+			}
+		});
 	}
 });

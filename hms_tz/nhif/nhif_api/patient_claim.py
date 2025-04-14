@@ -108,7 +108,7 @@ def get_payload(doc):
         "BillNo": doc.name,
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
-        "AttendanceDate": str(doc.attendance_date),
+        "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
         "PatientTypeCode": doc.patient_type_code,
         "AttendingPractitioners": [mct_code for mct_code in doc.practitioner_no.split(",")],
         "LateSubmissionReason": doc.delayreason,
@@ -300,3 +300,78 @@ def submit_monthly_claim(doc):
 
         # TODO: update response values to NHIF Monthly Claim doc
         doc.status = "Successful"
+
+
+@frappe.whitelist()
+def send_confirmation_code(ref_doctype, ref_docname):
+    """
+    Send confirmation code to Patient
+    """
+
+    doc = frappe.get_doc(ref_doctype, ref_docname)
+
+    payload = {
+        "FacilityCode": doc.facility_code,
+        "CardNo": doc.cardno.strip(),
+        "AuthorizationNo": doc.authorization_no,
+        "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
+        "TotalAmount": doc.total_amount
+    }
+    payload = json.dumps(payload)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/SendConfirmationCode"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
+    if r.status_code != 200:
+        add_log(
+            request_type="SendConfirmationCode",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        frappe.throw(
+            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><b>Message from NHIF:</b><br><br>{r.text}"
+        )
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="SendConfirmationCode",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        # TODO: update response values to NHIF Patient Claim doc
+        doc.confirmation_code_sent = 1
+        frappe.db.set_value(
+            doc.doctype,
+            doc.name,
+            "confirmation_code_sent",
+            1
+        )
+        doc.reload()
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Confirmation code sent successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
+        )
+        return True

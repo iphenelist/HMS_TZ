@@ -76,7 +76,7 @@ class HealthcareServiceRequest(Document):
 		else:
 			row = row_obj
 
-		service_type = get_service_type(self, row)
+		service_type = self.get_service_type(self, row)
 		if not service_type:
 			return {"item_rate": 0, "discount_percent": 0}
 		
