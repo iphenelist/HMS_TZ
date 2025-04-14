@@ -187,8 +187,7 @@ def get_submitted_claims(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name
         )
-        frappe.db.commit()
-        
+
         frappe.throw(
             f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
                 <br><b>Message from NHIF:</b><br><br>{r.text}"
@@ -209,10 +208,9 @@ def get_submitted_claims(doc):
         )
 
         if len(data) == 0:
-            frappe.msgprint(
+            frappe.throw(
                 f"No record found for facility: {frappe.bold(doc.company)}, claim year: {frappe.bold(doc.claim_year)} and claim month: {frappe.bold(doc.claim_month)}"
             )
-            return
         
         return update_reconciliation_detail(doc, data)
 
@@ -280,7 +278,6 @@ def submit_monthly_claim(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name
         )
-        frappe.db.commit()
 
         frappe.throw(
             f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
