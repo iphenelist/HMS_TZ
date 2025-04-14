@@ -35,6 +35,7 @@
   "confirmation_code_sent",
   "confirmation_code",
   "column_break_7xkjq",
+  "get_receipt",
   "section_break_8",
   "folio_id",
   "facility_code",
@@ -495,12 +496,18 @@
   {
    "fieldname": "conf_code_column_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.docstatus == 1",
+   "fieldname": "get_receipt",
+   "fieldtype": "Button",
+   "label": "Get Receipt"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-14 17:25:22.708417",
+ "modified": "2025-04-14 18:04:38.141542",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",

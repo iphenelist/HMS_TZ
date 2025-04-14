@@ -168,7 +168,7 @@ def get_submitted_claims(doc):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={settings_doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
@@ -247,7 +247,7 @@ def submit_monthly_claim(doc):
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
     payload = {
-        "FacilityCode": settings_doc.facility_code,
+        "FacilityCode": doc.facility_code,
         "ClaimYear": doc.claim_year,
         "ClaimMonth": doc.claim_month,
         "FoliosSubmitted": doc.folio_submitted,
@@ -373,5 +373,63 @@ def send_confirmation_code(ref_doctype, ref_docname):
         doc.add_comment(
             comment_type="Comment",
             text=f"Confirmation code sent successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
+        )
+        return True
+
+
+@frappe.whitelist()
+def get_receipt(ref_doctype, ref_docname):
+    """
+    Get receipt from NHIF
+    """
+
+    doc = frappe.get_doc(ref_doctype, ref_docname)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{doc.nhif_claim_url}/api/Claims/GetReceipt?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}&folioNo={doc.folio_no}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Get", url, headers=headers, timeout=120)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetReceipt",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        frappe.throw(
+            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><b>Message from NHIF:</b><br><br>{r.text}"
+        )
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetReceipt",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        # TODO: update response values to NHIF Patient Claim doc
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Receipt retrieved successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
         )
         return True
