@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime, flt, get_fullname
+from hms_tz.nhif.nhif_api.patient_claim import submit_monthly_claim
 
 class NHIFMonthlyClaim(Document):
 	def before_save(self):
@@ -15,6 +16,7 @@ class NHIFMonthlyClaim(Document):
 		self.validate_claim_detail()
 		self.posting_date = now_datetime()
 		self.submitted_by = get_fullname(frappe.session.user)
+		submit_monthly_claim(self)
 	
 	def validate_reqd_fields(self):
 		for fieldname in ["company", "claim_year", "claim_month"]:

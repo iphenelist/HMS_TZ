@@ -162,6 +162,8 @@ def get_payload(doc):
 
 
 def get_submitted_claims(doc):
+    """Get submitted claims from NHIF"""
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
     token = settings_doc.get_nhif_token()
@@ -184,6 +186,12 @@ def get_submitted_claims(doc):
             company=settings_doc.name,
             ref_doctype=doc.doctype,
             ref_docname=doc.name
+        )
+        frappe.db.commit()
+        
+        frappe.throw(
+            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><b>Message from NHIF:</b><br><br>{r.text}"
         )
 
     else:
@@ -232,3 +240,66 @@ def update_reconciliation_detail(doc, records):
 	doc.total_amount_claimed = total_amount
 	return True
 
+
+def submit_monthly_claim(doc):
+    """
+    Submit a monthly claim to NHIF
+    """
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+
+    payload = {
+        "FacilityCode": settings_doc.facility_code,
+        "ClaimYear": doc.claim_year,
+        "ClaimMonth": doc.claim_month,
+        "FoliosSubmitted": doc.folio_submitted,
+        "TotalAmountClaimed": doc.total_amount_claimed,
+        "SubmissionRemarks": doc.submission_remarks,
+    }
+    payload = json.dumps(payload)
+
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/SubmitMonthlyClaim"
+
+    token = settings_doc.get_nhif_token()
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
+    if r.status_code != 200:
+        add_log(
+            request_type="SubmitMonthlyClaim",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+        frappe.db.commit()
+
+        frappe.throw(
+            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><b>Message from NHIF:</b><br><br>{r.text}"
+        )
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="SubmitMonthlyClaim",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name
+        )
+
+        # TODO: update response values to NHIF Monthly Claim doc
+        doc.status = "Successful"
