@@ -29,8 +29,12 @@
   "patient_signature",
   "section_break_auto_send",
   "is_ready_for_auto_submission",
-  "column_break_review_by",
   "reviewed_by",
+  "conf_code_column_break",
+  "send_confirmation_code",
+  "confirmation_code_sent",
+  "confirmation_code",
+  "column_break_7xkjq",
   "section_break_8",
   "folio_id",
   "facility_code",
@@ -423,10 +427,6 @@
    "label": "Is ready for auto submission"
   },
   {
-   "fieldname": "column_break_review_by",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "reviewed_by",
    "fieldtype": "Data",
    "label": "Reviewed By",
@@ -469,12 +469,38 @@
    "fieldname": "clinical_notes_section",
    "fieldtype": "Section Break",
    "label": "Clinical Notes"
+  },
+  {
+   "depends_on": "eval: doc.confirmation_code_sent == 1",
+   "fieldname": "confirmation_code",
+   "fieldtype": "Data",
+   "label": "Confirmation Code",
+   "mandatory_depends_on": "eval: doc.confirmation_code_sent == 1"
+  },
+  {
+   "fieldname": "column_break_7xkjq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "send_confirmation_code",
+   "fieldtype": "Button",
+   "label": "Send Confirmation Code"
+  },
+  {
+   "default": "0",
+   "fieldname": "confirmation_code_sent",
+   "fieldtype": "Check",
+   "label": "Confirmation Code Sent"
+  },
+  {
+   "fieldname": "conf_code_column_break",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-04 16:28:37.537576",
+ "modified": "2025-04-14 17:25:22.708417",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
