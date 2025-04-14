@@ -1,6 +1,7 @@
 # Copyright (c) 2025, Aakvatech and contributors
 # For license information, please see license.txt
 
+import json
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime, flt, get_fullname
@@ -60,3 +61,18 @@ class NHIFMonthlyClaim(Document):
 		self.total_amount_claimed = erp_total_claims
 		
 
+@frappe.whitelist()
+def submit_monthly_claim_via_api(data):
+	"""
+	Submit the monthly claim to NHIF API
+	"""
+	
+	data = json.loads(data)
+	nmc_doc = frappe.new_doc("NHIF Monthly Claim")
+	nmc_doc.update(data)
+	nmc_doc.save(ignore_permissions=True)
+	nmc_doc.reload()
+
+	nmc_doc.submit()
+	nmc_doc.reload()
+	return nmc_doc.name
