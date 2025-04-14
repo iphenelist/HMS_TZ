@@ -882,6 +882,7 @@ def validate_schemes_for_fasttrack_and_followups(
             "Normal Visit",
             "Emergency",
             "NHIF External Referral",
+            "New Case Visit",
         ]
     ):
         return True
