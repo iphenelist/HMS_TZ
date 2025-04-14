@@ -11,7 +11,6 @@ from hms_tz.nhif.nhif_api.patient_claim import get_submitted_claims
 class NHIFClaimReconciliation(Document):
 	def before_save(self):
 		self.posting_date = nowdate()
-
 		self.get_erp_monthly_claims()
 		
 	def validate_reqd_fields(self):
@@ -21,7 +20,6 @@ class NHIFClaimReconciliation(Document):
 	
 	def before_submit(self):
 		self.validate_reqd_fields()
-		
 		self.posting_date = nowdate()
 		get_submitted_claims(self)
 	
