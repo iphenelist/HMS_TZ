@@ -113,7 +113,7 @@ def get_payload(doc):
         "AttendingPractitioners": [mct_code for mct_code in doc.practitioner_no.split(",")],
         "LateSubmissionReason": doc.delayreason,
         "AmountClaimed": doc.total_amount,
-        "ConfirmationCode": "string", # TODO: add confirmation code functionality,
+        "ConfirmationCode": doc.confirmation_code or "",
         "FolioDiseases": diseases,
         "FolioItems": items,
         "DateCreated": str(doc.posting_date),
