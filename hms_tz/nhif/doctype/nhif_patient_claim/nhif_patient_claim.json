@@ -7,24 +7,27 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
-  "amended_from",
   "patient_appointment",
+  "column_break_pr0fp",
+  "company",
+  "column_break_76qhs",
+  "posting_date",
+  "section_break_pguvv",
   "patient",
   "patient_name",
   "first_name",
   "last_name",
   "telephone_no",
+  "column_break_t0lmb",
   "date_of_birth",
   "gender",
-  "allow_changes",
-  "column_break_10",
-  "company",
-  "posting_date",
-  "inpatient_record",
   "cardno",
   "authorization_no",
+  "column_break_10",
   "coverage_plan_name",
+  "inpatient_record",
+  "allow_changes",
+  "column_break_o9pbn",
   "total_amount",
   "patient_signature",
   "section_break_auto_send",
@@ -37,16 +40,14 @@
   "column_break_7xkjq",
   "get_receipt",
   "section_break_8",
-  "folio_id",
   "facility_code",
   "claim_year",
   "claim_month",
+  "folio_id",
   "folio_no",
   "serial_no",
-  "created_by",
   "item_crt_by",
-  "delayreason",
-  "column_break_18",
+  "column_break_znuxw",
   "practitioner_name",
   "practitioner_no",
   "date_discharge",
@@ -54,9 +55,11 @@
   "date_admitted",
   "admitted_time",
   "patient_type_code",
+  "column_break_18",
   "attendance_date",
   "attendance_time",
   "patient_file_no",
+  "delayreason",
   "patient_file_section",
   "patient_file",
   "claim_file_section",
@@ -70,7 +73,10 @@
   "nhif_patient_claim_item",
   "original_section_break",
   "original_nhif_patient_claim_item",
-  "hms_tz_claim_appointment_list"
+  "section_break_zffby",
+  "hms_tz_claim_appointment_list",
+  "naming_series",
+  "amended_from"
  ],
  "fields": [
   {
@@ -80,7 +86,8 @@
    "in_standard_filter": 1,
    "label": "Patient Appointment",
    "options": "Patient Appointment",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "amended_from",
@@ -108,17 +115,18 @@
    "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.coverage_plan_card_number",
-   "fetch_if_empty": 1,
    "fieldname": "cardno",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "CardNo",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -143,25 +151,20 @@
    "fieldname": "first_name",
    "fieldtype": "Data",
    "label": "First Name",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient.last_name",
    "fieldname": "last_name",
    "fieldtype": "Data",
    "label": "Last Name",
-   "read_only": 1
-  },
-  {
-   "fieldname": "created_by",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Old Created By",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "practitioner_no",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Practitioner No",
@@ -202,14 +205,14 @@
   },
   {
    "fetch_from": "patient_appointment.authorization_number",
-   "fetch_if_empty": 1,
    "fieldname": "authorization_no",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Authorization No",
    "permlevel": 1,
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "patient_file",
@@ -234,21 +237,24 @@
    "fieldtype": "Data",
    "in_standard_filter": 1,
    "label": "Telephone No",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient.dob",
    "fieldname": "date_of_birth",
    "fieldtype": "Date",
    "label": "Date Of Birth",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient.sex",
    "fieldname": "gender",
    "fieldtype": "Data",
    "label": "Gender",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_18",
@@ -262,9 +268,11 @@
    "fetch_from": "patient.patient_name",
    "fieldname": "patient_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_standard_filter": 1,
    "label": "Patient Name",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "section_break_28",
@@ -300,13 +308,15 @@
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "label": "Posting Date",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "claim_month",
@@ -344,14 +354,17 @@
    "default": "0",
    "fieldname": "allow_changes",
    "fieldtype": "Check",
-   "label": "Allow Changes"
+   "label": "Allow Changes",
+   "search_index": 1
   },
   {
+   "bold": 1,
    "fieldname": "total_amount",
    "fieldtype": "Float",
    "label": "Total Amount",
    "precision": "0",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -376,7 +389,8 @@
    "fieldtype": "Link",
    "label": "Inpatient Record",
    "options": "Inpatient Record",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "section_break_40",
@@ -412,7 +426,8 @@
    "fetch_if_empty": 1,
    "fieldname": "coverage_plan_name",
    "fieldtype": "Data",
-   "label": "Coverage Plan Name"
+   "label": "Coverage Plan Name",
+   "search_index": 1
   },
   {
    "fieldname": "section_break_auto_send",
@@ -425,13 +440,15 @@
    "description": "If ticked, this claim will be submitted during night time",
    "fieldname": "is_ready_for_auto_submission",
    "fieldtype": "Check",
-   "label": "Is ready for auto submission"
+   "label": "Is ready for auto submission",
+   "search_index": 1
   },
   {
    "fieldname": "reviewed_by",
    "fieldtype": "Data",
    "label": "Reviewed By",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "allow_on_submit": 1,
@@ -476,7 +493,8 @@
    "fieldname": "confirmation_code",
    "fieldtype": "Data",
    "label": "Confirmation Code",
-   "mandatory_depends_on": "eval: doc.confirmation_code_sent == 1"
+   "mandatory_depends_on": "eval: doc.confirmation_code_sent == 1",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_7xkjq",
@@ -491,7 +509,9 @@
    "default": "0",
    "fieldname": "confirmation_code_sent",
    "fieldtype": "Check",
-   "label": "Confirmation Code Sent"
+   "label": "Confirmation Code Sent",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "conf_code_column_break",
@@ -502,12 +522,40 @@
    "fieldname": "get_receipt",
    "fieldtype": "Button",
    "label": "Get Receipt"
+  },
+  {
+   "fieldname": "column_break_t0lmb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_o9pbn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_zffby",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_pr0fp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_76qhs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_pguvv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_znuxw",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-14 18:04:38.141542",
+ "modified": "2025-04-14 18:49:35.415288",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
