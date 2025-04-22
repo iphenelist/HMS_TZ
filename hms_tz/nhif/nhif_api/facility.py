@@ -36,7 +36,7 @@ def  get_facilities(company=None):
         "Authorization": f"Bearer {token}"
     }
 
-    r = requests.request("Get", url, headers=headers, timeout=60)
+    r = requests.request("Get", url, headers=headers, timeout=180)
     if r.status_code != 200:
         add_log(
             request_type="GetFacilities",
@@ -66,8 +66,11 @@ def  get_facilities(company=None):
             return
 
         for facility in data:
+            if not facility.get("FacilityName"):
+                continue
+
             try:
-                if frappe.db.exists("Healthcare Facility", facility.get("FacilityName"), cache=True):
+                if frappe.db.exists("Healthcare Facility", facility.get("FacilityName")):
                     update_facility(facility)
                 else:
                     create_facility(facility)
@@ -75,7 +78,7 @@ def  get_facilities(company=None):
             except Exception as e:
                 traceback = frappe.get_traceback()
                 frappe.log_error(
-                    title="GetFacilities",
+                    title=f"Facility: {facility.get('FacilityName')}",
                     message=traceback
                 )
 
@@ -181,6 +184,7 @@ def update_facility(facility):
     
     if has_changed:
         hf_doc.save(ignore_permissions=True)
+        hf_doc.reload()
 
 def create_facility(record):
     hf_doc = frappe.new_doc("Healthcare Facility")
@@ -209,4 +213,5 @@ def create_facility(record):
     hf_doc.latitude = record.get("Latitude")
     hf_doc.certification_application_date = record.get("CertificationApplicationDate")
     hf_doc.insert(ignore_permissions=True)
+    hf_doc.reload()
     hf_doc.reload()
