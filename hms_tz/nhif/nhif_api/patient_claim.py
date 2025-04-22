@@ -64,7 +64,7 @@ def submit_folio(doc):
                 ref_docname=doc.name
             )
             frappe.msgprint(str(r.text))
-            frappe.msgprint(_("The claim has been sent successfully"), alert=True)
+            frappe.msgprint("The claim has been sent successfully", alert=True)
 
             # TODO: update response values to Healthcare Referral doc
 
