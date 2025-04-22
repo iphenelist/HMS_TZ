@@ -189,6 +189,7 @@ class NHIFPatientClaim(Document):
     def set_claim_values(self):
         if not self.folio_id:
             self.folio_id = str(uuid.uuid1())
+        
         self.facility_code = frappe.get_cached_value(
             "Company NHIF Settings", self.company, "facility_code"
         )
@@ -272,7 +273,9 @@ class NHIFPatientClaim(Document):
         else:
             self.claim_year = int(self.attendance_date.strftime("%Y"))
             self.claim_month = int(self.attendance_date.strftime("%m"))
-        self.patient_file_no = self.get_patient_file_no()
+
+        self.patient_file_no = self.patient
+
         if not self.allow_changes:
             self.set_patient_claim_disease()
             self.set_patient_claim_item(self.inpatient_record)
@@ -703,76 +706,6 @@ class NHIFPatientClaim(Document):
         if len(patient_encounter_list) == 0:
             frappe.throw(_("There no Final Patient Encounter for this Appointment"))
         return patient_encounter_list
-
-    def get_patient_file_no(self):
-        patient_file_no = self.patient
-        return patient_file_no
-
-    def get_folio_json_data(self):
-        folio_data = frappe._dict()
-        folio_data.entities = []
-        entities = frappe._dict()
-        entities.ClaimYear = self.claim_year
-        entities.ClaimMonth = self.claim_month
-        entities.FolioNo = self.folio_no
-        entities.SerialNo = self.serial_no
-        entities.FacilityCode = self.facility_code
-        entities.CardNo = self.cardno.strip()
-        entities.FirstName = self.first_name
-        entities.LastName = self.last_name
-        entities.Gender = self.gender
-        entities.DateOfBirth = str(self.date_of_birth)
-        entities.PatientFileNo = self.patient_file_no
-        # entities.PatientFile = generate_pdf(self)
-        entities.ClaimFile = get_claim_pdf_file(self)
-        entities.ClinicalNotes = self.clinical_notes
-        entities.AuthorizationNo = self.authorization_no
-        entities.AttendanceDate = str(self.attendance_date)
-        entities.PatientTypeCode = self.patient_type_code
-        if self.patient_type_code == "IN":
-            entities.DateAdmitted = (
-                str(self.date_admitted) + " " + str(self.admitted_time)
-            )
-            entities.DateDischarged = (
-                str(self.date_discharge) + " " + str(self.discharge_time)
-            )
-        entities.PractitionerName = self.practitioner_name
-        entities.PractitionerNo = self.practitioner_no
-        entities.CreatedBy = self.item_crt_by
-        entities.DateCreated = str(self.posting_date)
-        entities.BillNo = self.name
-        entities.LateSubmissionReason = self.delayreason
-
-        entities.FolioDiseases = []
-        for disease in self.nhif_patient_claim_disease:
-            FolioDisease = frappe._dict()
-            FolioDisease.Status = disease.status
-            FolioDisease.DiseaseCode = disease.disease_code
-            FolioDisease.Remarks = None
-            FolioDisease.CreatedBy = disease.item_crt_by
-            FolioDisease.DateCreated = str(disease.date_created)
-            entities.FolioDiseases.append(FolioDisease)
-
-        entities.FolioItems = []
-        for item in self.nhif_patient_claim_item:
-            FolioItem = frappe._dict()
-            FolioItem.ItemCode = item.item_code
-            FolioItem.ItemQuantity = item.item_quantity
-            FolioItem.UnitPrice = item.unit_price
-            FolioItem.AmountClaimed = item.amount_claimed
-            FolioItem.ApprovalRefNo = item.approval_ref_no or None
-            FolioItem.CreatedBy = item.item_crt_by
-            FolioItem.DateCreated = str(item.date_created)
-            entities.FolioItems.append(FolioItem)
-
-        folio_data.entities.append(entities)
-        jsonStr = json.dumps(folio_data)
-
-        # Strip off the patient file
-        folio_data.entities[0].PatientFile = "Stripped off"
-        folio_data.entities[0].ClaimFile = "Stripped off"
-        jsonStr_wo_files = json.dumps(folio_data)
-        return jsonStr, jsonStr_wo_files
 
     def calculate_totals(self):
         self.total_amount = 0
