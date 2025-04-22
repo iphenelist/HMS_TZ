@@ -17,6 +17,7 @@
   "highestorderwithoutreferral",
   "column_break_t1nk6",
   "company",
+  "maximumadmissiondays",
   "requiresnationalid",
   "usespolicy"
  ],
@@ -116,11 +117,17 @@
   {
    "fieldname": "column_break_t1nk6",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maximumadmissiondays",
+   "fieldtype": "Data",
+   "label": "MaximumAdmissionDays",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-17 15:56:05.556917",
+ "modified": "2025-04-22 14:37:21.161145",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Product",
