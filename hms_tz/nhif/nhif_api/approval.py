@@ -1,8 +1,8 @@
 import json
 import frappe
 import requests
-from frappe.utils import get_datetime, nowdate
 from hms_tz.nhif.nhif_api.referral import get_disease_code
+from frappe.utils import get_datetime, nowdate, get_fullname
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     get_item_refcode, get_item_rate
@@ -22,13 +22,10 @@ def get_service_approval(
 
     doc = frappe.get_doc(ref_doctype, ref_docname)
 
-    patient_doc = frappe.get_cached_doc("Patient", doc.patient)
-
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
-    payload = get_payload(
+    payload = get_request_approval_payload(
         doc,
-        patient_doc,
         settings_doc.facility_code,
         service_type,
         service_name,
@@ -45,7 +42,7 @@ def get_service_approval(
         "Authorization": f"Bearer {token}"
     }
 
-    r = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+    r = requests.request("POST", url, headers=headers, data=payload, timeout=120)
 
     if r.status_code != 200:
         add_log(
@@ -88,20 +85,15 @@ def get_service_approval(
         }
 
 
-
-def get_payload(
+def get_request_approval_payload(
     doc,
-    patient_doc,
     facility_code,
     service_type,
     service_name,
     qty=1
 ):
-    appointment_info = frappe.get_cached_value(
-        "Patient Appointment", doc.appointment, 
-        ["authorization_number", "appointment_date", "years_of_insurance"],
-        as_dict=True
-    )
+    patient_doc = frappe.get_cached_doc("Patient", doc.patient)
+    appointment_info = get_appointment_details(doc.appointment)
 
     clinical_notes = frappe.get_cached_value("Patient Encounter", doc.ref_docname, "examination_detail") or ""
 
@@ -223,3 +215,20 @@ def get_authorized_items(
     })
 
     return items
+
+
+def get_appointment_details(appointment):
+    appointment_info = frappe.get_cached_value(
+        "Patient Appointment", appointment, 
+        ["authorization_number", "appointment_date", "years_of_insurance", "coverage_plan_card_number", "national_id"],
+        as_dict=True
+    )
+
+    return appointment_info
+
+
+def get_service_type_id(ref_code):
+    service_type_id = frappe.get_cached_value(
+        "NHIF Item", {"itemcode": ref_code}, "servicetypeid"
+    )
+    return service_type_id
