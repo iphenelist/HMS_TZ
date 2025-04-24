@@ -583,3 +583,74 @@ def verify_service_approval_number(
                 This ApprovalNumber: <strong>{approval_number}</strong> for CardNo: <strong>{card_no}</strong> and ItemCode: <strong>{ref_code}</strong> is not Valid</h4>"
             )
             return False
+
+
+@frappe.whitelist()
+def get_approval_services(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        company = settings[0].company
+
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    token = settings_doc.get_nhif_token()
+    url = f"{settings_doc.nhifservice_url}/api/Approvals/GetApprovalServices"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetApprovalServices",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Service Type",
+        )
+        return
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetApprovalServices",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype="NHIF Service Type",
+        )
+
+        for row in data:
+            if frappe.db.exists("NHIF Service Type", row["ServiceTypeName"]):
+                has_changed = False
+                doc = frappe.get_doc("NHIF Service Type", row["ServiceTypeName"])
+                if doc.service_type_id != row["ServiceTypeID"]:
+                    has_changed = True
+                    doc.service_type_id = row["ServiceTypeID"]
+                
+                if doc.require_nhif_number != row["RequireNhifNumber"]:
+                    has_changed = True
+                    doc.require_nhif_number = row["RequireNhifNumber"]
+                
+                if has_changed:
+                    doc.save(ignore_permissions=True)
+                
+                continue
+            else:
+                doc = frappe.new_doc("NHIF Service Type")
+                doc.service_type_id = row["ServiceTypeID"]
+                doc.service_type_name = row["ServiceTypeName"]
+                doc.require_nhif_number = row["RequireNhifNumber"]
+
+                doc.save(ignore_permissions=True)
+        
+        if company and caller == 'Front End':
+            frappe.msgprint("successfully fetched Service Types", alert=True, indicator="green")
