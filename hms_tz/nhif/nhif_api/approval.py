@@ -515,3 +515,71 @@ def get_service_type_id(ref_code):
         "NHIF Item", {"itemcode": ref_code}, "servicetypeid"
     )
     return service_type_id
+
+
+@frappe.whitelist()
+def verify_service_approval_number(
+    company,
+    approval_number,
+    service_type,
+    service_name,
+    appointment,
+    ref_doctype,
+    ref_docname
+):
+    ref_code = get_item_refcode(service_type, service_name)
+    appointment_info = get_appointment_details(appointment)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    if settings_doc.validate_service_approval_number_on_lrpm_documents == 0:
+        frappe.msgprint("Service Approval Number Validation is disabled")
+        return
+
+    card_no = appointment_info.coverage_plan_card_number or appointment_info.national_id
+    
+    url = f"{settings_doc.nhifservice_url}/api/Approvals/GetReferenceNoStatus?cardNo={card_no}&referenceNo={approval_number}&itemCode={ref_code}"
+
+    token = settings_doc.get_nhif_token()
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetReferenceNoStatus",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        frappe.msgprint(f"Error: <b>{r.text}</b>")
+        return False
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetReferenceNoStatus",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        if data["Status"] == "VALID":
+            return True
+        else:
+            frappe.msgprint(
+                f"<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                This ApprovalNumber: <strong>{approval_number}</strong> for CardNo: <strong>{card_no}</strong> and ItemCode: <strong>{ref_code}</strong> is not Valid</h4>"
+            )
+            return False
