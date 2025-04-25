@@ -33,7 +33,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-17 12:40:42.596446",
+ "modified": "2025-04-25 12:36:41.844334",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Scheme",
@@ -53,6 +53,7 @@
    "write": 1
   }
  ],
+ "search_fields": "scheme_name",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
