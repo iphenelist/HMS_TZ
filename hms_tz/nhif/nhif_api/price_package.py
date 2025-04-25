@@ -1028,13 +1028,12 @@ def add_nhif_product(row, company, abbr):
     if not nhif_product_pr_key:
         nhif_product_pr_key = frappe.db.get_value("NHIF Product", {"company": "", "nhif_product_code": row["ProductCode"]})
 
-    has_changed = False
     if nhif_product_pr_key:
         if (
-            row["ProductName"]  and
-            row["ProductName"] != "null" and
-            product_id != nhif_product_pr_key 
+            row["ProductName"] and
+            row["ProductName"] != "null"
         ):
+            has_changed = False
             doc = frappe.get_doc("NHIF Product", nhif_product_pr_key)
 
             if doc.product_id != product_id:
@@ -1053,7 +1052,6 @@ def add_nhif_product(row, company, abbr):
                 doc.productdescription = row["ProductDescription"]
                 has_changed = True
             
-            
             if doc.highestorderwithoutreferral != row["HighestOrderWithoutReferral"]:
                 doc.highestorderwithoutreferral = row["HighestOrderWithoutReferral"]
                 has_changed = True
@@ -1071,11 +1069,22 @@ def add_nhif_product(row, company, abbr):
                 has_changed = True
 
             doc.company = company
-            doc.healthcare_insurance_coverage_plan = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan",
-                {"nhif_scheme_id": row["SchemeID"], "company": company},
-                "name"
+
+            plan = frappe.db.get_all(
+                "Healthcare Insurance Coverage Plan", 
+                filters={"nhif_scheme_id": row["SchemeID"], "company": company}
             )
+            if len(plan) == 1:
+                if doc.healthcare_insurance_coverage_plan != plan[0].name:
+                    has_changed = True
+                    doc.healthcare_insurance_coverage_plan = plan[0].name
+            else:
+                has_changed = True
+                doc.healthcare_insurance_coverage_plan = ""
+                doc.add_comment(
+                    "Comment",
+                    f"Failed to find matching plan for SchemeId: {row['SchemeID']}"
+                )
 
             if has_changed:
                 doc.save(ignore_permissions=True)
@@ -1094,11 +1103,14 @@ def add_nhif_product(row, company, abbr):
         doc.maximumadmissiondays = row["MaximumAdmissionDays"]
         doc.requiresnationalid = row["RequiresNationalID"]
         doc.usespolicy = row["UsesPolicy"]
-        doc.healthcare_insurance_coverage_plan = frappe.get_cached_value(
-            "Healthcare Insurance Coverage Plan",
-            {"nhif_scheme_id": row["SchemeID"], "company": company},
-            "name"
+        plan = frappe.db.get_all(
+            "Healthcare Insurance Coverage Plan", 
+            filters={"nhif_scheme_id": row["SchemeID"], "company": company}
         )
+        if len(plan) == 1:
+            doc.healthcare_insurance_coverage_plan = plan[0].name
+        else:
+            doc.healthcare_insurance_coverage_plan = ""
         
         doc.save(ignore_permissions=True)
 
