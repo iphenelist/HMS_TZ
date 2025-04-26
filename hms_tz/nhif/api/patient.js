@@ -22,12 +22,16 @@ frappe.ui.form.on('Patient', {
         });
     },
     card_no: function (frm) {
+        if (!frm.doc.insurance_provider) return;
+        
         frm.fields_dict.card_no.$input.focusout(function() {
             get_patient_info(frm, 'card_no');
             frm.set_df_property('card_no', 'read_only', 1);
         });
     },
     national_id: function (frm) {
+        if (!frm.doc.insurance_provider) return;
+        
         frm.fields_dict.national_id.$input.focusout(function() {
             get_patient_info(frm, 'national_id');
             frm.set_df_property('national_id', 'read_only', 1);
@@ -99,17 +103,17 @@ frappe.ui.form.on('Patient', {
 });
 
 
-function get_patient_info(frm, caller) {
+async function get_patient_info(frm, caller) {
     if (frm.doc.card_no_trigger) return;
     if (frm.doc.national_id_trigger) return;
 
-    if (!frm.doc.card_no && !frm.doc.national_id && !frm.doc.insurance_provider) return;
+    if ((!frm.doc.card_no && !frm.doc.national_id) || !frm.doc.insurance_provider) return;
 
     let card_exists = false;
     let national_id_exists = false;
 
     if (frm.doc.card_no) {
-        frappe.call({
+        await frappe.call({
             method: 'hms_tz.nhif.api.patient.check_card_number',
             args: {
                 'card_no': frm.doc.card_no,
@@ -130,7 +134,7 @@ function get_patient_info(frm, caller) {
     }
 
     if (frm.doc.national_id) {
-        frappe.call({
+        await frappe.call({
             method: 'hms_tz.nhif.api.patient.check_national_id',
             args: {
                 'national_id': frm.doc.national_id,
