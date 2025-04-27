@@ -716,7 +716,8 @@ def on_submit(doc, method):
         not doc.insurance_subscription
         and doc.inpatient_record
         and not doc.healthcare_package_order
-    ):  # Cash inpatient billing
+    ):  
+        # Cash inpatient billing
         if doc.mode_of_payment:
             validate_patient_balance_vs_patient_costs(
                 doc.patient,
@@ -726,10 +727,12 @@ def on_submit(doc, method):
                 doc.company,
             )
         inpatient_billing(doc, method)
-    else:  # insurance patient
+    else: 
+        # insurance patient
         on_submit_validation(doc, method)
-        create_healthcare_docs(doc, method)
-        create_delivery_note(doc, method)
+        create_healthcare_service_request(doc)
+        # create_healthcare_docs(doc, method)
+        # create_delivery_note(doc, method)
 
     if (
         doc.healthcare_package_order
