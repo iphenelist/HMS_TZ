@@ -1497,11 +1497,14 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     <button class="btn btn-sm btn-primary nhif-login-btn" style="${r.message ? '' : 'display: none;'}">
                         ${__("Login To NHIF")}
                     </button>
-                    <button class="btn btn-sm btn-primary nhif-confirm-btn">
-                        ${__("Confirm Consultation")}
-                    </button>
                     <button class="btn btn-sm btn-primary nhif-logout-btn" style="${r.message ? 'display: none;' : ''}">
                         ${__("Logout From NHIF")}
+                    </button>
+                    <button class="btn btn-sm btn-primary nhif-pre-approval-btn">
+                        ${__("Get Pre-Approval")}
+                    </button>
+                    <button class="btn btn-sm btn-primary nhif-confirm-btn">
+                        ${__("Confirm Consultation")}
                     </button>
                 </div>
             `);
@@ -1554,6 +1557,33 @@ var practitioner_login_out_to_from_nhif = (frm) => {
 
                             $container.find(".nhif-login-btn").show();
                             $container.find(".nhif-logout-btn").hide();
+                        } else {
+                            frappe.utils.play_sound("error");
+                        }
+                    },
+                    onerror: function (data) {
+                        frappe.utils.play_sound("error");
+                    }
+                });
+            });
+
+            // Bind the consultancy confirmation click event
+            $container.find(".nhif-pre-approval-btn").on("click", async function () {
+                frappe.call({
+                    method: 'hms_tz.nhif.nhif_api.pre_approval.get_service_preapproval',
+                    args: {
+                        'encounter_doc': frm.doc,
+                        'ref_doctype': frm.doc.doctype,
+                        'ref_docname': frm.doc.name
+                    },
+                    async: true,
+                    freeze: true,
+                    freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                    callback: function (data) {
+                        if (data.message && data.message !== 'Error') {
+                            frappe.utils.play_sound("submit");
+                            $container.find(".nhif-pre-approval-btn").hide();
+                            console.log(data)
                         } else {
                             frappe.utils.play_sound("error");
                         }
