@@ -2446,7 +2446,7 @@ def set_practitioner_name(doc, method):
         as_dict=1,
     )
 
-    if practitioner_info.name:
+    if practitioner_info:
         doc.practitioner = practitioner_info.name
         doc.practitioner_name = practitioner_info.practitioner_name
 
