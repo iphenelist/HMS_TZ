@@ -16,18 +16,6 @@ from frappe.utils import (
     date_diff,
     fmt_money,
 )
-from hms_tz.nhif.api.healthcare_utils import (
-    get_item_rate,
-    get_warehouse_from_service_unit,
-    get_item_price,
-    create_individual_lab_test,
-    create_individual_radiology_examination,
-    create_individual_procedure_prescription,
-    create_therapy_plan,
-    msgThrow,
-    msgPrint,
-    validate_nhif_patient_claim_status,
-)
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
     get_receivable_account,
     get_income_account,
@@ -39,6 +27,19 @@ from hms_tz.nhif.api.patient_appointment import (
     calculate_patient_age,
 )
 from erpnext.accounts.utils import get_balance_on
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
+    msgThrow,
+    msgPrint,
+    get_item_rate,
+    get_item_price,
+    create_therapy_plan,
+    create_individual_lab_test,
+    create_individual_radiology_examination,
+    create_individual_procedure_prescription,
+    get_warehouse_from_service_unit,
+    validate_nhif_patient_claim_status,
+    create_healthcare_service_request,
+)
 
 
 def on_trash(doc, method):
