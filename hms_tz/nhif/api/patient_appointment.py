@@ -438,7 +438,7 @@ def update_insurance_subscription(insurance_subscription, data, company):
 
         subscription_doc.save(ignore_permissions=True)
 
-    return card
+    return data
 
 
 @frappe.whitelist()
