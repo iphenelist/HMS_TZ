@@ -340,7 +340,6 @@ frappe.ui.form.on('Patient Appointment', {
                             frm.set_value("authorization_number", card.AuthorizationNo);
                             frm.set_value("nhif_employer_name", card.EmployerName);
                             frm.set_value("fpcode", fingerprint.fpCode);
-                            frm.set_value("biometric_data", fingerprint.Data);
                             frm.save();
                             frappe.show_alert({
                                 message: __("Authorization Number is updated"),
@@ -349,20 +348,14 @@ frappe.ui.form.on('Patient Appointment', {
                         } else {
                             frm.set_value("insurance_subscription", "");
                             frm.set_value("authorization_number", "");
-                            frm.set_value("require_fingerprint", false);
-                            frm.set_value("require_facial_recognation", false);
                             frm.set_value("fpcode", "");
-                            frm.set_value("biometric_data", "");
                             frm.set_value('biometric_method', "");
                         }
                     } else {
                         frappe.utils.play_sound("error");
                         frm.set_value("insurance_subscription", "");
                         frm.set_value("authorization_number", "");
-                        frm.set_value("require_fingerprint", false);
-                        frm.set_value("require_facial_recognation", false);
                         frm.set_value("fpcode", "");
-                        frm.set_value("biometric_data", "");
                         frm.set_value('biometric_method', "");
                     }
                 },
@@ -406,13 +399,15 @@ frappe.ui.form.on('Patient Appointment', {
             args: args,
             callback: (r) => {
                 if (r.message) {
-                    if (r.message.RequiresBiometricVerification) {
+                    if (r.message.RequiresBiometricVerification == 1) {
                         frm.set_value('require_fingerprint', r.message.RequiresBiometricVerification);
-                        frm.set_value('biometric_method', 'Fingerprint');
                     }
-
-                    if (r.message.RequiresFacialRecognition) {
+                    if (r.message.RequiresFacialRecognition == 1) {
                         frm.set_value('require_facial_recognation', r.message.RequiresFacialRecognition);
+                    }
+                    if (r.message.RequiresBiometricVerification == 1) {
+                        frm.set_value('biometric_method', 'Fingerprint');
+                    } else if (r.message.RequiresFacialRecognition == 1) {
                         frm.set_value('biometric_method', 'Facial Recognition');
                     }
                 }
