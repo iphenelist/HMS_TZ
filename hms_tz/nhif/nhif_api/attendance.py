@@ -63,7 +63,6 @@ def login_practitioner(
             company=settings_doc.name,
             ref_doctype='Healthcare Practitioner',
             ref_docname=practitioner.name,
-            card_no=practitioner.national_id
         )
         frappe.set_value(
             "Healthcare Practitioner",
@@ -85,7 +84,6 @@ def login_practitioner(
             company=settings_doc.name,
             ref_doctype='Healthcare Practitioner',
             ref_docname=practitioner.name,
-            card_no=practitioner.national_id
         )
         frappe.msgprint(
             title="NHIF API Error",
@@ -142,7 +140,6 @@ def logout_practitioner(settings_doc=None):
             company=settings_doc.name,
             ref_doctype='Healthcare Practitioner',
             ref_docname=practitioner.name,
-            # card_no=practitioner.national_id
         )
         frappe.set_value(
             "Healthcare Practitioner",
@@ -164,7 +161,6 @@ def logout_practitioner(settings_doc=None):
             company=settings_doc.name,
             ref_doctype='Healthcare Practitioner',
             ref_docname=practitioner.name,
-            # card_no=practitioner.national_id
         )
         frappe.msgprint(
             title="NHIF API Error",
