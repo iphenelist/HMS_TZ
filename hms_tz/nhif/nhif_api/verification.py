@@ -528,6 +528,18 @@ def authorize_patient(
         add_product(company, auth_data.get("ProductCode"), auth_data.get("ProductName"))
         update_insurance_subscription(insurance_subscription, auth_data, company)
 
+        auth_detail = get_authorization_details(
+            auth_data.get("AuthorizationNo"),
+            card_no or national_id,
+            company,
+            settings_doc,
+            ref_doctype,
+            ref_docname
+        )
+
+        if auth_detail:
+            auth_data.update(auth_detail)
+
         reference_data = get_poc_reference_no(
             "Registration",
             practitioner,
@@ -658,3 +670,58 @@ def get_poc_reference_no(
             msg=f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('errors') or data.get('message')}<b>",
         )
         return {}
+
+
+@frappe.whitelist()
+def get_authorization_details(
+    authorization_no,
+    card_no,
+    company,
+    settings_doc=None,
+    ref_doctype='Patient Appointment',
+    ref_docname=None
+):
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    
+    url = f"{settings_doc.nhifservice_url}/api/Verification/GetAuthorizationDetails?authorizationNo={authorization_no}"
+
+    token = settings_doc.get_nhif_token()
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetAuthorizationDetails",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return {}
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetAuthorizationDetails",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+            card_no=card_no
+        )
+        return {
+            "ServiceYear": data.get("ServiceYear")
+        }
