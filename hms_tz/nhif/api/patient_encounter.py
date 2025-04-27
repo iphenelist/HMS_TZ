@@ -33,12 +33,12 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     get_item_rate,
     get_item_price,
     create_therapy_plan,
+    create_service_request,
     create_individual_lab_test,
     create_individual_radiology_examination,
     create_individual_procedure_prescription,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
-    create_healthcare_service_request,
 )
 
 
