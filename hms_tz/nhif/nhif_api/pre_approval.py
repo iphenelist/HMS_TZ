@@ -1,6 +1,7 @@
 import json
 import frappe
 import requests
+from hms_tz.nhif.nhif_api.referral import get_disease_code
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     get_item_refcode,
@@ -18,7 +19,7 @@ def get_service_preapproval(
     if isinstance(encounter_doc, str):
         encounter_doc = frappe._dict(json.loads(encounter_doc))
 
-    services, service_refs = get_encounter_services(encounter_doc)
+    services, service_refs, diseases = get_encounter_services(encounter_doc)
     if len(services) == 0:
         frappe.msgprint("No servuce(s) to request an Pre-Approvals")
         return {}
@@ -51,11 +52,11 @@ def get_service_preapproval(
         "practitionerNo": mct_code,
         "practitionersRemarks": "",
         "telephoneNo": mobile,
-        "diseases": get_preliminary_diseases(encounter_doc),
+        "diseases": diseases,
         "requestedServices": services
     }
     payload = json.dumps(payload)
-    
+
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
 
@@ -175,6 +176,7 @@ def get_preliminary_diseases(doc):
 
 
 def get_encounter_services(doc):
+    diseases = []
     services = []
     service_refs = []
 
@@ -204,8 +206,19 @@ def get_encounter_services(doc):
                 "service_name": row.get(child.get("item")),
                 "ref_code": ref_code
             })
+
+            disease_row = {
+                "diseaseCode":  get_disease_code(row.medical_code[6:])
+            }
+            if child.get("table") in ["lab_test_prescription", "radiology_procedure_prescription"]:
+                disease_row["status"] = "Preliminary"
+            else:
+                disease_row["status"] = "Final"
+            
+            diseases.append(disease_row)
+
         
-    return services, service_refs
+    return services, service_refs, diseases
 
 
 def get_field_map():
