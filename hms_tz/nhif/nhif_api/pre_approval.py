@@ -2,6 +2,9 @@ import json
 import frappe
 import requests
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
+    get_item_refcode,
+)
 
 
 @frappe.whitelist()
@@ -11,25 +14,25 @@ def get_service_preapproval(
     settings_doc=None, 
     ref_doctype=None, 
     ref_docname=None,
-    card_no=None
 ):
+    if isinstance(encounter_doc, str):
+        encounter_doc = frappe._dict(json.loads(encounter_doc))
+
     services, service_refs = get_encounter_services(encounter_doc)
     if len(services) == 0:
         frappe.msgprint("No servuce(s) to request an Pre-Approvals")
+        return {}
 
-    if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
-    
     first_name, last_name, dob = frappe.get_cached_value(
         "Patient",
         encounter_doc.patient,
         ["first_name", "last_name", "dob"]
     )
     mct_code, mobile = frappe.get_cached_value(
-            "Healthcare Practitioner",
-            encounter_doc.practitioner,
-            ["tz_mct_code", "mobile_phone"]
-        ),
+        "Healthcare Practitioner",
+        encounter_doc.practitioner,
+        ["tz_mct_code", "mobile_phone"]
+    )
     if not authorization_no:
         authorization_no = frappe.get_cached_value(
             "Patient Appointment", 
@@ -52,6 +55,9 @@ def get_service_preapproval(
         "requestedServices": services
     }
     payload = json.dumps(payload)
+    
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
 
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/RequestServices"
 
@@ -74,7 +80,6 @@ def get_service_preapproval(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
         )
 
         return {"service_refs": service_refs, "data": data}
@@ -89,7 +94,6 @@ def get_service_preapproval(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
         )
         return None
 
@@ -184,18 +188,7 @@ def get_encounter_services(doc):
             ):
                 continue
 
-            item_code = frappe.get_cached_value(
-                child.get("doctype"), row.get(child.get("item")), "item"
-            )
-            if not item_code:
-                frappe.throw(
-                    _(
-                        f"Item code for {row.get(child.get('item'))} set in row {row.idx} was not found.<br>Please set the item code in {child.get('doctype')}."
-                    )
-                )
-            
-            ref_code = frappe.db.get_cached("Item Customer Detail", {"parent": item_code, "customer_name": "NHIF"}, "ref_code")
-
+            ref_code = get_item_refcode(child.get("doctype"), row.get(child.get("item")))
             services.append({
                 "itemCode": ref_code,
                 "usage": "",
