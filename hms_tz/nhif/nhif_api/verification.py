@@ -77,7 +77,7 @@ def get_visit_types():
                     appointment_type_doc = frappe.new_doc("Appointment Type")
                     appointment_type_doc.appointment_type = visit.get("VisitTypeName")
                     if "Referral" in visit.get("VisitTypeName"):
-                        appointment_type_doc.source = "External Referral" 
+                        appointment_type_doc.source = "External Referral"
                     else:
                         appointment_type_doc.source = "Direct"
                     
@@ -453,7 +453,7 @@ def authorize_patient(
     payload = {}
     request_type = ""
     card_type_info = frappe.get_cached_value(
-        "Healthcare Insurance Subscription", insurance_subscription, 
+        "Healthcare Insurance Subscription", insurance_subscription,
         ['verifier_id', 'card_type_id', 'card_type_name'],
         as_dict=True
     )
@@ -542,8 +542,9 @@ def authorize_patient(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname
         )
+        if reference_data:
+            auth_data.update(reference_data)
 
-        auth_data.update(reference_data)
         return auth_data
     else:
         auth_data = json.loads(r.text)
@@ -561,7 +562,7 @@ def authorize_patient(
         )
         frappe.msgprint(
             title="NHIF API Error",
-            msg=f"Failed to AuthorizePatient<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('errors') or data.get('message')}<b>",
+            msg=f"Failed to AuthorizePatient<br><br>Status Code: {r.status_code}<br>Response: <b>{auth_data.get('errors') or auth_data.get('message')}<b>",
             indicator="red"
         )
         return 'Error'
@@ -652,7 +653,8 @@ def get_poc_reference_no(
             ref_docname=ref_docname,
             card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
         )
-        frappe.throw(
+        frappe.msgprint(
             title="NHIF API Error",
             msg=f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('errors') or data.get('message')}<b>",
         )
+        return {}
