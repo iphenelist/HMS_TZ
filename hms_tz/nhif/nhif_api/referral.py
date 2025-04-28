@@ -236,12 +236,14 @@ def update_referral(ref_doctype, ref_docname):
 
 def get_disease_code(code):
 	# Convert the ICD code of CDC to NHIF
-	disease_code = None
-	if code and len(code) > 3 and "." not in code:
-		disease_code = code[:3] + "." + (code[3:4] or "0")
-	elif code and len(code) <= 5 and "." in code:
-		disease_code = code
-	else:
-		disease_code = code[:3]
+    disease_code = None
+    if code and len(code) > 3 and "." not in code:
+        disease_code = code[:3] + "." + (code[3:4] or "0")
+    elif code and len(code) <= 5 and "." in code:
+        disease_code = code
+    elif code and len(code) > 5 and "." in code:
+        disease_code = code[:6]
+    else:
+        disease_code = code[:3]
     
-	return disease_code
+    return disease_code
