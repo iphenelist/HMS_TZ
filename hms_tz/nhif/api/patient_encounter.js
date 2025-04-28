@@ -119,7 +119,8 @@ frappe.ui.form.on('Patient Encounter', {
                 }
             };
         });
-
+        
+        practitioner_login_out_to_from_nhif(frm);
     },
 
     clear_history: function (frm) {
@@ -1501,7 +1502,7 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         ${__("Logout From NHIF")}
                     </button>
                     <button class="btn btn-sm btn-primary nhif-pre-approval-btn">
-                        ${__("Get Pre-Approval")}
+                        ${__("Request Pre-Approval")}
                     </button>
                     <button class="btn btn-sm btn-primary nhif-confirm-btn">
                         ${__("Confirm Consultation")}
@@ -1569,10 +1570,14 @@ var practitioner_login_out_to_from_nhif = (frm) => {
 
             // Bind the consultancy confirmation click event
             $container.find(".nhif-pre-approval-btn").on("click", async function () {
+                if (frm.is_dirty()) {
+                    frappe.msgprint("<b>Please save the form before requesting pre-approval</b>");
+                    return;
+                }
+
                 frappe.call({
                     method: 'hms_tz.nhif.nhif_api.pre_approval.get_service_preapproval',
                     args: {
-                        'encounter_doc': frm.doc,
                         'ref_doctype': frm.doc.doctype,
                         'ref_docname': frm.doc.name
                     },
@@ -1582,8 +1587,7 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     callback: function (data) {
                         if (data.message && data.message !== 'Error') {
                             frappe.utils.play_sound("submit");
-                            $container.find(".nhif-pre-approval-btn").hide();
-                            console.log(data)
+                            frm.reload_doc();
                         } else {
                             frappe.utils.play_sound("error");
                         }
