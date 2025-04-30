@@ -5,7 +5,7 @@ from frappe.utils import add_days
 from hms_tz.nhif.nhif_api.referral import get_disease_code
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
-    get_item_refcode,
+    get_item_refcode, get_childs_map
 )
 
 
@@ -115,6 +115,7 @@ def get_service_preapproval(
                         row.preapproval_no = data.get("requestNo")
                         row.rejection_reason_code = d.get("rejectionReasonCode")
                         row.rejection_details = d.get("rejectionDetails")
+                        row.preapproval_cancel_remarks = ""
                         row.db_update()
                         row.reload()
 
@@ -303,33 +304,3 @@ def get_encounter_services(doc, preapproval_no=None):
 
     return services, service_map, diseases
 
-
-def get_childs_map():
-    childs_map = [
-        {
-            "table": "lab_test_prescription",
-            "doctype": "Lab Test Template",
-            "item": "lab_test_code",
-        },
-        {
-            "table": "radiology_procedure_prescription",
-            "doctype": "Radiology Examination Template",
-            "item": "radiology_examination_template",
-        },
-        {
-            "table": "procedure_prescription",
-            "doctype": "Clinical Procedure Template",
-            "item": "procedure",
-        },
-        {
-            "table": "drug_prescription",
-            "doctype": "Medication",
-            "item": "drug_code",
-        },
-        {
-            "table": "therapies",
-            "doctype": "Therapy Type",
-            "item": "therapy_type",
-        },
-    ]
-    return childs_map
