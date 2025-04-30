@@ -7,15 +7,13 @@ from frappe.query_builder import DocType
 from frappe.utils import get_link_to_form
 from frappe.model.document import Document
 from hms_tz.nhif.api.healthcare_utils import (
-    get_item_rate,
-    get_item_price,
-    get_warehouse_from_service_unit,
-    create_individual_lab_test,
-    create_individual_radiology_examination,
-    create_individual_procedure_prescription,
-    create_therapy_plan,
     msgThrow,
     msgPrint,
+    get_item_rate,
+    get_item_price,
+	inpatient_billing,
+	create_healthcare_docs,
+    get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
 )
 from hms_tz.nhif.api.patient_appointment import get_discount_percent

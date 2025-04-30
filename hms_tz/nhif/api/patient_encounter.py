@@ -30,16 +30,14 @@ from erpnext.accounts.utils import get_balance_on
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     msgThrow,
     msgPrint,
+    get_childs_map,
     get_item_rate,
     get_item_price,
-    create_therapy_plan,
+    inpatient_billing,
+    create_healthcare_docs,
     create_service_request,
-    create_individual_lab_test,
-    create_individual_radiology_examination,
-    create_individual_procedure_prescription,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
-    get_childs_map
 )
 
 
@@ -688,8 +686,8 @@ def validate_stock_item(
 
 def on_submit(doc, method):
     if (
-        not doc.insurance_subscription
-        and doc.inpatient_record
+        doc.inpatient_record
+        and not doc.insurance_subscription
         and not doc.healthcare_package_order
     ):  
         # Cash inpatient billing
@@ -706,319 +704,17 @@ def on_submit(doc, method):
         # insurance patient
         on_submit_validation(doc, method)
         create_service_request(doc)
-        # create_healthcare_docs(doc, method)
-        # create_delivery_note(doc, method)
 
     if (
         doc.healthcare_package_order
-        # and not doc.insurance_subscription
         and not doc.inpatient_record
     ):
-        create_items_from_healthcare_package_orders(doc, method)
+        # package patient
+        encounter_list = [doc.name]
+        create_healthcare_docs(doc.reference_encounter, encounter_list, method="on_submit")
 
     if doc.inpatient_record:
         update_inpatient_record_consultancy(doc)
-
-
-@frappe.whitelist()
-def create_healthcare_docs_from_name(patient_encounter_doc_name):
-    patient_encounter_doc = frappe.get_doc(
-        "Patient Encounter", patient_encounter_doc_name
-    )
-    create_healthcare_docs(patient_encounter_doc, "from_button")
-    create_delivery_note(patient_encounter_doc, "from_button")
-
-
-def create_healthcare_docs(patient_encounter_doc, method="event"):
-    encounter_list = frappe.get_list(
-        "Patient Encounter",
-        filters={"reference_encounter": patient_encounter_doc.reference_encounter},
-    )
-    for encounter in encounter_list:
-        # frappe.msgprint(
-        #     _("Patient Encounter {0} being processed.").format(encounter.name)
-        # )
-        create_healthcare_docs_per_encounter(
-            frappe.get_doc("Patient Encounter", encounter)
-        )
-        create_therapy_plan(enc_doc=frappe.get_doc("Patient Encounter", encounter))
-    if method == "from_button":
-        frappe.msgprint(
-            _(
-                "The {0} patient encounters were processed for creating pending healthcare docs."
-            ).format(str(len(encounter_list)))
-        )
-
-
-def create_healthcare_docs_per_encounter(patient_encounter_doc):
-    if patient_encounter_doc.docstatus != 1:
-        frappe.msgprint(
-            _(
-                "Cannot process Patient Encounter that is not submitted! Please submit"
-                " and try again."
-            ),
-            alert=True,
-        )
-        return
-    if not patient_encounter_doc.appointment:
-        frappe.msgprint(
-            _(
-                "Patient Encounter does not have patient appointment number! Request"
-                " for support with this message."
-            ),
-            alert=True,
-        )
-        return
-    if (
-        not patient_encounter_doc.insurance_subscription
-        and not patient_encounter_doc.inpatient_record
-    ):
-        return
-
-    child_tables_list = [
-        "lab_test_prescription",
-        "radiology_procedure_prescription",
-        "procedure_prescription",
-    ]
-    for child_table_field in child_tables_list:
-        if patient_encounter_doc.get(child_table_field):
-            child_table = patient_encounter_doc.get(child_table_field)
-            for child in child_table:
-                if patient_encounter_doc.insurance_subscription and child.prescribe:
-                    continue
-
-                if (
-                    child.is_cancelled
-                    or child.is_not_available_inhouse
-                    or child.hms_tz_is_limit_exceeded
-                ):
-                    continue
-
-                if child.doctype == "Lab Prescription":
-                    create_individual_lab_test(patient_encounter_doc, child)
-                elif child.doctype == "Radiology Procedure Prescription":
-                    create_individual_radiology_examination(
-                        patient_encounter_doc, child
-                    )
-                elif child.doctype == "Procedure Prescription":
-                    create_individual_procedure_prescription(
-                        patient_encounter_doc, child
-                    )
-
-
-def create_delivery_note(patient_encounter_doc, method):
-    encounter_list = frappe.get_list(
-        "Patient Encounter",
-        filters={"reference_encounter": patient_encounter_doc.reference_encounter},
-    )
-    for encounter in encounter_list:
-        create_delivery_note_per_encounter(
-            frappe.get_doc("Patient Encounter", encounter), method
-        )
-    if method == "from_button":
-        frappe.msgprint(
-            _(
-                "The {0} patient encounters were processed for creating pending delivery notes."
-            ).format(str(len(encounter_list)))
-        )
-
-
-def create_delivery_note_per_encounter(patient_encounter_doc, method):
-    if not patient_encounter_doc.appointment:
-        return
-    if (
-        not patient_encounter_doc.insurance_subscription
-        and not patient_encounter_doc.inpatient_record
-        and not patient_encounter_doc.healthcare_package_order
-    ):
-        return
-    # Create list of warehouses to process delivery notes by warehouses
-    warehouses = []
-    for line in patient_encounter_doc.drug_prescription:
-        if line.invoiced and line.prescribe:
-            frappe.msgprint(_("Invoiced and Prescribed patient who is an inpatient"))
-        elif patient_encounter_doc.insurance_subscription and line.prescribe:
-            continue
-        if (
-            line.drug_prescription_created
-            or line.is_not_available_inhouse
-            or line.is_cancelled
-            or line.hms_tz_is_limit_exceeded
-        ):
-            continue
-        item_code = frappe.get_cached_value("Medication", line.drug_code, "item")
-        if not item_code:
-            frappe.throw(
-                _(
-                    f"The Item Code for {line.drug_code} is not found!<br>Please request administrator to set item code in {line.drug_code}."
-                )
-            )
-        is_stock = frappe.get_cached_value("Item", item_code, "is_stock_item")
-        if not is_stock:
-            continue
-        warehouse = get_warehouse_from_service_unit(line.healthcare_service_unit)
-        if warehouse and warehouse not in warehouses:
-            warehouses.append(warehouse)
-
-    # apply discount if it is available on Heathcare Insurance Company
-    discount_percent = 0
-    if (
-        patient_encounter_doc.insurance_company
-        and "NHIF" not in patient_encounter_doc.insurance_company
-    ):
-        discount_percent = get_discount_percent(patient_encounter_doc.insurance_company)
-
-    # Process list of warehouses
-    for element in warehouses:
-        items = []
-        for row in patient_encounter_doc.drug_prescription:
-            if (
-                row.drug_prescription_created
-                or row.is_not_available_inhouse
-                or row.is_cancelled
-                or row.hms_tz_is_limit_exceeded
-            ):
-                continue
-            encounter_customer = ""
-            if row.invoiced and row.prescribe:
-                encounter_customer = frappe.get_cached_value(
-                    "Patient", patient_encounter_doc.patient, "customer"
-                )
-                insurance_coverage_plan = ""
-            elif patient_encounter_doc.insurance_subscription and row.prescribe:
-                continue
-            warehouse = get_warehouse_from_service_unit(row.healthcare_service_unit)
-            if element != warehouse:
-                continue
-            item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
-            if not item_code:
-                frappe.throw(
-                    _(
-                        f"The Item Code for {row.drug_code} is not found!<br>Please request administrator to set item code in {row.drug_code}."
-                    )
-                )
-
-            is_stock, item_name = frappe.get_cached_value(
-                "Item", item_code, ["is_stock_item", "item_name"]
-            )
-            if not is_stock:
-                continue
-            if not item_code:
-                frappe.throw(
-                    _(
-                        f"The Item Code for {row.drug_code} is not found!<br>Please request administrator to set item code in {row.drug_code}."
-                    )
-                )
-            item = frappe.new_doc("Delivery Note Item")
-            item.item_code = item_code
-            item.item_name = item_name
-            item.warehouse = warehouse
-            item.is_restricted = row.is_restricted
-            item.qty = row.quantity or 1
-            item.medical_code = row.medical_code
-
-            # TODO we have an amount on encounter, no need to fetch amount again
-            if row.prescribe:
-                item.rate = get_mop_amount(
-                    item_code,
-                    patient_encounter_doc.mode_of_payment,
-                    patient_encounter_doc.company,
-                    patient_encounter_doc.patient,
-                )
-                item.price_list_rate = item.rate
-            else:
-                item_rate = get_item_rate(
-                    item_code,
-                    patient_encounter_doc.company,
-                    patient_encounter_doc.insurance_subscription,
-                    patient_encounter_doc.insurance_company,
-                )
-                item.rate = item_rate - (item_rate * (discount_percent / 100))
-                item.price_list_rate = item_rate
-                if discount_percent > 0:
-                    item.discount_percentage = discount_percent
-                    item.hms_tz_is_discount_applied = 1
-
-            item.reference_doctype = row.doctype
-            item.reference_name = row.name
-            item.description = ", <br>".join(
-                [
-                    "frequency: " + str(row.get("dosage") or "No Prescription Dosage"),
-                    "period: " + str(row.get("period") or "No Prescription Period"),
-                    "dosage_form: " + str(row.get("dosage_form") or ""),
-                    "interval: " + str(row.get("interval") or ""),
-                    "interval_uom: " + str(row.get("interval_uom") or ""),
-                    "medical_code: "
-                    + str(row.get("medical_code") or "No medical code"),
-                    "Doctor's comment: "
-                    + (row.get("comment") or "Take medication as per dosage."),
-                ]
-            )
-            items.append(item)
-            row.drug_prescription_created = 1
-            row.db_update()
-        if len(items) == 0:
-            continue
-        authorization_number = ""
-        if (
-            not patient_encounter_doc.insurance_subscription
-            and patient_encounter_doc.inpatient_record
-            or (
-                patient_encounter_doc.mode_of_payment
-                and patient_encounter_doc.healthcare_package_order
-            )
-        ):
-            encounter_customer = frappe.get_cached_value(
-                "Patient", patient_encounter_doc.patient, "customer"
-            )
-            insurance_coverage_plan = ""
-
-        elif not encounter_customer:
-            encounter_customer = frappe.get_cached_value(
-                "Healthcare Insurance Company",
-                patient_encounter_doc.insurance_company,
-                "customer",
-            )
-            insurance_coverage_plan = patient_encounter_doc.insurance_coverage_plan
-            authorization_number = frappe.get_value(
-                "Patient Appointment",
-                patient_encounter_doc.appointment,
-                fieldname="authorization_number",
-            )
-
-        doc = frappe.get_doc(
-            dict(
-                doctype="Delivery Note",
-                posting_date=nowdate(),
-                posting_time=nowtime(),
-                set_warehouse=element,
-                company=patient_encounter_doc.company,
-                customer=encounter_customer,
-                currency=frappe.get_cached_value(
-                    "Company", patient_encounter_doc.company, "default_currency"
-                ),
-                items=items,
-                coverage_plan_name=insurance_coverage_plan,
-                reference_doctype=patient_encounter_doc.doctype,
-                reference_name=patient_encounter_doc.name,
-                authorization_number=authorization_number,
-                patient=patient_encounter_doc.patient,
-                patient_name=patient_encounter_doc.patient_name,
-                healthcare_service_unit=patient_encounter_doc.healthcare_service_unit,
-                healthcare_practitioner=patient_encounter_doc.practitioner,
-            )
-        )
-        doc.flags.ignore_permissions = True
-        doc.set_missing_values()
-        doc.insert(ignore_permissions=True)
-        doc.reload()
-        if doc.get("name"):
-            update_drug_prescription(patient_encounter_doc, doc)
-            frappe.msgprint(
-                _("Pharmacy Dispensing/Delivery Note {0} created successfully.").format(
-                    frappe.bold(doc.name)
-                )
-            )
 
 
 @frappe.whitelist()
@@ -1592,80 +1288,6 @@ def set_amounts(doc):
             row.amount = item_rate
 
 
-def inpatient_billing(patient_encounter_doc, method):
-    if patient_encounter_doc.insurance_subscription:  # IPD/OPD insurance
-        return
-    if not patient_encounter_doc.inpatient_record:  # OPD cash or insurance
-        return
-
-    # SHM Rock: 207
-    child_tables_list = [
-        {
-            "table_field": "lab_test_prescription",
-            "item_field": "lab_test_code",
-            "doctype": "Lab Test Template",
-        },
-        {
-            "table_field": "radiology_procedure_prescription",
-            "item_field": "radiology_examination_template",
-            "doctype": "Radiology Examination Template",
-        },
-        {
-            "table_field": "procedure_prescription",
-            "item_field": "procedure",
-            "doctype": "Clinical Procedure Template",
-        },
-        # unused part
-        # {
-        #     "table_field": "drug_prescription",
-        #     "item_field": "drug_code",
-        #     "doctype": "Medication",
-        # },
-        # {
-        #     "table_field": "therapies",
-        #     "item_field": "therapy_type",
-        #     "doctype": "Therapy Type",
-        # },
-    ]
-    for child_table_field in child_tables_list:
-        if patient_encounter_doc.get(child_table_field.get("table_field")):
-            child_table = patient_encounter_doc.get(
-                child_table_field.get("table_field")
-            )
-            for child in child_table:
-                is_disabled = frappe.get_cached_value(
-                    child_table_field.get("doctype"),
-                    child.get(child_table_field.get("item_field")),
-                    "disabled",
-                )
-                if is_disabled == 1:
-                    frappe.throw(
-                        _(
-                            f"{child_table_field.get('doctype')}: <b>{child.get(child_table_field.get('item_field'))}</b> selected at Row#: {child.idx} is <b>disabled</b>. Please select an enabled item."
-                        )
-                    )
-
-                if (
-                    child.is_cancelled
-                    or child.is_not_available_inhouse
-                    or child.hms_tz_is_limit_exceeded
-                ):
-                    continue
-                if child.doctype == "Lab Prescription":
-                    create_individual_lab_test(patient_encounter_doc, child)
-                elif child.doctype == "Radiology Procedure Prescription":
-                    create_individual_radiology_examination(
-                        patient_encounter_doc, child
-                    )
-                elif child.doctype == "Procedure Prescription":
-                    create_individual_procedure_prescription(
-                        patient_encounter_doc, child
-                    )
-
-    create_therapy_plan(enc_doc=patient_encounter_doc)
-    create_delivery_note(patient_encounter_doc, method)
-
-
 def show_last_prescribed(doc, method):
     if doc.is_new():
         return
@@ -2111,9 +1733,11 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
     doc.inpatient_record = inpatient_record
     doc.inpatient_status = inpatient_status
     doc.save(ignore_permissions=True)
+    doc.reload()
 
     if doc.get("inpatient_record"):
-        create_healthcare_docs_from_name(doc.name)
+        encounter_list = [doc.name]
+        create_healthcare_docs(doc.reference_encounter, encounter_list, method="on_submit")
 
         frappe.msgprint(
             "<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 11pt;'>\
@@ -2122,7 +1746,6 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
             )
             + "</p>"
         )
-        doc.reload()
         return True
 
 
@@ -2494,29 +2117,6 @@ def validate_medical_code(doc, method):
                         ),
                         method,
                     )
-
-
-def create_items_from_healthcare_package_orders(doc, method):
-    child_tables_list = [
-        "lab_test_prescription",
-        "radiology_procedure_prescription",
-        "procedure_prescription",
-    ]
-    for child_table_field in child_tables_list:
-        if doc.get(child_table_field):
-            child_table = doc.get(child_table_field)
-            for child in child_table:
-                if child.is_cancelled or child.hms_tz_is_limit_exceeded:
-                    continue
-                if child.doctype == "Lab Prescription":
-                    create_individual_lab_test(doc, child)
-                elif child.doctype == "Radiology Procedure Prescription":
-                    create_individual_radiology_examination(doc, child)
-                elif child.doctype == "Procedure Prescription":
-                    create_individual_procedure_prescription(doc, child)
-
-    create_therapy_plan(enc_doc=doc)
-    create_delivery_note(doc, method)
 
 
 @frappe.whitelist()

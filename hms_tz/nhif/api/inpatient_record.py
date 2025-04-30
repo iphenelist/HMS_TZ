@@ -8,7 +8,6 @@ from frappe import _
 from frappe.utils import nowdate, nowtime, get_url_to_form
 from hms_tz.nhif.api.patient_appointment import get_mop_amount
 from hms_tz.nhif.api.patient_encounter import (
-    create_healthcare_docs_from_name,
     validate_patient_balance_vs_patient_costs,
 )
 from hms_tz.nhif.api.patient_appointment import get_discount_percent
@@ -20,6 +19,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     get_healthcare_service_order_to_invoice,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
+    create_healthcare_docs,
 )
 import json
 
@@ -213,7 +213,8 @@ def set_beds_price(self):
 
 
 def after_insert(doc, method):
-    create_healthcare_docs_from_name(doc.admission_encounter)
+    encounter_list = [doc.admission_encounter]
+    create_healthcare_docs(doc.admission_encounter, encounter_list, method="after_insert")
 
 
 @frappe.whitelist()
