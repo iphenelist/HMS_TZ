@@ -39,6 +39,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     create_individual_procedure_prescription,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
+    get_childs_map
 )
 
 
@@ -1491,6 +1492,8 @@ def before_submit(doc, method):
         validate_nhif_patient_claim_status(
             "Patient Encounter", doc.company, doc.appointment, doc.insurance_company
         )
+    
+    validate_preapproval_services(doc)
 
     if not doc.healthcare_package_order:
         set_amounts(doc)
@@ -2644,3 +2647,29 @@ def set_admission_service_type(doc):
             and doc.admission_service_unit_type != admission_service_unit_type
         ):
             doc.admission_service_unit_type = admission_service_unit_type
+
+
+def validate_preapproval_services(doc):
+    if not doc.insurance_company or "NHIF" not in doc.insurance_company:
+        return
+
+
+    eligible_pre_approval_services = []
+    for child in get_childs_map():
+        for row in doc.get(child.get("table")):
+            if (
+                row.get("prescribe")
+                or row.get("is_not_available_inhouse")
+                or row.get("is_cancelled")
+                or row.get("is_restricted")
+                or row.get("preapproval_status") in ["Accepted", "REJECTED"]
+            ):
+                continue
+
+            eligible_pre_approval_services.append(row.get(child.get("item")))
+
+    if len(eligible_pre_approval_services) > 0:
+        frappe.throw(
+            f"Pre-Approval is required for the <b>{len(eligible_pre_approval_services)}</b> service(s) before submitting this encounter\
+                <br>Please request pre-approval"
+        )
