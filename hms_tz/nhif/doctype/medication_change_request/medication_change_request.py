@@ -7,14 +7,15 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from hms_tz.nhif.api.healthcare_utils import (
-    get_item_rate,
-    get_warehouse_from_service_unit,
-    get_template_company_option,
     msgThrow,
+    get_item_rate,
+    get_mop_amount,
+    get_template_company_option,
+    get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
 )
 from hms_tz.nhif.api.patient_encounter import validate_stock_item
-from hms_tz.nhif.api.patient_appointment import get_mop_amount, get_discount_percent
+from hms_tz.nhif.api.patient_appointment import get_discount_percent
 from frappe.model.workflow import apply_workflow
 from frappe.utils import get_url_to_form, nowdate
 from hms_tz.nhif.api.patient_encounter import get_drug_quantity
@@ -678,6 +679,7 @@ def set_amount(self, row):
     elif mop:
         if not row.prescribe:
             row.prescribe = 1
+
         row.amount = get_mop_amount(item_code, mop, self.company, self.patient)
 
 

@@ -284,6 +284,41 @@ def get_item_rate(
         )
 
 
+@frappe.whitelist()
+def get_mop_amount(
+    billing_item,
+    mop=None,
+    company=None,
+    patient=None,
+):
+    price_list = None
+    if mop:
+        price_list = frappe.get_cached_value("Mode of Payment", mop, "price_list")
+    if not price_list and patient:
+        price_list = get_default_price_list(patient)
+    if not price_list:
+        frappe.throw(_("Please set Price List in Mode of Payment"))
+    return get_item_price(billing_item, price_list, company)
+
+
+def get_default_price_list(patient):
+    price_list = None
+    price_list = frappe.get_cached_value("Patient", patient, "default_price_list")
+    if not price_list:
+        customer = frappe.get_cached_value("Patient", patient, "customer")
+        if customer:
+            price_list = frappe.get_cached_value(
+                "Customer", customer, "default_price_list"
+            )
+    if not price_list:
+        customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
+        frappe.get_cached_value("Customer Group", customer_group, "default_price_list")
+    if not price_list:
+        if frappe.db.exists("Price List", "Standard Selling"):
+            price_list = "Standard Selling"
+    return price_list
+
+
 def to_base64(value):
     data = base64.b64encode(value)
     return str(data)[2:-1]

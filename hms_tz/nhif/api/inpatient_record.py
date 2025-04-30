@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import nowdate, nowtime, get_url_to_form
-from hms_tz.nhif.api.patient_appointment import get_mop_amount
 from hms_tz.nhif.api.patient_encounter import (
     validate_patient_balance_vs_patient_costs,
 )
@@ -16,6 +15,7 @@ from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_a
 from hms_tz.nhif.api.healthcare_utils import (
     get_item_rate,
     get_item_price,
+    get_mop_amount,
     get_healthcare_service_order_to_invoice,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
