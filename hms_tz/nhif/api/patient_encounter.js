@@ -119,7 +119,7 @@ frappe.ui.form.on('Patient Encounter', {
                 }
             };
         });
-        
+
         practitioner_login_out_to_from_nhif(frm);
     },
 
@@ -1501,13 +1501,23 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     <button class="btn btn-sm btn-primary nhif-logout-btn" style="${r.message ? 'display: none;' : ''}">
                         ${__("Logout From NHIF")}
                     </button>
-                    <button class="btn btn-sm btn-primary nhif-pre-approval-btn">
+                    <button class="btn btn-sm btn-primary nhif-request-pre-approval-btn">
                         ${__("Request Pre-Approval")}
                     </button>
-                    <button class="btn btn-sm btn-primary nhif-confirm-btn">
-                        ${__("Confirm Consultation")}
-                    </button>
                 </div>
+            `);
+
+            if (frm.doc.has_preapproval == 1) {
+                $container.append(`
+                    <button class="btn btn-sm btn-primary nhif-cancel-pre-approval-btn">
+                        ${__("Cancel Pre-Approval")}
+                    </button>
+                `);
+            }
+            $container.append(`
+                <button class="btn btn-sm btn-primary nhif-confirm-btn">
+                    ${__("Confirm Consultation")}
+                </button>
             `);
 
             frm.page.custom_actions.prepend($container);
@@ -1568,8 +1578,8 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                 });
             });
 
-            // Bind the consultancy confirmation click event
-            $container.find(".nhif-pre-approval-btn").on("click", async function () {
+            // Bind the request pre-approval click event
+            $container.find(".nhif-request-pre-approval-btn").on("click", async function () {
                 if (frm.is_dirty()) {
                     frappe.msgprint("<b>Please save the form before requesting pre-approval</b>");
                     return;
@@ -1588,6 +1598,10 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         if (data.message && data.message !== 'Error') {
                             frappe.utils.play_sound("submit");
                             frm.reload_doc();
+                            frappe.show_alert({
+                                message: __("Pre-Approval request were successful"),
+                                indicator: 'green'
+                            }, 10);
                         } else {
                             frappe.utils.play_sound("error");
                         }
@@ -1596,6 +1610,58 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         frappe.utils.play_sound("error");
                     }
                 });
+            });
+
+
+            // Bind the cancel pre-approval click event
+            $container.find(".nhif-cancel-pre-approval-btn").on("click", async function () {
+                if (frm.is_dirty()) {
+                    frappe.msgprint("<b>Please save the form before canceling pre-approval</b>");
+                    return;
+                }
+
+                frappe.prompt([
+                    {
+                        label: 'Pre-Approval No',
+                        fieldname: 'preapproval_no',
+                        fieldtype: 'Data',
+                        reqd: 1
+                    },
+                    {
+                        label: 'Remarks',
+                        fieldname: 'remarks',
+                        fieldtype: 'Small Text',
+                        reqd: 1
+                    },
+                ], (values) => {
+                    frappe.call({
+                        method: 'hms_tz.nhif.nhif_api.pre_approval.cancel_preapproval',
+                        args: {
+                            'ref_doctype': frm.doc.doctype,
+                            'ref_docname': frm.doc.name,
+                            'preapproval_no': values.preapproval_no,
+                            'remarks': values.remarks,
+                        },
+                        async: true,
+                        freeze: true,
+                        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                        callback: function (data) {
+                            if (data.message && data.message !== 'Error') {
+                                frappe.utils.play_sound("submit");
+                                frm.reload_doc();
+                                frappe.show_alert({
+                                    message: __("Pre-Approval request canceled successfully"),
+                                    indicator: 'green'
+                                }, 10);
+                            } else {
+                                frappe.utils.play_sound("error");
+                            }
+                        },
+                        onerror: function (data) {
+                            frappe.utils.play_sound("error");
+                        }
+                    });
+                })
             });
 
             // Bind the consultancy confirmation click event
