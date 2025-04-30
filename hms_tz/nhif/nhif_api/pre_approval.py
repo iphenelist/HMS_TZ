@@ -147,19 +147,22 @@ def get_service_preapproval(
 
 @frappe.whitelist()
 def cancel_preapproval(
-    request_no,
+    ref_doctype, 
+    ref_docname,
+    preapproval_no,
     remarks,
     settings_doc=None,
-    ref_doctype=None, 
-    ref_docname=None,
-    ref_child_doctype=None,
-    ref_child_docnmae=None,
-    card_no=None
 ):
+    encounter_doc = frappe.get_doc(ref_doctype, ref_docname)
+    services, service_map, diseases = get_encounter_services(encounter_doc, preapproval_no)
+    if len(services) == 0:
+        frappe.msgprint("No servuce(s) to cancel an Pre-Approvals")
+        return False
+
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
     
-    url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={request_no}&remarks={remarks}"
+    url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={preapproval_no}&remarks={remarks}"
 
     token = settings_doc.get_nhif_token()
     headers = {
@@ -168,7 +171,21 @@ def cancel_preapproval(
     }
 
     r = requests.request("Post", url, headers=headers, timeout=60)
-    if r.status_code == 200:
+    if r.status_code != 200:
+        add_log(
+            request_type="CancelRequest",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+        )
+        return False
+
+    else:
         data = json.loads(r.text)
         add_log(
             request_type="CancelRequest",
@@ -180,24 +197,40 @@ def cancel_preapproval(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
         )
-        # TODO: update the canceled response on encounter's child doc or service request's child doc
 
-    else:
-        add_log(
-            request_type="CancelRequest",
-            request_url=url,
-            request_header=headers,
-            request_body="",
-            response_data=r.text,
-            status_code=r.status_code,
-            company=settings_doc.name,
-            ref_doctype=ref_doctype,
-            ref_docname=ref_docname,
-            card_no=card_no
+        has_preapproval = False
+        for child in get_childs_map():
+            for row in encounter_doc.get(child.get("table")):
+                if row.preapproval_no == preapproval_no:
+                    row.preapproval_status = "Cancelled"
+                    row.preapproval_no = ""
+                    row.preapproval_cancel_remarks = remarks
+                    has_preapproval = False
+                    row.db_update()
+                    row.reload()
+                
+                elif row.preapproval_no and not has_preapproval:
+                    has_preapproval = True
+                    
+        encounter_doc.reload()
+        encounter_doc.has_preapproval = has_preapproval
+        encounter_doc.db_update()
+        encounter_doc.db_update_all()
+        encounter_doc.reload()
+
+        request_ids = "<ul>"
+        for row in data:
+            request_ids += f"<li>{row.get('RequestedServiceID')} <br> {row.get('RequestID')}</li>"
+        request_ids += "</ul>"
+
+        encounter_doc.add_comment(
+            comment_type="Comment",
+            text=f"Pre-approval request canceled successfully!<br>Pre-Approval No: <b>{preapproval_no}</b><br>NHIF RequestID(s): {request_ids}"
         )
-        return None
+
+        return True
+
 
 
 def get_preliminary_diseases(doc):
@@ -221,7 +254,7 @@ def get_preliminary_diseases(doc):
     return diseases
 
 
-def get_encounter_services(doc):
+def get_encounter_services(doc, preapproval_no=None):
     diseases = []
     services = []
     service_map = {}
@@ -229,6 +262,11 @@ def get_encounter_services(doc):
     for child in get_childs_map():
         for row in doc.get(child.get("table")):
             if not row.get(child.get("item")):
+                continue
+
+            if preapproval_no and row.preapproval_no == preapproval_no:
+                services.append(row.get(child.get("item")))
+
                 continue
             
             if (
