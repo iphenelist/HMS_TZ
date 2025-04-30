@@ -12,12 +12,11 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
     get_receivable_account,
 )
 import json
-import requests
+from csf_tz import console
 from frappe.model.mapper import get_mapped_doc
-from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from frappe.utils import date_diff, getdate, nowdate, cint
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
-from csf_tz import console
+from hms_tz.nhif.api.healthcare_utils import get_item_rate, get_mop_amount
 
 
 def before_insert(doc, method):
@@ -61,7 +60,7 @@ def get_insurance_amount(
 
 
 @frappe.whitelist()
-def get_mop_amount(
+def get_cash_amount(
     billing_item,
     mop=None,
     company=None,
@@ -70,51 +69,8 @@ def get_mop_amount(
 ):
     if cint(has_no_consultation_charges) == 1:
         return 0
-
-    price_list = None
-    if mop:
-        price_list = frappe.get_cached_value("Mode of Payment", mop, "price_list")
-    if not price_list and patient:
-        price_list = get_default_price_list(patient)
-    if not price_list:
-        frappe.throw(_("Please set Price List in Mode of Payment"))
-    return get_item_price(billing_item, price_list, company)
-
-
-def get_default_price_list(patient):
-    price_list = None
-    price_list = frappe.get_cached_value("Patient", patient, "default_price_list")
-    if not price_list:
-        customer = frappe.get_cached_value("Patient", patient, "customer")
-        if customer:
-            price_list = frappe.get_cached_value(
-                "Customer", customer, "default_price_list"
-            )
-    if not price_list:
-        customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
-        frappe.get_cached_value("Customer Group", customer_group, "default_price_list")
-    if not price_list:
-        if frappe.db.exists("Price List", "Standard Selling"):
-            price_list = "Standard Selling"
-    return price_list
-
-
-def get_item_price(item_code, price_list, company):
-    price = 0
-    company_currency = frappe.get_cached_value("Company", company, "default_currency")
-    item_prices_data = frappe.get_all(
-        "Item Price",
-        fields=["item_code", "price_list_rate", "currency"],
-        filters={
-            "price_list": price_list,
-            "item_code": item_code,
-            "currency": company_currency,
-        },
-        order_by="valid_from desc",
-    )
-    if len(item_prices_data):
-        price = item_prices_data[0].price_list_rate
-    return price
+    
+    return get_mop_amount(billing_item, mop, company, patient)
 
 
 @frappe.whitelist()
@@ -122,7 +78,7 @@ def invoice_appointment(name):
     appointment_doc = frappe.get_doc("Patient Appointment", name)
     if appointment_doc.billing_item:
         if appointment_doc.mode_of_payment:
-            appointment_doc.paid_amount = get_mop_amount(
+            appointment_doc.paid_amount = get_cash_amount(
                 appointment_doc.billing_item,
                 appointment_doc.mode_of_payment,
                 appointment_doc.company,

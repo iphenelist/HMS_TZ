@@ -22,7 +22,6 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
 )
 import time
 from hms_tz.nhif.api.patient_appointment import (
-    get_mop_amount,
     get_discount_percent,
     calculate_patient_age,
 )
@@ -33,6 +32,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     get_childs_map,
     get_item_rate,
     get_item_price,
+    get_mop_amount,
     inpatient_billing,
     create_healthcare_docs,
     create_service_request,

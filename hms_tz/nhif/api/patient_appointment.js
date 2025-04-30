@@ -7,7 +7,7 @@ frappe.ui.form.on('Patient Appointment', {
         set_filters(frm);
     },
     billing_item: function (frm) {
-        frm.trigger("get_mop_amount");
+        frm.trigger("get_cash_amount");
     },
     refresh: function (frm) {
         // check if appointment is cancelled and hide fields for authorization
@@ -66,7 +66,7 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_value("require_fingerprint", false);
             frm.set_value("require_facial_recognation", false);
             frm.set_value('biometric_method', "");
-            frm.trigger('get_mop_amount');
+            frm.trigger('get_cash_amount');
         }
         frm.trigger('get_patient_details_from_nhif');
     },
@@ -79,7 +79,7 @@ frappe.ui.form.on('Patient Appointment', {
             frm.set_value("coverage_plan_name", "");
             frm.set_value("coverage_plan_card_number", "");
             frm.set_value("insurance_company_name", "");
-            frm.trigger('get_mop_amount');
+            frm.trigger('get_cash_amount');
         }
     },
     insurance_company: function (frm) {
@@ -88,7 +88,7 @@ frappe.ui.form.on('Patient Appointment', {
     },
     practitioner: function (frm) {
         frm.trigger("get_consulting_charge_item");
-        frm.trigger('get_mop_amount');
+        frm.trigger('get_cash_amount');
     },
     mandatory_fields: function (frm) {
         frm.trigger("get_consulting_charge_item");
@@ -200,13 +200,13 @@ frappe.ui.form.on('Patient Appointment', {
             }
         });
     },
-    get_mop_amount: function (frm) {
+    get_cash_amount: function (frm) {
         if (!frm.doc.mode_of_payment || !frm.doc.billing_item || frm.doc.healthcare_package_order) {
             return;
         }
         if (frm.doc.billing_item && !frm.doc.insurance_subscription) {
             frappe.call({
-                method: 'hms_tz.nhif.api.patient_appointment.get_mop_amount',
+                method: 'hms_tz.nhif.api.patient_appointment.get_cash_amount',
                 args: {
                     'billing_item': frm.doc.billing_item,
                     'mop': frm.doc.mode_of_payment,
