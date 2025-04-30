@@ -181,33 +181,7 @@ def on_submit_validation(doc, method):
 
     checkـforـduplicate(doc, method)
 
-    childs_map = [
-        {
-            "table": "lab_test_prescription",
-            "doctype": "Lab Test Template",
-            "item": "lab_test_code",
-        },
-        {
-            "table": "radiology_procedure_prescription",
-            "doctype": "Radiology Examination Template",
-            "item": "radiology_examination_template",
-        },
-        {
-            "table": "procedure_prescription",
-            "doctype": "Clinical Procedure Template",
-            "item": "procedure",
-        },
-        {
-            "table": "drug_prescription",
-            "doctype": "Medication",
-            "item": "drug_code",
-        },
-        {
-            "table": "therapies",
-            "doctype": "Therapy Type",
-            "item": "therapy_type",
-        },
-    ]
+    childs_map = get_childs_map()
     for child in childs_map:
         for row in doc.get(child.get("table")):
             healthcare_doc = frappe.get_doc(
