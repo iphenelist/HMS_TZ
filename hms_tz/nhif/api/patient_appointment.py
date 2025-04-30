@@ -16,7 +16,7 @@ from csf_tz import console
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import date_diff, getdate, nowdate, cint
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
-from hms_tz.nhif.api.healthcare_utils import get_item_rate, get_mop_amount
+from hms_tz.nhif.api.healthcare_utils import get_item_rate, get_mop_amount, get_discount_percent
 
 
 def before_insert(doc, method):
@@ -617,30 +617,6 @@ def calculate_patient_age(patient):
     years = diff // 365
     months = (diff - (years * 365)) // 30
     return f"{years} Year(s) {months} Month(s)"
-
-
-def get_discount_percent(insurance_company):
-    """Get discount percent (%) from Non NHIF Insurance Company"""
-
-    discount_percent = 0
-    has_price_discount, discount = frappe.get_cached_value(
-        "Healthcare Insurance Company",
-        insurance_company,
-        ["hms_tz_has_price_discount", "hms_tz_price_discount"],
-    )
-    if has_price_discount and discount == 0:
-        frappe.throw(
-            _(
-                "Please set discount(%) for this insurance company: {0}".format(
-                    frappe.bold(insurance_company)
-                )
-            )
-        )
-
-    if has_price_discount and discount > 0:
-        discount_percent = discount
-
-    return discount_percent
 
 
 def check_multiple_appointments(doc):
