@@ -705,7 +705,7 @@ def on_submit(doc, method):
     else: 
         # insurance patient
         on_submit_validation(doc, method)
-        create_healthcare_service_request(doc)
+        create_service_request(doc)
         # create_healthcare_docs(doc, method)
         # create_delivery_note(doc, method)
 
