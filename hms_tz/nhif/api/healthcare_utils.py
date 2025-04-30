@@ -319,6 +319,29 @@ def get_default_price_list(patient):
     return price_list
 
 
+@frappe.whitelist()
+def get_discount_percent(insurance_company):
+    """Get discount percent (%) from Non NHIF Insurance Company"""
+
+    discount_percent = 0
+    has_price_discount, discount = frappe.get_cached_value(
+        "Healthcare Insurance Company",
+        insurance_company,
+        ["hms_tz_has_price_discount", "hms_tz_price_discount"],
+    )
+    if has_price_discount and discount == 0:
+        frappe.throw(
+            _(
+                f"Please set discount(%) for this insurance company: {frappe.bold(insurance_company)}"
+            )
+        )
+
+    if has_price_discount and discount > 0:
+        discount_percent = discount
+
+    return discount_percent
+
+
 def to_base64(value):
     data = base64.b64encode(value)
     return str(data)[2:-1]

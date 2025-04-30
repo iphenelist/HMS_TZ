@@ -21,10 +21,7 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
     get_income_account,
 )
 import time
-from hms_tz.nhif.api.patient_appointment import (
-    get_discount_percent,
-    calculate_patient_age,
-)
+from hms_tz.nhif.api.patient_appointment import calculate_patient_age
 from erpnext.accounts.utils import get_balance_on
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     msgThrow,
@@ -33,6 +30,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     get_item_rate,
     get_item_price,
     get_mop_amount,
+    get_discount_percent,
     inpatient_billing,
     create_healthcare_docs,
     create_service_request,

@@ -10,12 +10,12 @@ from hms_tz.nhif.api.healthcare_utils import (
     msgThrow,
     get_item_rate,
     get_mop_amount,
+    get_discount_percent,
     get_template_company_option,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
 )
 from hms_tz.nhif.api.patient_encounter import validate_stock_item
-from hms_tz.nhif.api.patient_appointment import get_discount_percent
 from frappe.model.workflow import apply_workflow
 from frappe.utils import get_url_to_form, nowdate
 from hms_tz.nhif.api.patient_encounter import get_drug_quantity
