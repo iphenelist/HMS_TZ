@@ -1544,33 +1544,7 @@ def undo_finalized_encounter(cur_encounter, ref_encounter=None):
 
 
 def set_amounts(doc):
-    childs_map = [
-        {
-            "table": "lab_test_prescription",
-            "doctype": "Lab Test Template",
-            "item": "lab_test_code",
-        },
-        {
-            "table": "radiology_procedure_prescription",
-            "doctype": "Radiology Examination Template",
-            "item": "radiology_examination_template",
-        },
-        {
-            "table": "procedure_prescription",
-            "doctype": "Clinical Procedure Template",
-            "item": "procedure",
-        },
-        {
-            "table": "drug_prescription",
-            "doctype": "Medication",
-            "item": "drug_code",
-        },
-        {
-            "table": "therapies",
-            "doctype": "Therapy Type",
-            "item": "therapy_type",
-        },
-    ]
+    childs_map = get_childs_map()
 
     # apply discount if it is available on Heathcare Insurance Company
     discount_percent = 0
@@ -2652,7 +2626,6 @@ def set_admission_service_type(doc):
 def validate_preapproval_services(doc):
     if not doc.insurance_company or "NHIF" not in doc.insurance_company:
         return
-
 
     eligible_pre_approval_services = []
     for child in get_childs_map():
