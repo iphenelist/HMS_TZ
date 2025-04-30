@@ -1361,8 +1361,21 @@ def create_delivery_note(encounter_doc, method):
         doc.set_missing_values()
         doc.insert(ignore_permissions=True)
         doc.reload()
+
         if doc.get("name"):
-            update_drug_prescription(encounter_doc, doc)
+            # update drug prescription for report purpose
+            for d in encounter_doc.drug_prescription:
+                for item in doc.items:
+                    if d.name == item.reference_name:
+                        frappe.db.set_value(
+                            "Drug Prescription",
+                            item.reference_name, {
+                                # "dn_detail": item.name,
+                                "delivery_note": doc.name,
+                            },
+                            update_modified=False
+                        )
+            
             frappe.msgprint(
                 _(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully.")
             )

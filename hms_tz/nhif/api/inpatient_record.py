@@ -110,62 +110,6 @@ def confirmed(company, appointment, insurance_company=None):
         )
 
 
-def create_delivery_note(encounter, item_code, item_rate, warehouse, row, practitioner):
-    insurance_subscription = encounter.insurance_subscription
-    insurance_company = encounter.insurance_company
-    if not insurance_subscription:
-        return
-
-    # apply discount if it is available on Heathcare Insurance Company
-    discount_percent = 0
-    if insurance_company and "NHIF" not in insurance_company:
-        discount_percent = get_discount_percent(insurance_company)
-
-    items = []
-    item = frappe.new_doc("Delivery Note Item")
-    item.item_code = item_code
-    # item.item_name = item_name
-    item.warehouse = warehouse
-    item.qty = 1
-    item.rate = item_rate - (item_rate * (discount_percent / 100))
-    item.reference_doctype = row.doctype
-    item.reference_name = row.name
-    item.description = "For Inpatient Record {0}".format(row.parent)
-    items.append(item)
-
-    doc = frappe.get_doc(
-        dict(
-            doctype="Delivery Note",
-            posting_date=nowdate(),
-            posting_time=nowtime(),
-            set_warehouse=warehouse,
-            company=encounter.company,
-            customer=frappe.get_cached_value(
-                "Healthcare Insurance Company", insurance_company, "customer"
-            ),
-            currency=frappe.get_cached_value(
-                "Company", encounter.company, "default_currency"
-            ),
-            items=items,
-            reference_doctype=row.parenttype,
-            reference_name=row.parent,
-            patient=encounter.patient,
-            patient_name=encounter.patient_name,
-            healthcare_service_unit=row.service_unit,
-            healthcare_practitioner=practitioner,
-        )
-    )
-    doc.flags.ignore_permissions = True
-    doc.set_missing_values()
-    doc.insert(ignore_permissions=True)
-    doc.submit()
-    if doc.get("name"):
-        frappe.msgprint(
-            _("Delivery Note {0} created successfully.").format(frappe.bold(doc.name))
-        )
-        return doc.get("name")
-
-
 def set_beds_price(self):
     if not self.inpatient_occupancies:
         return

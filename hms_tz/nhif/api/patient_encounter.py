@@ -1356,20 +1356,6 @@ def show_last_prescribed(doc, method):
             )
 
 
-def update_drug_prescription(patient_encounter_doc, dn_doc):
-    for d in patient_encounter_doc.drug_prescription:
-        for item in dn_doc.items:
-            if d.name == item.reference_name:
-                frappe.db.set_value(
-                    "Drug Prescription",
-                    item.reference_name, {
-                        "dn_detail": item.name,
-                        "delivery_note": dn_doc.name,
-                    },
-                    update_modified=False
-                )
-
-
 def validate_patient_balance_vs_patient_costs(
     patient,
     patient_name,
