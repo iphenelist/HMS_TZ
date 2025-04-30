@@ -457,3 +457,35 @@ def get_item_refcode(service_type, service_name):
 		frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
 	
 	return ref_code
+
+
+
+def get_childs_map():
+    childs_map = [
+        {
+            "table": "lab_test_prescription",
+            "doctype": "Lab Test Template",
+            "item": "lab_test_code",
+        },
+        {
+            "table": "radiology_procedure_prescription",
+            "doctype": "Radiology Examination Template",
+            "item": "radiology_examination_template",
+        },
+        {
+            "table": "procedure_prescription",
+            "doctype": "Clinical Procedure Template",
+            "item": "procedure",
+        },
+        {
+            "table": "drug_prescription",
+            "doctype": "Medication",
+            "item": "drug_code",
+        },
+        {
+            "table": "therapies",
+            "doctype": "Therapy Type",
+            "item": "therapy_type",
+        },
+    ]
+    return childs_map
