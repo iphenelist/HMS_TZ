@@ -536,7 +536,6 @@ def duplicate_encounter(encounter):
         "procedure_prescription": "previous_procedure_prescription",
         "radiology_procedure_prescription": "previous_radiology_procedure_prescription",
         "therapies": "previous_therapy_plan_detail",
-        "diet_recommendation": "previous_diet_recommendation",
     }
 
     # Copy the examination detail from previous encounter before clearing it
@@ -2012,7 +2011,7 @@ def validate_medical_code(doc, method):
 
     validation_for_medical_code = None
     if doc.insurance_subscription:
-        validation_for_medical_code = frappe.db.get_value(
+        validation_for_medical_code = frappe.get_cached_value(
             "Healthcare Insurance Company",
             doc.insurance_company,
             "validate_medical_code_for_insurance_patients",
@@ -2035,7 +2034,6 @@ def validate_medical_code(doc, method):
                 "procedure_prescription",
                 "drug_prescription",
                 "therapies",
-                "diet_recommendation",
             ],
         }
 
