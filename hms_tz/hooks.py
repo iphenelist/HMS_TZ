@@ -149,7 +149,7 @@ doc_events = {
     # },
     "Patient Encounter": {
         "before_submit": "hms_tz.nhif.api.patient_encounter.before_submit",
-        "validate": "hms_tz.nhif.api.patient_encounter.on_submit_validation",
+        "before_save": "hms_tz.nhif.api.patient_encounter.on_submit_validation",
         "on_trash": "hms_tz.nhif.api.patient_encounter.on_trash",
         "on_submit": [
             "hms_tz.nhif.api.patient_encounter.on_submit",
