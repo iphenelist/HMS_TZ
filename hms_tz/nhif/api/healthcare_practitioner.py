@@ -4,7 +4,7 @@ from frappe.utils import nowdate, getdate
 
 
 @frappe.whitelist()
-def get_nhif_loggedin_practitioner_info():
+def get_nhif_practitioner_login_status():
     date_loggedin = frappe.get_cached_value(
         'Healthcare Practitioner',
         {'user_id': frappe.session.user},
@@ -16,6 +16,6 @@ def get_nhif_loggedin_practitioner_info():
             getdate(date_loggedin) != getdate(nowdate())
         )
     ):
-        return True
+        return False
     
-    return False
+    return True
