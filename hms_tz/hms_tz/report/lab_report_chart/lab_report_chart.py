@@ -60,7 +60,7 @@ def get_lab_results(filters):
         conditions += "and lb.department = %(department)s"
 
     return frappe.db.sql(
-        """
+        f"""
 		select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, n.result_value as result_value
 		from `tabLab Test` lb inner join `tabNormal Test Result` n on lb.name = n.parent
 		where lb.docstatus = 1
@@ -84,9 +84,7 @@ def get_lab_results(filters):
 		where lb.docstatus = 1
         and lb.lab_test_name not in (select lbt.lab_test_name from `tabLab Test Template` lbt where lbt.lab_test_template_type="Grouped")
 		and lb.status = "Completed" {conditions}
-		""".format(
-            conditions=conditions
-        ),
+		""",
         filters,
         as_dict=1,
     )

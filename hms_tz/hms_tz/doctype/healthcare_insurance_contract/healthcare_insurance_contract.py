@@ -23,7 +23,5 @@ class HealthcareInsuranceContract(Document):
             )
             if contract and contract != self.name:
                 frappe.throw(
-                    _(
-                        "There exist an active contract with this insurance company {0}"
-                    ).format(contract)
+                    _(f"There exist an active contract with this insurance company {contract}")
                 )

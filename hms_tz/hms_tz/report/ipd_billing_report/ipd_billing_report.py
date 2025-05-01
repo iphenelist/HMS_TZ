@@ -532,7 +532,7 @@ def get_appointment_consultancy(filters):
     conditions = get_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			pa.appointment_date AS date,
 			it.item_group AS category,
@@ -554,9 +554,7 @@ def get_appointment_consultancy(filters):
 			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment
 		WHERE pa.status = "Closed"
 		AND pa.follow_up = 0 {conditions}
-	""".format(
-            conditions=conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -568,7 +566,7 @@ def get_ipd_occupancy_transactions(filters):
     pe_conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			DATE(ipd_occ.check_in) AS date,
 			hsut.item_group AS category,
@@ -597,9 +595,7 @@ def get_ipd_occupancy_transactions(filters):
 			WHERE pe.docstatus = 1 {pe_conditions}
 			ORDER BY pe.creation desc
 		) {ipd_conditions}
-	""".format(
-            pe_conditions=pe_conditions, ipd_conditions=ipd_conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -612,7 +608,7 @@ def get_ipd_consultancy_transactions(filters):
     pe_conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			ipd_cons.date AS date,
 			it.item_group AS category,
@@ -640,9 +636,7 @@ def get_ipd_consultancy_transactions(filters):
 			WHERE pe.docstatus = 1 {pe_conditions}
 			ORDER BY pe.creation desc
 		) {ipd_conditions}
-	""".format(
-            pe_conditions=pe_conditions, ipd_conditions=ipd_conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -653,7 +647,7 @@ def get_cash_lrpmt_transaction(filters):
     conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			DATE(lrpmt.creation) AS date,
 			item_template.lab_test_group AS category,
@@ -820,9 +814,7 @@ def get_cash_lrpmt_transaction(filters):
 			AND  pe.docstatus = 1 {conditions}
 			ORDER BY pe.creation desc
 		)
-	""".format(
-            conditions=conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -834,7 +826,7 @@ def get_insurance_lrpmt_transaction(filters):
     conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			DATE(lrpmt.creation) AS date,
 			item_template.lab_test_group AS category,
@@ -995,9 +987,7 @@ def get_insurance_lrpmt_transaction(filters):
 			AND pe.docstatus = 1 {conditions}
 			ORDER BY pe.creation desc
 		)
-	""".format(
-            conditions=conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )

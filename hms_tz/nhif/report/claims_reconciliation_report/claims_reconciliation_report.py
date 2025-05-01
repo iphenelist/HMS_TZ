@@ -145,9 +145,7 @@ def get_nhif_data(filters):
     headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
     url = str(
         claimsserver_url
-    ) + "/claimsserver/api/v1/Claims/getSubmittedClaims?FacilityCode={0}&ClaimYear={1}&ClaimMonth={2}".format(
-        facility_code, filters.ClaimYear, filters.ClaimMonth
-    )
+    ) + f"/claimsserver/api/v1/Claims/getSubmittedClaims?FacilityCode={facility_code}&ClaimYear={filters.ClaimYear}&ClaimMonth={filters.ClaimMonth}"
     r = requests.get(url, headers=headers, timeout=300)
     if r.status_code != 200:
         add_log(

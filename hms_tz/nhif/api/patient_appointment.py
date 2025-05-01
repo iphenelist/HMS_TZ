@@ -142,7 +142,7 @@ def invoice_appointment(name):
         sales_invoice.save(ignore_permissions=True)
         sales_invoice.calculate_taxes_and_totals()
         sales_invoice.submit()
-        frappe.msgprint(_("Sales Invoice {0} created".format(sales_invoice.name)))
+        frappe.msgprint(_(f"Sales Invoice {sales_invoice.name} created"))
         appointment_doc = frappe.get_doc("Patient Appointment", appointment_doc.name)
         appointment_doc.ref_sales_invoice = sales_invoice.name
         appointment_doc.invoiced = 1
@@ -264,9 +264,7 @@ def make_vital(appointment_doc, method):
         if discount_percent > 0:
             appointment_doc.hms_tz_is_discount_applied = 1
             frappe.msgprint(
-                "Discount of {0} is applied to this Patient: {1}".format(
-                    frappe.bold(discount_percent), frappe.bold(appointment_doc.patient)
-                ),
+                f"Discount of {frappe.bold(discount_percent)} is applied to this Patient: {frappe.bold(appointment_doc.patient)}",
                 alert=True,
             )
 
@@ -291,7 +289,7 @@ def make_vital(appointment_doc, method):
         vital_doc.save(ignore_permissions=True)
         appointment_doc.ref_vital_signs = vital_doc.name
         appointment_doc.db_update()
-        frappe.msgprint(_("Vital Signs {0} created".format(vital_doc.name)))
+        frappe.msgprint(_(f"Vital Signs {vital_doc.name} created"))
 
 
 def make_encounter(doc, method):
@@ -352,7 +350,7 @@ def make_encounter(doc, method):
     encounter_doc.encounter_category = "Appointment"
 
     encounter_doc.save(ignore_permissions=True)
-    frappe.msgprint(_("Patient Encounter {0} created".format(encounter_doc.name)))
+    frappe.msgprint(_(f"Patient Encounter {encounter_doc.name} created"))
 
     if doc.doctype == "Patient Appointment":
         doc.ref_patient_encounter = encounter_doc.name
@@ -533,17 +531,13 @@ def make_next_doc(doc, method, from_hook=True):
         if not doc.billing_item:
             frappe.throw(
                 _(
-                    "Billing item was not set from {0} for appointment type {1}.".format(
-                        doc.practitioner, doc.appointment_type
-                    )
+                    f"Billing item was not set from {doc.practitioner} for appointment type {doc.appointment_type}."
                 )
             )
         else:
             frappe.msgprint(
                 _(
-                    "Billing item was set from {0} for appointment type {1}.".format(
-                        doc.practitioner, doc.appointment_type
-                    )
+                    f"Billing item was set from {doc.practitioner} for appointment type {doc.appointment_type}."
                 )
             )
     if from_hook:
@@ -575,9 +569,7 @@ def validate_insurance_company(insurance_company: str) -> str:
     if frappe.get_value("Healthcare Insurance Company", insurance_company, "disabled"):
         frappe.msgprint(
             _(
-                "<b>Insurance Company: <strong>{0}</strong> is disabled, Please choose different insurance subscription</b>".format(
-                    insurance_company
-                )
+                f"<b>Insurance Company: <strong>{insurance_company}</strong> is disabled, Please choose different insurance subscription</b>"
             )
         )
         return True

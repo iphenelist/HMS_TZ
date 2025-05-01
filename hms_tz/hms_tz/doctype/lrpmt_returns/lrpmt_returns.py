@@ -818,9 +818,7 @@ def set_missing_values(doc):
     else:
         frappe.throw(
             title="Notification",
-            msg="No any Appointment found for this Patient: {0}-{1}".format(
-                frappe.bold(doc.patient), frappe.bold(doc.patient_name)
-            ),
+            msg=f"No any Appointment found for this Patient: {frappe.bold(doc.patient)}-{frappe.bold(doc.patient_name)}",
         )
 
 

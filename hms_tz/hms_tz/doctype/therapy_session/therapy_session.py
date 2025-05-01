@@ -53,9 +53,7 @@ class TherapySession(Document):
         )
 
         if overlaps:
-            overlapping_details = _("Therapy Session overlaps with {0}").format(
-                get_link_to_form("Therapy Session", overlaps[0][0])
-            )
+            overlapping_details = _(f"Therapy Session overlaps with {get_link_to_form('Therapy Session', overlaps[0][0])}")
             frappe.throw(overlapping_details, title=_("Therapy Sessions Overlapping"))
 
     def on_submit(self):
@@ -168,7 +166,7 @@ def invoice_therapy_session(source_name, target_doc=None):
 
 def get_therapy_item(therapy, item):
     item.item_code = frappe.db.get_value("Therapy Type", therapy.therapy_type, "item")
-    item.description = _("Therapy Session Charges: {0}").format(therapy.practitioner)
+    item.description = _(f"Therapy Session Charges: {therapy.practitioner}")
     item.income_account = get_income_account(therapy.practitioner, therapy.company)
     item.cost_center = frappe.get_cached_value(
         "Company", therapy.company, "cost_center"

@@ -45,9 +45,7 @@ class RadiologyExamination(Document):
 
 
 def set_title_field(self):
-    self.title = _("{0} - {1}").format(
-        self.patient_name or self.patient, self.radiology_examination_template
-    )[:100]
+    self.title = _(f"{self.patient_name or self.patient} - {self.radiology_examination_template}")[:100]
 
 
 def insert_to_medical_record(doc):
@@ -70,24 +68,24 @@ def insert_to_medical_record(doc):
 
 @frappe.whitelist()
 def get_radiology_procedure_prescribed(patient, encounter_practitioner=False):
-    query = """
+    query = f"""
 		SELECT
 			cp.name, cp.radiology_examination_template, cp.parent, ct.invoiced, ct.encounter_date, ct.source, ct.referring_practitioner,
 			ct.practitioner, cp.radiology_test_comment
 		FROM
 			`tabPatient Encounter` ct, `tabRadiology Procedure Prescription` cp
 		WHERE
-			ct.patient='{0}' and cp.parent=ct.name and cp.radiology_examination_created=0 and cp.appointment_booked=0
+			ct.patient='{patient}' and cp.parent=ct.name and cp.radiology_examination_created=0 and cp.appointment_booked=0
 	"""
     if encounter_practitioner:
-        query += """ and ct.practitioner=%(encounter_practitioner)s"""
+        query += f""" and ct.practitioner={encounter_practitioner}"""
 
-    query += """
+    query += f"""
 		ORDER BY
 			ct.creation desc"""
 
     return frappe.db.sql(
-        query.format(patient), {"encounter_practitioner": encounter_practitioner}
+        query
     )
 
 

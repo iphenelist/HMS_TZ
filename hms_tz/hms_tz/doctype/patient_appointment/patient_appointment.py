@@ -54,10 +54,7 @@ class PatientAppointment(Document):
         # make_insurance_claim(self)
 
     def set_title(self):
-        self.title = _("{0} with {1}").format(
-            self.patient_name or self.patient,
-            self.practitioner_name or self.practitioner,
-        )
+        self.title = _(f"{self.patient_name or self.patient} with {self.practitioner_name or self.practitioner}")
 
     def set_status(self):
         today = getdate()
@@ -124,8 +121,8 @@ class PatientAppointment(Document):
                 ):
                     frappe.throw(
                         _(
-                            """ Not Allowed, Maximum capacity reached Service unit {0}"""
-                        ).format(self.service_unit),
+                            f""" Not Allowed, Maximum capacity reached Service unit {self.service_unit}"""
+                        ),
                         Maximumcapacityerror,
                     )
                 else:
@@ -146,14 +143,8 @@ class PatientAppointment(Document):
         if overlaps:
             frappe.throw(
                 _(
-                    """Appointment overlaps with {0}.<br> {1} has appointment scheduled
-			with {2} at {3} having {4} minute(s) duration."""
-                ).format(
-                    overlaps[0][0],
-                    overlaps[0][1],
-                    overlaps[0][2],
-                    overlaps[0][3],
-                    overlaps[0][4],
+                    f"""Appointment overlaps with {overlaps[0][0]}.<br> {overlaps[0][1]} has appointment scheduled
+			        with {overlaps[0][2]} at {overlaps[0][3]} having {overlaps[0][4]} minute(s) duration."""
                 ),
                 Overlappingerror,
             )
@@ -177,9 +168,7 @@ class PatientAppointment(Document):
         ):
             if not frappe.db.get_value("Patient", self.patient, "customer"):
                 msg = _("Please set a Customer linked to the Patient")
-                msg += " <b><a href='#Form/Patient/{0}'>{0}</a></b>".format(
-                    self.patient
-                )
+                msg += f" <b><a href='#Form/Patient/{self.patient}'>{self.patient}</a></b>"
                 frappe.throw(msg, title=_("Customer Not Found"))
 
     def update_prescription_details(self):
@@ -210,9 +199,7 @@ class PatientAppointment(Document):
         fee_validity = manage_fee_validity(self)
         if fee_validity:
             frappe.msgprint(
-                _("{0} has fee validity till {1}").format(
-                    self.patient, fee_validity.valid_till
-                )
+                _(f"{self.patient} has fee validity till {fee_validity.valid_till}")
             )
 
 
@@ -287,7 +274,7 @@ def invoice_appointment(appointment_doc):
         sales_invoice.save(ignore_permissions=True)
         sales_invoice.submit()
         frappe.msgprint(
-            _("Sales Invoice {0} created".format(sales_invoice.name)), alert=True
+            _(f"Sales Invoice {sales_invoice.name} created"), alert=True
         )
         frappe.db.set_value("Patient Appointment", appointment_doc.name, "invoiced", 1)
         frappe.db.set_value(
@@ -314,7 +301,7 @@ def get_appointment_item(appointment_doc, item):
         appointment_doc
     )
     item.item_code = service_item
-    item.description = _("Consulting Charges: {0}").format(appointment_doc.practitioner)
+    item.description = _(f"Consulting Charges: {appointment_doc.practitioner}")
     item.income_account = get_income_account(
         appointment_doc.practitioner, appointment_doc.company
     )
@@ -334,20 +321,18 @@ def cancel_appointment(appointment_id):
     if appointment.invoiced:
         sales_invoice = check_sales_invoice_exists(appointment)
         if sales_invoice and cancel_sales_invoice(sales_invoice):
-            msg = _("Appointment {0} and Sales Invoice {1} cancelled").format(
-                appointment.name, sales_invoice.name
-            )
+            msg = _(f"Appointment {appointment.name} and Sales Invoice {sales_invoice.name} cancelled")
         elif sales_invoice:
             msg = _(
-                "Appointment Cancelled. Please review and cancel the invoice {0}"
-            ).format(sales_invoice.name)
+                f"Appointment Cancelled. Please review and cancel the invoice {sales_invoice.name}"
+            )
         else:
             msg = _("Appointment Cancelled and related Sales Invoice not found.")
     else:
         fee_validity = manage_fee_validity(appointment)
         msg = _("Appointment Cancelled.")
         if fee_validity:
-            msg += _("Fee Validity {0} updated.").format(fee_validity.name)
+            msg += _(f"Fee Validity {fee_validity.name} updated.")
 
     frappe.msgprint(msg)
 
@@ -398,15 +383,15 @@ def get_availability_data(date, practitioner):
     else:
         frappe.throw(
             _(
-                "{0} does not have a Healthcare Practitioner Schedule. Add it in Healthcare Practitioner master"
-            ).format(practitioner),
+                f"{practitioner} does not have a Healthcare Practitioner Schedule. Add it in Healthcare Practitioner master"
+            ),
             title=_("Practitioner Schedule Not Found"),
         )
 
     if not slot_details and not present_events:
         # TODO: return available slots in nearby dates
         frappe.throw(
-            _("Healthcare Practitioner not available on {0}").format(weekday),
+            _(f"Healthcare Practitioner not available on {weekday}"),
             title=_("Not Available"),
         )
 
@@ -425,7 +410,7 @@ def check_employee_wise_availability(date, practitioner_doc):
     if employee:
         # check holiday
         if is_holiday(employee, date):
-            frappe.throw(_("{0} is a holiday".format(date)), title=_("Not Available"))
+            frappe.throw(_(f"{date} is a holiday"), title=_("Not Available"))
 
         # check leave status
         leave_record = frappe.db.sql(
@@ -438,37 +423,35 @@ def check_employee_wise_availability(date, practitioner_doc):
         if leave_record:
             if leave_record[0].half_day:
                 frappe.throw(
-                    _("{0} is on a Half day Leave on {1}").format(
-                        practitioner_doc.name, date
-                    ),
+                    _(f"{practitioner_doc.name} is on a Half day Leave on {date}"),
                     title=_("Not Available"),
                 )
             else:
                 frappe.throw(
-                    _("{0} is on Leave on {1}").format(practitioner_doc.name, date),
+                    _(f"{practitioner_doc.name} is on Leave on {date}"),
                     title=_("Not Available"),
                 )
 
 
 def get_present_event(practitioner, date):
+    date = getdate(date)
     present_events = frappe.db.sql(
-        """
+        f"""
 		select
 			name, availability, from_time, to_time, from_date, to_date, duration, service_unit, repeat_this_event, repeat_on, repeat_till,
 			monday, tuesday, wednesday, thursday, friday, saturday, sunday
 		from
 			`tabPractitioner Availability`
 		where
-			practitioner = %(practitioner)s and present = 1 and
+			practitioner = {practitioner} and present = 1 and
 			(
-				(repeat_this_event = 1 and (from_date<=%(date)s and ifnull(repeat_till, "3000-01-01")>=%(date)s))
+				(repeat_this_event = 1 and (from_date<={date} and ifnull(repeat_till, "3000-01-01")>={date}))
 				or
-				(repeat_this_event != 1 and (from_date<=%(date)s and to_date>=%(date)s))
+				(repeat_this_event != 1 and (from_date<={date} and to_date>={date}))
 			)
 		order by
 			from_date, from_time
-	""".format(),
-        {"practitioner": practitioner, "date": getdate(date)},
+	""",
         as_dict=True,
     )
     return present_events if present_events else ""
@@ -476,22 +459,22 @@ def get_present_event(practitioner, date):
 
 def get_absent_event(practitioner, date):
     # Absent events
+    date = getdate(date)
     absent_events = frappe.db.sql(
-        """
+        f"""
 		select
 			name, availability, from_time, to_time, from_date, to_date, duration, service_unit, service_unit, repeat_this_event, repeat_on, repeat_till,
 			monday, tuesday, wednesday, thursday, friday, saturday, sunday
 		from
 			`tabPractitioner Availability`
 		where
-			practitioner = %(practitioner)s and present != 1 and
+			practitioner = {practitioner} and present != 1 and
 			(
-				(repeat_this_event = 1 and (from_date<=%(date)s and ifnull(repeat_till, "3000-01-01")>=%(date)s))
+				(repeat_this_event = 1 and (from_date<={date} and ifnull(repeat_till, "3000-01-01")>={date}))
 				or
-				(repeat_this_event != 1 and (from_date<=%(date)s and to_date>=%(date)s))
+				(repeat_this_event != 1 and (from_date<={date} and to_date>={date}))
 			)
-	""".format(),
-        {"practitioner": practitioner, "date": getdate(date)},
+	""",
         as_dict=True,
     )
 
@@ -517,8 +500,8 @@ def get_available_slots(practitioner_doc, date):
         else:
             frappe.throw(
                 _(
-                    "{0} does not have a Healthcare Practitioner Schedule. Add it in Healthcare Practitioner"
-                ).format(frappe.bold(practitioner)),
+                    f"{frappe.bold(practitioner)} does not have a Healthcare Practitioner Schedule. Add it in Healthcare Practitioner"
+                ),
                 title=_("Practitioner Schedule Not Found"),
             )
 
@@ -822,7 +805,7 @@ def get_events(start, end, filters=None):
     conditions = get_event_conditions("Patient Appointment", filters)
 
     data = frappe.db.sql(
-        """
+       f"""
 		select
 		`tabPatient Appointment`.name, `tabPatient Appointment`.patient_name, `tabPatient Appointment`.practitioner_name,`tabPatient Appointment`.patient_sex, `tabPatient Appointment`.patient_age,`tabPatient Appointment`.appointment_type,
 		`tabPatient Appointment`.practitioner, `tabPatient Appointment`.status,`tabPatient Appointment`.triage,
@@ -833,11 +816,8 @@ def get_events(start, end, filters=None):
 		`tabPatient Appointment`
 		left join `tabAppointment Type` on `tabPatient Appointment`.appointment_type=`tabAppointment Type`.name
 		where
-		(`tabPatient Appointment`.appointment_date between %(start)s and %(end)s)
-		and `tabPatient Appointment`.status != 'Cancelled' and `tabPatient Appointment`.docstatus < 2 {conditions}""".format(
-            conditions=conditions
-        ),
-        {"start": start, "end": end},
+		(`tabPatient Appointment`.appointment_date between {start} and {end})
+		and `tabPatient Appointment`.status != 'Cancelled' and `tabPatient Appointment`.docstatus < 2 {conditions}""",
         as_dict=True,
         update={"allDay": 0},
     )

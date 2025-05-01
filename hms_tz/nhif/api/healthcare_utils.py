@@ -357,7 +357,7 @@ def get_app_branch(app):
 
     try:
         branch = subprocess.check_output(
-            "cd ../apps/{0} && git rev-parse --abbrev-ref HEAD".format(app), shell=True
+            f"cd ../apps/{app} && git rev-parse --abbrev-ref HEAD", shell=True
         )
         branch = branch.decode("utf-8")
         branch = branch.strip()
@@ -439,7 +439,7 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
     doc.submit()
     if doc.get("name"):
         frappe.msgprint(
-            _("Delivery Note {0} created successfully.").format(frappe.bold(doc.name)),
+            _(f"Delivery Note {frappe.bold(doc.name)} created successfully."),
             alert=True,
         )
 
@@ -745,7 +745,7 @@ def set_healthcare_services(doc, checked_values):
 def inpatient_billing(encounter_doc, method):
     if encounter_doc.insurance_subscription:  # IPD/OPD insurance
         return
-    
+
     if not encounter_doc.inpatient_record:  # OPD cash or insurance
         return
 
@@ -815,7 +815,7 @@ def create_healthcare_docs(reference_encounter, encounter_list=[], method="event
             "Patient Encounter",
             filters={"reference_encounter": reference_encounter},
         )
-    
+
     for encounter in encounter_list:
         encounter_doc = frappe.get_doc("Patient Encounter", encounter)
 
@@ -841,7 +841,7 @@ def create_lrp_docs(encounter_doc):
             alert=True,
         )
         return
-    
+
     if not encounter_doc.appointment:
         frappe.msgprint(
             _(
@@ -851,7 +851,7 @@ def create_lrp_docs(encounter_doc):
             alert=True,
         )
         return
-    
+
     if (
         not encounter_doc.insurance_subscription
         and not encounter_doc.inpatient_record
@@ -1186,14 +1186,14 @@ def create_plan(patient_encounter_docs, therapies):
 def create_delivery_note(encounter_doc, method):
     if not encounter_doc.appointment:
         return
-    
+
     if (
         not encounter_doc.insurance_subscription
         and not encounter_doc.inpatient_record
         and not encounter_doc.healthcare_package_order
     ):
         return
-    
+
     # Create list of warehouses to process delivery notes by warehouses
     warehouses = []
     for line in encounter_doc.drug_prescription:
@@ -1265,7 +1265,7 @@ def create_delivery_note(encounter_doc, method):
             )
             if not is_stock:
                 continue
-            
+
             item = frappe.new_doc("Delivery Note Item")
             item.item_code = item_code
             item.item_name = item_name
@@ -1305,7 +1305,7 @@ def create_delivery_note(encounter_doc, method):
 
         if len(items) == 0:
             continue
-        
+
         authorization_number = ""
         encounter_customer = ""
         insurance_coverage_plan = ""
@@ -1375,7 +1375,7 @@ def create_delivery_note(encounter_doc, method):
                             },
                             update_modified=False
                         )
-            
+
             frappe.msgprint(
                 _(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully.")
             )
@@ -1386,7 +1386,7 @@ def msgThrow(msg, method="throw", alert=True):
         frappe.throw(msg)
     else:
         frappe.msgprint(msg, alert=alert)
-        
+
 
 
 def msgPrint(msg, method="throw", alert=False):
@@ -1437,7 +1437,7 @@ def validate_hsu_healthcare_template(doc):
         )
         if not row:
             frappe.msgprint(
-                _("Please set Healthcare Service Unit for company {0}").format(company)
+                _(f"Please set Healthcare Service Unit for company {company}")
             )
 
 
@@ -1454,9 +1454,7 @@ def get_template_company_option(template=None, company=None, method=None):
     else:
         msgThrow(
             _(
-                "No company option found for template: {0} and company: {1}".format(
-                    frappe.bold(template), frappe.bold(company)
-                )
+                f"No company option found for template: {frappe.bold(template)} and company: {frappe.bold(company)}"
             ),
             method=method,
         )
@@ -1475,12 +1473,10 @@ def delete_or_cancel_draft_document():
     before_2_days_date = add_to_date(nowdate(), days=-2, as_string=False)
 
     appointments = frappe.db.sql(
-        """
-        SELECT name FROM `tabPatient Appointment` 
+        f"""
+        SELECT name FROM `tabPatient Appointment`
         WHERE status = "Open" AND appointment_date < '{before_7_days_date}'
-    """.format(
-            before_7_days_date=before_7_days_date
-        ),
+    """,
         as_dict=1,
     )
 
@@ -1496,12 +1492,10 @@ def delete_or_cancel_draft_document():
             )
 
     vital_docs = frappe.db.sql(
-        """
-        SELECT name FROM `tabVital Signs` 
+        f"""
+        SELECT name FROM `tabVital Signs`
         WHERE docstatus = 0 AND signs_date < '{before_7_days_date}'
-    """.format(
-            before_7_days_date=before_7_days_date
-        ),
+    """,
         as_dict=1,
     )
 
@@ -1517,14 +1511,12 @@ def delete_or_cancel_draft_document():
         frappe.db.commit()
 
     delivery_documents = frappe.db.sql(
-        """
-        SELECT name FROM `tabDelivery Note` 
+        f"""
+        SELECT name FROM `tabDelivery Note`
         WHERE docstatus = 0
         AND workflow_state != "Not Serviced"
         AND posting_date < '{before_2_days_date}'
-    """.format(
-            before_2_days_date=before_2_days_date
-        ),
+    """,
         as_dict=1,
     )
 
@@ -1539,9 +1531,7 @@ def delete_or_cancel_draft_document():
             frappe.log_error(
                 frappe.get_traceback(),
                 str(
-                    "Error for Return or Cancel Delivery Note: {0} Via LRPMT Returns".format(
-                        frappe.bold(delivery_note_doc.name)
-                    )
+                    f"Error for Return or Cancel Delivery Note: {frappe.bold(delivery_note_doc.name)} Via LRPMT Returns"
                 ),
             )
 
@@ -1603,9 +1593,7 @@ def return_quatity_or_cancel_delivery_note_via_lrpmt_returns(source_doc, method)
             target_doc.submit()
             url = get_url_to_form(target_doc.doctype, target_doc.name)
             frappe.msgprint(
-                "LRPMT Returns: <a href='{0}'>{1}</a> is submitted".format(
-                    url, frappe.bold(target_doc.name)
-                )
+                f"LRPMT Returns: <a href='{url}'>{frappe.bold(target_doc.name)}</a> is submitted"
             )
 
             return True
@@ -1846,10 +1834,8 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
         except:
             failed_count += 1
 
-    description = "CLAIM'S AUTO SUBMISSION SUMMARY\n\n\ncompany: {0}\n\nTotal Claims Prepared for auto submit: {1}\
-        \n\nTotal claims Submitted: {2}\n\nTotal Claims failed: {3}".format(
-        setting_obj.company, len(patient_claims), success_count, failed_count
-    )
+    description = f"CLAIM'S AUTO SUBMISSION SUMMARY\n\n\ncompany: {setting_obj.company}\n\nTotal Claims Prepared for auto submit: {len(patient_claims)}\
+        \n\nTotal claims Submitted: {success_count}\n\nTotal Claims failed: {failed_count}"
     add_log(
         request_type="AutoSubmitFolios",
         request_url="",
@@ -2065,7 +2051,7 @@ def auto_finalize_patient_encounters():
                 "company": row.name,
             },
             ["name", "reference_encounter", "inpatient_record"],
-            order_by="modified desc", 
+            order_by="modified desc",
             limit=100
         )
         for encounter_batch in create_batch(encounters, 100):
@@ -2183,7 +2169,7 @@ def auto_create_nhif_patient_claims():
         ongoing_inpatients = [i.patient_appointment for i in inpatient_appointments]
 
         return ongoing_inpatients
-    
+
     def get_discharged_inpatients(discharge_date):
         inpatient_appointments = (
             frappe.qb.from_(ip)
@@ -2218,14 +2204,14 @@ def auto_create_nhif_patient_claims():
                 doc.patient_appointment = appointment
                 doc.save(ignore_permissions=True)
                 doc.reload()
-            
+
             except Exception as e:
                 frappe.log_error(
                     frappe.get_traceback(),
                     f"Error in creating NHIF Patient Claim for appointment: {appointment}",
                 )
                 continue
-    
+
     before_1_day = add_days(nowdate(), -1)
     appointment_names = get_appointments(before_1_day)
     ongoing_inpatients = get_ongoiong_inpatients()

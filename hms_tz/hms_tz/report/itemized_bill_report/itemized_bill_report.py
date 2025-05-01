@@ -75,15 +75,9 @@ def execute(filters=None):
 
             if not data:
                 frappe.throw(
-                    "No Record found for the filters Patient: {0}, Appointment: {1},\
-                    Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
-                    Please change your filters and try again..!!".format(
-                        frappe.bold(filters.patient),
-                        frappe.bold(filters.patient_appointment),
-                        frappe.bold(filters.patient_type),
-                        frappe.bold(filters.from_date),
-                        frappe.bold(filters.to_date),
-                    )
+                    f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
+                    Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
+                    Please change your filters and try again..!!"
                 )
 
             total_amount = 0
@@ -144,15 +138,9 @@ def execute(filters=None):
 
             if not data:
                 frappe.throw(
-                    "No Record found for the filters Patient: {0}, Appointment: {1},\
-                    Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
-                    Please change your filters and try again..!!".format(
-                        frappe.bold(filters.patient),
-                        frappe.bold(filters.patient_appointment),
-                        frappe.bold(filters.patient_type),
-                        frappe.bold(filters.from_date),
-                        frappe.bold(filters.to_date),
-                    )
+                    f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
+                    Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
+                    Please change your filters and try again..!!"
                 )
 
             total_amount = 0
@@ -217,15 +205,9 @@ def execute(filters=None):
             data = sorted(data, key=lambda d: (d["category"], d["date"]))
             if not data:
                 frappe.throw(
-                    "No Record found for the filters Patient: {0}, Appointment: {1},\
-                    Patient Type: {2} From Date: {3} and To Date: {4} you specified..., \
-                    Please change your filters and try again..!!".format(
-                        frappe.bold(filters.patient),
-                        frappe.bold(filters.patient_appointment),
-                        frappe.bold(filters.patient_type),
-                        frappe.bold(filters.from_date),
-                        frappe.bold(filters.to_date),
-                    )
+                    f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
+                    Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
+                    Please change your filters and try again..!!"
                 )
 
             total_amount = 0
@@ -491,7 +473,7 @@ def get_appointment_consultancy(filters):
     conditions = get_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			pa.appointment_date AS date,
 			it.item_group AS category,
@@ -513,9 +495,7 @@ def get_appointment_consultancy(filters):
 			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment
 		WHERE pa.status = "Closed"
 		AND pa.follow_up = 0 {conditions}
-	""".format(
-            conditions=conditions
-        ),
+	"""
         filters,
         as_dict=1,
     )
@@ -527,7 +507,7 @@ def get_ipd_occupancy_transactions(filters):
     pe_conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			DATE(ipd_occ.check_in) AS date,
 			hsut.item_group AS category,
@@ -555,9 +535,7 @@ def get_ipd_occupancy_transactions(filters):
 			WHERE pe.docstatus = 1 {pe_conditions}
 			ORDER BY pe.creation desc
 		) {ipd_conditions}
-	""".format(
-            pe_conditions=pe_conditions, ipd_conditions=ipd_conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -570,7 +548,7 @@ def get_ipd_consultancy_transactions(filters):
     pe_conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			ipd_cons.date AS date,
 			it.item_group AS category,
@@ -597,9 +575,7 @@ def get_ipd_consultancy_transactions(filters):
 			WHERE pe.docstatus = 1 {pe_conditions}
 			ORDER BY pe.creation desc
 		) {ipd_conditions}
-	""".format(
-            pe_conditions=pe_conditions, ipd_conditions=ipd_conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -610,7 +586,7 @@ def get_cash_lrpmt_transaction(filters):
     conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			DATE(lrpmt.creation) AS date,
 			item_template.lab_test_group AS category,
@@ -773,9 +749,7 @@ def get_cash_lrpmt_transaction(filters):
 			AND  pe.docstatus = 1 {conditions}
 			ORDER BY pe.creation desc
 		)
-	""".format(
-            conditions=conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )
@@ -787,7 +761,7 @@ def get_insurance_lrpmt_transaction(filters):
     conditions = get_enc_conditions(filters)
 
     data = frappe.db.sql(
-        """
+        f"""
 		SELECT
 			DATE(lrpmt.creation) AS date,
 			item_template.lab_test_group AS category,
@@ -948,9 +922,7 @@ def get_insurance_lrpmt_transaction(filters):
 			AND pe.docstatus = 1 {conditions}
 			ORDER BY pe.creation desc
 		)
-	""".format(
-            conditions=conditions
-        ),
+	""",
         filters,
         as_dict=1,
     )

@@ -56,5 +56,5 @@ def set_price(doc, method):
                 return
             if price_list_rate == 0:
                 frappe.throw(
-                    _("Please set Price List for item: {0}").format(doc.service_item)
+                    _(f"Please set Price List for item: {doc.service_item}")
                 )

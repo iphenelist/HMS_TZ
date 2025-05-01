@@ -63,22 +63,16 @@ def validate_duration(doc):
 
 
 def validate_existing_appointment(doc):
-    appointment_query = """
+    appointment_query = f"""
 		select
 			name
 		from
 			`tabPatient Appointment`
 		where
-			 practitioner = %(practitioner)s and docstatus < 2 and status != 'Cancelled' and appointment_date = %(from_date)s and (appointment_time >= %(from_time)s and appointment_time < %(to_time)s)
+			practitioner = {doc.get("practitioner")} and docstatus < 2 and status != 'Cancelled' and appointment_date = {doc.from_date} and (appointment_time >= {doc.from_time} and appointment_time < {doc.to_time})
 		"""
     appointments = frappe.db.sql(
-        appointment_query.format(doc.doctype),
-        {
-            "practitioner": doc.get("practitioner"),
-            "from_date": doc.from_date,
-            "from_time": doc.from_time,
-            "to_time": doc.to_time,
-        },
+        appointment_query,
         as_dict=1,
     )
     if appointments:
@@ -113,29 +107,29 @@ def validate_service_unit_capacity(doc):
             and (int(doc.total_service_unit_capacity) > int(service_unit_capacity))
         ):
             frappe.throw(
-                _("Not Allowed - Maximum Capacity {0}").format(service_unit_capacity)
+                _(f"Not Allowed - Maximum Capacity {service_unit_capacity}")
             )
 
 
 def validate_event_overlap(doc):
-    query = """
+    query = f"""
 		select
 			name, from_date, from_time, to_time, service_unit
 		from
 			`tabPractitioner Availability`
 		where
-			name != %(name)s and present = %(present)s
-			and practitioner = %(practitioner)s and docstatus < 2 and
+			name != {doc.name} and present = {doc.present}
+			and practitioner = {doc.get("practitioner")} and docstatus < 2 and
 			(
 				(
 					repeat_this_event = 1
 					and
 					(
-						(from_date between %(from_date)s and %(repeat_till)s)
+						(from_date between {doc.from_date} and {doc.repeat_till})
 						or
-						(ifnull(repeat_till, "3000-01-01") between %(from_date)s and %(repeat_till)s)
+						(ifnull(repeat_till, "3000-01-01") between {doc.from_date} and {doc.repeat_till})
 						or
-						(from_date < %(from_date)s and ifnull(repeat_till, "3000-01-01") > %(repeat_till)s)
+						(from_date < {doc.from_date} and ifnull(repeat_till, "3000-01-01") > {doc.repeat_till})
 					)
 					and
 					(
@@ -143,9 +137,9 @@ def validate_event_overlap(doc):
 							repeat_on = 'Every Day'
 							and
 							(
-								monday=%(monday)s or tuesday=%(tuesday)s or wednesday=%(wednesday)s or thursday=%(thursday)s
+								monday={doc.monday} or tuesday={doc.tuesday} or wednesday={doc.wednesday} or thursday={doc.thursday}
 								or
-								friday=%(friday)s or saturday=%(saturday)s or sunday=%(sunday)s
+								friday={doc.friday} or saturday={doc.saturday} or sunday={doc.sunday}
 							)
 						)
 						or
@@ -153,7 +147,7 @@ def validate_event_overlap(doc):
 							repeat_on = 'Every Month'
 							and
 							(
-								month(%(from_date)s)=month(from_date)
+								month({doc.from_date})=month(from_date)
 							)
 						)
 					)
@@ -163,23 +157,23 @@ def validate_event_overlap(doc):
 					repeat_this_event != 1
 					and
 					(
-						(%(from_date)s between from_date and to_date)
+						({doc.from_date} between from_date and to_date)
 						or
-						(%(to_date)s between from_date and to_date)
+						({doc.to_date} between from_date and to_date)
 						or
-						(%(from_date)s < from_date and %(to_date)s > to_date)
+						({doc.from_date} < from_date and {doc.to_date} > to_date)
 					)
 				)
 			)
 			and
 			(
-				(from_time >= %(from_time)s and from_time < %(to_time)s)
+				(from_time >= {doc.from_time} and from_time < {doc.to_time})
 				or
-				(to_time > %(from_time)s and to_time <= %(to_time)s)
+				(to_time > {doc.from_time} and to_time <= {doc.to_time})
 				or
-				(from_time between %(from_time)s and %(to_time)s) and (to_time between %(from_time)s and %(to_time)s)
+				(from_time between {doc.from_time} and {doc.to_time}) and (to_time between {doc.from_time} and {doc.to_time})
 				or
-				(from_time < %(from_time)s and to_time > %(to_time)s)
+				(from_time < {doc.from_time} and to_time > {doc.to_time})
 			)
 		"""
 
@@ -188,24 +182,7 @@ def validate_event_overlap(doc):
         doc.name = "New " + doc.doctype
 
     overlap_doc = frappe.db.sql(
-        query.format(doc.doctype),
-        {
-            "practitioner": doc.get("practitioner"),
-            "from_date": doc.from_date,
-            "to_date": doc.to_date,
-            "from_time": doc.from_time,
-            "repeat_till": doc.repeat_till or "3000-01-01",
-            "to_time": doc.to_time,
-            "name": doc.name,
-            "present": doc.present,
-            "monday": 1 if doc.monday == 1 else 2,
-            "tuesday": 1 if doc.tuesday == 1 else 2,
-            "wednesday": 1 if doc.wednesday == 1 else 2,
-            "thursday": 1 if doc.thursday == 1 else 2,
-            "friday": 1 if doc.friday == 1 else 2,
-            "saturday": 1 if doc.saturday == 1 else 2,
-            "sunday": 1 if doc.sunday == 1 else 2,
-        },
+        query,
         as_dict=1,
     )
 
@@ -234,10 +211,8 @@ def validate_event_overlap(doc):
 
 def throw_overlap_error(doc, exists_for, overlap_doc, from_date, from_time, to_time):
     msg = (
-        _("A {0} exists on {1} with time {2} to {3} (").format(
-            doc.doctype, formatdate(from_date), from_time, to_time
-        )
-        + """ <b><a href="#Form/{0}/{1}">{1}</a></b>""".format(doc.doctype, overlap_doc)
-        + _(") for {0}").format(exists_for)
+        _(f"A {doc.doctype} exists on {formatdate(from_date)} with time {from_time} to {to_time} (")
+        + f""" <b><a href="#Form/{doc.doctype}/{overlap_doc}">{overlap_doc}</a></b>"""
+        + _(f") for {exists_for}")
     )
     frappe.throw(msg)

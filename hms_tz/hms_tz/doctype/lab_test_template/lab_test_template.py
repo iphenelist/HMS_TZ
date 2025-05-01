@@ -100,7 +100,7 @@ class LabTestTemplate(Document):
             for item in self.normal_test_templates:
                 if item.secondary_uom and not item.conversion_factor:
                     frappe.throw(
-                        _("Row #{0}: Conversion Factor is mandatory").format(item.idx)
+                        _(f"Row #{item.idx}: Conversion Factor is mandatory")
                     )
         if self.lab_test_template_type == "Grouped":
             for group in self.lab_test_groups:
@@ -110,7 +110,7 @@ class LabTestTemplate(Document):
                     and not group.conversion_factor
                 ):
                     frappe.throw(
-                        _("Row #{0}: Conversion Factor is mandatory").format(group.idx)
+                        _(f"Row #{group.idx}: Conversion Factor is mandatory")
                     )
 
 
@@ -167,7 +167,7 @@ def change_test_code_from_template(lab_test_code, doc):
     doc = frappe._dict(json.loads(doc))
 
     if frappe.db.exists({"doctype": "Item", "item_code": lab_test_code}):
-        frappe.throw(_("Lab Test Item {0} already exist").format(lab_test_code))
+        frappe.throw(_(f"Lab Test Item {lab_test_code} already exist"))
     else:
         rename_doc("Item", doc.name, lab_test_code, ignore_permissions=True)
         frappe.db.set_value(
