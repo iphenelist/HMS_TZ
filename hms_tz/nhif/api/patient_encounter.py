@@ -68,7 +68,7 @@ def before_insert(doc, method):
 # regency rock: 95
 def after_insert(doc, method):
     if doc.company and doc.mode_of_payment:
-        pharmacy_details = frappe.get_value(
+        pharmacy_details = frappe.get_cached_value(
             "Company",
             doc.company,
             [
@@ -101,7 +101,7 @@ def after_insert(doc, method):
                 doc.default_healthcare_service_unit = pharmacy_details.opd_cash_pharmacy
 
     if doc.insurance_coverage_plan:
-        pharmacy_details = frappe.get_value(
+        pharmacy_details = frappe.get_cached_value(
             "Healthcare Insurance Coverage Plan",
             doc.insurance_coverage_plan,
             [
@@ -179,7 +179,7 @@ def on_submit_validation(doc, method):
     childs_map = get_childs_map()
     for child in childs_map:
         for row in doc.get(child.get("table")):
-            healthcare_doc = frappe.get_doc(
+            healthcare_doc = frappe.get_cached_doc(
                 child.get("doctype"), row.get(child.get("item"))
             )
             if healthcare_doc.disabled:
@@ -507,7 +507,7 @@ def checkـforـduplicate(doc, method):
 
 @frappe.whitelist()
 def duplicate_encounter(encounter):
-    doc = frappe.get_doc("Patient Encounter", encounter)
+    doc = frappe.get_cached_doc("Patient Encounter", encounter)
     if doc.healthcare_package_order:
         frappe.throw(
             _(
@@ -578,6 +578,7 @@ def duplicate_encounter(encounter):
     encounter_dict["encounter_type"] = "Ongoing"
     if not encounter_dict.get("reference_encounter"):
         encounter_dict["reference_encounter"] = doc.name
+    
     encounter_dict["from_encounter"] = doc.name
     encounter_dict["previous_total"] = doc.previous_total + doc.current_total
     encounter_dict["current_total"] = 0
@@ -744,8 +745,8 @@ def get_chronic_diagnosis(patient):
 
 @frappe.whitelist()
 def add_chronic_diagnosis(patient, encounter):
-    patient_doc = frappe.get_doc("Patient", patient)
-    encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+    patient_doc = frappe.get_cached_doc("Patient", patient)
+    encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 
     prev_diagnos = len(patient_doc.codification_table)
     medical_codes = []
@@ -818,8 +819,8 @@ def add_chronic_medications(patient, encounter, items):
 
         return drug_row
 
-    patient_doc = frappe.get_doc("Patient", patient)
-    encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+    patient_doc = frappe.get_cached_doc("Patient", patient)
+    encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 
     chronic_drug_items = []
     items = frappe.parse_json(items)
@@ -934,7 +935,7 @@ def validate_totals(doc, method, show_alert=True):
     
     childs_map = get_childs_map()
     if doc.encounter_type == "Initial":
-        appointment_amount = frappe.get_value(
+        appointment_amount = frappe.get_cached_value(
             "Patient Appointment", doc.appointment, "paid_amount"
         )
         doc.previous_total = appointment_amount
@@ -974,7 +975,7 @@ def validate_totals(doc, method, show_alert=True):
 
 @frappe.whitelist()
 def finalized_encounter(cur_encounter, ref_encounter=None):
-    patient, cur_inpatient_record = frappe.get_value(
+    patient, cur_inpatient_record = frappe.get_cached_value(
         "Patient Encounter", cur_encounter, ["patient", "inpatient_record"]
     )
     inpatient_status, inpatient_record = frappe.get_cached_value(
@@ -1003,8 +1004,8 @@ def finalized_encounter(cur_encounter, ref_encounter=None):
 
 @frappe.whitelist()
 def create_sales_invoice(encounter, encounter_category, encounter_mode_of_payment):
-    encounter_doc = frappe.get_doc("Patient Encounter", encounter)
-    encounter_category = frappe.get_doc("Encounter Category", encounter_category)
+    encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
+    encounter_category = frappe.get_cached_doc("Encounter Category", encounter_category)
     if not encounter_category.create_sales_invoice:
         return
 
@@ -1078,7 +1079,7 @@ def update_inpatient_record_consultancy(doc):
             )
             rate = get_item_price(item_code, price_list, doc.company)
 
-        record_doc = frappe.get_doc("Inpatient Record", doc.inpatient_record)
+        record_doc = frappe.get_cached_doc("Inpatient Record", doc.inpatient_record)
         row = record_doc.append("inpatient_consultancy", {})
         row.date = nowdate()
         row.consultation_item = item_code
@@ -1140,7 +1141,7 @@ def on_update_after_submit(doc, method):
 
 def enqueue_on_update_after_submit(doc_name):
     time.sleep(5)
-    on_update_after_submit(frappe.get_doc("Patient Encounter", doc_name), "enqueue")
+    on_update_after_submit(frappe.get_cached_doc("Patient Encounter", doc_name), "enqueue")
 
 
 def before_submit(doc, method):
@@ -1342,7 +1343,7 @@ def validate_patient_balance_vs_patient_costs(
             {"child_table": "therapies"},
         ]
         for enc in encounters:
-            encounter_doc = frappe.get_doc("Patient Encounter", enc)
+            encounter_doc = frappe.get_cached_doc("Patient Encounter", enc)
 
             for row in child_map:
                 for child in encounter_doc.get(row.get("child_table")):
@@ -1364,7 +1365,7 @@ def validate_patient_balance_vs_patient_costs(
 
     def get_inpatient_costs(inpatient_record):
         inpatient_cost = 0
-        inpatient_record_doc = frappe.get_doc("Inpatient Record", inpatient_record)
+        inpatient_record_doc = frappe.get_cached_doc("Inpatient Record", inpatient_record)
         cash_limit = inpatient_record_doc.cash_limit
         for record in inpatient_record_doc.inpatient_occupancies:
             if not record.is_confirmed:
@@ -1380,7 +1381,7 @@ def validate_patient_balance_vs_patient_costs(
 
         return inpatient_cost, cash_limit
 
-    cash_limit_details = frappe.get_value(
+    cash_limit_details = frappe.get_cached_value(
         "Company",
         {"name": company, "hms_tz_has_cash_limit_alert": 1},
         [
@@ -1610,14 +1611,14 @@ def show_last_prescribed_for_lrpt(doc, method):
 def validate_prescribe_days(doc, doctype, item_value, date):
     valid_min_presribe_days = None
     if doc.insurance_company:
-        valid_min_presribe_days = frappe.get_value(
+        valid_min_presribe_days = frappe.get_cached_value(
             doctype,
             {"name": item_value, "hms_tz_validate_prescription_days_for_insurance": 1},
             "hms_tz_insurance_min_no_of_days_for_prescription",
         )
 
     elif doc.mode_of_payment:
-        valid_min_presribe_days = frappe.get_value(
+        valid_min_presribe_days = frappe.get_cached_value(
             doctype,
             {"name": item_value, "hms_tz_validate_prescription_days_for_cash": 1},
             "hms_tz_cash_min_no_of_days_for_prescription",
@@ -1645,7 +1646,7 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
     :param of encounter: name of the encounter to be converted to inpatient encounter
     """
 
-    doc = frappe.get_doc("Patient Encounter", encounter)
+    doc = frappe.get_cached_doc("Patient Encounter", encounter)
     if doc.inpatient_record:
         frappe.msgprint(
             "<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 12pt;'>\
@@ -1708,7 +1709,7 @@ def validate_admission_encounter(encounter, healthcare_package_order=None):
         )
         return True
 
-    duplicated_encounter = frappe.get_value(
+    duplicated_encounter = frappe.get_cached_value(
         "Patient Encounter", {"from_encounter": encounter}, "name"
     )
     if duplicated_encounter:
@@ -1869,8 +1870,8 @@ def get_drug_quantity(drug_item):
     drug_row = frappe.parse_json(drug_item)
 
     if drug_row.dosage and drug_row.period:
-        dosage = frappe.get_doc("Prescription Dosage", drug_row.dosage)
-        period = frappe.get_doc("Prescription Duration", drug_row.period)
+        dosage = frappe.get_cached_doc("Prescription Dosage", drug_row.dosage)
+        period = frappe.get_cached_doc("Prescription Duration", drug_row.period)
         for item in dosage.dosage_strength:
             strength_count += item.strength
         if strength_count == 0:
@@ -2136,7 +2137,7 @@ def set_admission_service_type(doc):
     """Set admission service type based on service unit type of inpatient record"""
 
     if doc.inpatient_record:
-        admission_service_unit_type = frappe.get_value(
+        admission_service_unit_type = frappe.get_cached_value(
             "Inpatient Record", doc.inpatient_record, "admission_service_unit_type"
         )
         if (
