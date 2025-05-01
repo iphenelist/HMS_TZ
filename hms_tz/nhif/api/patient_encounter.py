@@ -21,8 +21,10 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
     get_income_account,
 )
 import time
-from hms_tz.nhif.api.patient_appointment import calculate_patient_age
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import Date
 from erpnext.accounts.utils import get_balance_on
+from hms_tz.nhif.api.patient_appointment import calculate_patient_age
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     msgThrow,
     msgPrint,
@@ -1206,71 +1208,82 @@ def set_amounts(doc):
 def show_last_prescribed(doc, method):
     if doc.is_new():
         return
-    if method == "validate":
-        msg = None
-        valid_days_msg = ""
-        for row in doc.drug_prescription:
-            if row.is_cancelled or row.is_not_available_inhouse:
-                continue
+    
+    if method != "before_save":
+        return
 
-            item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
+    msg = None
+    valid_days_msg = ""
+    dn = DocType("Delivery Note")
+    dni = DocType("Delivery Note Item")
+    
+    for row in doc.drug_prescription:
+        if row.is_cancelled or row.is_not_available_inhouse:
+            continue
 
-            medication_list = frappe.db.sql(
-                """
-            select dn.posting_date, dni.item_code, dni.stock_qty, dni.uom from `tabDelivery Note` dn
-            inner join `tabDelivery Note Item` dni on dni.parent = dn.name
-                            where dni.item_code = %s
-                            and dn.patient = %s
-                            and dn.docstatus = 1
-                            order by posting_date desc
-                            limit 1"""
-                % ("%s", "%s"),
-                (item_code, doc.patient),
-                as_dict=1,
+        item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
+
+        medication_list = (
+            frappe.qb.from_(dn)
+            .inner_join(dni).on(dni.parent == dn.name)
+            .select(
+                dn.posting_date,
+                dni.item_code,
+                dni.stock_qty,
+                dni.uom,
             )
-            if len(medication_list) > 0:
-                msg = (
-                    (msg or "")
-                    + _(
-                        "<strong>"
-                        + row.drug_code
-                        + "</strong>"
-                        + " qty: <strong>"
-                        + str(medication_list[0].get("stock_qty"))
-                        + "</strong>, prescribed lastly on: <strong>"
-                        + str(medication_list[0].get("posting_date"))
-                    )
-                    + "</strong><br>"
-                )
-
-                val_msg = validate_prescribe_days(
-                    doc,
-                    "Medication",
-                    row.drug_code,
-                    medication_list[0].get("posting_date"),
-                )
-                if val_msg:
-                    valid_days_msg += val_msg
-
-                # SHM Rock#: 169
-                validate_medication_class(
-                    doc.company, doc.name, doc.patient, row.drug_code
-                )
-
-        if valid_days_msg:
-            frappe.msgprint(
-                _(
-                    "These Items should not be prescribed, because days are below minimum prescription days:<br>"
-                    + valid_days_msg
-                )
+            .where(
+                (dn.docstatus == 1)
+                & (dn.patient == doc.patient)
+                & (dni.item_code == item_code)
             )
-        elif msg:
-            frappe.msgprint(
-                _(
-                    "The below are the last related medication prescriptions:<br><br>"
-                    + msg
+            .orderby(dn.posting_date, order=frappe.qb.desc)
+            .limit(1)
+        ).run(as_dict=True)
+        
+        if len(medication_list) > 0:
+            msg = (
+                (msg or "")
+                + _(
+                    "<strong>"
+                    + row.drug_code
+                    + "</strong>"
+                    + " qty: <strong>"
+                    + str(medication_list[0].get("stock_qty"))
+                    + "</strong>, prescribed lastly on: <strong>"
+                    + str(medication_list[0].get("posting_date"))
                 )
+                + "</strong><br>"
             )
+
+            val_msg = validate_prescribe_days(
+                doc,
+                "Medication",
+                row.drug_code,
+                medication_list[0].get("posting_date"),
+            )
+            if val_msg:
+                valid_days_msg += val_msg
+
+            # SHM Rock#: 169
+            validate_medication_class(
+                doc.company, doc.name, doc.patient, row.drug_code
+            )
+
+    if valid_days_msg:
+        frappe.msgprint(
+            _(
+                "These Items should not be prescribed, because days are below minimum prescription days:<br>"
+                + valid_days_msg
+            )
+        )
+    elif msg:
+        frappe.msgprint(
+            _(
+                "The below are the last related medication prescriptions:<br><br>"
+                + msg
+            )
+        )
 
 
 def validate_patient_balance_vs_patient_costs(
@@ -1484,79 +1497,90 @@ def show_last_prescribed_for_lrpt(doc, method):
         # }
     ]
 
-    if method == "validate":
-        msg = ""
-        valid_days_msg = ""
-        for child in childs_map:
-            msg_print = ""
-            for entry in doc.get(child.get("table")):
-                conditions = {
-                    "patient": doc.patient,
-                    child.get("field_name"): entry.get(child.get("item")),
-                }
+    if method != "before_save":
+        return
+    
+    msg = ""
+    valid_days_msg = ""
+    for child in childs_map:
+        msg_print = ""
+        for entry in doc.get(child.get("table")):
+            conditions = {
+                "patient": doc.patient,
+                child.get("field_name"): entry.get(child.get("item")),
+            }
 
-                item_doc = frappe.get_all(
-                    child.get("ref_doc"),
-                    filters=conditions,
-                    fields=[child.get("field_name"), "creation"],
-                    order_by="creation DESC",
-                    limit=1,
-                )
-
-                if len(item_doc) > 0:
-                    date = item_doc[0]["creation"].strftime("%Y-%m-%d")
-
-                    msg_print += _(
-                        "{0} prescribed last on: {1}".format(
-                            frappe.bold(entry.get(child.get("item"))), frappe.bold(date)
-                        )
-                        + "<br>"
-                    )
-
-                    val_msg = validate_prescribe_days(
-                        doc, child.get("doctype"), entry.get(child.get("item")), date
-                    )
-                    if val_msg:
-                        valid_days_msg += val_msg
-
-            msg += msg_print
-
-        for plan in doc.therapies:
-            items = frappe.db.sql(
-                """ 
-                SELECT tpd.therapy_type, Date(tpd.creation) AS date FROM `tabTherapy Plan Detail` tpd
-                INNER JOIN `tabTherapy Plan` tp ON tpd.parent = tp.name WHERE tp.patient = %s 
-                AND tpd.therapy_type = %s """
-                % (frappe.db.escape(doc.patient), frappe.db.escape(plan.therapy_type)),
-                as_dict=1,
+            item_doc = frappe.db.get_all(
+                child.get("ref_doc"),
+                filters=conditions,
+                fields=[child.get("field_name"), "creation"],
+                order_by="creation DESC",
+                limit=1,
             )
 
-            if items:
-                msg = _(
-                    msg
-                    + "{0} prescribed last on: {1}".format(
-                        frappe.bold(items[0]["therapy_type"]),
-                        frappe.bold(items[0]["date"]),
+            if len(item_doc) > 0:
+                date = item_doc[0]["creation"].strftime("%Y-%m-%d")
+
+                msg_print += _(
+                    "{0} prescribed last on: {1}".format(
+                        frappe.bold(entry.get(child.get("item"))), frappe.bold(date)
                     )
                     + "<br>"
                 )
+
                 val_msg = validate_prescribe_days(
-                    doc, "Therapy Type", items[0]["therapy_type"], items[0]["date"]
+                    doc, child.get("doctype"), entry.get(child.get("item")), date
                 )
                 if val_msg:
                     valid_days_msg += val_msg
 
-        if valid_days_msg:
-            frappe.throw(
-                _(
-                    "These Items should not be prescribed, since days are below minimum prescription days:<br>"
-                    + valid_days_msg
-                ),
+        msg += msg_print
+
+    tp = DocType("Therapy Plan")
+    tpd = DocType("Therapy Plan Detail")
+    for plan in doc.therapies:
+        items = (
+            frappe.qb.from_(tpd)
+            .inner_join(tp)
+            .on(tpd.parent == tp.name)
+            .select(
+                tpd.therapy_type,
+                Date(tpd.creation).as_("date"),
             )
-        elif msg:
-            frappe.msgprint(
-                _("The below are the last related Item prescribed:<br><br>" + msg)
+            .where(
+                (tp.patient == doc.patient)
+                & (tpd.therapy_type == plan.therapy_type)
             )
+            .orderby(tpd.creation, order=frappe.qb.desc)
+            .limit(1)
+        ).run(as_dict=True)
+
+        if items:
+            msg = _(
+                msg
+                + "{0} prescribed last on: {1}".format(
+                    frappe.bold(items[0]["therapy_type"]),
+                    frappe.bold(items[0]["date"]),
+                )
+                + "<br>"
+            )
+            val_msg = validate_prescribe_days(
+                doc, "Therapy Type", items[0]["therapy_type"], items[0]["date"]
+            )
+            if val_msg:
+                valid_days_msg += val_msg
+
+    if valid_days_msg:
+        frappe.throw(
+            _(
+                "These Items should not be prescribed, since days are below minimum prescription days:<br>"
+                + valid_days_msg
+            ),
+        )
+    elif msg:
+        frappe.msgprint(
+            _("The below are the last related Item prescribed:<br><br>" + msg)
+        )
 
 
 def validate_prescribe_days(doc, doctype, item_value, date):
