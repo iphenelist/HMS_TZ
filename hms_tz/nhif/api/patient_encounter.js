@@ -16,6 +16,8 @@ frappe.ui.form.on('Patient Encounter', {
 
     onload: function (frm) {
         control_practitioners_to_submit_others_encounters(frm);
+        add_patient_history_btn(frm);
+        add_refer_practtitioner_btn(frm);
         add_btn_final(frm);
         // duplicate(frm);
         set_btn_properties(frm);
@@ -631,7 +633,7 @@ function validate_medical_code(frm) {
     }
 };
 
-var add_btn_final = function (frm) {
+var add_btn_final = (frm) => {
     if (frm.doc.docstatus == 1 && frm.doc.encounter_type != 'Final' && frm.doc.duplicated == 0) {
         if (!frm.page.fields_dict.set_as_final) {
             frm.page.add_field({
@@ -650,7 +652,7 @@ var add_btn_final = function (frm) {
                         })
                     });
                 }
-            }).$input.addClass("btn-sm font-weight-bold");
+            }).$input.addClass("btn-sm");
         }
     }
 };
@@ -1702,4 +1704,37 @@ var practitioner_login_out_to_from_nhif = (frm) => {
             });
         }
     });
+}
+
+var add_patient_history_btn = (frm) => {
+    if (!frm.page.fields_dict.patient_history) {
+        frm.page.add_field({
+            label: __("Patient History"),
+            fieldname: "patient_history",
+            fieldtype: "Button",
+            click: function () {
+                if (frm.doc.patient) {
+                    frappe.route_options = { 'patient': frm.doc.patient };
+                    frappe.set_route('tz-patient-history');
+                } else {
+                    frappe.msgprint(__('Please select Patient'));
+                }
+            }
+        }).$input.addClass("btn-sm");
+    }
+}
+
+var add_refer_practtitioner_btn = (frm) => {
+    if (frm.doc.docstatus == 1 && frm.doc.encounter_type != 'Final' && frm.doc.duplicated == 0) {
+        if (!frm.page.fields_dict.referring_practitioner) {
+            frm.page.add_field({
+                label: __("Refer Practitioner"),
+                fieldname: "referring_practitioner",
+                fieldtype: "Button",
+                click: function () {
+                    refer_practitioner(frm);
+                }
+            }).$input.addClass("btn-sm");
+        }
+    }
 }
