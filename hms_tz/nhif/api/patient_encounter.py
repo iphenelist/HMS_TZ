@@ -228,7 +228,7 @@ def add_LRPMT_template_attributes(doc, method):
             if not company_option:
                 msgThrow(
                     _(
-                        f"No company option found for template: {frappe.bold(row.get(child.get("item")))} and company: {frappe.bold(doc.company)}"
+                        f"No company option found for template: {frappe.bold(row.get(child.get('item')))} and company: {frappe.bold(doc.company)}"
                     ),
                     method,
                 )
@@ -240,7 +240,7 @@ def add_LRPMT_template_attributes(doc, method):
                 if template_doc.is_inpatient and not doc.inpatient_record:
                     msgThrow(
                         _(
-                            f"<h4>This Procedure: <strong>{frappe.bold(row.get(child.get("item")))}</strong> is allowed for Admitted Patient only</h4>"
+                            f"<h4>This Procedure: <strong>{frappe.bold(row.get(child.get('item')))}</strong> is allowed for Admitted Patient only</h4>"
                         ),
                         method,
                     )
@@ -661,7 +661,7 @@ def validate_stock_item(
     if not warehouse:
         msgThrow(
             _(
-                f"Warehouse is missing in healthcare service unit {healthcare_service_unit} when checking for {item_info.get("item_code")}"
+                f"Warehouse is missing in healthcare service unit {healthcare_service_unit} when checking for {item_info.get('item_code')}"
             ),
             method,
         )
