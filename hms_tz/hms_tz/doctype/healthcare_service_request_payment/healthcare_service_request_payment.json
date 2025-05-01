@@ -16,7 +16,6 @@
   "column_break_ltlnk",
   "qty",
   "amount",
-  "discount_applied",
   "payment_details_section",
   "payment_type",
   "years_of_insurance",
@@ -30,9 +29,14 @@
   "authorization_number",
   "references_section",
   "request_id",
-  "column_break_mmptd",
   "ref_doctype",
-  "ref_docname"
+  "ref_docname",
+  "column_break_mmptd",
+  "invoiced",
+  "is_cancelled",
+  "is_restricted",
+  "has_copayment",
+  "discount_applied"
  ],
  "fields": [
   {
@@ -214,14 +218,16 @@
    "fieldtype": "Link",
    "label": "Ref Doctype",
    "options": "DocType",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "ref_docname",
    "fieldtype": "Dynamic Link",
    "label": "Ref Docname",
    "options": "ref_doctype",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "default": "0",
@@ -236,13 +242,46 @@
    "fieldname": "years_of_insurance",
    "fieldtype": "Int",
    "label": "Years of Insurance",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "invoiced",
+   "fieldtype": "Check",
+   "label": "Invoiced",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_cancelled",
+   "fieldtype": "Check",
+   "label": "Is cancelled",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_restricted",
+   "fieldtype": "Check",
+   "label": "Is Restricted",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_copayment",
+   "fieldtype": "Check",
+   "label": "Has Copayment",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-30 20:09:13.204156",
+ "modified": "2025-05-02 00:07:18.142057",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request Payment",
