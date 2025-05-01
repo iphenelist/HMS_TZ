@@ -1924,7 +1924,7 @@ def set_practitioner_name(doc, method):
                 getdate(practitioner_info.date_loggedin_to_nhif) != getdate(nowdate()) 
             )
         ):
-            if method not in ("before_insert", "validate"):
+            if method not in ("before_insert", "validate", "before_save"):
                 frappe.throw("Please Login to NHIF, to proceed attending NHIF Patients..")
 
     elif (
@@ -1932,7 +1932,7 @@ def set_practitioner_name(doc, method):
         and not doc.healthcare_package_order
         and doc.practitioner not in ["Direct Cash", "Direct Insurance"]
     ):
-        if method not in ("before_insert", "validate"):
+        if method not in ("before_insert", "validate", "before_save"):
             frappe.throw(
                 _(
                     f"Please set user id: <b>{frappe.session.user}</b>\
