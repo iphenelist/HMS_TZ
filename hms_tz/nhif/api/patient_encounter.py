@@ -863,7 +863,11 @@ def add_chronic_medications(patient, encounter, items):
 def validate_totals(doc, method, show_alert=True):
     def get_current_total(doc, childs_map):
         doc.current_total = 0
-        discount_percent = get_discount_percent(doc.insurance_company)
+
+        # apply discount if it is available on Heathcare Insurance Company
+        discount_percent = 0
+        if doc.insurance_company and "NHIF" not in doc.insurance_company:
+            discount_percent = get_discount_percent(doc.insurance_company)
 
         for child in childs_map:
             for row in doc.get(child.get("table")):
