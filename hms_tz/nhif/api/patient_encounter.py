@@ -1160,29 +1160,6 @@ def before_submit(doc, method):
     if doc.inpatient_record:
         set_admission_service_type(doc)
 
-    encounter_create_sales_invoice = frappe.get_cached_value(
-        "Encounter Category", doc.encounter_category, "create_sales_invoice"
-    )
-    if encounter_create_sales_invoice:
-        if not doc.sales_invoice:
-            frappe.throw(
-                _(
-                    "The encounter cannot be submitted as the Sales Invoice is not"
-                    " created yet!<br><br>Click on Create Sales Invoice and Send to VFD"
-                    " before submitting.",
-                    "Cannot Submit Encounter",
-                )
-            )
-        vfd_status = frappe.get_value("Sales Invoice", doc.sales_invoice, "vfd_status")
-        if vfd_status == "Not Sent":
-            frappe.throw(
-                _(
-                    "The encounter cannot be submitted as the Sales Invoice has not"
-                    " been sent to VFD!<br><br>Click on Send to VFD before submitting.",
-                    "Cannot Submit Encounter",
-                )
-            )
-
 
 @frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
