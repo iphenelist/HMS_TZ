@@ -1,6 +1,6 @@
 frappe.ui.form.on('Patient Encounter', {
     setup: (frm) => {
-        practitioner_login_out_to_from_nhif(frm);
+        nhif_btns(frm);
     },
     on_submit: function (frm) {
         if (!frm.doc.patient_encounter_final_diagnosis) {
@@ -16,6 +16,7 @@ frappe.ui.form.on('Patient Encounter', {
 
     onload: function (frm) {
         control_practitioners_to_submit_others_encounters(frm);
+        nhif_btns(frm);
         add_patient_history_btn(frm);
         add_refer_practtitioner_btn(frm);
         add_btn_final(frm);
@@ -24,10 +25,12 @@ frappe.ui.form.on('Patient Encounter', {
         set_empty_row_on_all_child_tables(frm);
         validate_healthcare_package_order_items(frm);
 
-        practitioner_login_out_to_from_nhif(frm);
     },
     refresh: function (frm) {
+        nhif_btns(frm);
+
         control_practitioners_to_submit_others_encounters(frm);
+
         frm.fields_dict['drug_prescription'].grid.get_field('healthcare_service_unit').get_query = function (doc, cdt, cdn) {
             return {
                 filters:
@@ -121,8 +124,6 @@ frappe.ui.form.on('Patient Encounter', {
                 }
             };
         });
-
-        practitioner_login_out_to_from_nhif(frm);
     },
 
     clear_history: function (frm) {
@@ -946,7 +947,6 @@ frappe.ui.form.on('Therapy Plan Detail', {
     },
 });
 
-
 const validate_stock_item = function (frm, healthcare_service, prescribe = 0, qty = 1, healthcare_service_unit = "", caller = "Unknown") {
     if (healthcare_service_unit == "") {
         healthcare_service_unit = frm.doc.healthcare_service_unit;
@@ -1461,76 +1461,78 @@ var filter_drug_prescriptions = (frm) => {
         });
 }
 
+var add_patient_history_btn = (frm) => {
+    if (!frm.page.fields_dict.patient_history) {
+        frm.page.add_field({
+            label: __("Patient History"),
+            fieldname: "patient_history",
+            fieldtype: "Button",
+            click: function () {
+                if (frm.doc.patient) {
+                    frappe.route_options = { 'patient': frm.doc.patient };
+                    frappe.set_route('tz-patient-history');
+                } else {
+                    frappe.msgprint(__('Please select Patient'));
+                }
+            }
+        }).$input.addClass("btn-sm");
+    }
+}
 
-var practitioner_login_out_to_from_nhif = (frm) => {
+var add_refer_practtitioner_btn = (frm) => {
+    if (frm.doc.docstatus == 1 && frm.doc.encounter_type != 'Final' && frm.doc.duplicated == 0) {
+        if (!frm.page.fields_dict.referring_practitioner) {
+            frm.page.add_field({
+                label: __("Refer Practitioner"),
+                fieldname: "referring_practitioner",
+                fieldtype: "Button",
+                click: function () {
+                    refer_practitioner(frm);
+                }
+            }).$input.addClass("btn-sm");
+        }
+    }
+}
+
+var nhif_btns = (frm) => {
     if (!frappe.user.has_role("Healthcare Practitioner")) {
         return;
     }
-    // $(".form-assignments").hide();
-    // $(".form-shared").hide();
-    // $(".form-tags").hide();
-    // $(".form-reviews").hide();
-    // $(".form-sidebar-stats").hide();
-
-    if (
-        !frm.doc.insurance_company ||
-        (
-            frm.doc.insurance_company &&
-            !frm.doc.insurance_company.includes('NHIF')
-        )
-    ) {
+    
+    if (!frm.doc.insurance_company || !frm.doc.insurance_company.includes('NHIF')) {
         return;
     }
 
     frappe.call({
-        method: 'hms_tz.nhif.api.healthcare_practitioner.get_nhif_loggedin_practitioner_info',
+        method: 'hms_tz.nhif.api.healthcare_practitioner.get_nhif_practitioner_login_status',
         args: {},
         callback: (r) => {
-            if (!r.message) {
-                return;
+            if (r.message) {
+                logout_from_nhif(frm);
+                pre_approval_btn(frm);
+                cancel_pre_approval_btn(frm);
+                confirm_consultation_btn(frm);
+            } else {
+                login_to_nhif(frm);
             }
+        }
+    });
 
-            if (frm.page.custom_actions.find('.nhif-buttons').length > 0) {
-                return;
-            }
+}
 
-            // Create container for buttons at the top of the form
-            let $container = $(`
-                <div class="nhif-buttons" style="margin-right: 10px;">
-                    <button class="btn btn-sm btn-primary nhif-login-btn" style="${r.message ? '' : 'display: none;'}">
-                        ${__("Login To NHIF")}
-                    </button>
-                    <button class="btn btn-sm btn-primary nhif-logout-btn" style="${r.message ? 'display: none;' : ''}">
-                        ${__("Logout From NHIF")}
-                    </button>
-                    <button class="btn btn-sm btn-primary nhif-request-pre-approval-btn">
-                        ${__("Request Pre-Approval")}
-                    </button>
-                </div>
-            `);
-
-            if (frm.doc.has_preapproval == 1) {
-                $container.append(`
-                    <button class="btn btn-sm btn-primary nhif-cancel-pre-approval-btn">
-                        ${__("Cancel Pre-Approval")}
-                    </button>
-                `);
-            }
-            $container.append(`
-                <button class="btn btn-sm btn-primary nhif-confirm-btn">
-                    ${__("Confirm Consultation")}
-                </button>
-            `);
-
-            frm.page.custom_actions.prepend($container);
-
-            // Bind the Login click event
-            $container.find(".nhif-login-btn").on("click", async function () {
+var login_to_nhif = (frm) => {
+    if (!frm.page.fields_dict.login_to_nhif) {
+        frm.page.add_field({
+            label: __("Login To NHIF"),
+            fieldname: "login_to_nhif",
+            fieldtype: "Button",
+            click: async function () {
                 let fingerprint = await new dpFingerprint({ label: 'Login To NHIF' });
                 if (!fingerprint) {
                     frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
                     return;
                 }
+                
                 frappe.call({
                     method: 'hms_tz.nhif.nhif_api.attendance.login_practitioner',
                     args: {
@@ -1543,9 +1545,6 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     callback: function (data) {
                         if (data.message && data.message !== 'Error') {
                             frappe.utils.play_sound("submit");
-
-                            $container.find(".nhif-login-btn").hide();
-                            $container.find(".nhif-logout-btn").show();
                         } else {
                             frappe.utils.play_sound("error");
                         }
@@ -1554,10 +1553,18 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         frappe.utils.play_sound("error");
                     }
                 });
-            });
+            }
+        }).$input.addClass("btn-sm");
+    }
+}
 
-            // Bind the logout click event
-            $container.find(".nhif-logout-btn").on("click", function () {
+var logout_from_nhif = (frm) => {
+    if (!frm.page.fields_dict.logout_from_nhif) {
+        frm.page.add_field({
+            label: __("Logout From NHIF"),
+            fieldname: "logout_from_nhif",
+            fieldtype: "Button",
+            click: function () {
                 frappe.call({
                     method: 'hms_tz.nhif.nhif_api.attendance.logout_practitioner',
                     args: {},
@@ -1567,9 +1574,6 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                     callback: function (data) {
                         if (data.message && data.message !== 'Error') {
                             frappe.utils.play_sound("submit");
-
-                            $container.find(".nhif-login-btn").show();
-                            $container.find(".nhif-logout-btn").hide();
                         } else {
                             frappe.utils.play_sound("error");
                         }
@@ -1578,10 +1582,18 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         frappe.utils.play_sound("error");
                     }
                 });
-            });
+            }
+        }).$input.addClass("btn-sm");
+    }
+}
 
-            // Bind the request pre-approval click event
-            $container.find(".nhif-request-pre-approval-btn").on("click", async function () {
+var pre_approval_btn = (frm) => {
+    if (!frm.page.fields_dict.pre_approval_btn) {
+        frm.page.add_field({
+            label: __("Request Pre-Approval"),
+            fieldname: "pre_approval_btn",
+            fieldtype: "Button",
+            click: function () {
                 if (frm.is_dirty()) {
                     frappe.msgprint("<b>Please save the form before requesting pre-approval</b>");
                     return;
@@ -1612,11 +1624,18 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         frappe.utils.play_sound("error");
                     }
                 });
-            });
+            }
+        }).$input.addClass("btn-sm");
+    }
+}
 
-
-            // Bind the cancel pre-approval click event
-            $container.find(".nhif-cancel-pre-approval-btn").on("click", async function () {
+var cancel_pre_approval_btn = (frm) => {
+    if (!frm.page.fields_dict.cancel_pre_approval_btn) {
+        frm.page.add_field({
+            label: __("Cancel Pre-Approval"),
+            fieldname: "cancel_pre_approval_btn",
+            fieldtype: "Button",
+            click: function () {
                 if (frm.is_dirty()) {
                     frappe.msgprint("<b>Please save the form before canceling pre-approval</b>");
                     return;
@@ -1664,10 +1683,18 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         }
                     });
                 })
-            });
+            }
+        }).$input.addClass("btn-sm");
+    }
+}
 
-            // Bind the consultancy confirmation click event
-            $container.find(".nhif-confirm-btn").on("click", async function () {
+var confirm_consultation_btn = (frm) => {
+    if (!frm.page.fields_dict.confirm_consultation_btn) {
+        frm.page.add_field({
+            label: __("Confirm Consultation"),
+            fieldname: "confirm_consultation_btn",
+            fieldtype: "Button",
+            click: async function () {
                 let fingerprint = await new dpFingerprint({ label: 'Confirm Consulation' });
                 if (!fingerprint) {
                     frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
@@ -1701,40 +1728,7 @@ var practitioner_login_out_to_from_nhif = (frm) => {
                         frappe.utils.play_sound("error");
                     }
                 });
-            });
-        }
-    });
-}
-
-var add_patient_history_btn = (frm) => {
-    if (!frm.page.fields_dict.patient_history) {
-        frm.page.add_field({
-            label: __("Patient History"),
-            fieldname: "patient_history",
-            fieldtype: "Button",
-            click: function () {
-                if (frm.doc.patient) {
-                    frappe.route_options = { 'patient': frm.doc.patient };
-                    frappe.set_route('tz-patient-history');
-                } else {
-                    frappe.msgprint(__('Please select Patient'));
-                }
             }
         }).$input.addClass("btn-sm");
-    }
-}
-
-var add_refer_practtitioner_btn = (frm) => {
-    if (frm.doc.docstatus == 1 && frm.doc.encounter_type != 'Final' && frm.doc.duplicated == 0) {
-        if (!frm.page.fields_dict.referring_practitioner) {
-            frm.page.add_field({
-                label: __("Refer Practitioner"),
-                fieldname: "referring_practitioner",
-                fieldtype: "Button",
-                click: function () {
-                    refer_practitioner(frm);
-                }
-            }).$input.addClass("btn-sm");
-        }
     }
 }
