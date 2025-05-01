@@ -3,12 +3,11 @@ frappe.listview_settings['Healthcare Service Request'] = {
     hide_name_column: true,
     
     onload: (listview) => {
-        listview.page.clear_primary_action()
+        listview.page.clear_primary_action();
 
         listview.page.add_inner_button(__("Create Service Request"), () => {
             show_dialog(listview);
-        })
-        // .removeClass("btn-default").addClass("btn-secondary btn-sm");
+        }).removeClass("btn-default").addClass("btn-primary btn-sm");
     },
 };
 
