@@ -19,9 +19,7 @@ def validate(doc, method):
     for item in doc.items:
         if not item.is_free_item and item.amount == 0:
             frappe.throw(
-                _(
-                    "Amount of the healthcare service <b>'{0}'</b> cannot be ZERO. Please do not select this item and request Pricing team to resolve this."
-                ).format(item.item_name)
+                _(f"Amount of the healthcare service <b>'{item.item_name}'</b> cannot be ZERO. Please do not select this item and request Pricing team to resolve this.")
             )
 
         # do not validate stock for cash inpatient sales invoice
@@ -95,9 +93,7 @@ def create_healthcare_docs(doc, method):
     if doc.docstatus != 1 or method not in ["on_submit", "From Front End"]:
         frappe.msgprint(
             _(
-                "No LRPMTs were created. Alert the IT Team!<b><br>DOCSTATUS = {0}<br>METHOD {1}</b>".format(
-                    doc.docstatus, method
-                )
+                f"No LRPMTs were created. Alert the IT Team!<b><br>DOCSTATUS = {doc.docstatus}<br>METHOD {method}</b>"
             )
         )
         return

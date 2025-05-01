@@ -66,9 +66,7 @@ class InpatientRecord(Document):
                 and get_datetime(entry.check_in) > get_datetime(entry.check_out)
             ):
                 frappe.throw(
-                    _(
-                        "Row #{0}: Check Out datetime cannot be less than Check In datetime"
-                    ).format(entry.idx)
+                    _(f"Row #{entry.idx}: Check Out datetime cannot be less than Check In datetime")
                 )
 
     def validate_already_scheduled_or_admitted(self):
@@ -83,12 +81,8 @@ class InpatientRecord(Document):
 
         if len(ip_record) > 0:
             msg = _(
-                ("Already {0} Patient {1} with Inpatient Record ").format(
-                    ip_record[0].status, self.patient
-                )
-                + """ <b><a href="#Form/Inpatient Record/{0}">{0}</a></b>""".format(
-                    ip_record[0].name
-                )
+                f"""Already {ip_record[0].status} Patient {self.patient} with Inpatient Record: \
+                    <b><a href="#Form/Inpatient Record/{ip_record[0].name}">{ip_record[0].name}</a></b>"""
             )
             frappe.throw(msg)
 
@@ -310,8 +304,8 @@ def validate_invoiced_inpatient(inpatient_record):
     if pending_invoices:
         frappe.throw(
             _(
-                "<b>Can not mark Inpatient Record Discharged, there are Unbilled Invoices:</b><br> {0}"
-            ).format(", ".join(pending_invoices)),
+                f"<b>Can not mark Inpatient Record Discharged, there are Unbilled Invoices:</b><br> {', '.join(pending_invoices)}"
+            ),
             title=_("Unbilled Invoices"),
         )
 
@@ -450,11 +444,8 @@ def validate_discharge(inpatient_record):
         for d in lrpmt_docs:
             lrpmt_msg = _(
                 lrpmt_msg
-                + "LRPMT Returns: {0} to return and cancel items\
-                was not submitted".format(
-                    frappe.bold(d.name)
-                )
-                + "<br>"
+                + f"LRPMT Returns: {frappe.bold(d.name)} to return and cancel items\
+                was not submitted <br>"
             )
         lrpmt_msg += "<h4 style='background-color: LightCoral;'>\
             please contact relevent department to submit draft LRPMT Returns\
@@ -488,12 +479,8 @@ def validate_discharge(inpatient_record):
             for procedure in procedure_docs:
                 procedure_msg = _(
                     procedure_msg
-                    + "Clinical Procedure: {0} of {1}\
-                        was not Submitted".format(
-                        frappe.bold(procedure["procedure_template"]),
-                        frappe.bold(procedure["name"]),
-                    )
-                    + "<br>"
+                    + f"Clinical Procedure: {frappe.bold(procedure['procedure_template'])} of {frappe.bold(procedure['name'])}\
+                        was not Submitted <br>"
                 )
             procedure_msg += "<h4 style='background-color: LightCoral;'>\
                 please contact relevent department to Submit/Cancel draft Clinical Procedure\
@@ -520,11 +507,8 @@ def validate_discharge(inpatient_record):
             for lab in lab_docs:
                 lab_msg = _(
                     lab_msg
-                    + "Lab Test: {0} of {1}\
-                        was not Submitted".format(
-                        frappe.bold(lab["template"]), frappe.bold(lab["name"])
-                    )
-                    + "<br>"
+                    + f"Lab Test: {frappe.bold(lab['template'])} of {frappe.bold(lab['name'])}\
+                    was not Submitted <br>"
                 )
             lab_msg += "<br><br>"
 
@@ -545,13 +529,9 @@ def validate_discharge(inpatient_record):
             for radiology in radiology_docs:
                 radiology_msg = _(
                     radiology_msg
-                    + "Radiology Examination: {0} of {1}\
-                        was not Submitted".format(
-                        frappe.bold(radiology["radiology_examination_template"]),
-                        frappe.bold(radiology["name"]),
+                    + f"Radiology Examination: {frappe.bold(radiology['radiology_examination_template'])} of {frappe.bold(radiology['name'])}\
+                        was not Submitted <br>"
                     )
-                    + "<br>"
-                )
             radiology_msg += "<br><br>"
 
         drug_msg = ""
@@ -571,11 +551,8 @@ def validate_discharge(inpatient_record):
             for dn in dn_name:
                 drug_msg = _(
                     drug_msg
-                    + "Delivery Note: #{0}, was not Submitted".format(
-                        frappe.bold(dn.name),
+                    + f"Delivery Note: #{frappe.bold(dn.name)}, was not Submitted <br>"
                     )
-                    + "<br>"
-                )
             drug_msg += "<br><br>"
 
         msg = lrpmt_msg + lab_msg + radiology_msg + procedure_msg + drug_msg

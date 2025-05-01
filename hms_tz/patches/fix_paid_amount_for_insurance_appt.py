@@ -17,8 +17,6 @@ for appointment in appointment_list:
         appointment.insurance_company,
     )
     frappe.db.sql(
-        "UPDATE `tabPatient Appointment` SET paid_amount = {0} WHERE name = '{1}'".format(
-            paid_amount, appointment.name
-        )
+        f"UPDATE `tabPatient Appointment` SET paid_amount = {paid_amount} WHERE name = '{appointment.name}'"
     )
 frappe.db.commit()

@@ -39,7 +39,7 @@ def get_healthcare_services_to_invoice(patient, company):
 def validate_customer_created(patient):
     if not frappe.db.get_value("Patient", patient.name, "customer"):
         msg = _("Please set a Customer linked to the Patient")
-        msg += " <b><a href='#Form/Patient/{0}'>{0}</a></b>".format(patient.name)
+        msg += f" <b><a href='#Form/Patient/{patient.name}'>{patient.name}</a></b>"
         frappe.throw(msg, title=_("Customer Not Found"))
 
 
@@ -581,7 +581,7 @@ def throw_config_service_item(is_inpatient):
         service_item_label = _("Inpatient Visit Charge Item")
 
     msg = _(
-        ("Please Configure {0} in ").format(service_item_label)
+        f"Please Configure {service_item_label} in "
         + """<b><a href='#Form/Healthcare Settings'>Healthcare Settings</a></b>"""
     )
     frappe.throw(msg, title=_("Missing Configuration"))
@@ -593,10 +593,8 @@ def throw_config_practitioner_charge(is_inpatient, practitioner):
         charge_name = _("Inpatient Visit Charge")
 
     msg = _(
-        ("Please Configure {0} for Healthcare Practitioner").format(charge_name)
-        + """ <b><a href='#Form/Healthcare Practitioner/{0}'>{0}</a></b>""".format(
-            practitioner
-        )
+        f"Please Configure {charge_name} for Healthcare Practitioner"
+        + f""" <b><a href='#Form/Healthcare Practitioner/{practitioner}'>{practitioner}</a></b>"""
     )
     frappe.throw(msg, title=_("Missing Configuration"))
 
@@ -713,9 +711,7 @@ def validate_invoiced_on_submit(item):
         )
     if is_invoiced:
         frappe.throw(
-            _("The item referenced by {0} - {1} is already invoiced").format(
-                item.reference_dt, item.reference_dn
-            )
+            _(f"The item referenced by {item.reference_dt} - {item.reference_dn} is already invoiced")
         )
 
 
@@ -799,9 +795,7 @@ def get_drugs_to_invoice(encounter):
 
                         description = ""
                         if drug_line.dosage and drug_line.period:
-                            description = _("{0} for {1}").format(
-                                drug_line.dosage, drug_line.period
-                            )
+                            description = _(f"{drug_line.dosage} for {drug_line.period}")
 
                         items_to_invoice.append(
                             {
@@ -821,7 +815,7 @@ def get_children(doctype, parent, company, is_root=False):
     fields = ["name as value", "is_group as expandable", "lft", "rgt"]
     # fields = [ "name", "is_group", "lft", "rgt" ]
     filters = [
-        ["ifnull(`{0}`,'')".format(parent_fieldname), "=", "" if is_root else parent]
+        [f"ifnull(`{parent_fieldname}`,'')", "=", "" if is_root else parent]
     ]
 
     if is_root:
@@ -1019,9 +1013,7 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
                 continue
             for m_items in multiselect_items:
                 for mdf in multitable_meta.fields:
-                    html += "<br>{0} :&nbsp;{1}".format(
-                        df.label or df.fieldname, m_items.get(mdf.fieldname)
-                    )
+                    html += f"<br>{df.label or df.fieldname} :&nbsp;{m_items.get(mdf.fieldname)}"
 
         # on other field types add label and value to html
         if (
@@ -1030,13 +1022,11 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
             and doc.get(df.fieldname)
             and df.fieldname not in exclude_fields
         ):
-            html += "<br>{0} : {1}".format(
-                df.label or df.fieldname, doc.get(df.fieldname)
-            )
+            html += f"<br>{df.label or df.fieldname} : {doc.get(df.fieldname)}"
             formatted_value = format_value(
                 doc.get(df.fieldname), meta.get_field(df.fieldname), doc
             )
-            html += "<br>{0} : {1}".format(df.label or df.fieldname, formatted_value)
+            html += f"<br>{df.label or df.fieldname} : {formatted_value}"
 
             if not has_data:
                 has_data = True
@@ -1178,7 +1168,7 @@ def on_trash_doc_having_item_reference(doc):
             doc.save()
             frappe.delete_doc("Item", doc.item)
         except Exception:
-            frappe.throw(_("Not permitted. Please disable the {0}").format(doc.doctype))
+            frappe.throw(_(f"Not permitted. Please disable the {doc.doctype}"))
 
 
 @frappe.whitelist()
@@ -1186,7 +1176,7 @@ def manage_healthcare_doc_cancel(doc):
     if frappe.get_meta(doc.doctype).has_field("invoiced"):
         # if doc.invoiced and get_sales_invoice_for_healthcare_doc(doc.doctype, doc.name):
         if doc.invoiced:
-            frappe.throw(_("Can not cancel invoiced {0}").format(doc.doctype))
+            frappe.throw(_(f"Can not cancel invoiced {doc.doctype}"))
     check_if_healthcare_doc_is_linked(doc, "Cancel")
     delete_medical_record(doc.doctype, doc.name)
 
@@ -1212,14 +1202,12 @@ def check_if_healthcare_doc_is_linked(doc, method):
         for doctype in item_linked:
             msg += doctype + "("
             for docname in item_linked[doctype]:
-                msg += '<a href="#Form/{0}/{1}">{1}</a>, '.format(doctype, docname)
+                msg += f'<a href="#Form/{doctype}/{docname}">{docname}</a>, '
             msg = msg[:-2]
             msg += "), "
         msg = msg[:-2]
         frappe.throw(
-            _("Cannot delete or cancel because {0} {1} is linked with {2}").format(
-                doc.doctype, doc.name, msg
-            ),
+            _(f"Cannot delete or cancel because {doc.doctype} {doc.name} is linked with {msg}"),
             frappe.LinkExistsError,
         )
 
@@ -1465,21 +1453,19 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
                 doc_html += section_html + html + "</div>"
 
             elif has_data and not col_on and sec_on:
-                doc_html += """
+                doc_html += f"""
                     <br>
                     <div class='row'>
                         <div class='col-md-12 col-sm-12'>
-                            <b>{0}</b>
+                            <b>{section_label}</b>
                         </div>
                     </div>
                     <div class='row'>
                         <div class='col-md-12 col-sm-12'>
-                            {1} {2}
+                            {section_html} {html}
                         </div>
                     </div>
-                """.format(
-                    section_label, section_html, html
-                )
+                """
 
             # close divs for columns
             while col_on:
@@ -1498,34 +1484,30 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
         # on column break append html to section html or doc html
         if df.fieldtype == "Column Break":
             if sec_on and not col_on and has_data:
-                section_html += """
+                section_html += f"""
                     <br>
                     <div class='row'>
                         <div class='col-md-12 col-sm-12'>
-                            <b>{0}</b>
+                            <b>{section_label}</b>
                         </div>
                     </div>
                     <div class='row'>
                         <div class='col-md-4 col-sm-4'>
-                            {1}
+                            {html}
                         </div>
-                """.format(
-                    section_label, html
-                )
+                """
             elif col_on == 1 and has_data:
                 section_html += "<div class='col-md-4 col-sm-4'>" + html + "</div>"
             elif col_on > 1 and has_data:
                 doc_html += "<div class='col-md-4 col-sm-4'>" + html + "</div>"
             else:
-                doc_html += """
+                doc_html += f"""
                     <div class='row'>
                         <div class='col-md-12 col-sm-12'>
-                            {0}
+                            {html}
                         </div>
                     </div>
-                """.format(
-                    html
-                )
+                """
 
             html = ""
             col_on += 1
@@ -1570,21 +1552,17 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
                 table_row += "</tr>"
 
             if sec_on:
-                section_html += """
+                section_html += f"""
                     <table class='table table-condensed bordered'>
-                        {0} {1}
+                        {table_head} {table_row}
                     </table>
-                """.format(
-                    table_head, table_row
-                )
+                """
             else:
-                html += """
+                html += f"""
                     <table class='table table-condensed table-bordered'>
-                        {0} {1}
+                        {table_head} {table_row}
                     </table>
-                """.format(
-                    table_head, table_row
-                )
+                """
             continue
 
         # on any other field type add label and value to html
@@ -1600,7 +1578,7 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
             formatted_value = format_value(
                 doc.get(df.fieldname), meta.get_field(df.fieldname), doc
             )
-            html += "<br>{0} : {1}".format(df.label or df.fieldname, formatted_value)
+            html += f"<br>{df.label or df.fieldname} : {formatted_value}"
 
             if not has_data:
                 has_data = True
@@ -1608,14 +1586,12 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
     if sec_on and col_on and has_data:
         doc_html += section_html + html + "</div></div>"
     elif sec_on and not col_on and has_data:
-        doc_html += """
+        doc_html += f"""
             <div class='col-md-12 col-sm-12'>
                 <div class='col-md-12 col-sm-12'>
-                    {0} {1}
+                    {section_html} {html}
                 </div>
             </div>
-        """.format(
-            section_html, html
-        )
+        """
 
     return {"html": doc_html}

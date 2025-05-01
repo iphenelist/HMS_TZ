@@ -252,9 +252,7 @@ def create_sample_collection(doc):
     sample_doc.reload()
     doc.sample = sample_doc.name
     doc.save(ignore_permissions=True)
-    frappe.msgprint(
-        _("Sample Collection created {0}").format(sample_doc.name), alert=True
-    )
+    frappe.msgprint(_(f"Sample Collection created {sample_doc.name}"), alert=True)
 
 
 def update_lab_prescription(doc):

@@ -13,22 +13,14 @@ class HealthcareServiceUnitType(Document):
     def validate(self):
         if self.allow_appointments and self.inpatient_occupancy:
             frappe.msgprint(
-                _("Healthcare Service Unit Type cannot have both {0} and {1}").format(
-                    frappe.bold("Allow Appointments"),
-                    frappe.bold("Inpatient Occupancy"),
-                ),
+                _(f"Healthcare Service Unit Type cannot have both {frappe.bold('Allow Appointments')} and {frappe.bold('Inpatient Occupancy')}"),
                 raise_exception=1,
                 title=_("Validation Error"),
                 indicator="red",
             )
         elif not self.allow_appointments and not self.inpatient_occupancy:
             frappe.msgprint(
-                _(
-                    "Healthcare Service Unit Type must allow atleast one among {0} and {1}"
-                ).format(
-                    frappe.bold("Allow Appointments"),
-                    frappe.bold("Inpatient Occupancy"),
-                ),
+                _(f"Healthcare Service Unit Type must allow atleast one among {frappe.bold('Allow Appointments')} and {frappe.bold('Inpatient Occupancy')}"),
                 raise_exception=1,
                 title=_("Validation Error"),
                 indicator="red",
@@ -151,7 +143,7 @@ def update_item(doc):
 @frappe.whitelist()
 def change_item_code(item, item_code, doc_name):
     if frappe.db.exists({"doctype": "Item", "item_code": item_code}):
-        frappe.throw(_("Item with Item Code {0} already exists").format(item_code))
+        frappe.throw(_(f"Item with Item Code {item_code} already exists"))
     else:
         rename_doc("Item", item, item_code, ignore_permissions=True)
         frappe.db.set_value(

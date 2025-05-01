@@ -96,12 +96,7 @@ class LimitChangeRequest(Document):
 
             if inpatient_record_doc.cash_limit == self.cash_limit:
                 frappe.msgprint(
-                    "Inpatient Record: {0} of Patient {1} - {2} has been updated with new cash limit: {3}".format(
-                        frappe.bold(self.inpatient_record),
-                        frappe.bold(self.patient),
-                        frappe.bold(self.patient_name),
-                        frappe.bold(self.cash_limit),
-                    )
+                    f"Inpatient Record: {frappe.bold(self.inpatient_record)} of Patient {frappe.bold(self.patient)} - {frappe.bold(self.patient_name)} has been updated with new cash limit: {frappe.bold(self.cash_limit)}"
                 )
 
         if self.is_non_nhif_patient and self.insurance_company and self.appointment_no:

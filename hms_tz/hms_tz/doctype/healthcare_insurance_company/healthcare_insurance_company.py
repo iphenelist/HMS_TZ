@@ -55,4 +55,4 @@ def create_customer(doc):
     frappe.db.set_value(
         "Healthcare Insurance Company", doc.name, "customer", customer.name
     )
-    frappe.msgprint(_("Customer {0} is created.").format(customer.name), alert=True)
+    frappe.msgprint(_(f"Customer {customer.name} is created."), alert=True)

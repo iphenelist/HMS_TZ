@@ -134,7 +134,7 @@ def change_item_code_from_therapy(item_code, doc):
     doc = frappe._dict(json.loads(doc))
 
     if frappe.db.exists("Item", {"item_code": item_code}):
-        frappe.throw(_("Item with Item Code {0} already exists").format(item_code))
+        frappe.throw(_(f"Item with Item Code {item_code} already exists"))
     else:
         rename_doc("Item", doc.item, item_code, ignore_permissions=True)
         frappe.db.set_value("Therapy Type", doc.name, "item_code", item_code)

@@ -70,9 +70,7 @@ def clear_insurance_details(service_order):
     frappe.db.commit()
 
     frappe.msgprint(
-        _("Healthcare Insurance Claim {0} deleted successfully.").format(
-            frappe.bold(insurance_claim)
-        ),
+        _(f"Healthcare Insurance Claim {frappe.bold(insurance_claim)} deleted successfully."),
         alert=True,
     )
     return True

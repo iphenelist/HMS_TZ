@@ -65,9 +65,9 @@ class HealthcarePractitioner(Document):
 
     def validate_user_id(self):
         if not frappe.db.exists("User", self.user_id):
-            frappe.throw(_("User {0} does not exist").format(self.user_id))
+            frappe.throw(_(f"User {self.user_id} does not exist"))
         elif not frappe.db.exists("User", self.user_id, "enabled"):
-            frappe.throw(_("User {0} is disabled").format(self.user_id))
+            frappe.throw(_(f"User {self.user_id} is disabled"))
 
         # check duplicate
         practitioner = frappe.db.exists(
@@ -76,9 +76,7 @@ class HealthcarePractitioner(Document):
         )
         if practitioner:
             frappe.throw(
-                _("User {0} is already assigned to Healthcare Practitioner {1}").format(
-                    self.user_id, practitioner
-                )
+                _(f"User {self.user_id} is already assigned to Healthcare Practitioner {practitioner}")
             )
 
     def on_trash(self):

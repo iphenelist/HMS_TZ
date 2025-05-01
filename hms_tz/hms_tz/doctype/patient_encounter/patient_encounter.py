@@ -45,10 +45,7 @@ class PatientEncounter(Document):
         delete_medical_record(self)
 
     def set_title(self):
-        self.title = _("{0} with {1}").format(
-            self.patient_name or self.patient,
-            self.practitioner_name or self.practitioner,
-        )[:100]
+        self.title = _(f"{self.patient_name or self.patient} with {self.practitioner_name or self.practitioner}")[:100]
 
 
 def insert_encounter_to_medical_record(doc):

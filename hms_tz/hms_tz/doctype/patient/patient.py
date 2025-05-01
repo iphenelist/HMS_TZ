@@ -134,13 +134,13 @@ class Patient(Document):
         name = self.patient_name
         if frappe.db.get_value("Patient", name):
             count = frappe.db.sql(
-                """select ifnull(MAX(CAST(SUBSTRING_INDEX(name, ' ', -1) AS UNSIGNED)), 0) from tabPatient
+                f"""select ifnull(MAX(CAST(SUBSTRING_INDEX(name, ' ', -1) AS UNSIGNED)), 0) from tabPatient
 				 where name like %s""",
-                "%{0} - %".format(name),
+                f"%{name} - %",
                 as_list=1,
             )[0][0]
             count = cint(count) + 1
-            return "{0} - {1}".format(name, cstr(count))
+            return f"{name} - {cstr(count)}"
 
         return name
 
@@ -215,7 +215,7 @@ def create_customer(doc):
     ).insert(ignore_permissions=True, ignore_mandatory=True)
 
     frappe.db.set_value("Patient", doc.name, "customer", customer.name)
-    frappe.msgprint(_("Customer {0} is created.").format(customer.name), alert=True)
+    frappe.msgprint(_(f"Customer {customer.name} is created."), alert=True)
 
 
 def make_invoice(patient, company):

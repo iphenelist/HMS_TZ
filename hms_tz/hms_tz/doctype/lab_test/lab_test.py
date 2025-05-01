@@ -64,11 +64,7 @@ class LabTest(Document):
                 except:
                     item.secondary_uom_result = ""
                     frappe.msgprint(
-                        _(
-                            "Row #{0}: Result for Secondary UOM not calculated".format(
-                                item.idx
-                            )
-                        ),
+                        _(f"Row #{item.idx}: Result for Secondary UOM not calculated"),
                         title=_("Warning"),
                     )
 
@@ -81,9 +77,7 @@ class LabTest(Document):
                     and item.require_result_value
                 ):
                     frappe.throw(
-                        _("Row #{0}: Please enter the result value for {1}").format(
-                            item.idx, frappe.bold(item.lab_test_name)
-                        ),
+                        _(f"Row #{item.idx}: Please enter the result value for {frappe.bold(item.lab_test_name)}"),
                         title=_("Mandatory Results"),
                     )
 
@@ -95,9 +89,7 @@ class LabTest(Document):
                     and item.require_result_value
                 ):
                     frappe.throw(
-                        _("Row #{0}: Please enter the result value for {1}").format(
-                            item.idx, frappe.bold(item.lab_test_particulars)
-                        ),
+                        _(f"Row #{item.idx}: Please enter the result value for {frappe.bold(item.lab_test_particulars)}"),
                         title=_("Mandatory Results"),
                     )
 
@@ -142,7 +134,7 @@ def create_multiple(doctype, docname):
 
     if lab_test_created:
         frappe.msgprint(
-            _("Lab Test(s) {0} created successfully").format(lab_test_created),
+            _(f"Lab Test(s) {lab_test_created} created successfully"),
             indicator="green",
         )
     # else:
@@ -364,9 +356,7 @@ def create_sample_collection(lab_test, template, patient, invoice):
                 "Sample Collection", sample_collection.name
             )
             frappe.msgprint(
-                _("Sample Collection {0} has been created").format(
-                    sample_collection_doc
-                ),
+                _(f"Sample Collection {sample_collection_doc} has been created"),
                 title=_("Sample Collection"),
                 indicator="green",
             )

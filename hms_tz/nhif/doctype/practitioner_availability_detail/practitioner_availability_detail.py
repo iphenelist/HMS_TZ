@@ -50,9 +50,7 @@ def create_practitioner_availability_detail(pa_doc, date):
 
 def delelte_all_related_practitioner_availability_detail(pa_doc):
     frappe.db.sql(
-        "DELETE FROM `tabPractitioner Availability Detail` WHERE practitioner_availability = '{0}'".format(
-            pa_doc.name
-        )
+        f"DELETE FROM `tabPractitioner Availability Detail` WHERE practitioner_availability = '{pa_doc.name}'"
     )
 
 

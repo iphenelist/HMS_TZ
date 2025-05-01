@@ -294,11 +294,9 @@ class NHIFPatientClaim(Document):
         if len(appointment_list) == 1:
             frappe.throw(
                 _(
-                    "<p style='text-align: center; font-size: 12pt; background-color: #FFD700;'>\
-                <strong>This Authorization no: {0} was used only once on <br> NHIF Patient Claim: {1} </strong>\
-                </p>".format(
-                        frappe.bold(self.authorization_no), frappe.bold(self.name)
-                    )
+                    f"<p style='text-align: center; font-size: 12pt; background-color: #FFD700;'>\
+                    <strong>This Authorization no: {frappe.bold(self.authorization_no)} was used only once on <br> NHIF Patient Claim: {frappe.bold(self.name)} </strong>\
+                    </p>"
                 )
             )
         app_list = []
@@ -898,13 +896,9 @@ def validate_submit_date(self):
 
     if self.claim_month != submit_claim_month or self.claim_year != submit_claim_year:
         frappe.throw(
-            "Claim Month: {0} or Claim Year: {1} of this document is not same to Submit Claim Month: {2}\
-                or Submit Claim Year: {3} on Company NHIF Settings".format(
-                frappe.bold(calendar.month_name[self.claim_month]),
-                frappe.bold(self.claim_year),
-                frappe.bold(calendar.month_name[submit_claim_month]),
-                frappe.bold(submit_claim_year),
-            )
+            f"Claim Month: {frappe.bold(calendar.month_name[self.claim_month])} or Claim Year: {frappe.bold(self.claim_year)} \
+                of this document is not same to Submit Claim Month: {frappe.bold(calendar.month_name[submit_claim_month])}\
+                or Submit Claim Year: {frappe.bold(submit_claim_year)} on Company NHIF Settings"
         )
 
 
@@ -912,12 +906,8 @@ def validate_item_status(self):
     for row in self.nhif_patient_claim_item:
         if row.status == "Draft":
             frappe.throw(
-                "Item: {0}, doctype: {1}. RowNo: {2} is in <strong>Draft</strong>,\
-                please contact relevant department for clarification".format(
-                    frappe.bold(row.item_name),
-                    frappe.bold(row.ref_doctype),
-                    frappe.bold(row.idx),
-                )
+                f"Item: {frappe.bold(row.item_name)}, doctype: {frappe.bold(row.ref_doctype)}. RowNo: {frappe.bold(row.idx)} is in <strong>Draft</strong>,\
+                please contact relevant department for clarification"
             )
 
 
@@ -1049,7 +1039,7 @@ def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
 
 
 def read_multi_pdf(output):
-    fname = os.path.join("/tmp", "frappe-pdf-{0}.pdf".format(frappe.generate_hash()))
+    fname = os.path.join("/tmp", f"frappe-pdf-{frappe.generate_hash()}.pdf")
     output.write(open(fname, "wb"))
 
     with open(fname, "rb") as fileobj:
@@ -1086,7 +1076,7 @@ def get_claim_pdf_file(doc):
 
     html = frappe.get_print(doctype, docname, print_format, doc=None, no_letterhead=1)
 
-    filename = "{name}-claim".format(name=docname.replace(" ", "-").replace("/", "-"))
+    filename = f"{docname.replace(' ', '-').replace('/', '-')}-claim"
     pdf = get_pdf(html)
     if pdf:
         ret = frappe.get_doc(

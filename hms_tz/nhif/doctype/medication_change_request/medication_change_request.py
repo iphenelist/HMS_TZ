@@ -351,9 +351,8 @@ class MedicationChangeRequest(Document):
             if is_exclusions:
                 msgThrow(
                     _(
-                        "{0} not covered in Healthcare Insurance Coverage Plan "
-                        + str(frappe.bold(coverage_plan_name))
-                    ).format(frappe.bold(row.drug_code)),
+                        f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {str(coverage_plan_name)}"
+                    ),
                     method,
                 )
 
@@ -361,9 +360,8 @@ class MedicationChangeRequest(Document):
             if not is_exclusions:
                 msgThrow(
                     _(
-                        "{0} not covered in Healthcare Insurance Coverage Plan "
-                        + str(frappe.bold(coverage_plan_name))
-                    ).format(frappe.bold(row.drug_code)),
+                        f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {str(coverage_plan_name)}"
+                    ),
                     method,
                 )
 
@@ -555,10 +553,8 @@ class MedicationChangeRequest(Document):
         if dn_doc.form_sales_invoice:
             url = get_url_to_form("sales Ivoice", dn_doc.form_sales_invoice)
             frappe.throw(
-                "Cannot create medicaton change request for items paid in cash<br>\
-                refer sales invoice: <a href='{0}'>{1}</a>".format(
-                    url, frappe.bold(dn_doc.form_sales_invoice)
-                )
+                "Cannot create medicaton change request for items paid in cash,<br>\
+                please refer sales invoice: <a href='{url}'>{frappe.bold(dn_doc.form_sales_invoice)}</a>"
             )
 
         try:
@@ -616,14 +612,8 @@ def get_delivery_note(patient, patient_encounter):
     )
     if len(d_list) > 1:
         frappe.throw(
-            "There is {0} delivery note of IPD and OPD warehouses, for patient: {1}, and encounter: {2}, \
-            Please choose one delivery note between {3} and {4}".format(
-                frappe.bold(len(d_list)),
-                frappe.bold(patient),
-                frappe.bold(patient_encounter),
-                frappe.bold(d_list[0].name + ": warehouse: " + d_list[0].set_warehouse),
-                frappe.bold(d_list[1].name + ": warehouse: " + d_list[1].set_warehouse),
-            )
+            f"There is {frappe.bold(len(d_list))} delivery note of IPD and OPD warehouses, for patient: {frappe.bold(patient)}, and encounter: {frappe.bold(patient_encounter)}, \
+            Please choose one delivery note between {frappe.bold(d_list[0].name + ": warehouse: " + d_list[0].set_warehouse)} and {frappe.bold(d_list[1].name + ": warehouse: " + d_list[1].set_warehouse)}"
         )
 
     if len(d_list) == 1:
@@ -688,12 +678,9 @@ def validate_healthcare_service_unit(warehouse, item, method):
     if warehouse != get_warehouse_from_service_unit(item.healthcare_service_unit):
         msgThrow(
             _(
-                "Please change healthcare service unit: {0}, for drug: {1} row: {2}\
-                as it is of different warehouse".format(
-                    frappe.bold(item.healthcare_service_unit),
-                    frappe.bold(item.drug_code),
-                    frappe.bold(item.idx),
-                )
+                f"Please change healthcare service unit: {frappe.bold(item.healthcare_service_unit)}, \
+                for drug: {frappe.bold(item.drug_code)} row: {frappe.bold(item.idx)}\
+                as it is of different warehouse"
             ),
             method,
         )
@@ -777,10 +764,8 @@ def create_medication_change_request_from_dn(doctype, name):
     if source_doc.form_sales_invoice:
         url = get_url_to_form("sales Ivoice", source_doc.form_sales_invoice)
         frappe.throw(
-            "Cannot create medicaton change request for items paid in cash,<br>\
-            please refer sales invoice: <a href='{0}'>{1}</a>".format(
-                url, frappe.bold(source_doc.form_sales_invoice)
-            )
+            f"Cannot create medicaton change request for items paid in cash,<br>\
+            please refer sales invoice: <a href='{url}'>{frappe.bold(source_doc.form_sales_invoice)}</a>"
         )
 
     if not source_doc.hms_tz_comment:

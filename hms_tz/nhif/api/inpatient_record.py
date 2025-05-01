@@ -36,7 +36,7 @@ def validate(doc, method):
 def before_save(doc, method):
     if len(doc.inpatient_occupancies) == 0:
         return
-    
+
     last_row = doc.inpatient_occupancies[len(doc.inpatient_occupancies) - 1]
     if last_row.service_unit:
         service_unit_type = frappe.get_cached_value(
@@ -69,9 +69,7 @@ def validate_inpatient_occupancies(doc):
             valid = False
         if not valid:
             frappe.msgprint(
-                _(
-                    "In Inpatient Occupancy line '{0}' has been invoiced. It should not be modified or deleted"
-                ).format(old_row.idx)
+                _(f"In Inpatient Occupancy line '{old_row.idx}' has been invoiced. It should not be modified or deleted")
             )
 
 
@@ -150,9 +148,7 @@ def set_beds_price(self):
                 )
                 payment_type = mode_of_payment
             frappe.msgprint(
-                _("{3} Bed prices set for {0} as of {1} for amount {2}").format(
-                    item_code, str(bed.check_in), str(bed.amount), payment_type
-                )
+                _(f"{payment_type} Bed prices set for {item_code} as of {str(bed.check_in)} for amount {str(bed.amount)}")
             )
 
 
@@ -224,9 +220,7 @@ def make_deposit(
         payment.submit()
         url = get_url_to_form(payment.doctype, payment.name)
         frappe.msgprint(
-            "Payment Entry: <a href='{0}'>{1}</a> for Deposit is created successful".format(
-                url, frappe.bold(payment.name)
-            )
+            f"Payment Entry: <a href='{url}'>{frappe.bold(payment.name)}</a> for Deposit is created successful"
         )
         return payment.name
     except Exception as e:
