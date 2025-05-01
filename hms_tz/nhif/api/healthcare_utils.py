@@ -1382,10 +1382,11 @@ def create_delivery_note(encounter_doc, method):
 
 
 def msgThrow(msg, method="throw", alert=True):
-    if method == "validate":
-        frappe.msgprint(msg, alert=alert)
-    else:
+    if method in ["before_submit", "on_submit", "throw"]:
         frappe.throw(msg)
+    else:
+        frappe.msgprint(msg, alert=alert)
+        
 
 
 def msgPrint(msg, method="throw", alert=False):
