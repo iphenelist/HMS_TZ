@@ -166,7 +166,6 @@ def on_submit_validation(doc, method):
         "procedure_prescription": "procedure",
         "drug_prescription": "drug_code",
         "therapies": "therapy_type",
-        # "diet_recommendation": "diet_plan" dosent have Healthcare Service Insurance Coverage
     }
     if doc.encounter_type == "Initial":
         doc.reference_encounter = doc.name
@@ -326,69 +325,76 @@ def on_submit_validation(doc, method):
     # shm rock: 151
     set_practitioner_name(doc, method)
 
-    insurance_subscription = doc.insurance_subscription
-    if not insurance_subscription:
-        return
-
     if not doc.healthcare_service_unit and not doc.healthcare_package_order:
         frappe.throw(_("Healthcare Service Unit not set"))
-    healthcare_insurance_coverage_plan = frappe.get_cached_value(
-        "Healthcare Insurance Subscription",
-        insurance_subscription,
-        "healthcare_insurance_coverage_plan",
-    )
-    if not healthcare_insurance_coverage_plan:
+    
+    set_item_coverage(doc, method, child_tables)
+
+    validate_totals(doc, method)
+
+
+def set_item_coverage(doc, method, child_tables):
+    if not doc.insurance_subscription:
+        return
+
+    if not doc.insurance_coverage_plan:
         frappe.throw(_("Healthcare Insurance Coverage Plan is Not defiend"))
-    today = nowdate()
-    healthcare_service_templates = {}
+
+    service_templates = {}
     for key, value in child_tables.items():
         for row in doc.get(key):
-            if row.override_subscription or row.prescribe:
+            if row.get("override_subscription") == 1 or row.prescribe == 1:
                 continue
 
-            # healthcare_service_templates is like {"CBC": [cbc1_lab_prescription_line_object, cbc2_lab_prescription_line_object], "XRay Abdomen": [radiology_prescription_line_object], ["Panadol": drug_prescription_line_object]}
-            rows_affected = healthcare_service_templates.setdefault(row.get(value), [])
+            # service_templates is like {"CBC": [cbc1_lab_prescription_line_object, cbc2_lab_prescription_line_object], "XRay Abdomen": [radiology_prescription_line_object], ["Panadol": drug_prescription_line_object]}
+            rows_affected = service_templates.setdefault(row.get(value), [])
             rows_affected.append(row)
+
     # hsic => Healthcare Service Insurance Coverage
     hsic_list = frappe.get_all(
         "Healthcare Service Insurance Coverage",
         fields={
             "healthcare_service_template",
             "maximum_quantity",
+            "has_copayment",
             "approval_mandatory_for_claim",
         },
         filters={
             "is_active": 1,
-            "healthcare_insurance_coverage_plan": healthcare_insurance_coverage_plan,
-            "start_date": ("<=", today),
-            "end_date": (">=", today),
-            "healthcare_service_template": ("in", healthcare_service_templates),
+            "healthcare_insurance_coverage_plan": doc.insurance_coverage_plan,
+            "start_date": ("<=", nowdate()),
+            "end_date": (">=", nowdate()),
+            "healthcare_service_template": ("in", service_templates.keys()),
         },
         order_by="modified desc",
     )
     # hsic_map is like {"CBC": HSIC_object_for_CBC, "XRay Abdomen": HSIC_object_for_xray_abdomen, "Panadol": HSIC_object_for_panadol}
     hsic_map = {hsic.healthcare_service_template: hsic for hsic in hsic_list}
-    hicp_name, is_exclusions = frappe.get_cached_value(
+    is_exclusions = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
-        healthcare_insurance_coverage_plan,
-        ["coverage_plan_name", "is_exclusions"],
+        doc.insurance_coverage_plan,
+        "is_exclusions",
     )
 
     validate_item_coverage(
-        doc,
         method,
-        healthcare_service_templates,
+        doc.company,
         hsic_map,
-        hicp_name,
         is_exclusions,
+        service_templates,
+        doc.insurance_coverage_plan
     )
-    validate_totals(doc, method)
 
 
 def validate_item_coverage(
-    doc, method, healthcare_service_templates, hsic_map, hicp_name, is_exclusions
+    method,
+    company,
+    hsic_map,
+    is_exclusions,
+    service_templates,
+    insurance_coverage_plan
 ):
-    for template in healthcare_service_templates:
+    for template in service_templates:
         """
         If the value of "is_exclusions" is 1, it means the template should not be listed in the "hsic_map". This is because when "is_exclusions" is 1, it indicates that the template which is in "hsic_map" is not covered.
 
@@ -399,22 +405,22 @@ def validate_item_coverage(
 
         if is_exclusions:
             if (
-                template in hsic_map
+                template in hsic_map.keys()
                 and hsic_map[template].approval_mandatory_for_claim == 0
             ):
                 mark_item_not_covered(
-                    doc.company,
-                    hicp_name,
-                    template,
-                    healthcare_service_templates,
                     method,
+                    company,
+                    template,
+                    service_templates,
+                    insurance_coverage_plan
                 )
 
             elif (
-                template in hsic_map
+                template in hsic_map.keys()
                 and hsic_map[template].approval_mandatory_for_claim == 1
             ):
-                set_is_restricted(template, healthcare_service_templates, hsic_map)
+                set_copayment_and_restricted(template, service_templates, hsic_map)
 
         else:
             """
@@ -425,26 +431,29 @@ def validate_item_coverage(
 
             This apply for NHIF and Non NHIF Insurance.
             """
-            if template not in hsic_map:
+            if template not in hsic_map.keys():
                 mark_item_not_covered(
-                    doc.company,
-                    hicp_name,
-                    template,
-                    healthcare_service_templates,
                     method,
+                    company,
+                    template,
+                    service_templates,
+                    insurance_coverage_plan
                 )
 
             elif (
-                template in hsic_map
-                and hsic_map[template].approval_mandatory_for_claim == 1
+                template in hsic_map.keys()
             ):
-                set_is_restricted(template, healthcare_service_templates, hsic_map)
+                set_copayment_and_restricted(template, service_templates, hsic_map)
 
 
 def mark_item_not_covered(
-    company, hicp_name, template, healthcare_service_templates, method
+    method,
+    company,
+    template,
+    service_templates,
+    insurance_coverage_plan,
 ):
-    for row_item in healthcare_service_templates[template]:
+    for row_item in service_templates[template]:
         if (
             company
             and frappe.get_cached_value(
@@ -457,7 +466,8 @@ def mark_item_not_covered(
             row_item.prescribe = 1
 
     msg = _(
-        f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> in Healthcare Insurance Coverage Plan {str(hicp_name)} plan.<br>Patient should pay cash for this service"
+        f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> \
+            in Healthcare Insurance Coverage Plan {str(insurance_coverage_plan)} plan.<br>Patient should pay cash for this service"
     )
     msgThrow(
         msg,
@@ -465,17 +475,20 @@ def mark_item_not_covered(
     )
 
 
-def set_is_restricted(template, healthcare_service_templates, hsic_map):
+def set_copayment_and_restricted(template, service_templates, hsic_map):
+    """
+    This function is used to set the "has_copayment" and "is_restricted" fields for each row in the "service_templates" dictionary.
+    """
+
     coverage_info = hsic_map[template]
-    for row in healthcare_service_templates[template]:
+    for row in service_templates[template]:
+        row.has_copayment = coverage_info.has_copayment
         row.is_restricted = coverage_info.approval_mandatory_for_claim
-        if row.is_restricted:
+        if row.is_restricted == 1:
             frappe.msgprint(
-                _("{0} with template {1} requires additional authorization").format(
-                    _(row.doctype), template
-                ),
+                _(f"{row.doctype} with template {template} requires additional authorization"),
                 alert=True,
-            )
+            )        
 
 
 def checkـforـduplicate(doc, method):
