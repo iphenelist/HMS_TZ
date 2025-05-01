@@ -861,41 +861,11 @@ def add_chronic_medications(patient, encounter, items):
 
 
 def validate_totals(doc, method, show_alert=True):
-    def get_field_map():
-        childs_map = [
-            {
-                "table": "lab_test_prescription",
-                "doctype": "Lab Test Template",
-                "item": "lab_test_code",
-            },
-            {
-                "table": "radiology_procedure_prescription",
-                "doctype": "Radiology Examination Template",
-                "item": "radiology_examination_template",
-            },
-            {
-                "table": "procedure_prescription",
-                "doctype": "Clinical Procedure Template",
-                "item": "procedure",
-            },
-            {
-                "table": "drug_prescription",
-                "doctype": "Medication",
-                "item": "drug_code",
-            },
-            {
-                "table": "therapies",
-                "doctype": "Therapy Type",
-                "item": "therapy_type",
-            },
-        ]
-        return childs_map
-
-    def get_current_total(doc):
+    def get_current_total(doc, childs_map):
         doc.current_total = 0
         discount_percent = get_discount_percent(doc.insurance_company)
 
-        for child in get_field_map():
+        for child in childs_map:
             for row in doc.get(child.get("table")):
                 if (
                     row.prescribe
@@ -922,8 +892,8 @@ def validate_totals(doc, method, show_alert=True):
                 item_rate = item_price_rate * quantity
                 doc.current_total += item_rate - (item_rate * (discount_percent / 100))
 
-    def mark_limit_exceeded(doc):
-        for child in get_field_map():
+    def mark_limit_exceeded(doc, childs_map):
+        for child in childs_map:
             for row in doc.get(child.get("table")):
                 if row.prescribe and row.hms_tz_is_limit_exceeded:
                     row.hms_tz_is_limit_exceeded = 0
@@ -940,8 +910,8 @@ def validate_totals(doc, method, show_alert=True):
                     row.hms_tz_is_limit_exceeded = 1
                     row.is_cancelled = 1
 
-    def unmark_limit_exceeded(doc):
-        for child in get_field_map():
+    def unmark_limit_exceeded(doc, childs_map):
+        for child in childs_map:
             for row in doc.get(child.get("table")):
                 if row.hms_tz_is_limit_exceeded == 1:
                     row.hms_tz_is_limit_exceeded = 0
@@ -957,14 +927,15 @@ def validate_totals(doc, method, show_alert=True):
         or doc.healthcare_package_order
     ):
         return
-
+    
+    childs_map = get_childs_map()
     if doc.encounter_type == "Initial":
         appointment_amount = frappe.get_value(
             "Patient Appointment", doc.appointment, "paid_amount"
         )
         doc.previous_total = appointment_amount
 
-    get_current_total(doc)
+    get_current_total(doc, childs_map)
 
     diff = doc.daily_limit - doc.current_total - doc.previous_total
     if diff < 0:
@@ -984,7 +955,7 @@ def validate_totals(doc, method, show_alert=True):
                 method=method,
             )
         else:
-            mark_limit_exceeded(doc)
+            mark_limit_exceeded(doc, childs_map)
             if show_alert:
                 msgPrint(
                     _(
@@ -994,7 +965,7 @@ def validate_totals(doc, method, show_alert=True):
                     method=method,
                 )
     else:
-        unmark_limit_exceeded(doc)
+        unmark_limit_exceeded(doc, childs_map)
 
 
 @frappe.whitelist()
