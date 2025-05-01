@@ -182,7 +182,7 @@ def on_submit_validation(doc, method):
     if not doc.healthcare_package_order:
         show_last_prescribed(doc, method)
         show_last_prescribed_for_lrpt(doc, method)
-    
+
     checkـforـduplicate(doc, method)
     add_LRPMT_template_attributes(doc, method)
     validate_prescribed_items(doc, method, child_tables)
@@ -228,10 +228,7 @@ def add_LRPMT_template_attributes(doc, method):
             if not company_option:
                 msgThrow(
                     _(
-                        "No company option found for template: {0} and company: {1}".format(
-                            frappe.bold(row.get(child.get("item"))),
-                            frappe.bold(doc.company),
-                        )
+                        f"No company option found for template: {frappe.bold(row.get(child.get("item")))} and company: {frappe.bold(doc.company)}"
                     ),
                     method,
                 )
@@ -243,8 +240,8 @@ def add_LRPMT_template_attributes(doc, method):
                 if template_doc.is_inpatient and not doc.inpatient_record:
                     msgThrow(
                         _(
-                            "<h4>This Procedure: <strong>{0}</strong> is allowed for Admitted Patient only</h4>"
-                        ).format(frappe.bold(row.get(child.get("item")))),
+                            f"<h4>This Procedure: <strong>{frappe.bold(row.get(child.get("item")))}</strong> is allowed for Admitted Patient only</h4>"
+                        ),
                         method,
                     )
             if (
@@ -496,9 +493,7 @@ def checkـforـduplicate(doc, method):
             items.append(item.drug_code)
         else:
             msgThrow(
-                _("Drug '{0}' is duplicated in line '{1}' in Drug Prescription").format(
-                    item.drug_code, item.idx
-                ),
+                _(f"Drug '{item.drug_code}' is duplicated in line '{item.idx}' in Drug Prescription"),
                 method,
             )
 
@@ -583,7 +578,7 @@ def duplicate_encounter(encounter):
     encounter_dict["encounter_time"] = nowtime()
     encounter_doc = frappe.get_doc(encounter_dict)
     encounter_doc.save(ignore_permissions=True)
-    frappe.msgprint(_("Patient Encounter {0} created".format(encounter_doc.name)))
+    frappe.msgprint(_(f"Patient Encounter {encounter_doc.name} created"))
     frappe.db.update(doc.doctype, doc.name, {"duplicated": 1})
     return encounter_doc.name
 
@@ -663,13 +658,11 @@ def validate_stock_item(
     stock_qty = 0
     if healthcare_service_unit:
         warehouse = get_warehouse_from_service_unit(healthcare_service_unit)
-        # frappe.msgprint(_("{0} selected using {1}").format(warehouse, healthcare_service_unit), alert=True)
     if not warehouse:
         msgThrow(
             _(
-                "Warehouse is missing in healthcare service unit {0} when checking"
-                " for {1}"
-            ).format(healthcare_service_unit, item_info.get("item_code")),
+                f"Warehouse is missing in healthcare service unit {healthcare_service_unit} when checking for {item_info.get("item_code")}"
+            ),
             method,
         )
     if item_info.get("is_stock") and item_info.get("item_code"):
@@ -685,9 +678,6 @@ def validate_stock_item(
                 method,
             )
             return False
-    # if stock_qty > 0:
-    #     frappe.msgprint(_("Available quantity for the item {0} in {1}/{2} is {3} pcs.").format(
-    #         healthcare_service, warehouse, healthcare_service_unit, stock_qty), alert=True)
     return True
 
 
@@ -1015,7 +1005,7 @@ def create_sales_invoice(encounter, encounter_category, encounter_mode_of_paymen
 
     item = doc.append("items", {})
     item.item_code = encounter_category.encounter_fee_item
-    item.description = _("Consulting Charges: {0}").format(encounter_doc.practitioner)
+    item.description = _(f"Consulting Charges: {encounter_doc.practitioner}")
     item.income_account = get_income_account(
         encounter_doc.practitioner, encounter_doc.company
     )
@@ -1040,7 +1030,7 @@ def create_sales_invoice(encounter, encounter_category, encounter_mode_of_paymen
     doc.save(ignore_permissions=True)
     doc.calculate_taxes_and_totals()
     doc.submit()
-    frappe.msgprint(_("Sales Invoice {0} created".format(doc.name)))
+    frappe.msgprint(_(f"Sales Invoice {doc.name} created"))
     encounter_doc.sales_invoice = doc.name
     encounter_doc.db_update()
 
@@ -1167,17 +1157,13 @@ def set_amounts(doc):
                 )
                 if not price_list:
                     frappe.throw(
-                        _("Please set default price list in company {0}").format(
-                            doc.company
-                        )
+                        _(f"Please set default price list in company {doc.company}")
                     )
 
                 item_rate = get_item_price(item_code, price_list, doc.company)
                 if not item_rate or item_rate == 0:
                     frappe.throw(
-                        _("Cannot get mode of payment rate for item {0}").format(
-                            item_code
-                        )
+                        _(f"Cannot get mode of payment rate for item {item_code}")
                     )
 
             elif not row.prescribe:
@@ -1516,9 +1502,7 @@ def show_last_prescribed_for_lrpt(doc, method):
                 date = item_doc[0]["creation"].strftime("%Y-%m-%d")
 
                 msg_print += _(
-                    "{0} prescribed last on: {1}".format(
-                        frappe.bold(entry.get(child.get("item"))), frappe.bold(date)
-                    )
+                    f"{frappe.bold(entry.get(child.get('item')))} prescribed last on: {frappe.bold(date)}"
                     + "<br>"
                 )
 
@@ -1552,11 +1536,7 @@ def show_last_prescribed_for_lrpt(doc, method):
         if items:
             msg = _(
                 msg
-                + "{0} prescribed last on: {1}".format(
-                    frappe.bold(items[0]["therapy_type"]),
-                    frappe.bold(items[0]["date"]),
-                )
-                + "<br>"
+                + f"{frappe.bold(items[0]['therapy_type'])} prescribed last on: {frappe.bold(items[0]['date'])} <br>"
             )
             val_msg = validate_prescribe_days(
                 doc, "Therapy Type", items[0]["therapy_type"], items[0]["date"]
@@ -1618,10 +1598,8 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
     doc = frappe.get_cached_doc("Patient Encounter", encounter)
     if doc.inpatient_record:
         frappe.msgprint(
-            "<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 12pt;'>\
-                This encounter having inpatient record: {0} already".format(
-                frappe.bold(doc.inpatient_record)
-            )
+            f"<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 12pt;'>\
+                This encounter having inpatient record: {doc.inpatient_record} already"
             + "</p>"
         )
         return
@@ -1642,11 +1620,9 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
 
         if not inpatient_record:
             frappe.throw(
-                "<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 11pt;'>\
-                    Scheduling admission was not done for this patient: {0} of appointment: {1}.".format(
-                    frappe.bold(doc.patient), frappe.bold(doc.appointment)
-                )
-                + "</p>"
+                f"<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 11pt;'>\
+                    Scheduling admission was not done for this patient: {frappe.bold(doc.patient)} of appointment: \
+                    {frappe.bold(doc.appointment)}. </p>"
             )
 
     doc.inpatient_record = inpatient_record
@@ -1659,11 +1635,8 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
         create_healthcare_docs(doc.reference_encounter, encounter_list, method="on_submit")
 
         frappe.msgprint(
-            "<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 11pt;'>\
-            This encounter is now having inpatient record: {0}".format(
-                frappe.bold(doc.get("inpatient_record"))
-            )
-            + "</p>"
+            f"<p class='text-center font-weight-bold h6' style='background-color: #DCDCDC; font-size: 11pt;'>\
+            This encounter is now having inpatient record: {frappe.bold(doc.get('inpatient_record'))} </p>"
         )
         return True
 
@@ -1684,10 +1657,8 @@ def validate_admission_encounter(encounter, healthcare_package_order=None):
     if duplicated_encounter:
         url = frappe.utils.get_link_to_form("Patient Encounter", duplicated_encounter)
         frappe.msgprint(
-            "You can't schedule Admission on this encounter: {0},<br>\
-            Please, Click Here: {1} to open the right encounter".format(
-                frappe.bold(encounter), frappe.bold(url)
-            )
+            f"You can't schedule Admission on this encounter: {frappe.bold(encounter)},<br>\
+            Please, Click Here: {frappe.bold(url)} to open the right encounter"
         )
         return True
 
@@ -1987,9 +1958,7 @@ def validate_medical_code(doc, method):
 
     if mtuha_missing:
         msgThrow(
-            _("{0}<br>MTUHA Code not defined for the above diagnosis").format(
-                mtuha_missing
-            ),
+            _(f"{mtuha_missing}<br>MTUHA Code not defined for the above diagnosis"),
             method,
         )
     
