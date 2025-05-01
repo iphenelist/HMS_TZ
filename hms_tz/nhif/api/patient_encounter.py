@@ -60,6 +60,9 @@ def before_insert(doc, method):
     doc.encounter_date = nowdate()
     doc.encounter_time = nowtime()
 
+    if not doc.patient_age:
+        doc.patient_age = calculate_patient_age(doc.patient)
+
     if doc.insurance_company and "NHIF" in doc.insurance_company:
         validate_nhif_patient_claim_status(
             "Patient Encounter", doc.company, doc.appointment, doc.insurance_company
@@ -69,6 +72,9 @@ def before_insert(doc, method):
 
 # regency rock: 95
 def after_insert(doc, method):
+    if not doc.patient_age:
+        doc.patient_age = calculate_patient_age(doc.patient)
+    
     if doc.company and doc.mode_of_payment:
         pharmacy_details = frappe.get_cached_value(
             "Company",
@@ -169,22 +175,39 @@ def on_submit_validation(doc, method):
         "drug_prescription": "drug_code",
         "therapies": "therapy_type",
     }
-    if doc.encounter_type == "Initial":
+    
+    if not doc.reference_encounter and doc.encounter_type == "Initial":
         doc.reference_encounter = doc.name
 
     if not doc.healthcare_package_order:
         show_last_prescribed(doc, method)
         show_last_prescribed_for_lrpt(doc, method)
-
+    
     checkـforـduplicate(doc, method)
+    add_LRPMT_template_attributes(doc, method)
+    validate_prescribed_items(doc, method, child_tables)
+    validate_medical_code(doc, method)
 
+    # shm rock: 151
+    set_practitioner_name(doc, method)
+
+    if not doc.healthcare_service_unit and not doc.healthcare_package_order:
+        frappe.throw(_("Healthcare Service Unit not set"))
+    
+    set_item_coverage(doc, method, child_tables)
+
+    validate_totals(doc, method)
+
+
+def add_LRPMT_template_attributes(doc, method):
     childs_map = get_childs_map()
+
     for child in childs_map:
         for row in doc.get(child.get("table")):
-            healthcare_doc = frappe.get_cached_doc(
+            template_doc = frappe.get_cached_doc(
                 child.get("doctype"), row.get(child.get("item"))
             )
-            if healthcare_doc.disabled:
+            if template_doc.disabled:
                 msgThrow(
                     _(
                         f"{child.get('doctype')}: <b>{row.get(child.get('item'))}</b> selected at Row#: {row.idx} is <b>disabled</b>. Please select an enabled item."
@@ -192,7 +215,7 @@ def on_submit_validation(doc, method):
                     method,
                 )
             company_option = None
-            for option in healthcare_doc.company_options:
+            for option in template_doc.company_options:
                 if doc.company == option.company:
                     company_option = option.company
 
@@ -217,7 +240,7 @@ def on_submit_validation(doc, method):
                 child.get("doctype") == "Clinical Procedure Template"
                 and row.doctype == "Procedure Prescription"
             ):
-                if healthcare_doc.is_inpatient and not doc.inpatient_record:
+                if template_doc.is_inpatient and not doc.inpatient_record:
                     msgThrow(
                         _(
                             "<h4>This Procedure: <strong>{0}</strong> is allowed for Admitted Patient only</h4>"
@@ -230,7 +253,7 @@ def on_submit_validation(doc, method):
             ):
                 if (
                     doc.insurance_subscription
-                    and healthcare_doc.medication_category == "Category S Medication"
+                    and template_doc.medication_category == "Category S Medication"
                 ):
                     frappe.msgprint(
                         f"Item: {row.get(child.get('item'))} is Category S Medication",
@@ -241,7 +264,11 @@ def on_submit_validation(doc, method):
                 if not row.quantity:
                     row.quantity = get_drug_quantity(row)
 
-    # Run on_submit?
+
+def validate_prescribed_items(doc, method, child_tables):
+    if doc.healthcare_package_order:
+        return
+    
     prescribed_list = ""
     for key, value in child_tables.items():
         table = doc.get(key)
@@ -254,9 +281,7 @@ def on_submit_validation(doc, method):
                 if not quantity:
                     frappe.throw(
                         _(
-                            "Quantity for Item: {0}, Row: {1} can not be zero".format(
-                                frappe.bold(row_item), frappe.bold(row.idx)
-                            )
+                            f"Quantity for Item: {frappe.bold(row_item)}, Row: {frappe.bold(row.idx)} can not be zero"
                         )
                     )
 
@@ -267,24 +292,26 @@ def on_submit_validation(doc, method):
             ):
                 row.prescribe = 1
                 prescribed_list += "-  <b>" + row.get(value) + "</b><BR>"
+
                 if row.is_not_available_inhouse:
                     prescribed_list += " - THIS ITEM IS NOT AVAILABLE INHOUSE "
                 prescribed_list += "<BR>"
+
             elif not row.prescribe:
                 if row.get("no_of_sessions") and doc.insurance_subscription:
                     if row.no_of_sessions != 1:
                         row.no_of_sessions = 1
                         frappe.msgprint(
                             _(
-                                "No of sessions have been set to 1 for {0} as per"
-                                " insurance rules."
-                            ).format(row.get(value)),
-                            alert=True,
+                                f"No of sessions have been set to 1 for {row.get(value)} as per insurance rules."
+                            ),
+                            alert=True
                         )
-            if not row.is_not_available_inhouse:
-                old_method = method
-                if doc.insurance_subscription and not row.prescribe:
-                    method = "validate"
+                    
+            if (
+                not row.is_not_available_inhouse and 
+                row.get("doctype") == "Drug Prescription"
+            ):
                 validate_stock_item(
                     row.get(value),
                     quantity,
@@ -293,46 +320,15 @@ def on_submit_validation(doc, method):
                     healthcare_service_unit=row.get("healthcare_service_unit"),
                     method=method,
                 )
-                if doc.insurance_subscription:
-                    method = old_method
 
-    if prescribed_list and not doc.healthcare_package_order:
+    if prescribed_list:
         msgPrint(
             _(
-                "{0}<BR>The above been prescribed. <b>Request the patient to visit the"
+                f"{prescribed_list}<BR>The above been prescribed. <b>Request the patient to visit the"
                 " cashier for billing/cash payment</b> or prescription printout."
-            ).format(prescribed_list),
-            method,
-        )
-
-    # Run on_submit
-    mtuha_missing = ""
-    for final_diagnosis in doc.patient_encounter_final_diagnosis:
-        if not final_diagnosis.mtuha:
-            mtuha_missing += "-  <b>" + final_diagnosis.medical_code + "</b><br>"
-
-    if mtuha_missing:
-        msgThrow(
-            _("{0}<br>MTUHA Code not defined for the above diagnosis").format(
-                mtuha_missing
             ),
             method,
         )
-
-    if not doc.patient_age:
-        doc.patient_age = calculate_patient_age(doc.patient)
-
-    validate_medical_code(doc, method)
-
-    # shm rock: 151
-    set_practitioner_name(doc, method)
-
-    if not doc.healthcare_service_unit and not doc.healthcare_package_order:
-        frappe.throw(_("Healthcare Service Unit not set"))
-    
-    set_item_coverage(doc, method, child_tables)
-
-    validate_totals(doc, method)
 
 
 def set_item_coverage(doc, method, child_tables):
@@ -632,10 +628,8 @@ def validate_stock_item(
     method=None,
 ):
     setting_doc = frappe.get_cached_doc("Healthcare Settings")
-    if caller == "Drug Prescription":
-        method = "validate"
 
-    elif prescribe == 0:
+    if prescribe == 0:
         if setting_doc.only_alert_if_less_stock_of_drug_item_for_insurance_in_pe == 1:
             method = "validate"
         elif (
@@ -1985,6 +1979,20 @@ def validate_medical_code(doc, method):
     for insurance patients its configuration is on Healthcare Insurance Company
     """
 
+    # Run on_submit
+    mtuha_missing = ""
+    for final_diagnosis in doc.patient_encounter_final_diagnosis:
+        if not final_diagnosis.mtuha:
+            mtuha_missing += "-  <b>" + final_diagnosis.medical_code + "</b><br>"
+
+    if mtuha_missing:
+        msgThrow(
+            _("{0}<br>MTUHA Code not defined for the above diagnosis").format(
+                mtuha_missing
+            ),
+            method,
+        )
+    
     validation_for_medical_code = None
     if doc.insurance_subscription:
         validation_for_medical_code = frappe.get_cached_value(
