@@ -700,7 +700,7 @@ def on_submit(doc, method):
     else: 
         # insurance patient
         on_submit_validation(doc, method)
-        create_service_request(doc)
+        create_service_request(doc_obj=doc)
 
     if (
         doc.healthcare_package_order

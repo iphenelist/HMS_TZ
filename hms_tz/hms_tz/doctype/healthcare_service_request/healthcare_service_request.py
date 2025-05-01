@@ -7,16 +7,16 @@ from frappe.query_builder import DocType
 from frappe.utils import get_link_to_form
 from frappe.model.document import Document
 from hms_tz.nhif.api.healthcare_utils import (
-    msgThrow,
-    msgPrint,
-    get_item_rate,
-    get_item_price,
+	msgThrow,
+	msgPrint,
+	get_item_rate,
+	get_item_price,
 	get_mop_amount,
 	get_discount_percent,
 	inpatient_billing,
 	create_healthcare_docs,
-    get_warehouse_from_service_unit,
-    validate_nhif_patient_claim_status,
+	get_warehouse_from_service_unit,
+	validate_nhif_patient_claim_status,
 )
 
 
@@ -86,7 +86,7 @@ class HealthcareServiceRequest(Document):
 		else:
 			row = row_obj
 
-		service_type = self.get_service_type(self, row)
+		service_type = self.get_service_type(row)
 		if not service_type:
 			return {"item_rate": 0, "discount_percent": 0}
 		
@@ -149,19 +149,20 @@ class HealthcareServiceRequest(Document):
 			else:
 				item = item_obj
 			
+			if item.has_copayment == 0:
+				return 0
+			
 			if not item.service_name:
 				return
 			
 			if "NHIF" not in item.insurance_company:
 				return
 
-			service_type = self.get_service_type(item)
 			product_code = self.get_product_code(item)
-			ref_code = get_item_refcode(service_type, item.service_name)
 
 			percent_covered = frappe.get_cached_value(
 				"NHIF Cost Sharing", {	
-					"itemcode": ref_code,
+					"itemcode": item.item_code,
 					"productcode": product_code,
 					"yearno": self.years_of_insurance
 				}, "percentcovered"
@@ -171,19 +172,20 @@ class HealthcareServiceRequest(Document):
 		
 		else:
 			for item in self.payments:
+				if item.has_copayment == 0:
+					continue
+				
 				if not item.service_name:
 					return
 				
 				if "NHIF" not in item.insurance_company:
 					continue
-				
-				service_type = self.get_service_type(item)
+
 				product_code = self.get_product_code(item)
-				ref_code = get_item_refcode(service_type, item.service_name)
 
 				percent_covered = frappe.get_cached_value(
 					"NHIF Cost Sharing", {	
-						"itemcode": ref_code,
+						"itemcode": item.item_code,
 						"productcode": product_code,
 						"yearno": self.years_of_insurance
 					}, "percentcovered"
@@ -233,7 +235,7 @@ def create_service_request(doc_obj=None, data=None):
 		data = json.loads(data)
 		doc = frappe.get_doc(data.get("source_doctype"), data.get("source_docname"))
 	else:
-		doc = frappe._dict(json.loads(doc_obj))
+		doc = doc_obj
 	
 	if doc.doctype == "Patient Encounter":
 		services += get_encounter_services(doc)
@@ -281,122 +283,37 @@ def create_service_request(doc_obj=None, data=None):
 
 def get_encounter_services(doc):
 	services = []
-	for item in doc.get("lab_test_prescription"):
-		if (
-			item.prescribe == 1
-			or item.is_cancelled == 1
-			or item.is_not_available_inhouse == 1
-		):
+
+	childs_map = get_childs_map()
+	for child in childs_map:
+		if len(doc.get(child["table"])) == 0:
 			continue
 
-		row = {
-			"service_type": "Lab Test Template",
-			"service_name": item.lab_test_code,
-			"qty": 1,
-			"ref_doctype": item.doctype,
-			"ref_docname": item.name
-		}
+		for row in doc.get(child["table"]):
+			if (
+				row.prescribe == 1
+				or row.is_cancelled == 1
+				or row.is_not_available_inhouse == 1
+			):
+				continue
 
-		new_row = set_service_amounts(
-			row,
-			doc.company,
-			doc.insurance_company,
-			doc.insurance_subscription
-		)
-		services.append(new_row)
+			entry = {
+				"service_type": child["doctype"],
+				"service_name": row.get(child["item"]),
+				"qty": row.get("quantity") or 1,
+				"is_restricted": row.get("is_restricted"),
+				"has_copayment": row.get("has_copayment"),
+				"ref_doctype": row.doctype,
+				"ref_docname": row.name
+			}
+			new_row = set_service_amounts(
+				entry,
+				doc.company,
+				doc.insurance_company,
+				doc.insurance_subscription
+			)
+			services.append(new_row)
 
-	for item in doc.get("radiology_procedure_prescription"):
-		if (
-			item.prescribe == 1
-			or item.is_cancelled == 1
-			or item.is_not_available_inhouse == 1
-		):
-			continue
-		
-		row = {
-			"service_type": "Radiology Examination Template",
-			"service_name": item.radiology_examination_template,
-			"qty": 1,
-			"ref_doctype": item.doctype,
-			"ref_docname": item.name
-		}
-		new_row = set_service_amounts(
-			row,
-			doc.company,
-			doc.insurance_company,
-			doc.insurance_subscription
-		)
-		services.append(new_row)
-
-	for item in doc.get("procedure_prescription"):
-		if (
-			item.prescribe == 1
-			or item.is_cancelled == 1
-			or item.is_not_available_inhouse == 1
-		):
-			continue
-		
-		row = {
-			"service_type": "Clinical Procedure Template",
-			"service_name": item.procedure,
-			"qty": 1,
-			"ref_doctype": item.doctype,
-			"ref_docname": item.name
-		}
-		new_row = set_service_amounts(
-			row,
-			doc.company,
-			doc.insurance_company,
-			doc.insurance_subscription
-		)
-		services.append(new_row)
-
-	for item in doc.get("drug_prescription"):
-		if (
-			item.prescribe == 1
-			or item.is_cancelled == 1
-			or item.is_not_available_inhouse == 1
-		):
-			continue
-		
-		row = {
-			"service_type": "Medication",
-			"service_name": item.drug_code,
-			"qty": item.quantity,
-			"ref_doctype": item.doctype,
-			"ref_docname": item.name
-		}
-		new_row = set_service_amounts(
-			row,
-			doc.company,
-			doc.insurance_company,
-			doc.insurance_subscription
-		)
-		services.append(new_row)
-
-	for item in doc.get("therapies"):
-		if (
-			item.prescribe == 1
-			or item.is_cancelled == 1
-			or item.is_not_available_inhouse == 1
-		):
-			continue
-		
-		row = {
-			"service_type": "Therapy Type",
-			"service_name": item.therapy_type,
-			"qty": 1,
-			"ref_doctype": item.doctype,
-			"ref_docname": item.name
-		}
-		new_row = set_service_amounts(
-			row,
-			doc.company,
-			doc.insurance_company,
-			doc.insurance_subscription
-		)
-		services.append(new_row)
-	
 	return services
 
 
@@ -456,7 +373,6 @@ def get_item_refcode(service_type, service_name):
 		frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
 	
 	return ref_code
-
 
 
 def get_childs_map():
