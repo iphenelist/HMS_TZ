@@ -1095,54 +1095,6 @@ def update_inpatient_record_consultancy(doc):
         )
 
 
-def on_update_after_submit(doc, method):
-    if doc.is_not_billable:
-        return
-    child_tables_list = [
-        "lab_test_prescription",
-        "radiology_procedure_prescription",
-        "procedure_prescription",
-        "drug_prescription",
-    ]
-    services_created_pending = 0
-    for child_table_field in child_tables_list:
-        if services_created_pending:
-            break
-        if doc.get(child_table_field):
-            child_table = doc.get(child_table_field)
-            for child in child_table:
-                if child.doctype == "Lab Prescription":
-                    if child.lab_test_created == 0:
-                        services_created_pending = 1
-                        break
-                elif child.doctype == "Radiology Procedure Prescription":
-                    if child.radiology_examination_created == 0:
-                        services_created_pending = 1
-                        break
-                elif child.doctype == "Procedure Prescription":
-                    if child.procedure_created == 0:
-                        services_created_pending = 1
-                        break
-                elif child.doctype == "Drug Prescription":
-                    if child.drug_prescription_created == 0:
-                        services_created_pending = 1
-                        break
-    if services_created_pending == 0:
-        doc.is_not_billable = 1
-        # frappe.msgprint("done doc.is_not_billable = 1")
-    else:
-        doc.is_not_billable = 0
-        # frappe.msgprint("done doc.is_not_billable = 0")
-    if method == "enqueue":
-        # frappe.msgprint("done method enqueue db commit")
-        doc.db_update()
-
-
-def enqueue_on_update_after_submit(doc_name):
-    time.sleep(5)
-    on_update_after_submit(frappe.get_cached_doc("Patient Encounter", doc_name), "enqueue")
-
-
 def before_submit(doc, method):
     if doc.insurance_company and "NHIF" in doc.insurance_company:
         validate_nhif_patient_claim_status(
