@@ -741,7 +741,7 @@ def set_healthcare_services(doc, checked_values):
     return doc.name
 
 
-# create LRPMT docs for inpatient
+# create LRPMT docs for Cash inpatient
 def inpatient_billing(encounter_doc, method):
     if encounter_doc.insurance_subscription:  # IPD/OPD insurance
         return
@@ -807,7 +807,7 @@ def inpatient_billing(encounter_doc, method):
     create_delivery_note(encounter_doc, method)
 
 
-# create LRPMT docs for OPD patient
+# create LRPMT docs for Cash OPD and Insurance (OPD & IPD) patient
 @frappe.whitelist()
 def create_healthcare_docs(reference_encounter, encounter_list=[], method="event"):
     if len(encounter_list) == 0:
