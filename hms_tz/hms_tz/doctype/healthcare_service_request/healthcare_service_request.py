@@ -23,9 +23,11 @@ from hms_tz.nhif.api.healthcare_utils import (
 hsr = DocType("Healthcare Service Request")
 
 class HealthcareServiceRequest(Document):
+	def before_insert(self):
+		self.get_percent_covered()
+
 	def before_save(self):
 		self.set_request_id()
-		self.get_percent_covered()
 		self.set_service_price_rate()
 
 	def validate(self):
@@ -70,29 +72,31 @@ class HealthcareServiceRequest(Document):
 				continue
 
 			if not row.price_list:
-				frappe.throw("Please select price list on payment table, row: {row.idx}")
+				frappe.throw(f"Please select price list on payment table, row: {row.idx}")
 			
 			item_rate_details = self.get_service_rate(row)
 
 			row.rate = item_rate_details.get("item_rate")
 			row.discount_applied = 1 if item_rate_details.get("discount_percent") > 0 else 0
-			row.amount = (row.percent_covered / 100 * row.rate) * row.qty if row.percent_covered else row.rate * row.qty
+			row.amount = ((row.percent_covered / 100) * row.rate) * row.qty
 
 	@frappe.whitelist()
 	def get_service_rate(self, row_obj):
-		row = None
 		if isinstance(row_obj, str):
-			row = frappe._dict(json.loads(row_obj))
-		else:
-			row = row_obj
+			row_obj = json.loads(row_obj)
+		elif isinstance(row_obj, dict):
+			row_obj = json.loads(json.dumps(row_obj))
+		elif isinstance(row_obj, object):
+			row_obj = row_obj.as_dict()
 
-		service_type = self.get_service_type(row)
-		if not service_type:
-			return {"item_rate": 0, "discount_percent": 0}
-		
-		item = frappe.get_cached_value(service_type, row.service_name, "item")
+		row = frappe._dict(row_obj)
+
+		if not row.service_type:
+			row.service_type = self.get_service_type(row.service_name, row.request_id)
+
+		item = frappe.get_cached_value(row.service_type, row.service_name, "item")
 		if not item:
-			frappe.throw(f"Item code for {service_type}: {row.service_name} was not found.<br>Please set the item code to proceed...")
+			frappe.throw(f"Item code for {row.service_type}: {row.service_name} was not found.<br>Please set the item code to proceed...")
 		
 		item_rate = 0
 		discount_percent = 0
@@ -143,11 +147,14 @@ class HealthcareServiceRequest(Document):
 	@frappe.whitelist()
 	def get_percent_covered(self, item_obj=None):
 		if item_obj:
-			item = None
 			if isinstance(item_obj, str):
-				item = frappe._dict(json.loads(item_obj))
-			else:
-				item = item_obj
+				item_obj = json.loads(item_obj)
+			elif isinstance(item_obj, dict):
+				item_obj = json.loads(json.dumps(item_obj))
+			elif isinstance(item_obj, object):
+				item_obj = item_obj.as_dict()
+			
+			item = frappe._dict(item_obj)
 			
 			if item.has_copayment == 0:
 				return 100
@@ -168,14 +175,14 @@ class HealthcareServiceRequest(Document):
 				}, "percentcovered"
 			)
 
-			return percent_covered
+			return percent_covered or 0
 		
 		else:
 			for item in self.payments:
 				if not item.service_name:
 					continue
 				
-				if "NHIF" not in item.insurance_company:
+				if item.insurance_company and "NHIF" not in item.insurance_company:
 					continue
 
 				if item.has_copayment == 0:
@@ -192,16 +199,16 @@ class HealthcareServiceRequest(Document):
 					}, "percentcovered"
 				)
 
-				item.percent_covered = percent_covered
+				item.percent_covered = percent_covered or 0
 
-	def get_service_type(self, item):
+	def get_service_type(self, service_name, request_id=None):
 		service_type = ''
-		if item.request_id:
-			service_type = frappe.get_cached_value("Healthcare Service Request Item", item.request_id, "service_type")
+		if request_id:
+			service_type = frappe.get_cached_value("Healthcare Service Request Item", request_id, "service_type")
 
 		else:
 			for d in self.services:
-				if item.service_name == d.service_name:
+				if service_name == d.service_name:
 					service_type = d.service_type
 					break
 		
