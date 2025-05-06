@@ -32,6 +32,9 @@ class HealthcareServiceRequest(Document):
 
 	def validate(self):
 		self.validate_duplicate()
+	
+	def before_submit(self):
+		self.validate_service_percentage()
 
 	def validate_duplicate(self):
 		if not self.source_doctype and not self.source_docname:
@@ -229,7 +232,31 @@ class HealthcareServiceRequest(Document):
 		)
 
 		return product_code
+	
+	def validate_service_percentage(self):
+		service_payment_map = self.get_service_payment_map()
+
+		for key, value in service_payment_map.items():
+			percent_covered = 0
+			service_type, service_name = key
+
+			for d in value:
+				if d.percent_covered:
+					percent_covered += d.percent_covered
+
+			if percent_covered < 100:
+				frappe.throw(
+					_(
+						f"Total percent covered for {service_type} - {service_name} is less than 100%. Please check the payment table."
+					)
+				)
+	
+	def get_service_payment_map(self):
+		service_payment_map = {}
+		for d in self.payments:
+			service_payment_map.setdefault((d.service_type, d.service_name), []).append(d)
 		
+		return service_payment_map
 
 @frappe.whitelist()
 def create_service_request(doc_obj=None, data=None):
