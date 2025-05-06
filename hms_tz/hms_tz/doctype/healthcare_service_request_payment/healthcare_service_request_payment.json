@@ -7,13 +7,14 @@
  "engine": "InnoDB",
  "field_order": [
   "service_name",
+  "service_type",
   "item_code",
-  "payor_plan",
   "column_break_wm5t9",
+  "payor_plan",
   "price_list",
   "rate",
-  "percent_covered",
   "column_break_ltlnk",
+  "percent_covered",
   "qty",
   "amount",
   "payment_details_section",
@@ -51,7 +52,7 @@
   {
    "fieldname": "item_code",
    "fieldtype": "Data",
-   "label": "ItemCode",
+   "label": "Insurance ItemCode",
    "read_only": 1,
    "search_index": 1
   },
@@ -276,12 +277,22 @@
    "label": "Has Copayment",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "request_id.service_type",
+   "fetch_if_empty": 1,
+   "fieldname": "service_type",
+   "fieldtype": "Data",
+   "in_preview": 1,
+   "label": "Service Type",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-02 00:07:18.142057",
+ "modified": "2025-05-06 16:10:16.969194",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request Payment",
