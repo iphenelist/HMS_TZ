@@ -150,13 +150,13 @@ class HealthcareServiceRequest(Document):
 				item = item_obj
 			
 			if item.has_copayment == 0:
-				return 0
+				return 100
 			
 			if not item.service_name:
-				return
+				return 100
 			
 			if "NHIF" not in item.insurance_company:
-				return
+				return 100
 
 			product_code = self.get_product_code(item)
 
@@ -172,13 +172,14 @@ class HealthcareServiceRequest(Document):
 		
 		else:
 			for item in self.payments:
-				if item.has_copayment == 0:
+				if not item.service_name:
 					continue
 				
-				if not item.service_name:
-					return
-				
 				if "NHIF" not in item.insurance_company:
+					continue
+
+				if item.has_copayment == 0:
+					item.percent_covered = 100
 					continue
 
 				product_code = self.get_product_code(item)
