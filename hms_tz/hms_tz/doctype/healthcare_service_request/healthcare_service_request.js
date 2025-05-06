@@ -18,15 +18,15 @@ frappe.ui.form.on('Healthcare Service Request', {
 		control_add_remove_btns(frm);
 
 		frm.get_service_rate = (row) => {
-			frm.call('get_service_rate', {row})
+			frm.call('get_service_rate', {row_obj: row})
 				.then(r => {
 					if (r.message) {
-						frappe.model.set_value(row.doctype, row.name, "rate", r.message.item_rate);
+						row.rate = r.message.item_rate;
 						if (r.message.discount_percent > 0) {
-							frappe.model.set_value(row.doctype, row.name, "discount_applied", 1);
+							row.discount_applied = 1;
 						}
 						let amount = (row.percent_covered / 100 * r.message.item_rate) * row.qty;
-						frappe.model.set_value(row.doctype, row.name, "amount", amount);
+						row.amount = amount;
 						frm.refresh_field("payments");
 					}
 				});
@@ -37,7 +37,7 @@ frappe.ui.form.on('Healthcare Service Request', {
 			frm.call('get_coverage_plan', {insurance_subscription})
 				.then(r => {
 					if (r.message) {
-						frappe.model.set_value(row.doctype, row.name, "payor_plan", r.message);
+						row.payor_plan = r.message;
 						frm.refresh_field("payments");
 					}
 				});
@@ -47,7 +47,7 @@ frappe.ui.form.on('Healthcare Service Request', {
 			frm.call('get_percent_covered', {item_obj: row})
 				.then(r => {
 					if (r.message) {
-						frappe.model.set_value(row.doctype, row.name, "percent_covered", r.message);
+						row.percent_covered = r.message;
 						frm.refresh_field("payments");
 					}
 				});
