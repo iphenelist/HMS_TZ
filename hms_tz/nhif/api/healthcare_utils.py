@@ -956,8 +956,12 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
         encounter_child.db_update()
 
         if hsr_child:
-            hsr_child.lrpmt_doc_created = 1
-            hsr_child.db_update()
+            hsrp = DocType("Healthcare Service Request Payment")
+            (
+                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
+            ).run()
+            
 
 
 def create_individual_radiology_examination(source_doc, child):
