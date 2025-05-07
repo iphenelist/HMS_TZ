@@ -889,51 +889,75 @@ def create_lrp_docs(encounter_doc):
                     create_individual_procedure_prescription(encounter_doc, child)
 
 
-def create_individual_lab_test(source_doc, child):
-    if child.lab_test_created == 1 or child.is_not_available_inhouse:
+def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
+    if (
+        encounter_child.lab_test_created == 1 or 
+        encounter_child.is_not_available_inhouse
+    ):
         return
-    ltt_doc = frappe.get_cached_doc("Lab Test Template", child.lab_test_code)
+
     patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
+    insurance_subscription = ""
+    insurance_coverage_plan = ""
+    insurance_company = ""
+    prescribe = 0
+    if hsr_child:
+        if hsr_child.payment_type == "Insurance":
+            # consider insurance details from HSR
+            insurance_subscription = hsr_child.insurance_subscription
+            insurance_coverage_plan = hsr_child.payor_plan
+            insurance_company = hsr_child.insurance_company
+        else:
+            prescribe = 1
+
+    elif encounter_child and encounter_child.prescribe == 0:
+        # consider insurance details from encounter
+        insurance_subscription = source_doc.insurance_subscription
+        insurance_coverage_plan = source_doc.insurance_coverage_plan
+        insurance_company = source_doc.insurance_company
+    elif encounter_child and encounter_child.prescribe == 1:
+        prescribe = 1
 
     doc = frappe.new_doc("Lab Test")
     doc.patient = source_doc.patient
     doc.patient_sex = patient_sex
     doc.appointment = source_doc.appointment
     doc.company = source_doc.company
-    doc.template = ltt_doc.name
-    if source_doc.doctype == "Healthcare Service Order":
-        doc.practitioner = source_doc.ordered_by
-    else:
-        doc.practitioner = source_doc.practitioner
+    doc.template = encounter_child.lab_test_code
+    doc.practitioner = source_doc.practitioner
     doc.source = source_doc.source
-    if child.prescribe:
+
+    if prescribe == 1:
         doc.prescribe = 1
     else:
-        doc.insurance_subscription = source_doc.insurance_subscription
-        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
-        doc.insurance_company = source_doc.insurance_company
+        doc.insurance_subscription = insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = insurance_coverage_plan
+        doc.insurance_company = insurance_company
+    
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
-    doc.hms_tz_ref_childname = child.name
+    doc.hms_tz_ref_childname = encounter_child.name
     doc.invoiced = 1
     doc.service_comment = (
-        (child.medical_code or "No ICD Code")
+        (encounter_child.medical_code or "No ICD Code")
         + " : "
-        + (child.lab_test_comment or "No Comment")
+        + (encounter_child.lab_test_comment or "No Comment")
     )
 
     doc.save(ignore_permissions=True)
     if doc.get("name"):
         frappe.msgprint(
             _(
-                f"Lab Test: <b>{doc.name}</b> for <b>{child.lab_test_code}</b> created successfully."
+                f"Lab Test: <b>{doc.name}</b> for <b>{encounter_child.lab_test_code}</b> created successfully."
             )
         )
 
-        child.lab_test_created = 1
-        # lab prescription will be updated only is lab test is submitted
-        # child.lab_test = doc.name
-        child.db_update()
+        encounter_child.lab_test_created = 1
+        encounter_child.db_update()
+
+        if hsr_child:
+            hsr_child.lrpmt_doc_created = 1
+            hsr_child.db_update()
 
 
 def create_individual_radiology_examination(source_doc, child):
