@@ -896,7 +896,6 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
     ):
         return
 
-    patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
     insurance_subscription = ""
     insurance_coverage_plan = ""
     insurance_company = ""
@@ -917,6 +916,8 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
         insurance_company = source_doc.insurance_company
     elif encounter_child and encounter_child.prescribe == 1:
         prescribe = 1
+
+    patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
 
     doc = frappe.new_doc("Lab Test")
     doc.patient = source_doc.patient
@@ -964,54 +965,86 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
             
 
 
-def create_individual_radiology_examination(source_doc, child):
-    if child.radiology_examination_created == 1 or child.is_not_available_inhouse:
+def create_individual_radiology_examination(source_doc, encounter_child, hsr_child):
+    if (
+        encounter_child.radiology_examination_created == 1 or 
+        encounter_child.is_not_available_inhouse
+    ):
         return
+
+
+    insurance_subscription = ""
+    insurance_coverage_plan = ""
+    insurance_company = ""
+    prescribe = 0
+    if hsr_child:
+        if hsr_child.payment_type == "Insurance":
+            # consider insurance details from HSR
+            insurance_subscription = hsr_child.insurance_subscription
+            insurance_coverage_plan = hsr_child.payor_plan
+            insurance_company = hsr_child.insurance_company
+        else:
+            prescribe = 1
+
+    elif encounter_child and encounter_child.prescribe == 0:
+        # consider insurance details from encounter
+        insurance_subscription = source_doc.insurance_subscription
+        insurance_coverage_plan = source_doc.insurance_coverage_plan
+        insurance_company = source_doc.insurance_company
+    elif encounter_child and encounter_child.prescribe == 1:
+        prescribe = 1
+
+    patient_sex = frappe.get_cached_value("Patient", source_doc.patient, "sex")
+    
+    
     doc = frappe.new_doc("Radiology Examination")
     doc.patient = source_doc.patient
-    doc.hms_tz_patient_sex = source_doc.patient_sex
+    doc.hms_tz_patient_sex = patient_sex
     doc.hms_tz_patient_age = source_doc.patient_age
     doc.appointment = source_doc.appointment
     doc.company = source_doc.company
-    doc.radiology_examination_template = child.radiology_examination_template
-    if source_doc.doctype == "Healthcare Service Order":
-        doc.practitioner = source_doc.ordered_by
-    else:
-        doc.practitioner = source_doc.practitioner
+    doc.radiology_examination_template = encounter_child.radiology_examination_template
+    doc.practitioner = source_doc.practitioner
     doc.source = source_doc.source
-    if child.prescribe:
+    if prescribe == 1:
         doc.prescribe = 1
     else:
-        doc.insurance_subscription = source_doc.insurance_subscription
-        doc.hms_tz_insurance_coverage_plan = source_doc.insurance_coverage_plan
-        doc.insurance_company = source_doc.insurance_company
+        doc.insurance_subscription = insurance_subscription
+        doc.hms_tz_insurance_coverage_plan = insurance_coverage_plan
+        doc.insurance_company = insurance_company
+    
     doc.medical_department = frappe.get_cached_value(
         "Radiology Examination Template",
-        child.radiology_examination_template,
+        encounter_child.radiology_examination_template,
         "medical_department",
     )
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
-    doc.hms_tz_ref_childname = child.name
+    doc.hms_tz_ref_encounter_childname = encounter_child.name
     doc.invoiced = 1
     doc.service_comment = (
-        (child.medical_code or "No ICD Code")
+        (encounter_child.medical_code or "No ICD Code")
         + " : "
-        + (child.radiology_test_comment or "No Comment")
+        + (encounter_child.radiology_test_comment or "No Comment")
     )
 
     doc.save(ignore_permissions=True)
     if doc.get("name"):
         frappe.msgprint(
             _(
-                f"Radiology Examination: <b>{doc.name}</b> for <b>{child.radiology_examination_template}</b> created successfully."
+                f"Radiology Examination: <b>{doc.name}</b> for <b>{encounter_child.radiology_examination_template}</b> created successfully."
             )
         )
 
-        child.radiology_examination_created = 1
-        # radiology procedure prescription will be updated only if radiology examination is submitted
-        # child.radiology_examination = doc.name
-        child.db_update()
+        encounter_child.radiology_examination_created = 1
+        encounter_child.db_update()
+
+        if hsr_child:
+            hsrp = DocType("Healthcare Service Request Payment")
+            (
+                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
+            ).run()
 
 
 def create_individual_procedure_prescription(source_doc, child):
