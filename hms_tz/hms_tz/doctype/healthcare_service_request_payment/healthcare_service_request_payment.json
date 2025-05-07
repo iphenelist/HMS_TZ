@@ -29,10 +29,14 @@
   "get_authorization_no",
   "authorization_number",
   "references_section",
-  "request_id",
   "ref_doctype",
   "ref_docname",
-  "column_break_mmptd",
+  "column_break_dz6i3",
+  "lrpmt_doc_created",
+  "lrpmt_docname",
+  "sales_invoice_number",
+  "request_id",
+  "column_break_3ahsm",
   "invoiced",
   "is_cancelled",
   "is_restricted",
@@ -205,14 +209,10 @@
   {
    "fieldname": "request_id",
    "fieldtype": "Link",
-   "label": "Request ID",
+   "label": "Request Service ID",
    "options": "Healthcare Service Request Item",
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "column_break_mmptd",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "ref_doctype",
@@ -287,12 +287,43 @@
    "label": "Service Type",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_invoice_number",
+   "fieldtype": "Data",
+   "label": "Sales Invoice Number",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_dz6i3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "lrpmt_doc_created",
+   "fieldtype": "Check",
+   "label": "LRPMT Doc Created",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "lrpmt_docname",
+   "fieldtype": "Data",
+   "label": "LRPMT Docname",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_3ahsm",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-06 16:10:16.969194",
+ "modified": "2025-05-07 16:35:58.778026",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request Payment",
