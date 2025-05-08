@@ -7,7 +7,6 @@ import frappe
 from frappe import _
 import datetime
 import requests
-from hms_tz.hms_tz.utils import validate_customer_created
 from frappe.utils import (
     nowdate,
     nowtime,
@@ -21,7 +20,6 @@ from datetime import timedelta
 import base64
 import re
 import json
-from frappe.model.workflow import apply_workflow
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.token import get_nhifservice_token
 from frappe.query_builder import DocType
@@ -68,7 +66,7 @@ def get_healthcare_services_to_invoice(
     patient_encounter_list=None,
 ):
     services_to_invoice = []
-    
+
     encounter_dict = None
     if patient_encounter_list and len(patient_encounter_list) > 0:
         encounter_dict = patient_encounter_list
@@ -92,6 +90,7 @@ def get_healthcare_services_to_invoice(
     inpatient_record = None
     childs_map = get_childs_map()
 
+    # Get services from Patient Encounter
     for i in encounter_dict:
         if not inpatient_record and i.inpatient_record:
             inpatient_record = i.inpatient_record
@@ -135,6 +134,7 @@ def get_healthcare_services_to_invoice(
                 new_row["service"] = item_code
                 new_row["rate"] = row.get("amount")
                 new_row["qty"] = qty
+                new_row["service_request"] = ""
 
                 services_to_invoice.append(new_row)
 
@@ -151,7 +151,8 @@ def get_healthcare_services_to_invoice(
             hsrp.ref_docname,
             hsrp.ref_doctype,
             hsrp.qty,
-            hsrp.amount
+            hsrp.amount,
+            hsrp.name.as_("service_request")
         )
         .where(
             (hsr.docstatus == 1)
@@ -174,6 +175,7 @@ def get_healthcare_services_to_invoice(
             new_row["service"] = item
             new_row["rate"] = rate
             new_row["qty"] = row.qty
+            new_row["service_request"] = row.service_request
 
             services_to_invoice.append(new_row)
     
@@ -197,6 +199,7 @@ def get_healthcare_services_to_invoice(
             new_row["service"] = item_code
             new_row["rate"] = row.amount
             new_row["qty"] = 1
+            new_row["service_request"] = ""
 
             services_to_invoice.append(new_row)
 
@@ -210,6 +213,7 @@ def get_healthcare_services_to_invoice(
             new_row["service"] = row.consultation_item
             new_row["rate"] = row.rate
             new_row["qty"] = 1
+            new_row["service_request"] = ""
 
             services_to_invoice.append(new_row)
     
@@ -706,27 +710,32 @@ def set_healthcare_services(doc, checked_values):
 
     for checked_item in checked_values:
         item_line = doc.append("items", {})
-        price_list = doc.selling_price_list
         item_line.item_code = checked_item["item"]
         item_line.qty = 1
         item_line.allow_over_sell = 1
+
         if checked_item["qty"]:
             item_line.qty = checked_item["qty"]
+
         if checked_item["rate"]:
             item_line.rate = checked_item["rate"]
         else:
             item_line.rate = get_item_price(
-                checked_item["item"], price_list, doc.company
+                checked_item["item"], doc.selling_price_list, doc.company
             )
         item_line.amount = float(item_line.rate) * float(item_line.qty)
-        if checked_item["income_account"]:
-            item_line.income_account = checked_item["income_account"]
+
         if checked_item["dt"]:
             item_line.reference_dt = checked_item["dt"]
+
         if checked_item["dn"]:
             item_line.reference_dn = checked_item["dn"]
+
         if checked_item["description"]:
             item_line.description = checked_item["description"]
+
+        if checked_item["service_request"]:
+            item_line.service_request = checked_item["service_request"]
 
         if checked_item["dt"] not in ["Inpatient Occupancy", "Inpatient Consultancy"]:
             parent_encounter = frappe.get_cached_value(
@@ -762,6 +771,7 @@ def set_healthcare_services(doc, checked_values):
             item_line.warehouse = get_warehouse_from_service_unit(
                 item_line.healthcare_service_unit
             )
+
     doc.set_missing_values(for_validate=True)
     doc.save()
     return doc.name
