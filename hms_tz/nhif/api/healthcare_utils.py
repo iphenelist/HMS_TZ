@@ -1218,23 +1218,30 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
     create_plan(patient_encounter_docs, therapies)
 
 
-def create_plan(patient_encounter_docs, therapies):
+def create_plan(patient_encounter_docs, therapies, hsr_childs_map={}):
     for encounter_doc in patient_encounter_docs:
         item_counts = 0
+        patient_sex = frappe.get_cached_value("Patient", encounter_doc.patient, "sex")
+
         doc = frappe.new_doc("Therapy Plan")
         doc.patient = encounter_doc.patient
         doc.company = encounter_doc.company
         doc.start_date = encounter_doc.encounter_date
         doc.hms_tz_appointment = encounter_doc.appointment
         doc.hms_tz_patient_age = encounter_doc.patient_age
-        doc.hms_tz_patient_sex = encounter_doc.patient_sex
-        doc.hms_tz_insurance_coverage_plan = encounter_doc.insurance_coverage_plan
-        doc.insurance_company = encounter_doc.insurance_company
+        doc.hms_tz_patient_sex = patient_sex
         doc.ref_doctype = encounter_doc.doctype
         doc.ref_docname = encounter_doc.name
+
+        hsr_child = None
         for entry in therapies:
             if entry.parent == encounter_doc.name:
                 item_counts += 1
+
+                if hsr_childs_map:
+                    if not hsr_child:
+                        hsr_child = hsr_childs_map.get(entry.name)
+
                 doc.append(
                     "therapy_plan_details",
                     {
@@ -1242,12 +1249,19 @@ def create_plan(patient_encounter_docs, therapies):
                         "prescribe": entry.prescribe or 0,
                         "is_restricted": entry.is_restricted or 0,
                         "hms_tz_ref_childname": entry.name,
-                        "no_of_sessions": entry.no_of_sessions
-                        - entry.sessions_cancelled,
+                        "no_of_sessions": entry.no_of_sessions - entry.sessions_cancelled,
                     },
                 )
         if item_counts == 0:
             continue
+
+        if hsr_child and hsr_child.payment_type == "Insurance":
+            # consider insurance details from HSR
+            doc.hms_tz_insurance_coverage_plan  = hsr_child.payor_plan
+            doc.insurance_company = hsr_child.insurance_company
+        else:
+            doc.hms_tz_insurance_coverage_plan = encounter_doc.insurance_coverage_plan
+            doc.insurance_company = encounter_doc.insurance_company
 
         doc.save(ignore_permissions=True)
         if doc.get("name"):
@@ -1264,6 +1278,15 @@ def create_plan(patient_encounter_docs, therapies):
                         entry.no_of_sessions - entry.sessions_cancelled
                     )
                     entry.db_update()
+                    
+                    if hsr_childs_map:
+                        hsr_child = hsr_childs_map.get(entry.name)
+                        if hsr_child:
+                            hsrp = DocType("Healthcare Service Request Payment")
+                            (
+                                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                                .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
+                            ).run()
 
             frappe.msgprint(
                 _(f"Therapy Plan {frappe.bold(doc.name)} created successfully."),
