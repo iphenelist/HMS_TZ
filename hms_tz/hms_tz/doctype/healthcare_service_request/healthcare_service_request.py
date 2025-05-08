@@ -17,6 +17,11 @@ from hms_tz.nhif.api.healthcare_utils import (
 	create_healthcare_docs,
 	get_warehouse_from_service_unit,
 	validate_nhif_patient_claim_status,
+	create_plan,
+	create_delivery_notes_from_hsr,
+	create_individual_lab_test,
+	create_individual_radiology_procedure,
+	create_individual_procedure_prescription,
 )
 
 
@@ -35,6 +40,10 @@ class HealthcareServiceRequest(Document):
 	
 	def before_submit(self):
 		self.validate_service_percentage()
+	
+	def on_submit(self):
+		if self.source_doctype == "Patient Encounter":
+			self.create_healthcare_service_docs()
 
 	def validate_duplicate(self):
 		if not self.source_doctype and not self.source_docname:
@@ -257,6 +266,122 @@ class HealthcareServiceRequest(Document):
 			service_payment_map.setdefault((d.service_type, d.service_name), []).append(d)
 		
 		return service_payment_map
+	
+	def create_healthcare_service_docs(self):
+		"""
+		Create healthcare service documents based on the Healthcare Service Request
+		For medications, automatically create delivery notes
+		"""
+		medications = []
+		therapies = []
+		therapy_map = {}
+
+		encounter_doc = None
+		if self.source_doctype == "Patient Encounter":
+			encounter_doc = frappe.get_cached_doc(self.source_doctype, self.source_docname)
+
+		service_payment_map = self.get_service_payment_map()
+
+		for key, values in service_payment_map.items():
+			service_type, service_name = key 
+
+			is_cancelled = False
+			lrpmt_doc_created = False
+			has_pending_cash_payment = False
+
+			for d in values:
+				if d.is_cancelled == 1:
+					is_cancelled = True
+
+				if d.lrpmt_doc_created == 1:
+					lrpmt_doc_created = True
+
+				if d.payment_type == "Cash" and d.invoiced == 0:
+					has_pending_cash_payment = True
+				
+				 # Early exit if all flags are True (no need to check further)
+				if is_cancelled and lrpmt_doc_created and has_pending_cash_payment:
+					break
+			
+			if is_cancelled:
+				continue
+
+			if lrpmt_doc_created:
+				continue
+
+			if has_pending_cash_payment:
+				continue
+
+			if service_type == "Lab Test Template":
+				lab_service = self.get_sorted_service(values)
+				encounter_child = frappe.get_cached_doc(
+					lab_service.ref_doctype, lab_service.ref_docname
+				)
+				create_individual_lab_test(encounter_doc, encounter_child, lab_service)
+
+			elif service_type == "Radiology Examination Template":
+				radiology_service = self.get_sorted_service(values)
+				encounter_child = frappe.get_cached_doc(
+					radiology_service.ref_doctype, radiology_service.ref_docname
+				)
+				create_individual_radiology_procedure(encounter_doc, encounter_child, radiology_service)
+
+			elif service_type == "Clinical Procedure Template":
+				procedure_service = self.get_sorted_service(values)
+				encounter_child = frappe.get_cached_doc(
+					procedure_service.ref_doctype, procedure_service.ref_docname
+				)
+				create_individual_procedure_prescription(encounter_doc, encounter_child, procedure_service)
+			
+			elif service_type == "Medication":
+				medication_service = self.get_sorted_service(values)
+				medications.append(medication_service)
+
+			elif service_type == "Therapy Type":
+				therapy_service = self.get_sorted_service(values)
+				
+				therapy_map[therapy_service.ref_docname] = therapy_service
+
+				therapy = frappe.get_cached_doc(therapy_service.ref_doctype, therapy_service.ref_docname)
+				therapies.append(therapy)
+
+		# Create delivery notes for medications
+		if len(medications) > 0:
+			create_delivery_notes_from_hsr(encounter_doc, medications)
+		
+		# Create therapy plan for therapies
+		if len(therapies) > 0 and therapy_map:
+			create_plan(
+				patient_encounter_docs=[encounter_doc],
+				therapies=therapies,
+				therapy_map=therapy_map
+			)
+
+	def get_sorted_service(self, services):
+		"""
+		Sort the services by insurance company
+		This is important for NHIF, as we need to create a service document for the first service and not for all of them
+		"""
+		def sort_key(service):
+			insurance_company = service.insurance_company or ""
+			# NHIF comes first (value 0), other insurance companies next (value 1), cash last (value 2)
+			if "NHIF" in insurance_company.upper():
+				return (0, insurance_company)
+			elif insurance_company:  # Other insurance companies
+				return (1, insurance_company)
+			else:  # Cash payment (empty or None insurance_company)
+				return (2, insurance_company)
+		
+		service = None
+		if len(services) == 1:
+			service = services[0]
+
+		elif len(services) > 1:
+			services = sorted(services, key=sort_key)
+			service = services[0]
+
+		return service
+
 
 @frappe.whitelist()
 def create_service_request(doc_obj=None, data=None):
