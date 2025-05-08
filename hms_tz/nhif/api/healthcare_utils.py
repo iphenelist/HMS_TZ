@@ -26,22 +26,6 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.token import get_nhifservice_token
 from frappe.query_builder import DocType
 
-@frappe.whitelist()
-def get_healthcare_services_to_invoice(
-    patient, company, encounter=None, service_order_category=None, prescribed=None
-):
-    patient = frappe.get_cached_doc("Patient", patient)
-    items_to_invoice = []
-    if patient:
-        validate_customer_created(patient)
-        # Customer validated, build a list of billable services
-        if encounter:
-            items_to_invoice += get_healthcare_service_order_to_invoice(
-                patient, company, encounter, service_order_category, prescribed
-            )
-        return items_to_invoice
-
-
 def get_childs_map():
     childs_map = {
         "Lab Prescription": {
@@ -78,84 +62,122 @@ def get_childs_map():
     return childs_map
 
 
-def get_healthcare_service_order_to_invoice(
-    patient,
-    company,
+@frappe.whitelist()
+def get_healthcare_services_to_invoice(
     encounter=None,
     patient_encounter_list=None,
-    service_order_category=None,
-    prescribed=None,
 ):
+    services_to_invoice = []
+    
     encounter_dict = None
     if patient_encounter_list and len(patient_encounter_list) > 0:
         encounter_dict = patient_encounter_list
     else:
         if not encounter:
-            return []
+            return services_to_invoice
         
         reference_encounter = frappe.get_cached_value(
             "Patient Encounter", encounter, "reference_encounter"
         )
 
-        encounter_dict = frappe.get_all(
+        encounter_dict = frappe.db.get_all(
             "Patient Encounter",
             filters={
                 "reference_encounter": reference_encounter,
                 "docstatus": 1,
-                "is_not_billable": 0,
             },
-            fields=["name", "inpatient_record"],
+            fields=["name", "inpatient_record", "appointment"],
         )
 
     inpatient_record = None
-    encounter_list = []
+    childs_map = get_childs_map()
+
     for i in encounter_dict:
         if not inpatient_record and i.inpatient_record:
             inpatient_record = i.inpatient_record
 
         encounter_doc = frappe.get_doc("Patient Encounter", i.name)
-        encounter_list.append(encounter_doc)
-    childs_map = get_childs_map()
-    services_to_invoice = []
 
-    for en in encounter_list:
         for key, value in childs_map.items():
-            table = en.get(value.get("table"))
+            table = encounter_doc.get(value.get("table"))
             if not table:
                 continue
+
             for row in table:
                 if (
-                    not row.get("invoiced")
-                    and row.get("prescribe")
-                    and not row.get("is_not_available_inhouse")
-                    and not row.get("is_cancelled")
+                    row.get("invoiced") or
+                    row.get("is_cancelled") or
+                    not row.get("prescribe") or
+                    row.get("is_not_available_inhouse")
                 ):
-                    item_code = frappe.get_cached_value(
-                        value.get("template"),
-                        row.get(value.get("item")),
-                        "item",
+                    continue
+
+                item_code = frappe.get_cached_value(
+                    value.get("template"),
+                    row.get(value.get("item")),
+                    "item",
+                )
+
+                qty = 1
+                if value.get("doctype") == "Therapy Plan Detail":
+                    qty = (row.get("no_of_sessions") or 0) - (
+                        row.get("sessions_cancelled") or 0
                     )
 
-                    qty = 1
-                    if value.get("doctype") == "Therapy Plan Detail":
-                        qty = (row.get("no_of_sessions") or 0) - (
-                            row.get("sessions_cancelled") or 0
-                        )
-
-                    if value.get("doctype") == "Drug Prescription":
-                        qty = (row.get("quantity") or 0) - (
-                            row.get("quantity_returned") or 0
-                        )
-
-                    services_to_invoice.append(
-                        {
-                            "reference_type": row.doctype,
-                            "reference_name": row.name,
-                            "service": item_code,
-                            "qty": qty,
-                        }
+                if value.get("doctype") == "Drug Prescription":
+                    qty = (row.get("quantity") or 0) - (
+                        row.get("quantity_returned") or 0
                     )
 
+                new_row = {}
+                new_row["reference_type"] = row.doctype
+                new_row["reference_name"] = row.name
+                new_row["service"] = item_code
+                new_row["rate"] = row.get("amount")
+                new_row["qty"] = qty
+
+                services_to_invoice.append(new_row)
+
+    # Get services from Healthcare Service Request using Appointment No
+    appointment = encounter_dict[0].appointment
+    hsr = DocType("Healthcare Service Request")
+    hsrp = DocType("Healthcare Service Request Payment")
+    hsr_services = (
+        frappe.qb.from_(hsr)
+        .inner_join(hsrp).on(hsr.name == hsrp.parent)
+        .select(
+            hsrp.service_name,
+            hsrp.service_type,
+            hsrp.ref_docname,
+            hsrp.ref_doctype,
+            hsrp.qty,
+            hsrp.amount
+        )
+        .where(
+            (hsr.docstatus == 1)
+            & (hsrp.invoiced == 0)
+            & (hsrp.is_cancelled == 0)
+            & (hsrp.payment_type == "Cash")
+            & (hsr.appointment == appointment)
+        )
+    ).run(as_dict=True)
+
+    if len(hsr_services) > 0:
+        for row in hsr_services:
+            item = frappe.get_cached_value(row.service_type, row.service_name, "item")
+
+            rate = row.amount / row.qty
+
+            new_row = {}
+            new_row["reference_type"] = row.ref_doctype
+            new_row["reference_name"] = row.ref_docname
+            new_row["service"] = item
+            new_row["rate"] = rate
+            new_row["qty"] = row.qty
+
+            services_to_invoice.append(new_row)
+    
+    # Get services from Inpatient Record
     if inpatient_record:
         inpatient_doc = frappe.get_doc("Inpatient Record", inpatient_record)
         for row in inpatient_doc.inpatient_occupancies:
@@ -168,27 +190,29 @@ def get_healthcare_service_order_to_invoice(
             item_code = frappe.get_cached_value(
                 "Healthcare Service Unit Type", service_unit_type, "item_code"
             )
-            services_to_invoice.append(
-                {
-                    "reference_type": row.doctype,
-                    "reference_name": row.name,
-                    "service": item_code,
-                    "qty": 1,
-                }
-            )
+
+            new_row = {}
+            new_row["reference_type"] = row.doctype
+            new_row["reference_name"] = row.name
+            new_row["service"] = item_code
+            new_row["rate"] = row.amount
+            new_row["qty"] = 1
+
+            services_to_invoice.append(new_row)
 
         for row in inpatient_doc.inpatient_consultancy:
             if row.is_confirmed == 0 or row.hms_tz_invoiced == 1:
                 continue
 
-            services_to_invoice.append(
-                {
-                    "reference_type": row.doctype,
-                    "reference_name": row.name,
-                    "service": row.consultation_item,
-                    "qty": 1,
-                }
-            )
+            new_row = {}
+            new_row["reference_type"] = row.doctype
+            new_row["reference_name"] = row.name
+            new_row["service"] = row.consultation_item
+            new_row["rate"] = row.rate
+            new_row["qty"] = 1
+
+            services_to_invoice.append(new_row)
+    
     return services_to_invoice
 
 
