@@ -23,12 +23,6 @@ def onload(doc, method):
     item_descriptor="Clinical Procedures"
 )
 
-def validate(doc, methd):
-    if not doc.prescribe:
-        is_restricted = get_restricted_LRPT(doc)
-        doc.is_restricted = is_restricted
-
-
 def on_submit(doc, methd):
     update_procedure_prescription(doc)
     create_delivery_note(doc)

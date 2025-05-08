@@ -190,14 +190,12 @@ doc_events = {
         "onload":"hms_tz.nhif.api.radiology_examination.onload",
         "before_submit": "hms_tz.nhif.api.radiology_examination.before_submit",
         "on_submit": "hms_tz.nhif.api.radiology_examination.on_submit",
-        "validate": "hms_tz.nhif.api.radiology_examination.validate",
         "on_cancel": "hms_tz.nhif.api.radiology_examination.on_cancel",
     },
     "Clinical Procedure": {
         "onload":"hms_tz.nhif.api.clinical_procedure.onload",
         "before_submit": "hms_tz.nhif.api.clinical_procedure.before_submit",
         "on_submit": "hms_tz.nhif.api.clinical_procedure.on_submit",
-        "validate": "hms_tz.nhif.api.clinical_procedure.validate",
     },
     "Delivery Note": {
         "validate": "hms_tz.nhif.api.delivery_note.validate",

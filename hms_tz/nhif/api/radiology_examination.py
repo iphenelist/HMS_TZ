@@ -21,12 +21,6 @@ def onload(doc, method):
     item_descriptor="Radiology Examinations"
 )
 
-def validate(doc, method):
-    if not doc.prescribe:
-        is_restricted = get_restricted_LRPT(doc)
-        doc.is_restricted = is_restricted
-
-
 def before_submit(doc, method):
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(
