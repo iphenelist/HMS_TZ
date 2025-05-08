@@ -1220,7 +1220,7 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
     create_plan(patient_encounter_docs, therapies)
 
 
-def create_plan(patient_encounter_docs, therapies, hsr_childs_map={}):
+def create_plan(patient_encounter_docs, therapies, therapy_map={}):
     for encounter_doc in patient_encounter_docs:
         item_counts = 0
         patient_sex = frappe.get_cached_value("Patient", encounter_doc.patient, "sex")
@@ -1240,9 +1240,9 @@ def create_plan(patient_encounter_docs, therapies, hsr_childs_map={}):
             if entry.parent == encounter_doc.name:
                 item_counts += 1
 
-                if hsr_childs_map:
+                if therapy_map:
                     if not hsr_child:
-                        hsr_child = hsr_childs_map.get(entry.name)
+                        hsr_child = therapy_map.get(entry.name)
 
                 doc.append(
                     "therapy_plan_details",
@@ -1281,13 +1281,13 @@ def create_plan(patient_encounter_docs, therapies, hsr_childs_map={}):
                     )
                     entry.db_update()
 
-                    if hsr_childs_map:
-                        hsr_child = hsr_childs_map.get(entry.name)
-                        if hsr_child:
+                    if therapy_map:
+                        therapy_child = therapy_map.get(entry.name)
+                        if therapy_child:
                             hsrp = DocType("Healthcare Service Request Payment")
                             (
                                 frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
-                                .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
+                                .where((hsrp.ref_docname == therapy_child.ref_docname) & (hsrp.request_id == therapy_child.request_id))
                             ).run()
 
             frappe.msgprint(
