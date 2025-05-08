@@ -23,6 +23,7 @@ frappe.ui.form.on('Sales Invoice', {
 			frm.set_df_property("ref_practitioner", "hidden", 0);
 			frm.remove_custom_button('Healthcare Services', 'Get Items From');
 			frm.remove_custom_button('Prescriptions', 'Get Items From');
+			
 			if (cint(frm.doc.docstatus == 0) && cur_frm.page.current_view_name !== "pos" && !frm.doc.is_return) {
 				frm.add_custom_button(__('Get Healthcare Services'), function () {
 					get_healthcare_services_to_invoice(frm);
@@ -279,69 +280,6 @@ var get_checked_values = function ($results) {
 			return checked_values;
 		}
 	}).get();
-};
-
-var get_drugs_to_invoice = function (frm) {
-	var me = this;
-	let selected_encounter = '';
-	var dialog = new frappe.ui.Dialog({
-		title: __("Get Items From Prescriptions"),
-		fields: [
-			{ fieldtype: 'Link', options: 'Patient', label: 'Patient', fieldname: "patient", reqd: true },
-			{
-				fieldtype: 'Link', options: 'Patient Encounter', label: 'Patient Encounter', fieldname: "encounter", reqd: true,
-				description: 'Quantity will be calculated only for items which has "Nos" as UoM. You may change as required for each invoice item.',
-				get_query: function (doc) {
-					return {
-						filters: {
-							patient: dialog.get_value("patient"),
-							company: frm.doc.company,
-							docstatus: 1
-						}
-					};
-				}
-			},
-			{ fieldtype: 'Section Break' },
-			{ fieldtype: 'HTML', fieldname: 'results_area' }
-		]
-	});
-	var $wrapper;
-	var $results;
-	var $placeholder;
-	dialog.set_values({
-		'patient': frm.doc.patient,
-		'encounter': ""
-	});
-	dialog.fields_dict["encounter"].df.onchange = () => {
-		var encounter = dialog.fields_dict.encounter.input.value;
-		if (encounter && encounter != selected_encounter) {
-			selected_encounter = encounter;
-			var method = "hms_tz.hms_tz.utils.get_drugs_to_invoice";
-			var args = { encounter: encounter };
-			var columns = (["drug_code", "quantity", "description"]);
-			get_healthcare_items(frm, false, $results, $placeholder, method, args, columns);
-		}
-		else if (!encounter) {
-			selected_encounter = '';
-			$results.empty();
-			$results.append($placeholder);
-		}
-	};
-	$wrapper = dialog.fields_dict.results_area.$wrapper.append(`<div class="results"
-		style="border: 1px solid #d1d8dd; border-radius: 3px; height: 300px; overflow: auto;"></div>`);
-	$results = $wrapper.find('.results');
-	$placeholder = $(`<div class="multiselect-empty-state">
-				<span class="text-center" style="margin-top: -40px;">
-					<i class="fa fa-2x fa-heartbeat text-extra-muted"></i>
-					<p class="text-extra-muted">No Drug Prescription found that are prescribed</p>
-				</span>
-			</div>`);
-	$results.on('click', '.list-item--head :checkbox', (e) => {
-		$results.find('.list-item-container .list-row-check')
-			.prop("checked", ($(e.target).is(':checked')));
-	});
-	set_primary_action(frm, dialog, $results, false);
-	dialog.show();
 };
 
 var list_row_data_items = function (head, $row, result, invoice_healthcare_services) {
