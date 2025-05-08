@@ -5,6 +5,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
+from frappe.query_builder import DocType
 from hms_tz.nhif.api.healthcare_utils import (
     update_dimensions,
     create_individual_lab_test,
@@ -99,8 +100,23 @@ def create_healthcare_docs(doc, method):
         return
 
     therapy_items = []
+    service_request_ids = []
     if doc.get("items"):
         for item in doc.items:
+            # check if item is from Service Request
+            # its service document will be created from Healthcare Service Request
+            if item.service_request:
+                frappe.db.set_value(
+                    "Healthcare Service Request Payment",
+                    item.service_request,
+                    {
+                        "sales_invoice_number": doc.name,
+                        "invoiced": 1,
+                    },
+                )
+                service_request_ids.append(item.service_request)
+                continue
+
             if item.reference_dt and item.reference_dt in [
                 "Lab Prescription",
                 "Radiology Procedure Prescription",
@@ -155,6 +171,25 @@ def create_healthcare_docs(doc, method):
 
         create_therapy_plan(invoice_therapy_dict=therapy_items)
 
+        if len(service_request_ids) > 0:
+            hsrp = DocType("Healthcare Service Request Payment")
+            healthcare_service_parents = (
+                frappe.qb.from_(hsrp)
+                .select(
+                    hsrp.parent.as_("service_request_no"),
+                )
+                .distinct()
+                .where(
+                    hsrp.name.isin(service_request_ids)
+                )
+            ).run(as_dict=True)
+            
+            if len(healthcare_service_parents) > 0:
+                for row in healthcare_service_parents:
+                    hsr_doc = frappe.get_doc("Healthcare Service Request", row.service_request_no)
+                    hsr_doc.create_healthcare_service_docs()
+
+
     if method == "From Front End":
         frappe.db.commit()
 
@@ -172,6 +207,7 @@ def update_drug_prescription(doc):
                 )
                 if not dn_name:
                     return
+                
                 frappe.db.set_value(
                     "Drug Prescription",
                     item.reference_dn,
@@ -200,7 +236,7 @@ def reset_invoiced_status(doc):
     """Remove invoiced status on items because a return invoice is created"""
 
     for row in doc.items:
-        if row.reference_dt and row.reference_dt:
+        if row.reference_dt and row.reference_dn:
             if row.reference_dt == "Patient Appointment":
                 appointment = frappe.qb.DocType("Patient Appointment")
                 (
@@ -209,6 +245,7 @@ def reset_invoiced_status(doc):
                     .set(appointment.ref_sales_invoice, "")
                     .where(appointment.name == row.reference_dn)
                 ).run()
+
             elif row.reference_dt in [
                 "Lab Prescription",
                 "Radiology Procedure Prescription",
@@ -225,6 +262,19 @@ def reset_invoiced_status(doc):
                         "sales_invoice_number": "",
                     },
                 )
+                if (
+                    row.service_request and
+                    row.reference_dt != "Inpatient Occupancy"
+                ):
+                    frappe.db.set_value(
+                        "Healthcare Service Request Payment",
+                        row.service_request,
+                        {
+                            "invoiced": 0,
+                            "sales_invoice_number": "",
+                        },
+                    )
+
             elif row.reference_dt == "Inpatient Consultancy":
                 frappe.db.set_value(
                     row.reference_dt,
