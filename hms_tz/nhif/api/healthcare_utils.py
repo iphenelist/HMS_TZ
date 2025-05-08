@@ -938,6 +938,7 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.hms_tz_ref_childname = encounter_child.name
+    doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
         (encounter_child.medical_code or "No ICD Code")
@@ -1018,6 +1019,7 @@ def create_individual_radiology_examination(source_doc, encounter_child, hsr_chi
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.hms_tz_ref_childname = encounter_child.name
+    doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
         (encounter_child.medical_code or "No ICD Code")
@@ -1095,6 +1097,7 @@ def create_individual_procedure_prescription(source_doc, encounter_child, hsr_ch
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.hms_tz_ref_childname = encounter_child.name
+    doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
         (encounter_child.medical_code or "No ICD Code") + " : " + (encounter_child.comments or "No Comment")
