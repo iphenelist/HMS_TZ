@@ -23,7 +23,7 @@ frappe.ui.form.on('Sales Invoice', {
 			frm.set_df_property("ref_practitioner", "hidden", 0);
 			frm.remove_custom_button('Healthcare Services', 'Get Items From');
 			frm.remove_custom_button('Prescriptions', 'Get Items From');
-			
+
 			if (cint(frm.doc.docstatus == 0) && cur_frm.page.current_view_name !== "pos" && !frm.doc.is_return) {
 				frm.add_custom_button(__('Get Healthcare Services'), function () {
 					get_healthcare_services_to_invoice(frm);
@@ -128,13 +128,10 @@ var get_healthcare_services_to_invoice = function (frm) {
 			selected_patient = patient;
 			var method = "hms_tz.nhif.api.healthcare_utils.get_healthcare_services_to_invoice";
 			var args = {
-				patient: patient,
-				company: frm.doc.company,
 				encounter: encounter,
-				prescribed: 1,
 			};
 			var columns = (["service", "reference_name", "reference_type"]);
-			get_healthcare_items(frm, true, $results, $placeholder, method, args, columns);
+			get_healthcare_items(frm, $results, $placeholder, method, args, columns);
 		}
 		else if (!patient) {
 			selected_patient = '';
@@ -155,12 +152,12 @@ var get_healthcare_services_to_invoice = function (frm) {
 		$results.find('.list-item-container .list-row-check')
 			.prop("checked", ($(e.target).is(':checked')));
 	});
-	set_primary_action(frm, dialog, $results, true);
+	set_primary_action(frm, dialog, $results);
 	dialog.show();
 };
 
 
-var get_healthcare_items = function (frm, invoice_healthcare_services, $results, $placeholder, method, args, columns) {
+var get_healthcare_items = function (frm, $results, $placeholder, method, args, columns) {
 	var me = this;
 	$results.empty();
 	frappe.call({
@@ -168,9 +165,9 @@ var get_healthcare_items = function (frm, invoice_healthcare_services, $results,
 		args: args,
 		callback: function (data) {
 			if (data.message) {
-				$results.append(make_list_row(columns, invoice_healthcare_services));
+				$results.append(make_list_row(columns));
 				for (let i = 0; i < data.message.length; i++) {
-					$results.append(make_list_row(columns, invoice_healthcare_services, data.message[i]));
+					$results.append(make_list_row(columns, data.message[i]));
 				}
 			} else {
 				$results.append($placeholder);
@@ -179,7 +176,7 @@ var get_healthcare_items = function (frm, invoice_healthcare_services, $results,
 	});
 };
 
-var make_list_row = function (columns, invoice_healthcare_services, result = {}) {
+var make_list_row = function (columns, result = {}) {
 	var me = this;
 	// Make a head row by default (if result not passed)
 	let head = Object.keys(result).length === 0;
@@ -202,28 +199,21 @@ var make_list_row = function (columns, invoice_healthcare_services, result = {})
 		${contents}
 	</div>`);
 
-	$row = list_row_data_items(head, $row, result, invoice_healthcare_services);
+	$row = list_row_data_items(head, $row, result);
 	return $row;
 };
 
-var set_primary_action = function (frm, dialog, $results, invoice_healthcare_services) {
+var set_primary_action = function (frm, dialog, $results) {
 	var me = this;
 	dialog.set_primary_action(__('Add'), function () {
 		let checked_values = get_checked_values($results);
 		if (checked_values.length > 0) {
-			if (invoice_healthcare_services) {
-				frm.set_value("patient", dialog.fields_dict.patient.input.value);
-			}
-			add_to_item_line(frm, checked_values, invoice_healthcare_services);
+			frm.set_value("patient", dialog.fields_dict.patient.input.value);
+			add_to_item_line(frm, checked_values);
 			dialog.hide();
 		}
 		else {
-			if (invoice_healthcare_services) {
-				frappe.msgprint(__("Please select Healthcare Service"));
-			}
-			else {
-				frappe.msgprint(__("Please select Drug"));
-			}
+			frappe.msgprint(__("Please select Healthcare Service"));
 		}
 	});
 };
@@ -240,12 +230,6 @@ var get_checked_values = function ($results) {
 			}
 			else {
 				checked_values['rate'] = false;
-			}
-			if ($(this).attr('data-income-account') != 'undefined') {
-				checked_values['income_account'] = $(this).attr('data-income-account');
-			}
-			else {
-				checked_values['income_account'] = false;
 			}
 			if ($(this).attr('data-qty') != 'undefined') {
 				checked_values['qty'] = $(this).attr('data-qty');
@@ -265,78 +249,42 @@ var get_checked_values = function ($results) {
 			else {
 				checked_values['discount_percentage'] = false;
 			}
-			if ($(this).attr('data-insurance-claim-coverage') != 'undefined') {
-				checked_values['insurance_claim_coverage'] = $(this).attr('data-insurance-claim-coverage');
-			}
-			else {
-				checked_values['insurance_claim_coverage'] = false;
-			}
-			if ($(this).attr('data-insurance-claim') != 'undefined') {
-				checked_values['insurance_claim'] = $(this).attr('data-insurance-claim');
-			}
-			else {
-				checked_values['insurance_claim'] = false;
-			}
 			return checked_values;
 		}
 	}).get();
 };
 
-var list_row_data_items = function (head, $row, result, invoice_healthcare_services) {
-	if (invoice_healthcare_services) {
-		head ? $row.addClass('list-item--head')
-			: $row = $(`<div class="list-item-container"
-				data-dn= "${result.reference_name}" data-dt= "${result.reference_type}" data-item= "${result.service}"
-				data-rate = ${result.rate}
-				data-income-account = "${result.income_account}"
-				data-qty = ${result.qty}
-				data-description = "${result.description}"
-				data-discount-percentage = ${result.discount_percentage}
-				data-insurance-claim-coverage = ${result.insurance_claim_coverage}
-				data-insurance-claim = ${result.insurance_claim}>
-				</div>`).append($row);
-	}
-	else {
-		head ? $row.addClass('list-item--head')
-			: $row = $(`<div class="list-item-container"
-				data-item= "${result.drug_code}"
-				data-qty = ${result.quantity}
-				data-description = "${result.description}">
-				</div>`).append($row);
-	}
+var list_row_data_items = function (head, $row, result) {
+	head ? $row.addClass('list-item--head')
+		: $row = $(`<div class="list-item-container"
+			data-dn= "${result.reference_name}"
+			data-dt= "${result.reference_type}"
+			data-item= "${result.service}"
+			data-rate = ${result.rate}
+			data-qty = ${result.qty}
+			data-description = "${result.description}"
+			data-discount-percentage = ${result.discount_percentage}
+			</div>`).append($row);
 	return $row;
 };
 
-var add_to_item_line = function (frm, checked_values, invoice_healthcare_services) {
-	if (invoice_healthcare_services) {
-		frappe.call({
-			method: "hms_tz.nhif.api.healthcare_utils.set_healthcare_services",
-			args: {
-				doc: frm.doc,
-				checked_values: checked_values
-			},
-			callback: function (r) {
-				frm.trigger("validate");
-				frm.refresh_fields();
-				if (frm.is_new()) {
-					frappe.set_route('Form', 'Sales Invoice', r.message);
-				} else {
-					frm.reload_doc();
-				}
-			}
-		});
-	}
-	else {
-		for (let i = 0; i < checked_values.length; i++) {
-			var si_item = frappe.model.add_child(frm.doc, 'Sales Invoice Item', 'items');
-			frappe.model.set_value(si_item.doctype, si_item.name, 'item_code', checked_values[i]['item']);
-			frappe.model.set_value(si_item.doctype, si_item.name, 'qty', 1);
-			if (checked_values[i]['qty'] > 1) {
-				frappe.model.set_value(si_item.doctype, si_item.name, 'qty', parseFloat(checked_values[i]['qty']));
+var add_to_item_line = function (frm, checked_values) {
+	frappe.call({
+		method: "hms_tz.nhif.api.healthcare_utils.set_healthcare_services",
+		args: {
+			doc: frm.doc,
+			checked_values: checked_values
+		},
+		callback: function (r) {
+			frm.trigger("validate");
+			frm.refresh_fields();
+			if (frm.is_new()) {
+				frappe.set_route('Form', 'Sales Invoice', r.message);
+			} else {
+				frm.reload_doc();
 			}
 		}
-		frm.refresh_fields();
-	}
+	});
 };
 
 var show_disocunt_dialog = (frm) => {
