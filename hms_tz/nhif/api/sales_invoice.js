@@ -243,6 +243,12 @@ var get_checked_values = function ($results) {
 			else {
 				checked_values['description'] = false;
 			}
+			if ($(this).attr('data-service_request') != 'undefined') {
+				checked_values['service_request'] = $(this).attr('data-service_request');
+			}
+			else {
+				checked_values['service_request'] = false;
+			}
 			if ($(this).attr('data-discount-percentage') != 'undefined') {
 				checked_values['discount_percentage'] = $(this).attr('data-discount-percentage');
 			}
@@ -263,6 +269,7 @@ var list_row_data_items = function (head, $row, result) {
 			data-rate = ${result.rate}
 			data-qty = ${result.qty}
 			data-description = "${result.description}"
+			data-service_request = "${result.service_request}"
 			data-discount-percentage = ${result.discount_percentage}
 			</div>`).append($row);
 	return $row;
