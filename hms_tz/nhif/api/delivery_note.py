@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 import json
+from frappe.query_builder import DocType
 from frappe.utils import date_diff, nowdate, get_fullname
 from hms_tz.nhif.api.healthcare_utils import update_dimensions
 from hms_tz.nhif.api.medical_record import (
@@ -333,6 +334,15 @@ def update_drug_prescription(doc):
                                 )
                                 item.db_update()
 
+                                hsrp = DocType("Healthcare Service Request Payment")
+                                (
+                                    frappe.qb.update(hsrp)
+                                    .set(hsrp.lrpmt_doctype, doc.doctype)
+                                    .set(hsrp.lrpmt_docname, doc.name)
+                                    .set(hsrp.dn_detail, dni.name)
+                                    .where((hsrp.ref_docname == dni.reference_name))
+                                ).run()
+
                 for original_item in doc.hms_tz_original_items:
                     if (
                         original_item.hms_tz_is_out_of_stock == 1
@@ -348,6 +358,16 @@ def update_drug_prescription(doc):
                                 drug_item.hms_tz_is_out_of_stock = 1
                                 drug_item.is_cancelled = 1
                                 drug_item.db_update()
+
+
+                                hsrp = DocType("Healthcare Service Request Payment")
+                                (
+                                    frappe.qb.update(hsrp)
+                                    .set(hsrp.is_cancelled, 1)
+                                    .set(hsrp.lrpmt_doctype, doc.doctype)
+                                    .set(hsrp.lrpmt_docname, doc.name)
+                                    .where((hsrp.ref_docname == original_item.reference_name))
+                                ).run()
 
 
 def check_item_for_out_of_stock(doc):

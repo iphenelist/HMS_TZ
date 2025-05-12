@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from frappe.query_builder import DocType
 from hms_tz.nhif.api.healthcare_utils import (
     create_delivery_note_from_LRPT,
     get_restricted_LRPT,
@@ -25,7 +25,7 @@ def onload(doc, method):
 
 def on_submit(doc, methd):
     update_procedure_prescription(doc)
-    create_delivery_note(doc)
+    # create_delivery_note(doc)
 
 
 def before_submit(doc, method):
@@ -60,14 +60,16 @@ def create_delivery_note(doc):
 
 def update_procedure_prescription(doc):
     if doc.ref_doctype == "Patient Encounter":
-        encounter_doc = frappe.get_doc(doc.ref_doctype, doc.ref_docname)
-        for row in encounter_doc.procedure_prescription:
-            if (
-                row.name == doc.hms_tz_ref_childname
-                and row.procedure == doc.procedure_template
-            ):
-                frappe.db.set_value(
-                    row.doctype,
-                    row.name,
-                    {"clinical_procedure": doc.name, "delivered_quantity": 1},
-                )
+        frappe.db.set_value(
+            "Procedure Prescription",
+            doc.hms_tz_ref_childname,
+            {"clinical_procedure": doc.name, "delivered_quantity": 1},
+        )
+
+        hsrp = DocType("Healthcare Service Request Payment")
+        (
+            frappe.qb.update(hsrp)
+            .set(hsrp.lrpmt_doctype, doc.doctype)
+            .set(hsrp.lrpmt_docname, doc.name)
+            .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
+        ).run()
