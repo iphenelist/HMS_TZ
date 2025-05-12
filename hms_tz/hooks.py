@@ -227,6 +227,7 @@ doc_events = {
         "before_insert": "hms_tz.nhif.api.therapy_session.before_insert",
         "after_insert": "hms_tz.nhif.api.therapy_session.after_insert",
         "before_submit": "hms_tz.nhif.api.therapy_session.before_submit",
+        "on_submit": "hms_tz.nhif.api.therapy_session.on_submit",
     },
     "Patient Medical Record": {
         "before_insert": "hms_tz.nhif.api.medical_record.before_insert",
