@@ -1,0 +1,377 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2025-05-12 10:30:13.295562",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "patient_name",
+  "customer",
+  "column_break_cejb2",
+  "appointment",
+  "source_doctype",
+  "source_docname",
+  "column_break_0l72r",
+  "posting_date",
+  "company",
+  "section_break_hx3mw",
+  "payment_type",
+  "mode_of_payment",
+  "column_break_ckt1u",
+  "insurance_subscription",
+  "insurance_company",
+  "insurance_coverage_plan",
+  "section_break_my8su",
+  "service_type",
+  "service_name",
+  "item_code",
+  "column_break_9wgfq",
+  "currency",
+  "price_list",
+  "rate",
+  "column_break_iwfua",
+  "qty",
+  "qty_returned",
+  "amount",
+  "section_break_efosd",
+  "lrpmt_doctype",
+  "lrpmt_docname",
+  "dn_detail",
+  "lrpmt_status",
+  "column_break_pufom",
+  "is_cancelled",
+  "ref_doctype",
+  "ref_docname",
+  "section_break_4zy49",
+  "healthcare_practitioner",
+  "healthcare_service_unit",
+  "column_break_nkfo7",
+  "department",
+  "cost_center",
+  "section_break_frwzc",
+  "created_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Data",
+   "label": "Posting Date",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "service_type",
+   "fieldtype": "Data",
+   "label": "Service Type",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "service_name",
+   "fieldtype": "Data",
+   "label": "Service Name",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "label": "Insurance Item Code",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Data",
+   "label": "Patient",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "label": "Patient Name",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Data",
+   "label": "Patient Appointment",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Data",
+   "label": "Source Doctype",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "source_docname",
+   "fieldtype": "Data",
+   "label": "Source Docname",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "price_list",
+   "fieldtype": "Data",
+   "label": "Price List",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate",
+   "options": "currency",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "qty_returned",
+   "fieldtype": "Float",
+   "label": "Qty Returned",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "options": "currency",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "lrpmt_doctype",
+   "fieldtype": "Data",
+   "label": "LRPMT Doctype",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "lrpmt_docname",
+   "fieldtype": "Data",
+   "label": "LRPMT Docname",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "dn_detail",
+   "fieldtype": "Data",
+   "label": "Dn Detail",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "lrpmt_status",
+   "fieldtype": "Data",
+   "label": "LRPMT Status",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Data",
+   "label": "Ref Doctype",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ref_docname",
+   "fieldtype": "Data",
+   "label": "Ref Docname",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "is_cancelled",
+   "fieldtype": "Data",
+   "label": "Is Cancelled",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Data",
+   "label": "Insurance Subscription",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "insurance_company",
+   "fieldtype": "Data",
+   "label": "Insurance Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Data",
+   "label": "Insurance Coverage Plan",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Data",
+   "label": "Mode of Payment",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "label": "Payment Type",
+   "options": "Cash\nInsurance",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "healthcare_practitioner",
+   "fieldtype": "Data",
+   "label": "Healthcare Practitioner",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "healthcare_service_unit",
+   "fieldtype": "Data",
+   "label": "Healthcare Service Unit",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Data",
+   "label": "Cost Center",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Data",
+   "label": "Created By",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_cejb2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_0l72r",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_hx3mw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ckt1u",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_my8su",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_9wgfq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_iwfua",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_efosd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_pufom",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_4zy49",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_nkfo7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_frwzc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "Customer",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-12 11:30:08.863555",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Hospital Revenue Entry",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
