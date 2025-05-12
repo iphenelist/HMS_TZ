@@ -20,7 +20,7 @@ from hms_tz.nhif.api.healthcare_utils import (
 	create_plan,
 	create_delivery_notes_from_hsr,
 	create_individual_lab_test,
-	create_individual_radiology_procedure,
+	create_individual_radiology_examination,
 	create_individual_procedure_prescription,
 )
 
@@ -324,7 +324,7 @@ class HealthcareServiceRequest(Document):
 				encounter_child = frappe.get_cached_doc(
 					radiology_service.ref_doctype, radiology_service.ref_docname
 				)
-				create_individual_radiology_procedure(encounter_doc, encounter_child, radiology_service)
+				create_individual_radiology_examination(encounter_doc, encounter_child, radiology_service)
 
 			elif service_type == "Clinical Procedure Template":
 				procedure_service = self.get_sorted_service(values)
