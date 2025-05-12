@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.query_builder import DocType
 
 
 def before_insert(doc, method):
@@ -37,6 +38,9 @@ def before_submit(doc, method):
             )
         )
 
+def on_submit(doc, method):
+    update_therapy_detail(doc)
+
 
 def validate_not_serviced(doc):
     if doc.therapy_plan:
@@ -46,3 +50,14 @@ def validate_not_serviced(doc):
                 f"This Therapy Plan: {frappe.bold(doc.therapy_plan)} is Not Serviced,\
                     Please select another Therapy Plan. or cancel this therapy session"
             )
+
+
+def update_therapy_detail(doc):
+    if doc.ref_doctype == "Patient Encounter":
+        hsrp = DocType("Healthcare Service Request Payment")
+        (
+            frappe.qb.update(hsrp)
+            .set(hsrp.lrpmt_doctype, doc.doctype)
+            .set(hsrp.lrpmt_docname, doc.name)
+            .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
+        ).run()
