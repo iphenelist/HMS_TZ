@@ -135,9 +135,7 @@ def get_entry_from_insurance_lrp(doc):
             hsrp.dn_detail
         )
         .where(
-            (hsrp.docstatus == 1)
-            & (hsrp.lrpmt_doc_created == 1)
-            & (hsrp.ref_docname == doc.hms_tz_ref_childname)
+            (hsrp.ref_docname == doc.hms_tz_ref_childname)
         )
     ).run(as_dict=True)
 
@@ -317,7 +315,6 @@ def build_insurance_dni_entry(doc, insurance_items):
             hsrp.insurance_company,
             hsrp.payor_plan,
             hsrp.dn_detail,
-            hsrp.lrpmt_doc_created,
             hsrp.lrpmt_doctype,
             hsrp.lrpmt_docname,
             hsrp.ref_docname,
@@ -326,11 +323,7 @@ def build_insurance_dni_entry(doc, insurance_items):
             hsrp.service_type,
         )
         .where(
-            (hsrp.docstatus == 1)
-            & (hsrp.lrpmt_doc_created == 1)
-            & (hsrp.lrpmt_docname == doc.name)
-            & (hsrp.lrpmt_doctype == doc.doctype)
-            & (hsrp.ref_doctype == "Drug Prescription")
+            (hsrp.ref_doctype == "Drug Prescription")
             & (hsrp.ref_docname.isin(insurance_items))
         )
     ).run(as_dict=True)
@@ -452,7 +445,7 @@ def get_entry_from_insurance_plan(doc):
     """
     entries = []
 
-    refs = [d.hms_tz_ref_childname for d in doc.items if d.hms_tz_ref_childname]
+    refs = [d.hms_tz_ref_childname for d in doc.therapy_plan_details if d.hms_tz_ref_childname]
     if len(refs) == 0:
         return entries
 
@@ -483,9 +476,7 @@ def get_entry_from_insurance_plan(doc):
             tpd.department_hsu
         )
         .where(
-            (hsrp.docstatus == 1)
-            & (hsrp.lrpmt_doc_created == 1)
-            & (hsrp.ref_docname.isin(refs))
+            (hsrp.ref_docname.isin(refs))
             & (tpd.parent == doc.name)
         )
     ).run(as_dict=True)
@@ -497,8 +488,8 @@ def get_entry_from_insurance_plan(doc):
         entry_dict = {
             "patient": doc.get("patient"),
             "patient_name": doc.get("patient_name"),
-            "customer": doc.customer,
-            "appointment": doc.hms_tz_appointment_no,
+            "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
+            "appointment": doc.hms_tz_appointment,
             "posting_date": nowdate(),
             "created_by": get_fullname(frappe.session.user),
             "company": doc.company,
@@ -545,7 +536,7 @@ def get_entry_from_cash_plan(doc):
     """
     entries = []
 
-    refs = [d.hms_tz_ref_childname for d in doc.items if d.hms_tz_ref_childname and d.parent == doc.name]
+    refs = [d.hms_tz_ref_childname for d in doc.therapy_plan_details if d.hms_tz_ref_childname and d.parent == doc.name]
     if len(refs) == 0:
         return entries
 
@@ -562,6 +553,7 @@ def get_entry_from_cash_plan(doc):
             sii.amount,
             sii.item_code,
             si.selling_price_list,
+            si.customer,
             sii.reference_dt,
             sii.reference_dn,
             sii.parent.as_("sales_invoice_number"),
@@ -580,8 +572,8 @@ def get_entry_from_cash_plan(doc):
         entry_dict = {
             "patient": doc.get("patient"),
             "patient_name": doc.get("patient_name"),
-            "customer": doc.customer,
-            "appointment": doc.hms_tz_appointment_no,
+            "customer": row.get("customer"),
+            "appointment": doc.hms_tz_appointment,
             "posting_date": nowdate(),
             "created_by": get_fullname(frappe.session.user),
             "company": doc.company,
