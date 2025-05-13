@@ -1,4 +1,5 @@
 import frappe
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 
 
 def before_insert(doc, method):
@@ -13,6 +14,10 @@ def before_insert(doc, method):
 
     doc.total_sessions = total_sessions
     doc.total_sessions_cancelled = total_sessions_cancelled
+
+
+def after_insert(doc, method):
+    create_revenue_entry(doc)
 
 
 def validate(doc, method):

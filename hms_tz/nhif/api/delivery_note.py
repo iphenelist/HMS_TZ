@@ -10,6 +10,7 @@ from hms_tz.nhif.api.medical_record import (
     update_medical_record,
     delete_medical_record,
 )
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 
 
 def validate(doc, method):
@@ -23,6 +24,7 @@ def validate(doc, method):
 
 def after_insert(doc, method):
     set_original_item(doc)
+    create_revenue_entry(doc)
 
 
 def set_original_item(doc):
