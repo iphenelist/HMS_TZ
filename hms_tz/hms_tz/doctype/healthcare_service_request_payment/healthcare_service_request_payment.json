@@ -16,6 +16,7 @@
   "column_break_ltlnk",
   "percent_covered",
   "qty",
+  "qty_returned",
   "amount",
   "payment_details_section",
   "payment_type",
@@ -79,7 +80,6 @@
   },
   {
    "columns": 1,
-   "description": "based on Base Amount",
    "fieldname": "percent_covered",
    "fieldtype": "Percent",
    "in_list_view": 1,
@@ -337,12 +337,19 @@
    "label": "DN Detail",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "qty_returned",
+   "fieldtype": "Int",
+   "label": "Qty Returned",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-12 09:46:53.470064",
+ "modified": "2025-05-13 22:22:09.218186",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request Payment",
