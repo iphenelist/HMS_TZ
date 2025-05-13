@@ -60,6 +60,7 @@
   {
    "fieldname": "posting_date",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Posting Date",
    "read_only": 1,
    "search_index": 1
@@ -67,6 +68,7 @@
   {
    "fieldname": "company",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Company",
    "read_only": 1,
    "search_index": 1
@@ -74,6 +76,8 @@
   {
    "fieldname": "service_type",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Service Type",
    "read_only": 1,
    "search_index": 1
@@ -81,6 +85,8 @@
   {
    "fieldname": "service_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Service Name",
    "read_only": 1,
    "search_index": 1
@@ -95,6 +101,8 @@
   {
    "fieldname": "patient",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Patient",
    "read_only": 1,
    "search_index": 1
@@ -102,6 +110,7 @@
   {
    "fieldname": "patient_name",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Patient Name",
    "read_only": 1,
    "search_index": 1
@@ -109,6 +118,7 @@
   {
    "fieldname": "appointment",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Patient Appointment",
    "read_only": 1,
    "search_index": 1
@@ -253,6 +263,8 @@
   {
    "fieldname": "payment_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Payment Type",
    "options": "Cash\nInsurance",
    "read_only": 1,
@@ -261,6 +273,7 @@
   {
    "fieldname": "healthcare_practitioner",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Healthcare Practitioner",
    "read_only": 1,
    "search_index": 1
@@ -268,6 +281,7 @@
   {
    "fieldname": "healthcare_service_unit",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Healthcare Service Unit",
    "read_only": 1,
    "search_index": 1
@@ -344,6 +358,7 @@
   {
    "fieldname": "customer",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Customer",
    "read_only": 1,
    "search_index": 1
@@ -359,7 +374,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-13 23:39:53.171589",
+ "modified": "2025-05-14 01:02:18.688349",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Hospital Revenue Entry",
