@@ -73,6 +73,10 @@ class HealthcareServiceRequest(Document):
 					row.name != d.request_id
 				):
 					d.request_id = row.name
+					if not d.ref_docname:
+						d.ref_docname = row.ref_docname
+					if not d.ref_doctype:
+						d.ref_doctype = row.ref_doctype
 	
 	@frappe.whitelist()
 	def get_services(self):

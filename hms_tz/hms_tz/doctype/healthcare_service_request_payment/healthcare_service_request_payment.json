@@ -217,6 +217,8 @@
    "search_index": 1
   },
   {
+   "fetch_from": "request_id.ref_doctype",
+   "fetch_if_empty": 1,
    "fieldname": "ref_doctype",
    "fieldtype": "Link",
    "label": "Ref Doctype",
@@ -225,6 +227,8 @@
    "search_index": 1
   },
   {
+   "fetch_from": "request_id.ref_docname",
+   "fetch_if_empty": 1,
    "fieldname": "ref_docname",
    "fieldtype": "Dynamic Link",
    "label": "Ref Docname",
@@ -349,7 +353,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-13 22:22:09.218186",
+ "modified": "2025-05-14 01:25:54.621956",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request Payment",
