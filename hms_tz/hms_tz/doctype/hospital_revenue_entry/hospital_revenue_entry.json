@@ -46,6 +46,7 @@
   "is_cancelled",
   "ref_doctype",
   "ref_docname",
+  "sales_invoice",
   "section_break_4zy49",
   "healthcare_practitioner",
   "healthcare_service_unit",
@@ -345,12 +346,19 @@
    "label": "Customer",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Data",
+   "label": "Sales Invoice",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-12 11:30:08.863555",
+ "modified": "2025-05-12 16:20:13.605158",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Hospital Revenue Entry",
