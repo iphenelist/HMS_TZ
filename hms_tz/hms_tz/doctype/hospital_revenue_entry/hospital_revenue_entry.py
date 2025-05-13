@@ -11,7 +11,7 @@ class HospitalRevenueEntry(Document):
 	pass
 
 
-def make_revenue_entry(doc):
+def create_revenue_entry(doc):
     """
 	Create Hospital Revenue Entry documents
 
