@@ -5,18 +5,16 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from hms_tz.nhif.api.healthcare_utils import (
-    create_delivery_note_from_LRPT,
-    get_restricted_LRPT,
-)
-from frappe.utils import getdate, get_fullname
-from frappe.core.doctype.sms_settings.sms_settings import send_sms
 import dateutil
 from frappe.query_builder import DocType
+from frappe.utils import getdate, get_fullname
+from frappe.core.doctype.sms_settings.sms_settings import send_sms
+from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
 
 
 def validate(doc, method):
     set_normals(doc)
+
 
 def onload(doc, method):
     check_cash_payments_from_encounter(
@@ -27,6 +25,40 @@ def onload(doc, method):
     item_name_field="lab_test_name",
     item_descriptor="Lab Tests",
 )
+
+
+def after_insert(doc, method):
+    create_sample_collection(doc)
+
+
+def before_submit(doc, method):
+    if doc.is_restricted and not doc.approval_number:
+        frappe.throw(
+            _(
+                f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."
+            )
+        )
+
+    doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
+    doc.hms_tz_user_id = frappe.session.user
+
+    # 2023-07-13
+    # stop this validation for now
+    return
+    if doc.approval_number and doc.approval_status != "Verified":
+        frappe.throw(
+            _(
+                f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.radiology_examination_template}</b> is not verified.>br>\
+                    Please verify the Approval Number."
+            )
+        )
+
+
+def on_submit(doc, method):
+    update_lab_prescription(doc)
+    # create_delivery_note(doc)
+    send_sms_for_lab_results(doc)
+
 
 def set_normals(doc):
     dob = frappe.get_cached_value("Patient", doc.patient, "dob")
@@ -116,43 +148,11 @@ def get_lab_test_template(lab_test_name):
     return False
 
 
-def before_submit(doc, method):
-    if doc.is_restricted and not doc.approval_number:
-        frappe.throw(
-            _(
-                f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."
-            )
-        )
-
-    doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
-    doc.hms_tz_user_id = frappe.session.user
-
-    # 2023-07-13
-    # stop this validation for now
-    return
-    if doc.approval_number and doc.approval_status != "Verified":
-        frappe.throw(
-            _(
-                f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.radiology_examination_template}</b> is not verified.>br>\
-                    Please verify the Approval Number."
-            )
-        )
-
-
-def on_submit(doc, method):
-    update_lab_prescription(doc)
-    # create_delivery_note(doc)
-    send_sms_for_lab_results(doc)
-
 
 def create_delivery_note(doc):
     if doc.ref_doctype and doc.ref_docname and doc.ref_doctype == "Patient Encounter":
         patient_encounter_doc = frappe.get_doc(doc.ref_doctype, doc.ref_docname)
         create_delivery_note_from_LRPT(doc, patient_encounter_doc)
-
-
-def after_insert(doc, method):
-    create_sample_collection(doc)
 
 
 def on_trash(doc, method):
