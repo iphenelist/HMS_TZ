@@ -10,6 +10,7 @@ from frappe.query_builder import DocType
 from frappe.utils import getdate, get_fullname
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 
 
 def validate(doc, method):
@@ -29,6 +30,7 @@ def onload(doc, method):
 
 def after_insert(doc, method):
     create_sample_collection(doc)
+    create_revenue_entry(doc)
 
 
 def before_submit(doc, method):

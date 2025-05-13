@@ -187,12 +187,14 @@ doc_events = {
         "validate": "hms_tz.nhif.api.lab_test.validate",
     },
     "Radiology Examination": {
+        "after_insert":"hms_tz.nhif.api.radiology_examination.after_insert",
         "onload":"hms_tz.nhif.api.radiology_examination.onload",
         "before_submit": "hms_tz.nhif.api.radiology_examination.before_submit",
         "on_submit": "hms_tz.nhif.api.radiology_examination.on_submit",
         "on_cancel": "hms_tz.nhif.api.radiology_examination.on_cancel",
     },
     "Clinical Procedure": {
+        "after_insert":"hms_tz.nhif.api.clinical_procedure.after_insert",
         "onload":"hms_tz.nhif.api.clinical_procedure.onload",
         "before_submit": "hms_tz.nhif.api.clinical_procedure.before_submit",
         "on_submit": "hms_tz.nhif.api.clinical_procedure.on_submit",
@@ -221,6 +223,7 @@ doc_events = {
     },
     "Therapy Plan": {
         "before_insert": "hms_tz.nhif.api.therapy_plan.before_insert",
+        "after_insert": "hms_tz.nhif.api.therapy_plan.after_insert",
         "validate": "hms_tz.nhif.api.therapy_plan.validate",
     },
     "Therapy Session": {
