@@ -20,9 +20,9 @@ from datetime import timedelta
 import base64
 import re
 import json
+from frappe.query_builder import DocType
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.token import get_nhifservice_token
-from frappe.query_builder import DocType
 
 def get_childs_map():
     childs_map = {
@@ -609,13 +609,13 @@ def get_healthcare_service_unit(item):
     elif refd == "Inpatient Consultancy":
         healthcare_service_unit = frappe.get_cached_value(
             "Practitioner Service Unit Schedule",
-            {"parent": item.healthcare_practitioner},
+            {"parent": item.get("healthcare_practitioner")},
             "service_unit",
         )
         if not healthcare_service_unit:
             service_unit_details = frappe.get_all(
                 "Practitioner Availability",
-                filters={"practitioner": item.healthcare_practitioner},
+                filters={"practitioner": item.get("healthcare_practitioner")},
                 fields=["service_unit"],
                 order_by="from_date desc",
             )
@@ -2444,6 +2444,7 @@ def enqueue_auto_create_nhif_patient_claims():
         timeout=100000,
         is_async=True,
     )
+
 
 def auto_create_nhif_patient_claims():
     """Auto create NHIF patient claims after a number of days set in company settings

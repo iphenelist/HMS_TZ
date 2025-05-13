@@ -1,8 +1,613 @@
 # Copyright (c) 2025, Aakvatech and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe import _
+from frappe.query_builder import DocType
 from frappe.model.document import Document
+from frappe.utils import nowdate, get_fullname
 
 class HospitalRevenueEntry(Document):
 	pass
+
+
+def make_revenue_entry(doc):
+    """
+	Create Hospital Revenue Entry documents
+
+	Args:
+		doc: Source document
+	"""
+    entries = []
+    if doc.doctype == "Patient Appointment":
+        entries = get_entry_from_appointment(doc)
+    elif doc.doctype == "Delivery Note":
+        entries = get_entry_from_dn(doc)
+    elif doc.doctype in ["Lab Test", "Radiology Examination", "Clinical Procedure"]:
+        entries = get_entry_from_lrp_docs(doc)
+    elif doc.doctype == "Therapy Plan":
+        entries = get_entry_from_plan(doc)
+
+    if len(entries) == 0:
+        return
+
+    for entry in entries:
+        hre = frappe.new_doc("Hospital Revenue Entry")
+        hre.update(entry)
+        hre.insert(ignore_permissions=True)
+        hre.reload()
+
+
+def get_entry_from_appointment(doc):
+    """
+    Get entry from the appointment document
+
+    Args:
+        doc: Source document
+
+    Returns:
+        dict: Entry dictionary
+    """
+    entry_dict = {
+        "patient": doc.patient,
+        "patient_name": doc.patient_name,
+        "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
+        "appointment": doc.name,
+        "posting_date": nowdate(),
+        "created_by": get_fullname(frappe.session.user),
+        "company": doc.company,
+        "qty": 1,
+        "rate": doc.paid_amount,
+        "amount": doc.paid_amount,
+        "source_doctype": doc.doctype,
+        "source_docname": doc.name,
+        "service_type": "Consultation Charges",
+        "service_name": doc.get("billing_item"),
+        "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+        "payment_type": "Insurance" if doc.insurance_subscription else "Cash",
+        "insurance_subscription": doc.insurance_subscription,
+        "insurance_company": doc.insurance_company,
+        "insurance_coverage_plan": doc.insurance_coverage_plan,
+        "mode_of_payment": doc.mode_of_payment,
+        "sales_invoice": doc.ref_sales_invoice,
+        "department": doc.department,
+        "healthcare_service_unit": doc.service_unit,
+        "healthcare_practitioner": doc.practitioner,
+
+    }
+    return entry_dict
+
+
+def get_entry_from_lrp_docs(doc):
+    """
+    Get entries from the source document
+
+    Args:
+        doc: Source document
+
+    Returns:
+        list: List of entry dictionaries
+	"""
+    entries = []
+
+    if doc.get("insurance_subscription"):
+        entries = get_entry_from_insurance_lrp(doc)
+    else:
+        entries = get_entry_from_cash_lrp(doc)
+    
+    return entries
+
+
+def get_entry_from_insurance_lrp(doc):
+    """
+    Get entry from the LRP document
+    
+    Args:
+
+        doc: Source document
+    
+    Returns:
+        List: List of entry dictionaries
+    """
+    entries = []
+
+    hsrp = DocType("Healthcare Service Request Payment")
+
+    hsrp_items = (
+        frappe.qb.from_(hsrp)
+        .select(
+            hsrp.qty,
+            hsrp.rate,
+            hsrp.amount,
+            hsrp.qty_returned,
+            hsrp.price_list,
+            hsrp.is_cancelled,
+            hsrp.insurance_subscription,
+            hsrp.insurance_company,
+            hsrp.payor_plan,
+            hsrp.dn_detail,
+            hsrp.ref_docname,
+            hsrp.ref_doctype,
+            hsrp.service_name,
+            hsrp.service_type,
+            hsrp.sales_invoice_number,
+            hsrp.payment_type,
+            hsrp.dn_detail
+        )
+        .where(
+            (hsrp.docstatus == 1)
+            & (hsrp.lrpmt_doc_created == 1)
+            & (hsrp.ref_docname == doc.hms_tz_ref_childname)
+        )
+    ).run(as_dict=True)
+
+    if len(hsrp_items) == 0:
+        return entries
+    
+    for row in hsrp_items:
+        department_hsu = frappe.get_cached_value(
+            row.get("ref_doctype"),
+            row.get("ref_docname"),
+            "department_hsu",
+        )
+        
+        entry_dict = {
+            "patient": doc.patient,
+            "patient_name": doc.patient_name,
+            "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
+            "appointment": doc.appointment,
+            "posting_date": nowdate(),
+            "created_by": get_fullname(frappe.session.user),
+            "company": doc.company,
+            "source_doctype": doc.ref_doctype,
+            "source_docname": doc.ref_docname,
+            "price_list": row.get("price_list"),
+            "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+            "qty": row.qty,
+            "rate": row.rate,
+            "amount": row.amount,
+            "service_type": row.get("service_type"),
+            "service_name": row.get("service_name"),
+            "is_cancelled": row.get("is_cancelled"),
+            "payment_type": row.get("payment_type"),
+            "insurance_subscription": row.get("insurance_subscription"),
+            "insurance_company": row.get("insurance_company"),
+            "insurance_coverage_plan": row.get("payor_plan"),
+            "mode_of_payment": "",
+            "sales_invoice": row.get("sales_invoice_number"),
+            "ref_doctype": row.get("ref_doctype"),
+            "ref_docname": row.get("ref_docname"),
+            "lrpmt_doctype": doc.doctype,
+            "lrpmt_docname": doc.name,
+            "dn_detail": row.get("dn_detail"),
+            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "department": doc.get("department"),
+            "healthcare_service_unit": department_hsu,
+            "healthcare_practitioner": doc.practitioner,
+        }
+        entries.append(entry_dict)
+        
+    return entries
+
+
+def get_entry_from_cash_lrp(doc):
+    """
+    Get entry from the LRP document
+    
+    Args:
+
+        doc: Source document
+    
+    Returns:
+        List: List of entry dictionaries
+    """
+    entries = []
+
+    si = DocType("Sales Invoice")
+    sii = DocType("Sales Invoice Item")
+
+    si_items = (
+        frappe.qb.from_(si)
+        .inner_join(sii)
+        .on(si.name == sii.parent)
+        .select(
+            sii.qty,
+            sii.rate,
+            sii.amount,
+            si.selling_price_list,
+            sii.reference_dt,
+            sii.parent.as_("sales_invoice_number"),
+        )
+        .where(
+            (si.docstatus == 1)
+            & (si.patient == doc.patient)
+            & (sii.reference_dn == doc.hms_tz_ref_childname)
+        )
+    ).run(as_dict=True)
+
+    if len(si_items) == 0:
+        return entries
+
+    service_type = ""
+    service_name = ""
+    if doc.doctype == "Lab Test":
+        service_type = "Lab Test Template"
+        service_name = doc.template
+    elif doc.doctype == "Radiology Examination":
+        service_type = "Radiology Examination Template"
+        service_name = doc.radiology_examination_template
+    elif doc.doctype == "Clinical Procedure":
+        service_type = "Clinical Procedure Template"
+        service_name = doc.procedure_template
+    
+    for row in si_items:
+        entry_dict = {
+            "patient": doc.patient,
+            "patient_name": doc.patient_name,
+            "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
+            "appointment": doc.appointment,
+            "posting_date": nowdate(),
+            "created_by": get_fullname(frappe.session.user),
+            "company": doc.company,
+            "source_doctype": doc.ref_doctype,
+            "source_docname": doc.ref_docname,
+            "price_list": row.get("selling_price_list"),
+            "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+            "qty": row.qty,
+            "rate": row.rate,
+            "amount": row.amount,
+            "service_type": service_type,
+            "service_name": service_name,
+            "is_cancelled": 0,
+            "payment_type": "Cash",
+            "mode_of_payment": "",
+            "sales_invoice": row.get("sales_invoice_number"),
+            "ref_doctype": row.get("reference_dt"),
+            "ref_docname": doc.hms_tz_ref_childname,
+            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "department": doc.get("department"),
+            "healthcare_service_unit": doc.get("healthcare_service_unit"),
+            "healthcare_practitioner": doc.practitioner,
+        }
+        entries.append(entry_dict)
+        
+    return entries
+
+
+def get_entry_from_dn(doc):
+    """
+    Get entry from the Delivery Note document
+
+    Args:
+        doc: Source document
+
+    Returns:
+        List: List of entry dictionaries
+    """
+
+    entries = []
+
+    if doc.coverage_plan_name:
+        insurance_ref_docnams = [d.reference_name for d in doc.items if d.reference_name]
+        entries += build_insurance_dni_entry(doc, insurance_ref_docnams)
+    else:
+        entries += build_cash_dni_entry(doc)
+
+    return entries
+
+
+def build_insurance_dni_entry(doc, insurance_items):
+    entries = []
+
+    if len(insurance_items) == 0:
+        return entries
+
+    hsrp = DocType("Healthcare Service Request Payment")
+
+    hsrp_items = (
+        frappe.qb.from_(hsrp)
+        .select(
+            hsrp.qty,
+            hsrp.rate,
+            hsrp.amount,
+            hsrp.qty_returned,
+            hsrp.price_list,
+            hsrp.is_cancelled,
+            hsrp.insurance_subscription,
+            hsrp.insurance_company,
+            hsrp.payor_plan,
+            hsrp.dn_detail,
+            hsrp.lrpmt_doc_created,
+            hsrp.lrpmt_doctype,
+            hsrp.lrpmt_docname,
+            hsrp.ref_docname,
+            hsrp.ref_doctype,
+            hsrp.service_name,
+            hsrp.service_type,
+        )
+        .where(
+            (hsrp.docstatus == 1)
+            & (hsrp.lrpmt_doc_created == 1)
+            & (hsrp.lrpmt_docname == doc.name)
+            & (hsrp.lrpmt_doctype == doc.doctype)
+            & (hsrp.ref_doctype == "Drug Prescription")
+            & (hsrp.ref_docname.isin(insurance_items))
+        )
+    ).run(as_dict=True)
+
+    if len(hsrp_items) == 0:
+        return entries
+
+    for row in hsrp_items:
+        entry_dict = {
+            "patient": doc.get("patient"),
+            "patient_name": doc.get("patient_name"),
+            "customer": doc.customer,
+            "appointment": doc.hms_tz_appointment_no,
+            "posting_date": nowdate(),
+            "created_by": get_fullname(frappe.session.user),
+            "company": doc.company,
+            "source_doctype": doc.reference_doctype,
+            "source_docname": doc.reference_name,
+            "price_list": row.get("price_list"),
+            "currency": doc.currency,
+            "qty": row.qty,
+            "rate": row.rate,
+            "amount": row.amount,
+            "service_type": row.get("service_type"),
+            "service_name": row.get("service_name"),
+            "is_cancelled": row.get("is_cancelled"),
+            "payment_type": row.get("payment_type"),
+            "insurance_subscription": row.get("insurance_subscription"),
+            "insurance_company": row.get("insurance_company"),
+            "insurance_coverage_plan": row.get("payor_plan"),
+            "mode_of_payment": "",
+            "sales_invoice": row.get("sales_invoice_number"),
+            "ref_doctype": row.get("ref_doctype"),
+            "ref_docname": row.get("ref_docname"),
+            "lrpmt_doctype": row.get("lrpmt_doctype"),
+            "lrpmt_docname": row.get("lrpmt_docname"),
+            "dn_detail": row.get("dn_detail"),
+            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "department": doc.get("department"),
+            "healthcare_service_unit": doc.get("healthcare_service_unit"),
+            "healthcare_practitioner": doc.get("healthcare_practitioner"),
+        }
+        entries.append(entry_dict)
+    
+    return entries
+
+
+def build_cash_dni_entry(doc):
+    entries = []
+
+    for item in doc.items:
+        entry_dict = {
+            "patient": doc.get("patient"),
+            "patient_name": doc.get("patient_name"),
+            "customer": doc.customer,
+            "appointment": doc.get("hms_tz_appointment_no"),
+            "posting_date": nowdate(),
+            "created_by": get_fullname(frappe.session.user),
+            "company": doc.company,
+            "source_doctype": doc.get("reference_doctype") or "Sales Invoice",
+            "source_docname": doc.get("reference_name") or doc.get("form_sales_invoice"),
+            "price_list": doc.get("selling_price_list"),
+            "currency": doc.currency,
+            "qty": item.qty,
+            "rate": item.rate,
+            "amount": item.amount,
+            "service_type": "Medication",
+            "service_name": item.item_code,
+            "is_cancelled": 0,
+            "payment_type": "Cash",
+            # "insurance_subscription": row.get("insurance_subscription"),
+            # "insurance_company": row.get("insurance_company"),
+            # "insurance_coverage_plan": row.get("payor_plan"),
+            "mode_of_payment": "",
+            "sales_invoice": doc.get("form_sales_invoice"),
+            "ref_doctype": item.get("reference_doctype"),
+            "ref_docname": item.get("reference_name"),
+            "lrpmt_doctype": doc.doctype,
+            "lrpmt_docname": doc.name,
+            "dn_detail": item.name,
+            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "department": doc.get("department"),
+            "healthcare_service_unit": doc.get("healthcare_service_unit"),
+            "healthcare_practitioner": doc.get("healthcare_practitioner"),
+        }
+        entries.append(entry_dict)
+    
+    return entries
+
+
+def get_entry_from_plan(doc):
+    """
+    Get entry from the Therapy Plan document
+
+    Args:
+        doc: Source document
+
+    Returns:
+        List: List of entry dictionaries
+    """
+    entries = []
+    if doc.get("insurance_company"):
+        entries = get_entry_from_insurance_plan(doc)
+    else:
+        entries = get_entry_from_cash_plan(doc)
+
+    return entries
+
+
+def get_entry_from_insurance_plan(doc):
+    """
+    Get entry from the Therapy Plan document
+
+    Args:
+        doc: Source document
+
+    Returns:
+        List: List of entry dictionaries
+    """
+    entries = []
+
+    refs = [d.hms_tz_ref_childname for d in doc.items if d.hms_tz_ref_childname]
+    if len(refs) == 0:
+        return entries
+
+    tpd = DocType("Therapy Plan Detail")
+    hsrp = DocType("Healthcare Service Request Payment")
+
+    hsrp_items = (
+        frappe.qb.from_(hsrp)
+        .inner_join(tpd)
+        .on(hsrp.ref_docname == tpd.hms_tz_ref_childname)
+        .select(
+            hsrp.qty,
+            hsrp.rate,
+            hsrp.amount,
+            hsrp.qty_returned,
+            hsrp.price_list,
+            hsrp.is_cancelled,
+            hsrp.insurance_subscription,
+            hsrp.insurance_company,
+            hsrp.payor_plan,
+            hsrp.dn_detail,
+            hsrp.ref_doctype,
+            hsrp.ref_docname,
+            hsrp.service_name,
+            hsrp.service_type,
+            hsrp.sales_invoice_number,
+            hsrp.payment_type,
+            tpd.department_hsu
+        )
+        .where(
+            (hsrp.docstatus == 1)
+            & (hsrp.lrpmt_doc_created == 1)
+            & (hsrp.ref_docname.isin(refs))
+            & (tpd.parent == doc.name)
+        )
+    ).run(as_dict=True)
+
+    if len(hsrp_items) == 0:
+        return entries
+
+    for row in hsrp_items:
+        entry_dict = {
+            "patient": doc.get("patient"),
+            "patient_name": doc.get("patient_name"),
+            "customer": doc.customer,
+            "appointment": doc.hms_tz_appointment_no,
+            "posting_date": nowdate(),
+            "created_by": get_fullname(frappe.session.user),
+            "company": doc.company,
+            "source_doctype": doc.ref_doctype,
+            "source_docname": doc.ref_docname,
+            "price_list": row.get("price_list"),
+            "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+            "qty": row.qty,
+            "rate": row.rate,
+            "amount": row.amount,
+            "service_type": row.get("service_type"),
+            "service_name": row.get("service_name"),
+            "is_cancelled": row.get("is_cancelled"),
+            "payment_type": row.get("payment_type"),
+            "insurance_subscription": row.get("insurance_subscription"),
+            "insurance_company": row.get("insurance_company"),
+            "insurance_coverage_plan": row.get("payor_plan"),
+            "mode_of_payment": "",
+            "sales_invoice": row.get("sales_invoice_number"),
+            "ref_doctype": row.get("ref_doctype"),
+            "ref_docname": row.get("ref_docname"),
+            "lrpmt_doctype": doc.doctype,
+            "lrpmt_docname": doc.name,
+            "dn_detail": row.get("dn_detail"),
+            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "department": doc.get("department"),
+            "healthcare_service_unit": row.get("department_hsu"),
+            "healthcare_practitioner": frappe.get_cached_value(doc.ref_doctype, doc.ref_docname, "practitioner"),
+        }
+        entries.append(entry_dict)
+
+    return entries
+
+
+def get_entry_from_cash_plan(doc):
+    """
+    Get entry from the Therapy Plan document
+
+    Args:
+        doc: Source document
+
+    Returns:
+        List: List of entry dictionaries
+    """
+    entries = []
+
+    refs = [d.hms_tz_ref_childname for d in doc.items if d.hms_tz_ref_childname and d.parent == doc.name]
+    if len(refs) == 0:
+        return entries
+
+    si = DocType("Sales Invoice")
+    sii = DocType("Sales Invoice Item")
+
+    si_items = (
+        frappe.qb.from_(si)
+        .inner_join(sii)
+        .on(si.name == sii.parent)
+        .select(
+            sii.qty,
+            sii.rate,
+            sii.amount,
+            sii.item_code,
+            si.selling_price_list,
+            sii.reference_dt,
+            sii.reference_dn,
+            sii.parent.as_("sales_invoice_number"),
+        )
+        .where(
+            (si.docstatus == 1)
+            & (si.patient == doc.patient)
+            & (sii.reference_dn.isin(refs))
+        )
+    ).run(as_dict=True)
+
+    if len(si_items) == 0:
+        return entries
+
+    for row in si_items:
+        entry_dict = {
+            "patient": doc.get("patient"),
+            "patient_name": doc.get("patient_name"),
+            "customer": doc.customer,
+            "appointment": doc.hms_tz_appointment_no,
+            "posting_date": nowdate(),
+            "created_by": get_fullname(frappe.session.user),
+            "company": doc.company,
+            "source_doctype": doc.ref_doctype,
+            "source_docname": doc.ref_docname,
+            "price_list": row.get("selling_price_list"),
+            "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+            "qty": row.qty,
+            "rate": row.rate,
+            "amount": row.amount,
+            "service_type": "Therapy Type",
+            "service_name": row.get("item_code"),
+            "is_cancelled": 0,
+            "payment_type": "Cash",
+            "mode_of_payment": "",
+            "sales_invoice": row.get("sales_invoice_number"),
+            "ref_doctype": row.get("reference_dt"),
+            "ref_docname": row.get("reference_dn"),
+            "lrpmt_doctype": doc.doctype,
+            "lrpmt_docname": doc.name,
+            "dn_detail": "",
+            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "department": doc.get("department"),
+            "healthcare_service_unit": "", # TODO: find the department hsu and update here
+            "healthcare_practitioner": frappe.get_cached_value(doc.ref_doctype, doc.ref_docname, "practitioner"),
+        }
+        entries.append(entry_dict)
+
+    return entries
