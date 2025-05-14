@@ -33,6 +33,7 @@
   "ref_doctype",
   "ref_docname",
   "request_id",
+  "department_hsu",
   "column_break_dz6i3",
   "sales_invoice_number",
   "lrpmt_doc_created",
@@ -356,12 +357,21 @@
    "label": "LRPMT Status",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "request_id.department_hsu",
+   "fetch_if_empty": 1,
+   "fieldname": "department_hsu",
+   "fieldtype": "Data",
+   "label": "Department HSU",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-14 15:36:19.965289",
+ "modified": "2025-05-14 16:58:41.493988",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request Payment",
