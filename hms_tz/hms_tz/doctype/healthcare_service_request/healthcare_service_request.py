@@ -77,6 +77,8 @@ class HealthcareServiceRequest(Document):
 						d.ref_docname = row.ref_docname
 					if not d.ref_doctype:
 						d.ref_doctype = row.ref_doctype
+					if not d.department_hsu:
+						d.department_hsu = row.department_hsu
 	
 	@frappe.whitelist()
 	def get_services(self):
@@ -468,7 +470,8 @@ def get_encounter_services(doc):
 				"is_restricted": row.get("is_restricted"),
 				"has_copayment": row.get("has_copayment"),
 				"ref_doctype": row.doctype,
-				"ref_docname": row.name
+				"ref_docname": row.name,
+				"department_hsu": row.get("department_hsu") or row.get("healthcare_service_unit")
 			}
 			new_row = set_service_amounts(
 				entry,
