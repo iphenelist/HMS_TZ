@@ -256,17 +256,10 @@ def create_sample_collection(doc):
 
 def update_lab_prescription(doc):
     if doc.ref_doctype == "Patient Encounter":
-        frappe.db.set_value(
-            "Lab Prescription",
-            doc.hms_tz_ref_childname,
-            {"lab_test": doc.name, "delivered_quantity": 1},
-        )
-
         hsrp = DocType("Healthcare Service Request Payment")
         (
             frappe.qb.update(hsrp)
-            .set(hsrp.lrpmt_doctype, doc.doctype)
-            .set(hsrp.lrpmt_docname, doc.name)
+            .set(hsrp.lrpmt_status, "Submitted")
             .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
         ).run()
 

@@ -66,16 +66,9 @@ def create_delivery_note(doc):
 
 def update_procedure_prescription(doc):
     if doc.ref_doctype == "Patient Encounter":
-        frappe.db.set_value(
-            "Procedure Prescription",
-            doc.hms_tz_ref_childname,
-            {"clinical_procedure": doc.name, "delivered_quantity": 1},
-        )
-
         hsrp = DocType("Healthcare Service Request Payment")
         (
             frappe.qb.update(hsrp)
-            .set(hsrp.lrpmt_doctype, doc.doctype)
-            .set(hsrp.lrpmt_docname, doc.name)
+            .set(hsrp.lrpmt_status, "Submitted")
             .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
         ).run()

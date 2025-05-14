@@ -57,7 +57,6 @@ def update_therapy_detail(doc):
         hsrp = DocType("Healthcare Service Request Payment")
         (
             frappe.qb.update(hsrp)
-            .set(hsrp.lrpmt_doctype, doc.doctype)
-            .set(hsrp.lrpmt_docname, doc.name)
+            .set(hsrp.lrpmt_status, "Submitted")
             .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
         ).run()
