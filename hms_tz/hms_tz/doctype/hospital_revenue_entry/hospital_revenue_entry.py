@@ -132,7 +132,7 @@ def get_entry_from_insurance_lrp(doc):
             hsrp.service_type,
             hsrp.sales_invoice_number,
             hsrp.payment_type,
-            hsrp.dn_detail
+            hsrp.department_hsu
         )
         .where(
             (hsrp.ref_docname == doc.hms_tz_ref_childname)
@@ -143,12 +143,6 @@ def get_entry_from_insurance_lrp(doc):
         return entries
     
     for row in hsrp_items:
-        department_hsu = frappe.get_cached_value(
-            row.get("ref_doctype"),
-            row.get("ref_docname"),
-            "department_hsu",
-        )
-        
         entry_dict = {
             "patient": doc.patient,
             "patient_name": doc.patient_name,
@@ -177,10 +171,9 @@ def get_entry_from_insurance_lrp(doc):
             "ref_docname": row.get("ref_docname"),
             "lrpmt_doctype": doc.doctype,
             "lrpmt_docname": doc.name,
-            "dn_detail": row.get("dn_detail"),
             "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
             "department": doc.get("department"),
-            "healthcare_service_unit": department_hsu,
+            "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.practitioner,
         }
         entries.append(entry_dict)
@@ -264,7 +257,7 @@ def get_entry_from_cash_lrp(doc):
             "ref_docname": doc.hms_tz_ref_childname,
             "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
             "department": doc.get("department"),
-            "healthcare_service_unit": doc.get("healthcare_service_unit"),
+            "healthcare_service_unit": frappe.get_cached_value(row.get("reference_dt"), doc.hms_tz_ref_childname, "department_hsu"),
             "healthcare_practitioner": doc.practitioner,
         }
         entries.append(entry_dict)
@@ -321,6 +314,9 @@ def build_insurance_dni_entry(doc, insurance_items):
             hsrp.ref_doctype,
             hsrp.service_name,
             hsrp.service_type,
+            hsrp.sales_invoice_number,
+            hsrp.payment_type,
+            hsrp.department_hsu
         )
         .where(
             (hsrp.ref_doctype == "Drug Prescription")
@@ -363,7 +359,7 @@ def build_insurance_dni_entry(doc, insurance_items):
             "dn_detail": row.get("dn_detail"),
             "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
             "department": doc.get("department"),
-            "healthcare_service_unit": doc.get("healthcare_service_unit"),
+            "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.get("healthcare_practitioner"),
         }
         entries.append(entry_dict)
@@ -473,7 +469,7 @@ def get_entry_from_insurance_plan(doc):
             hsrp.service_type,
             hsrp.sales_invoice_number,
             hsrp.payment_type,
-            tpd.department_hsu
+            hsrp.department_hsu,
         )
         .where(
             (hsrp.ref_docname.isin(refs))
@@ -597,7 +593,7 @@ def get_entry_from_cash_plan(doc):
             "dn_detail": "",
             "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
             "department": doc.get("department"),
-            "healthcare_service_unit": "", # TODO: find the department hsu and update here
+            "healthcare_service_unit": frappe.get_cached_value(row.get("reference_dt"), row.get("reference_dn"), "department_hsu"),
             "healthcare_practitioner": frappe.get_cached_value(doc.ref_doctype, doc.ref_docname, "practitioner"),
         }
         entries.append(entry_dict)
