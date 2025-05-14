@@ -41,7 +41,7 @@ class PatientDiscountRequest(Document):
         self.posting_date = nowdate()
         self.posting_time = nowtime()
 
-        inpatient_record = frappe.get_value("Patient", self.patient, "inpatient_record")
+        inpatient_record = frappe.get_cached_value("Patient", self.patient, "inpatient_record")
         if inpatient_record:
             self.inpatient_record = inpatient_record
 
@@ -49,14 +49,14 @@ class PatientDiscountRequest(Document):
 
     def validate_patient(self):
         if self.patient:
-            if self.sales_invoice and self.patient != frappe.db.get_value(
+            if self.sales_invoice and self.patient != frappe.get_cached_value(
                 "Sales Invoice", self.sales_invoice, "patient"
             ):
                 frappe.throw(
                     f"This sales invoice: {self.sales_invoice} is not for this patient: {self.patient}"
                 )
 
-            if self.inpatient_record and self.patient != frappe.db.get_value(
+            if self.inpatient_record and self.patient != frappe.get_cached_value(
                 "Inpatient Record", self.inpatient_record, "patient"
             ):
                 frappe.throw(
@@ -69,7 +69,7 @@ class PatientDiscountRequest(Document):
                 self.insurance_subscription,
                 self.insurance_coverage_plan,
                 self.insurance_company,
-            ) = frappe.db.get_value(
+            ) = frappe.get_cached_value(
                 "Patient Appointment",
                 self.appointment,
                 [
@@ -92,7 +92,7 @@ class PatientDiscountRequest(Document):
 
     def set_discount_amount(self):
         if self.apply_discount_on == "Grand Total" and self.sales_invoice:
-            self.total_actual_amount = frappe.db.get_value(
+            self.total_actual_amount = frappe.get_cached_value(
                 "Sales Invoice", self.sales_invoice, "grand_total"
             )
             discount_amount = 0
@@ -108,7 +108,7 @@ class PatientDiscountRequest(Document):
             self.total_discounted_amount = discount_amount
 
         elif self.apply_discount_on == "Net Total" and self.sales_invoice:
-            self.total_actual_amount = frappe.db.get_value(
+            self.total_actual_amount = frappe.get_cached_value(
                 "Sales Invoice", self.sales_invoice, "net_total"
             )
             discount_amount = 0

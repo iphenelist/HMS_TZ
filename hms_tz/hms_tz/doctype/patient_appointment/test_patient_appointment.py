@@ -32,7 +32,7 @@ class TestPatientAppointment(unittest.TestCase):
         self.assertEquals(appointment.status, "Scheduled")
         create_encounter(appointment)
         self.assertEquals(
-            frappe.db.get_value("Patient Appointment", appointment.name, "status"),
+            frappe.get_cached_value("Patient Appointment", appointment.name, "status"),
             "Closed",
         )
 
@@ -45,7 +45,7 @@ class TestPatientAppointment(unittest.TestCase):
             patient, practitioner, add_days(nowdate(), 4), invoice=1
         )
         self.assertEqual(
-            frappe.db.get_value("Patient Appointment", appointment.name, "invoiced"), 1
+            frappe.get_cached_value("Patient Appointment", appointment.name, "invoiced"), 1
         )
         encounter = make_encounter(appointment.name)
         self.assertTrue(encounter)
@@ -55,7 +55,7 @@ class TestPatientAppointment(unittest.TestCase):
         # invoiced flag mapped from appointment
         self.assertEqual(
             encounter.invoiced,
-            frappe.db.get_value("Patient Appointment", appointment.name, "invoiced"),
+            frappe.get_cached_value("Patient Appointment", appointment.name, "invoiced"),
         )
 
     def test_invoicing(self):
@@ -66,7 +66,7 @@ class TestPatientAppointment(unittest.TestCase):
         )
         appointment = create_appointment(patient, practitioner, nowdate())
         self.assertEqual(
-            frappe.db.get_value("Patient Appointment", appointment.name, "invoiced"), 0
+            frappe.get_cached_value("Patient Appointment", appointment.name, "invoiced"), 0
         )
 
         frappe.db.set_value(
@@ -76,22 +76,22 @@ class TestPatientAppointment(unittest.TestCase):
             patient, practitioner, add_days(nowdate(), 2), invoice=1
         )
         self.assertEqual(
-            frappe.db.get_value("Patient Appointment", appointment.name, "invoiced"), 1
+            frappe.get_cached_value("Patient Appointment", appointment.name, "invoiced"), 1
         )
-        sales_invoice_name = frappe.db.get_value(
+        sales_invoice_name = frappe.get_cached_value(
             "Sales Invoice Item", {"reference_dn": appointment.name}, "parent"
         )
         self.assertTrue(sales_invoice_name)
         self.assertEqual(
-            frappe.db.get_value("Sales Invoice", sales_invoice_name, "company"),
+            frappe.get_cached_value("Sales Invoice", sales_invoice_name, "company"),
             appointment.company,
         )
         self.assertEqual(
-            frappe.db.get_value("Sales Invoice", sales_invoice_name, "patient"),
+            frappe.get_cached_value("Sales Invoice", sales_invoice_name, "patient"),
             appointment.patient,
         )
         self.assertEqual(
-            frappe.db.get_value("Sales Invoice", sales_invoice_name, "paid_amount"),
+            frappe.get_cached_value("Sales Invoice", sales_invoice_name, "paid_amount"),
             appointment.paid_amount,
         )
 
@@ -99,17 +99,17 @@ class TestPatientAppointment(unittest.TestCase):
         patient, medical_department, practitioner = create_healthcare_docs()
         frappe.db.set_value("Healthcare Settings", None, "enable_free_follow_ups", 1)
         appointment = create_appointment(patient, practitioner, nowdate())
-        fee_validity = frappe.db.get_value(
+        fee_validity = frappe.get_cached_value(
             "Fee Validity Reference", {"appointment": appointment.name}, "parent"
         )
         # fee validity created
         self.assertTrue(fee_validity)
 
-        visited = frappe.db.get_value("Fee Validity", fee_validity, "visited")
+        visited = frappe.get_cached_value("Fee Validity", fee_validity, "visited")
         update_status(appointment.name, "Cancelled")
         # check fee validity updated
         self.assertEqual(
-            frappe.db.get_value("Fee Validity", fee_validity, "visited"), visited - 1
+            frappe.get_cached_value("Fee Validity", fee_validity, "visited"), visited - 1
         )
 
         frappe.db.set_value("Healthcare Settings", None, "enable_free_follow_ups", 0)
@@ -119,11 +119,11 @@ class TestPatientAppointment(unittest.TestCase):
         appointment = create_appointment(patient, practitioner, nowdate(), invoice=1)
         update_status(appointment.name, "Cancelled")
         # check invoice cancelled
-        sales_invoice_name = frappe.db.get_value(
+        sales_invoice_name = frappe.get_cached_value(
             "Sales Invoice Item", {"reference_dn": appointment.name}, "parent"
         )
         self.assertEqual(
-            frappe.db.get_value("Sales Invoice", sales_invoice_name, "status"),
+            frappe.get_cached_value("Sales Invoice", sales_invoice_name, "status"),
             "Cancelled",
         )
 

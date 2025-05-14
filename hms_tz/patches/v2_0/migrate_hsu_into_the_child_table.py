@@ -17,7 +17,7 @@ def execute():
             doc = frappe.get_doc(doctype, doc_name.get("name"))
             if not doc.healthcare_service_unit:
                 continue
-            company = frappe.get_value(
+            company = frappe.get_cached_value(
                 "Healthcare Service Unit", doc.healthcare_service_unit, "company"
             )
             row = doc.append("company_options", {})

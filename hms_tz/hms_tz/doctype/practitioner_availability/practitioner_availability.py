@@ -98,7 +98,7 @@ def validate_overlap(doc):
 
 def validate_service_unit_capacity(doc):
     if doc.service_unit:
-        service_unit_capacity = frappe.get_value(
+        service_unit_capacity = frappe.get_cached_value(
             "Healthcare Service Unit", doc.service_unit, "total_service_unit_capacity"
         )
         if (

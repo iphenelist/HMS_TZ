@@ -55,7 +55,7 @@ class HealthcareServiceUnitType(Document):
             item_price = item_price_exists(self)
 
             if not item_price:
-                price_list_name = frappe.db.get_value("Price List", {"selling": 1})
+                price_list_name = frappe.get_cached_value("Price List", {"selling": 1})
                 if self.rate:
                     make_item_price(self.item_code, price_list_name, self.rate)
                 else:
@@ -100,7 +100,7 @@ def create_item(doc):
 
     # insert item price
     # get item price list to insert item price
-    price_list_name = frappe.db.get_value("Price List", {"selling": 1})
+    price_list_name = frappe.get_cached_value("Price List", {"selling": 1})
     if doc.rate:
         make_item_price(item.name, price_list_name, doc.rate)
         item.standard_rate = doc.rate

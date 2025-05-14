@@ -34,7 +34,7 @@ def create_customer(doc):
             .insert()
             .name
         )
-    territory = frappe.get_value("Selling Settings", None, "territory")
+    territory = frappe.get_cached_value("Selling Settings", None, "territory")
     if not (territory):
         territory = "Rest Of The World"
         frappe.msgprint(

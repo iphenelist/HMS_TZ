@@ -23,22 +23,22 @@ class TestInpatientRecord(unittest.TestCase):
         ip_record.expected_length_of_stay = 0
         ip_record.save(ignore_permissions=True)
         self.assertEqual(
-            ip_record.name, frappe.db.get_value("Patient", patient, "inpatient_record")
+            ip_record.name, frappe.get_cached_value("Patient", patient, "inpatient_record")
         )
         self.assertEqual(
             ip_record.status,
-            frappe.db.get_value("Patient", patient, "inpatient_status"),
+            frappe.get_cached_value("Patient", patient, "inpatient_status"),
         )
 
         # Admit
         service_unit = get_healthcare_service_unit()
         admit_patient(ip_record, service_unit, now_datetime())
         self.assertEqual(
-            "Admitted", frappe.db.get_value("Patient", patient, "inpatient_status")
+            "Admitted", frappe.get_cached_value("Patient", patient, "inpatient_status")
         )
         self.assertEqual(
             "Occupied",
-            frappe.db.get_value(
+            frappe.get_cached_value(
                 "Healthcare Service Unit", service_unit, "occupancy_status"
             ),
         )
@@ -47,7 +47,7 @@ class TestInpatientRecord(unittest.TestCase):
         schedule_discharge(frappe.as_json({"patient": patient}))
         self.assertEqual(
             "Vacant",
-            frappe.db.get_value(
+            frappe.get_cached_value(
                 "Healthcare Service Unit", service_unit, "occupancy_status"
             ),
         )
@@ -60,10 +60,10 @@ class TestInpatientRecord(unittest.TestCase):
         discharge_patient(ip_record1)
 
         self.assertEqual(
-            None, frappe.db.get_value("Patient", patient, "inpatient_record")
+            None, frappe.get_cached_value("Patient", patient, "inpatient_record")
         )
         self.assertEqual(
-            None, frappe.db.get_value("Patient", patient, "inpatient_status")
+            None, frappe.get_cached_value("Patient", patient, "inpatient_status")
         )
 
     def test_validate_overlap_admission(self):

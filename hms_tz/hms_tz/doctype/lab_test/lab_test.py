@@ -43,7 +43,7 @@ class LabTest(Document):
             frappe.db.set_value(
                 "Lab Prescription", self.prescription, "lab_test", self.name
             )
-            if frappe.db.get_value("Lab Prescription", self.prescription, "invoiced"):
+            if frappe.get_cached_value("Lab Prescription", self.prescription, "invoiced"):
                 self.invoiced = True
         if not self.lab_test_name and self.template:
             self.load_test_from_template()
@@ -177,7 +177,7 @@ def create_lab_test_from_invoice(sales_invoice):
         for item in invoice.items:
             lab_test_created = 0
             if item.reference_dt == "Lab Prescription":
-                lab_test_created = frappe.db.get_value(
+                lab_test_created = frappe.get_cached_value(
                     "Lab Prescription", item.reference_dn, "lab_test_created"
                 )
             elif item.reference_dt == "Lab Test":

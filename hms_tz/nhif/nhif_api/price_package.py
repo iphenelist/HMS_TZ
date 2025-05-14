@@ -911,7 +911,7 @@ def  get_nhif_schemes(company=None, caller=None):
             return
         
         for row in data:
-            scheme_id = frappe.db.get_value("NHIF Scheme", {"scheme_id": row["SchemeID"]}, "name")
+            scheme_id = frappe.get_cached_value("NHIF Scheme", {"scheme_id": row["SchemeID"]}, "name")
             if scheme_id:
                 has_changed = False
                 doc = frappe.get_doc("NHIF Scheme", scheme_id)
@@ -1024,9 +1024,9 @@ def get_nhif_product_per_company(company, product_dict):
 def add_nhif_product(row, company, abbr):
     product_id = str(row["ProductCode"]) + "-" + str(abbr)
 
-    nhif_product_pr_key = frappe.db.get_value("NHIF Product", {"company": company, "nhif_product_code": row["ProductCode"]}, "name")
+    nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": company, "nhif_product_code": row["ProductCode"]}, "name")
     if not nhif_product_pr_key:
-        nhif_product_pr_key = frappe.db.get_value("NHIF Product", {"company": "", "nhif_product_code": row["ProductCode"]})
+        nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": "", "nhif_product_code": row["ProductCode"]})
 
     if nhif_product_pr_key:
         if (
@@ -1149,7 +1149,7 @@ def  get_item_types(company=None, caller=None):
         )
 
         for item in data:
-            item_type = frappe.db.get_value("NHIF Item Type", {"item_type_id": item["ItemTypeID"]}, "name")
+            item_type = frappe.get_cached_value("NHIF Item Type", {"item_type_id": item["ItemTypeID"]}, "name")
             if item_type:
                 has_changed = False
                 doc = frappe.get_doc("NHIF Item Type", item_type)

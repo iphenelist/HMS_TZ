@@ -26,7 +26,7 @@ def create_sales_order(doc, method):
     if doc.mode_of_payment and doc.inpatient_record:
         return
 
-    company_details = frappe.get_value(
+    company_details = frappe.get_cached_value(
         "Company",
         doc.company,
         [
@@ -81,7 +81,7 @@ def get_items_from_encounter(doc, warehouse):
             ):
                 continue
 
-            item_code = frappe.get_value(
+            item_code = frappe.get_cached_value(
                 field.get("template"), row.get(field.get("item_field")), "item"
             )
             if not item_code:
@@ -92,7 +92,7 @@ def get_items_from_encounter(doc, warehouse):
                     )
                 )
 
-            item_name, item_description = frappe.get_value(
+            item_name, item_description = frappe.get_cached_value(
                 "Item", item_code, ["item_name", "description"]
             )
 
@@ -142,22 +142,22 @@ def get_items_from_encounter(doc, warehouse):
 def create_sales_order_from_encounter(
     doc, items, warehouse, allow_md_change_request=False
 ):
-    price_list = frappe.get_value(
+    price_list = frappe.get_cached_value(
         "Mode of Payment", doc.get("mode_of_payment"), "price_list"
     )
     if not price_list:
-        price_list = frappe.get_value(
+        price_list = frappe.get_cached_value(
             "Mode of Payment", doc.get("encounter_mode_of_payment"), "price_list"
         )
     if not price_list:
-        price_list = frappe.get_value(
+        price_list = frappe.get_cached_value(
             "Company", doc.get("company"), "default_price_list"
         )
     if not price_list:
         frappe.throw("Please set Price List in Mode of Payment or Company")
 
-    mobile = frappe.get_value("Patient", doc.get("patient"), "mobile")
-    customer = frappe.get_value("Patient", doc.get("patient"), "customer")
+    mobile = frappe.get_cached_value("Patient", doc.get("patient"), "mobile")
+    customer = frappe.get_cached_value("Patient", doc.get("patient"), "customer")
     order_doc = frappe.new_doc("Sales Order")
     order_doc.update(
         {

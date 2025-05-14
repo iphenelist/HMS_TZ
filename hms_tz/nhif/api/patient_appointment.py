@@ -299,7 +299,7 @@ def make_encounter(doc, method):
         if not doc.appointment or doc.inpatient_record:
             return
         if (
-            frappe.get_value("Patient Appointment", doc.appointment, "status")
+            frappe.get_cached_value("Patient Appointment", doc.appointment, "status")
             == "Cancelled"
         ):
             frappe.throw("<b>Appointment is already cancelled</b>")
@@ -405,7 +405,7 @@ def send_vfd(invoice_name):
         from vfd_tz.vfd_tz.api.sales_invoice import enqueue_posting_vfd_invoice
 
         enqueue_posting_vfd_invoice(invoice_name)
-        pos_profile_name = frappe.get_value(
+        pos_profile_name = frappe.get_cached_value(
             "Sales Invoice", invoice_name, "pos_profile"
         )
         pos_profile = frappe.get_cached_doc("POS Profile", pos_profile_name)
@@ -566,7 +566,7 @@ def make_next_doc(doc, method, from_hook=True):
 
 @frappe.whitelist()
 def validate_insurance_company(insurance_company: str) -> str:
-    if frappe.get_value("Healthcare Insurance Company", insurance_company, "disabled"):
+    if frappe.get_cached_value("Healthcare Insurance Company", insurance_company, "disabled"):
         frappe.msgprint(
             _(
                 f"<b>Insurance Company: <strong>{insurance_company}</strong> is disabled, Please choose different insurance subscription</b>"
@@ -582,7 +582,7 @@ def validate_insurance_subscription(doc):
         return
 
     if (
-        frappe.db.get_value(
+        frappe.get_cached_value(
             "Healthcare Insurance Subscription", doc.insurance_subscription, "docstatus"
         )
         == 0
@@ -599,7 +599,7 @@ def validate_insurance_subscription(doc):
 
 
 def calculate_patient_age(patient):
-    dob = frappe.get_value("Patient", patient, "dob")
+    dob = frappe.get_cached_value("Patient", patient, "dob")
     if not dob:
         frappe.msgprint(
             "<h4 style='background-color: LightCoral'>Please update date of birth for this patient</h4>"

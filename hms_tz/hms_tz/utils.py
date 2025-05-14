@@ -37,7 +37,7 @@ def get_healthcare_services_to_invoice(patient, company):
 
 
 def validate_customer_created(patient):
-    if not frappe.db.get_value("Patient", patient.name, "customer"):
+    if not frappe.get_cached_value("Patient", patient.name, "customer"):
         msg = _("Please set a Customer linked to the Patient")
         msg += f" <b><a href='#Form/Patient/{patient.name}'>{patient.name}</a></b>"
         frappe.throw(msg, title=_("Customer Not Found"))
@@ -60,7 +60,7 @@ def get_appointments_to_invoice(patient, company):
     for appointment in patient_appointments:
         # Procedure Appointments
         if appointment.procedure_template:
-            if frappe.db.get_value(
+            if frappe.get_cached_value(
                 "Clinical Procedure Template",
                 appointment.procedure_template,
                 "is_billable",
@@ -348,7 +348,7 @@ def get_inpatient_services_to_invoice(patient, company):
     )
 
     for inpatient_occupancy in inpatient_services:
-        service_unit_type = frappe.db.get_value(
+        service_unit_type = frappe.get_cached_value(
             "Healthcare Service Unit",
             inpatient_occupancy.service_unit,
             "service_unit_type",
@@ -400,7 +400,7 @@ def get_therapy_plans_to_invoice(patient, company):
             {
                 "reference_type": "Therapy Plan",
                 "reference_name": plan.name,
-                "service": frappe.db.get_value(
+                "service": frappe.get_cached_value(
                     "Therapy Plan Template", plan.therapy_plan_template, "linked_item"
                 ),
             }
@@ -430,14 +430,14 @@ def get_therapy_sessions_to_invoice(patient, company):
     )
     for therapy in therapy_sessions:
         if not therapy.appointment:
-            if therapy.therapy_type and frappe.db.get_value(
+            if therapy.therapy_type and frappe.get_cached_value(
                 "Therapy Type", therapy.therapy_type, "is_billable"
             ):
                 therapy_sessions_to_invoice.append(
                     {
                         "reference_type": "Therapy Session",
                         "reference_name": therapy.name,
-                        "service": frappe.db.get_value(
+                        "service": frappe.get_cached_value(
                             "Therapy Type", therapy.therapy_type, "item"
                         ),
                     }
@@ -600,13 +600,13 @@ def throw_config_practitioner_charge(is_inpatient, practitioner):
 
 
 def get_practitioner_service_item(practitioner, service_item_field):
-    return frappe.db.get_value(
+    return frappe.get_cached_value(
         "Healthcare Practitioner", practitioner, service_item_field
     )
 
 
 def get_appointment_type_service_item(appointment_type, service_item_field):
-    return frappe.db.get_value("Appointment Type", appointment_type, service_item_field)
+    return frappe.get_cached_value("Appointment Type", appointment_type, service_item_field)
 
 
 def get_healthcare_service_item(service_item_field):
@@ -615,11 +615,11 @@ def get_healthcare_service_item(service_item_field):
 
 def get_practitioner_charge(practitioner, is_inpatient):
     if is_inpatient:
-        practitioner_charge = frappe.db.get_value(
+        practitioner_charge = frappe.get_cached_value(
             "Healthcare Practitioner", practitioner, "inpatient_visit_charge"
         )
     else:
-        practitioner_charge = frappe.db.get_value(
+        practitioner_charge = frappe.get_cached_value(
             "Healthcare Practitioner", practitioner, "op_consulting_charge"
         )
     if practitioner_charge:
@@ -666,7 +666,7 @@ def set_invoiced(item, method, ref_invoice=None):
         frappe.db.set_value(item.reference_dt, item.reference_dn, "invoiced", invoiced)
 
     if item.reference_dt == "Patient Appointment":
-        if frappe.db.get_value(
+        if frappe.get_cached_value(
             "Patient Appointment", item.reference_dn, "procedure_template"
         ):
             dt_from_appointment = "Clinical Procedure"
@@ -702,11 +702,11 @@ def validate_invoiced_on_submit(item):
         and get_healthcare_service_item("clinical_procedure_consumable_item")
         == item.item_code
     ):
-        is_invoiced = frappe.db.get_value(
+        is_invoiced = frappe.get_cached_value(
             item.reference_dt, item.reference_dn, "consumption_invoiced"
         )
     else:
-        is_invoiced = frappe.db.get_value(
+        is_invoiced = frappe.get_cached_value(
             item.reference_dt, item.reference_dn, "invoiced"
         )
     if is_invoiced:
@@ -716,10 +716,10 @@ def validate_invoiced_on_submit(item):
 
 
 def manage_prescriptions(invoiced, ref_dt, ref_dn, dt, created_check_field):
-    created = frappe.db.get_value(ref_dt, ref_dn, created_check_field)
+    created = frappe.get_cached_value(ref_dt, ref_dn, created_check_field)
     if created:
         # Fetch the doc created for the prescription
-        doc_created = frappe.db.get_value(dt, {"prescription": ref_dn})
+        doc_created = frappe.get_cached_value(dt, {"prescription": ref_dn})
         frappe.db.set_value(dt, doc_created, "invoiced", invoiced)
 
 
@@ -763,7 +763,7 @@ def manage_fee_validity(appointment):
 
 
 def manage_doc_for_appointment(dt_from_appointment, appointment, invoiced):
-    dn_from_appointment = frappe.db.get_value(
+    dn_from_appointment = frappe.get_cached_value(
         dt_from_appointment, filters={"appointment": appointment}
     )
     if dn_from_appointment:
@@ -784,7 +784,7 @@ def get_drugs_to_invoice(encounter):
                     if drug_line.drug_code:
                         qty = 1
                         if (
-                            frappe.db.get_value(
+                            frappe.get_cached_value(
                                 "Item", drug_line.drug_code, "stock_uom"
                             )
                             == "Nos"
@@ -1063,7 +1063,7 @@ def update_address_link(address, method):
             if link.link_doctype == "Patient":
                 address_patient = link.link_name
         if address_patient:
-            customer = frappe.db.get_value("Patient", address_patient, "customer")
+            customer = frappe.get_cached_value("Patient", address_patient, "customer")
             if not address.has_link("Customer", customer):
                 address.append(
                     "links", dict(link_doctype="Customer", link_name=customer)
@@ -1098,11 +1098,11 @@ def create_item_from_doc(doc, item_name):
     # insert item price
     # get item price list to insert item price
     if doc.rate != 0.0:
-        price_list_name = frappe.db.get_value(
+        price_list_name = frappe.get_cached_value(
             "Selling Settings", None, "selling_price_list"
         )
         if not price_list_name:
-            price_list_name = frappe.db.get_value("Price List", {"selling": 1})
+            price_list_name = frappe.get_cached_value("Price List", {"selling": 1})
         if price_list_name:
             if doc.rate:
                 make_item_price(item.name, price_list_name, doc.rate)
@@ -1345,7 +1345,7 @@ def valid_insurance(insurance_subscription, insurance_company, posting_date):
 def get_insurance_price_list_rate(healthcare_insurance_coverage_plan, billing_item):
     rate = 0.0
     if healthcare_insurance_coverage_plan:
-        price_list = frappe.db.get_value(
+        price_list = frappe.get_cached_value(
             "Healthcare Insurance Coverage Plan",
             healthcare_insurance_coverage_plan,
             "price_list",
@@ -1355,7 +1355,7 @@ def get_insurance_price_list_rate(healthcare_insurance_coverage_plan, billing_it
                 "Item Price", {"item_code": billing_item, "price_list": price_list}
             )
         if item_price:
-            rate = frappe.db.get_value("Item Price", item_price, "price_list_rate")
+            rate = frappe.get_cached_value("Item Price", item_price, "price_list_rate")
     return rate
 
 
@@ -1372,18 +1372,18 @@ def get_insurance_coverage_details(healthcare_insurance_coverage_plan, service):
             },
         )
         if healthcare_service_coverage:
-            coverage, discount = frappe.db.get_value(
+            coverage, discount = frappe.get_cached_value(
                 "Healthcare Service Insurance Coverage",
                 healthcare_service_coverage,
                 ["coverage", "discount"],
             )
-            approval_mandatory_for_claim = frappe.db.get_value(
+            approval_mandatory_for_claim = frappe.get_cached_value(
                 "Healthcare Service Insurance Coverage",
                 healthcare_service_coverage,
                 "approval_mandatory_for_claim",
             )
             if approval_mandatory_for_claim:
-                manual_approval_only = frappe.db.get_value(
+                manual_approval_only = frappe.get_cached_value(
                     "Healthcare Service Insurance Coverage",
                     healthcare_service_coverage,
                     "manual_approval_only",

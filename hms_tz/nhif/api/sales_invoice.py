@@ -43,7 +43,7 @@ def validate_create_delivery_note(doc):
         "Patient", doc.patient, "inpatient_record"
     )
     if inpatient_record:
-        insurance_subscription = frappe.get_value(
+        insurance_subscription = frappe.get_cached_value(
             "Inpatient Record", inpatient_record, "insurance_subscription"
         )
         if not insurance_subscription:
@@ -74,7 +74,7 @@ def before_submit(doc, method):
     # do not validate stock for cash inpatient sales invoice
     if doc.enabled_auto_create_delivery_notes == 1:
         for row in doc.items:
-            if frappe.get_value("Item", row.item_code, "is_stock_item") == 1:
+            if frappe.get_cached_value("Item", row.item_code, "is_stock_item") == 1:
                 validate_stock_item(row, row.warehouse, method)
 
     if doc.is_return == 1:
@@ -202,7 +202,7 @@ def update_drug_prescription(doc):
                 and item.reference_dt
                 and item.reference_dt == "Drug Prescription"
             ):
-                dn_name = frappe.get_value(
+                dn_name = frappe.get_cached_value(
                     "Delivery Note", {"form_sales_invoice": doc.name}, "name"
                 )
                 if not dn_name:
@@ -287,7 +287,7 @@ def reset_invoiced_status(doc):
 
 @frappe.whitelist()
 def get_pos_profile(current_user):
-    pos = frappe.db.get_value("POS Profile User", {"user": current_user},["parent"])
+    pos = frappe.get_cached_value("POS Profile User", {"user": current_user},["parent"])
     if pos:
         modes = frappe.db.get_all("POS Payment Method",filters={"parent": pos},fields=["mode_of_payment"])
         

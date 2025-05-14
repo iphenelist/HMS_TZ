@@ -84,7 +84,7 @@ def get_data(filters=None):
 
     data = []
     for appointment in appointments:
-        vital_edit = frappe.get_value(
+        vital_edit = frappe.get_cached_value(
             "Vital Signs", {"appointment": appointment.name}, "modified"
         )
         encounters = frappe.get_all(
@@ -114,7 +114,7 @@ def get_data(filters=None):
             if len(encounter_versions):
                 first_encounter_first_update = encounter_versions[0].creation
 
-        patient_claim_creation = frappe.get_value(
+        patient_claim_creation = frappe.get_cached_value(
             "NHIF Patient Claim", {"patient_appointment": appointment.name}, "creation"
         )
 

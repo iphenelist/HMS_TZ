@@ -33,11 +33,11 @@ class RadiologyExamination(Document):
         set_title_field(self)
         ref_company = False
         if self.inpatient_record:
-            ref_company = frappe.db.get_value(
+            ref_company = frappe.get_cached_value(
                 "Inpatient Record", self.inpatient_record, "company"
             )
         elif self.service_unit:
-            ref_company = frappe.db.get_value(
+            ref_company = frappe.get_cached_value(
                 "Healthcare Service Unit", self.service_unit, "company"
             )
         if ref_company:

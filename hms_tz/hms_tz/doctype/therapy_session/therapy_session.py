@@ -136,7 +136,7 @@ def create_therapy_session(source_name, target_doc=None):
 @frappe.whitelist()
 def invoice_therapy_session(source_name, target_doc=None):
     def set_missing_values(source, target):
-        target.customer = frappe.db.get_value("Patient", source.patient, "customer")
+        target.customer = frappe.get_cached_value("Patient", source.patient, "customer")
         target.due_date = getdate()
         target.debit_to = get_receivable_account(source.company)
         item = target.append("items", {})
@@ -165,7 +165,7 @@ def invoice_therapy_session(source_name, target_doc=None):
 
 
 def get_therapy_item(therapy, item):
-    item.item_code = frappe.db.get_value("Therapy Type", therapy.therapy_type, "item")
+    item.item_code = frappe.get_cached_value("Therapy Type", therapy.therapy_type, "item")
     item.description = _(f"Therapy Session Charges: {therapy.practitioner}")
     item.income_account = get_income_account(therapy.practitioner, therapy.company)
     item.cost_center = frappe.get_cached_value(

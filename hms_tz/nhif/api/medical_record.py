@@ -93,7 +93,7 @@ def set_subject_field(doc):
 def get_date_field(doctype):
     dt = get_patient_history_config_dt(doctype)
 
-    return frappe.db.get_value(dt, {"document_type": doctype}, "date_fieldname")
+    return frappe.get_cached_value(dt, {"document_type": doctype}, "date_fieldname")
 
 
 def validate_medical_record_required(doc):
@@ -115,7 +115,7 @@ def get_patient_history_fields(doc):
     dt = get_patient_history_config_dt(doc.doctype)
     if doc.doctype == "Delivery Note":
         dt = "Patient History Custom Document Type"
-    patient_history_fields = frappe.db.get_value(
+    patient_history_fields = frappe.get_cached_value(
         dt, {"document_type": doc.doctype}, "selected_fields"
     )
 
@@ -167,7 +167,7 @@ def set_practitioner(doc):
 
         for field in ["practitioner", "healthcare_practitioner", "referring_practitioner"]:
             if meta.get_field(field):
-                practitioner = frappe.db.get_value(
+                practitioner = frappe.get_cached_value(
                     doc.reference_doctype, doc.reference_name, field
                 )
                 if practitioner:

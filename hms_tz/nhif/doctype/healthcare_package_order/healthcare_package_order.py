@@ -37,7 +37,7 @@ class HealthcarePackageOrder(Document):
 		self.posting_time = nowtime()
 	
 	def set_total_price(self):
-		price_of_services, price_package = frappe.get_value("Healthcare Package",
+		price_of_services, price_package = frappe.get_cached_value("Healthcare Package",
 			self.healthcare_package, ["total_price_of_services", "price_of_package"]
 		)
 		self.total_price = price_package if price_package > 0 else price_of_services
