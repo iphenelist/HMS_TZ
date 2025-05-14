@@ -183,12 +183,16 @@ class HealthcareServiceRequest(Document):
 			if "NHIF" not in item.insurance_company:
 				return 100
 
-			product_code = self.get_product_code(item)
+			scheme_id = frappe.get_cached_value(
+				"Healthcare Insurance Coverage Plan",
+				item.payor_plan,
+				"nhif_scheme_id"
+			)
 
 			percent_covered = frappe.get_cached_value(
-				"NHIF Cost Sharing", {	
+				"NHIF Co-Payment Item", {	
 					"itemcode": item.item_code,
-					"productcode": product_code,
+					"schemeid": scheme_id,
 					"yearno": self.years_of_insurance
 				}, "percentcovered"
 			)
@@ -198,21 +202,27 @@ class HealthcareServiceRequest(Document):
 		else:
 			for item in self.payments:
 				if not item.service_name:
+					item.percent_covered = 100
 					continue
 				
 				if item.insurance_company and "NHIF" not in item.insurance_company:
+					item.percent_covered = 100
 					continue
 
 				if item.has_copayment == 0:
 					item.percent_covered = 100
 					continue
 
-				product_code = self.get_product_code(item)
+				scheme_id = frappe.get_cached_value(
+					"Healthcare Insurance Coverage Plan",
+					item.payor_plan,
+					"nhif_scheme_id"
+				)
 
 				percent_covered = frappe.get_cached_value(
-					"NHIF Cost Sharing", {	
+					"NHIF Co-Payment Item", {	
 						"itemcode": item.item_code,
-						"productcode": product_code,
+						"schemeid": scheme_id,
 						"yearno": self.years_of_insurance
 					}, "percentcovered"
 				)
@@ -231,22 +241,6 @@ class HealthcareServiceRequest(Document):
 					break
 		
 		return service_type
-	
-	def get_product_code(self, item):
-		scheme_id = frappe.get_cached_value(
-			"Healthcare Insurance Coverage Plan",
-			item.payor_plan,
-			"nhif_scheme_id"
-		)
-		product_code = frappe.get_cached_value(
-			"NHIF Product", {
-				"schemeid": scheme_id,
-				"company": self.company,
-				"healthcare_insurance_coverage_plan": item.payor_plan
-			}, "nhif_product_code"
-		)
-
-		return product_code
 	
 	def validate_service_percentage(self):
 		service_payment_map = self.get_service_payment_map()
