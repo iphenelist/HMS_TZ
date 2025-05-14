@@ -65,22 +65,22 @@ var add_nhif_actions_btn = function (frm) {
         });
     }, __('NHIF Actions'));
 
-    frm.add_custom_button(__('Get NHIF Products'), function () {
-        frappe.call({
-            method: 'hms_tz.nhif.nhif_api.price_package.get_nhif_products',
-            args: { 
-                company: frm.doc.company,
-                caller: 'Front End'
-            },
-            freeze: true,
-            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            callback: function (data) {
-                if (data.message) {
-                    console.log(data.message)
-                }
-            }
-        });
-    }, __('NHIF Actions'));
+    // frm.add_custom_button(__('Get NHIF Products'), function () {
+    //     frappe.call({
+    //         method: 'hms_tz.nhif.nhif_api.price_package.get_nhif_products',
+    //         args: { 
+    //             company: frm.doc.company,
+    //             caller: 'Front End'
+    //         },
+    //         freeze: true,
+    //         freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+    //         callback: function (data) {
+    //             if (data.message) {
+    //                 console.log(data.message)
+    //             }
+    //         }
+    //     });
+    // }, __('NHIF Actions'));
 
     frm.add_custom_button(__('Get Service Types'), function () {
         frappe.call({

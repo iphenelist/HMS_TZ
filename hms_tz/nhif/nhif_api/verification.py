@@ -3,7 +3,6 @@ import frappe
 import base64
 import requests
 from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
-from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.api.patient_appointment import update_insurance_subscription
 
@@ -525,8 +524,7 @@ def authorize_patient(
         
         frappe.msgprint(auth_data["Remarks"], alert=True)
         add_scheme(auth_data.get("SchemeID"), auth_data.get("SchemeName"))
-        add_product(company, auth_data.get("ProductCode"), auth_data.get("ProductName"))
-        update_insurance_subscription(insurance_subscription, auth_data, company)
+        update_insurance_subscription(insurance_subscription, auth_data)
 
         auth_detail = get_authorization_details(
             auth_data.get("AuthorizationNo"),

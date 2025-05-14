@@ -129,7 +129,7 @@ def check_patient_info(
         patient_doc.last_name = patient_info.get("LastName")
         patient_doc.sex = patient_info.get("Gender")
         patient_doc.dob = patient_info.get("DateOfBirth")
-        patient_doc.product_code = patient_info.get("ProductCode")
+        # patient_doc.product_code = patient_info.get("ProductCode")
         patient_doc.scheme_id = patient_info.get("SchemeID")
         patient_doc.nhif_employername = patient_info.get("EmployerName")
         patient_doc.membership_no = patient_info.get("membership_no")
