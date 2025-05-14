@@ -56,7 +56,7 @@ class HealthcareReferral(Document):
 		if not self.encounter:
 			return
 		
-		clinical_notes = frappe.db.get_value("Patient Encounter", self.encounter, "examination_detail")
+		clinical_notes = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail")
 		self.reason_for_referral = clinical_notes.replace('"', " ")
 
 

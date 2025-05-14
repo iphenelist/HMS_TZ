@@ -187,7 +187,7 @@ def schedule_inpatient(args):
 @frappe.whitelist()
 def schedule_discharge(args):
     discharge_order = json.loads(args)
-    inpatient_record_id = frappe.db.get_value(
+    inpatient_record_id = frappe.get_cached_value(
         "Patient", discharge_order["patient"], "inpatient_record"
     )
     if inpatient_record_id:
@@ -249,7 +249,7 @@ def validate_invoiced_inpatient(inpatient_record):
     if inpatient_record.insurance_subscription:
         return
     if (
-        frappe.db.get_value(
+        frappe.get_cached_value(
             "Company",
             inpatient_record.company,
             "allow_discharge_patient_with_pending_unbilled_invoices",

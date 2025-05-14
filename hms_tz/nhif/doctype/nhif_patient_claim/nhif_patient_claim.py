@@ -72,7 +72,7 @@ class NHIFPatientClaim(Document):
 
     def on_trash(self):
         # check if claim number exist in appointment record
-        nhif_patient_claim = frappe.get_value(
+        nhif_patient_claim = frappe.get_cached_value(
             "Patient Appointment", self.patient_appointment, "nhif_patient_claim"
         )
         if nhif_patient_claim == self.name:
@@ -237,7 +237,7 @@ class NHIFPatientClaim(Document):
                 scheduled_date,
                 admitted_datetime,
                 time_created,
-            ) = frappe.get_value(
+            ) = frappe.get_cached_value(
                 "Inpatient Record",
                 self.inpatient_record,
                 ["discharge_date", "scheduled_date", "admitted_datetime", "creation"],
@@ -262,7 +262,7 @@ class NHIFPatientClaim(Document):
                 # because there is no field of discharge time on Inpatient Record
                 self.discharge_time = nowtime()
 
-        self.attendance_date, self.attendance_time = frappe.get_value(
+        self.attendance_date, self.attendance_time = frappe.get_cached_value(
             "Patient Appointment",
             self.patient_appointment,
             ["appointment_date", "appointment_time"],
@@ -434,7 +434,7 @@ class NHIFPatientClaim(Document):
                         if row.prescribe or row.is_cancelled:
                             continue
 
-                        item_code = frappe.get_value(
+                        item_code = frappe.get_cached_value(
                             child.get("doctype"), row.get(child.get("item")), "item"
                         )
 
@@ -582,7 +582,7 @@ class NHIFPatientClaim(Document):
                             if row.prescribe or row.is_cancelled:
                                 continue
                             
-                            item_code = frappe.get_value(
+                            item_code = frappe.get_cached_value(
                                 child.get("doctype"),
                                 row.get(child.get("item")),
                                 "item",
@@ -880,7 +880,7 @@ def get_missing_patient_signature(self):
 def validate_submit_date(self):
     import calendar
 
-    submit_claim_month, submit_claim_year = frappe.get_value(
+    submit_claim_month, submit_claim_year = frappe.get_cached_value(
         "Company NHIF Settings",
         self.company,
         ["submit_claim_month", "submit_claim_year"],
@@ -986,7 +986,7 @@ def generate_pdf(doc):
         data_list.append(i.name)
     doctype = dict({"Patient Encounter": data_list})
     print_format = ""
-    default_print_format = frappe.db.get_value(
+    default_print_format = frappe.db.get_cached_value(
         "Property Setter",
         dict(property="default_print_format", doc_type="Patient Encounter"),
         "value",
@@ -1062,7 +1062,7 @@ def get_claim_pdf_file(doc):
 
     doctype = doc.doctype
     docname = doc.name
-    default_print_format = frappe.db.get_value(
+    default_print_format = frappe.get_cached_value(
         "Property Setter",
         dict(property="default_print_format", doc_type=doctype),
         "value",
@@ -1158,7 +1158,7 @@ def get_LRPMT_status(encounter_no, row, child):
         status = "Submitted"
 
     elif child["doctype"] == "Lab Test Template" and not row.get(child["ref_docname"]):
-        lab_workflow_state = frappe.get_value(
+        lab_workflow_state = frappe.get_cached_value(
             "Lab Test",
             {
                 "ref_docname": encounter_no,

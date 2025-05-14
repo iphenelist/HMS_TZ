@@ -28,7 +28,7 @@ def execute(filters=None):
             "status",
         ],
     )
-    appointment_date = frappe.db.get_value(
+    appointment_date = frappe.get_cached_value(
         "Patient Appointment", filters.patient_appointment, "appointment_date"
     )
 
@@ -36,7 +36,7 @@ def execute(filters=None):
         frappe.throw(frappe.bold("This Appointment is not Closed..!!"))
 
     else:
-        admitted_discharge_date = frappe.db.get_value(
+        admitted_discharge_date = frappe.get_cached_value(
             "Inpatient Record",
             {"patient_appointment": filters.patient_appointment},
             ["admitted_datetime as admitted_date", "discharge_date", "scheduled_date"],
@@ -107,7 +107,7 @@ def execute(filters=None):
                 "appointment_date": appointment_date,
             }
 
-            print_person = frappe.get_value("User", frappe.session.user, "full_name")
+            print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
 
             last_row["printed_by"] = print_person
 
@@ -170,7 +170,7 @@ def execute(filters=None):
                 "appointment_date": appointment_date,
             }
 
-            print_person = frappe.get_value("User", frappe.session.user, "full_name")
+            print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
 
             last_row["printed_by"] = print_person
 
@@ -237,7 +237,7 @@ def execute(filters=None):
                 "appointment_date": appointment_date,
             }
 
-            print_person = frappe.get_value("User", frappe.session.user, "full_name")
+            print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
 
             last_row["printed_by"] = print_person
 
@@ -495,7 +495,7 @@ def get_appointment_consultancy(filters):
 			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment
 		WHERE pa.status = "Closed"
 		AND pa.follow_up = 0 {conditions}
-	"""
+	""",
         filters,
         as_dict=1,
     )
@@ -931,8 +931,8 @@ def get_insurance_lrpmt_transaction(filters):
 
 
 def get_report_summary(filters, total_amount):
-    customer = frappe.get_value("Patient", filters.get("patient"), "customer")
-    company = frappe.get_value(
+    customer = frappe.get_cached_value("Patient", filters.get("patient"), "customer")
+    company = frappe.get_cached_value(
         "Patient Appointment", filters.get("patient_appointment"), "company"
     )
 

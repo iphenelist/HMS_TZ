@@ -119,7 +119,7 @@ def handle_drug_prescription_changes(item, claim_doc, ref_docnames_list):
             )
 
         elif child_encounter and is_cancelled == 1:
-            lrpmt_return = frappe.db.get_value(
+            lrpmt_return = frappe.get_cached_value(
                 "Medication Return",
                 {
                     "parentfield": "drug_items",
@@ -144,7 +144,7 @@ def handle_drug_prescription_changes(item, claim_doc, ref_docnames_list):
         is_cancelled = None
         child_encounter = None
         try:
-            is_cancelled, child_encounter = frappe.db.get_value(
+            is_cancelled, child_encounter = frappe.get_cached_value(
                 item.ref_doctype,
                 item.ref_docname,
                 ["is_cancelled", "parent as encounter"],
@@ -167,7 +167,7 @@ def handle_drug_prescription_changes(item, claim_doc, ref_docnames_list):
                 is_cancelled = None
                 child_encounter = None
                 try:
-                    is_cancelled, child_encounter = frappe.db.get_value(
+                    is_cancelled, child_encounter = frappe.get_cached_value(
                         item.ref_doctype,
                         ref_name,
                         ["is_cancelled", "parent as encounter"],
@@ -198,7 +198,7 @@ def handle_lrpt_prescription_changes(item, claim_doc, ref_docnames_list):
             )
 
         elif child_encounter and is_cancelled == 1:
-            lrpmt_return = frappe.db.get_value(
+            lrpmt_return = frappe.get_cached_value(
                 "Item Return",
                 {
                     "parentfield": "lrpt_items",
@@ -220,7 +220,7 @@ def handle_lrpt_prescription_changes(item, claim_doc, ref_docnames_list):
                 )
 
     if "," not in item.ref_docname and item.ref_docname not in ref_docnames_list:
-        is_cancelled, child_encounter = frappe.db.get_value(
+        is_cancelled, child_encounter = frappe.get_cached_value(
             item.ref_doctype, item.ref_docname, ["is_cancelled", "parent as encounter"]
         )
         handle_lrpt_changes(item, item.ref_docname, is_cancelled, child_encounter)
@@ -229,7 +229,7 @@ def handle_lrpt_prescription_changes(item, claim_doc, ref_docnames_list):
     elif "," in item.ref_docname:
         for ref_name in item.ref_docname.split(","):
             if ref_name not in ref_docnames_list:
-                is_cancelled, child_encounter = frappe.db.get_value(
+                is_cancelled, child_encounter = frappe.get_cached_value(
                     item.ref_doctype, ref_name, ["is_cancelled", "parent as encounter"]
                 )
                 handle_lrpt_changes(item, ref_name, is_cancelled, child_encounter)
@@ -252,7 +252,7 @@ def handle_inpatient_changes(item, claim_doc, ref_docnames_list):
             )
 
     if "," not in item.ref_docname and item.ref_docname not in ref_docnames_list:
-        is_confirmed = frappe.db.get_value(
+        is_confirmed = frappe.get_cached_value(
             item.ref_doctype, item.ref_docname, ["is_confirmed"]
         )
         handle_beds_cons_changes(item, item.ref_docname, is_confirmed)
@@ -261,7 +261,7 @@ def handle_inpatient_changes(item, claim_doc, ref_docnames_list):
     elif "," in item.ref_docname:
         for ref_name in item.ref_docname.split(","):
             if ref_name not in ref_docnames_list:
-                is_confirmed = frappe.db.get_value(
+                is_confirmed = frappe.get_cached_value(
                     item.ref_doctype, ref_name, ["is_confirmed"]
                 )
                 handle_beds_cons_changes(item, ref_name, is_confirmed)

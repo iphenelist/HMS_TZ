@@ -132,7 +132,7 @@ class Patient(Document):
     def get_patient_name(self):
         self.set_full_name()
         name = self.patient_name
-        if frappe.db.get_value("Patient", name):
+        if frappe.get_cached_value("Patient", name):
             count = frappe.db.sql(
                 f"""select ifnull(MAX(CAST(SUBSTRING_INDEX(name, ' ', -1) AS UNSIGNED)), 0) from tabPatient
 				 where name like %s""",
@@ -223,7 +223,7 @@ def make_invoice(patient, company):
         "Stock Settings", "stock_uom"
     )
     sales_invoice = frappe.new_doc("Sales Invoice")
-    sales_invoice.customer = frappe.db.get_value("Patient", patient, "customer")
+    sales_invoice.customer = frappe.get_cached_value("Patient", patient, "customer")
     sales_invoice.due_date = getdate()
     sales_invoice.company = company
     sales_invoice.is_pos = 0
@@ -272,7 +272,7 @@ def get_patient_billing_info(patient, ip_billing_info=False):
     company = False
     if ip_billing_info and patient.inpatient_record:
         filters["inpatient_record"] = patient.inpatient_record
-        company = frappe.db.get_value(
+        company = frappe.get_cached_value(
             "Inpatient Record", patient.inpatient_record, "company"
         )
 
@@ -296,7 +296,7 @@ def get_patient_billing_info(patient, ip_billing_info=False):
     if not company:
         company = frappe.db.get_single_value("Global Defaults", "default_company")
 
-    company_default_currency = frappe.db.get_value(
+    company_default_currency = frappe.get_cached_value(
         "Company", company, "default_currency"
     )
     from erpnext.accounts.party import get_party_account_currency
@@ -384,7 +384,7 @@ def make_contact(doc):
 
     except frappe.exceptions.DuplicateEntryError:
         if doc.doctype == "Patient":
-            contact_name = frappe.db.get_value("Contact", {"first_name": doc.name})
+            contact_name = frappe.get_cached_value("Contact", {"first_name": doc.name})
             if not contact_name:
                 return
 

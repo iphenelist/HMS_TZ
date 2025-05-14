@@ -2412,7 +2412,7 @@ def validate_nhif_patient_claim_status(
         )
     if insurance_company and "NHIF" in insurance_company:
         if not claim_no:
-            claim_no = frappe.db.get_value(
+            claim_no = frappe.get_cached_value(
                 "Patient Appointment", appointment, "nhif_patient_claim"
             )
 

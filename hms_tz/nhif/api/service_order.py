@@ -17,7 +17,7 @@ def after_save(doc, method):
 
 def set_missing_values(doc, method):
     if doc.order_reference_doctype and doc.order_reference_name:
-        prescribe = frappe.get_value(
+        prescribe = frappe.get_cached_value(
             doc.order_reference_doctype, doc.order_reference_name, "prescribe"
         )
         if not prescribe:

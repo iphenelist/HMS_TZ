@@ -23,7 +23,7 @@ class TestLabTest(unittest.TestCase):
         lab_template = create_lab_test_template()
         self.assertTrue(frappe.db.exists("Item", lab_template.item))
         self.assertEqual(
-            frappe.db.get_value(
+            frappe.get_cached_value(
                 "Item Price", {"item_code": lab_template.item}, "price_list_rate"
             ),
             lab_template.lab_test_rate,
@@ -31,7 +31,7 @@ class TestLabTest(unittest.TestCase):
 
         lab_template.disabled = 1
         lab_template.save()
-        self.assertEquals(frappe.db.get_value("Item", lab_template.item, "disabled"), 1)
+        self.assertEquals(frappe.get_cached_value("Item", lab_template.item, "disabled"), 1)
 
         lab_template.reload()
 
@@ -175,7 +175,7 @@ def create_sales_invoice():
 
     sales_invoice = frappe.new_doc("Sales Invoice")
     sales_invoice.patient = patient
-    sales_invoice.customer = frappe.db.get_value("Patient", patient, "customer")
+    sales_invoice.customer = frappe.get_cached_value("Patient", patient, "customer")
     sales_invoice.due_date = getdate()
     sales_invoice.company = "_Test Company"
     sales_invoice.debit_to = get_receivable_account("_Test Company")

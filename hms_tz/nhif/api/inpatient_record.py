@@ -134,7 +134,7 @@ def set_beds_price(self):
                     bed.hms_tz_is_discount_applied = 1
                 payment_type = "Insurance"
             else:
-                mode_of_payment = frappe.get_value(
+                mode_of_payment = frappe.get_cached_value(
                     "Patient Encounter", self.admission_encounter, "mode_of_payment"
                 )
                 service_unit_type = frappe.get_cached_value(
@@ -171,7 +171,7 @@ def make_deposit(
     if not mode_of_payment:
         frappe.throw(_("The mode of payment is required"))
 
-    if frappe.get_value("Mode of Payment", mode_of_payment, "type") != "Cash":
+    if frappe.get_cached_value("Mode of Payment", mode_of_payment, "type") != "Cash":
         if not reference_number:
             frappe.throw(
                 _(
@@ -266,7 +266,7 @@ def create_sales_invoice(args):
     invoice_doc.patient = args.patient
     invoice_doc.customer = frappe.get_cached_value("Patient", args.patient, "customer")
     invoice_doc.company = args.company
-    mode_of_payment = frappe.get_value(
+    mode_of_payment = frappe.get_cached_value(
         "Patient Encounter", patient_encounter_list[0].name, "mode_of_payment"
     )
     price_list = frappe.get_cached_value(
@@ -282,7 +282,7 @@ def create_sales_invoice(args):
         item.reference_dt = service.get("reference_type")
         item.reference_dn = service.get("reference_name")
         if item.reference_dt == "Drug Prescription":
-            item.healthcare_service_unit = frappe.get_value(
+            item.healthcare_service_unit = frappe.get_cached_value(
                 service.get("reference_type"),
                 service.get("reference_name"),
                 "healthcare_service_unit",
@@ -333,14 +333,14 @@ def validate_similary_authozation_number(doc):
     insurance_company = doc.insurance_company
 
     if not insurance_company:
-        insurance_company = frappe.get_value(
+        insurance_company = frappe.get_cached_value(
             "Healthcare Insurance Subscription",
             doc.insurance_subscription,
             "insurance_company",
         )
 
     if insurance_company and "NHIF" in insurance_company:
-        auth_no = frappe.get_value(
+        auth_no = frappe.get_cached_value(
             "Patient Appointment", doc.patient_appointment, "authorization_number"
         )
         claims = frappe.get_all(

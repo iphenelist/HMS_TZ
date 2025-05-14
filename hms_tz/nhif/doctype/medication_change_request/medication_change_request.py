@@ -299,10 +299,10 @@ class MedicationChangeRequest(Document):
 
     def get_warehouse_per_dn_or_so(self):
         if self.sales_order:
-            return frappe.get_value("Sales Order", self.sales_order, "set_warehouse")
+            return frappe.get_cached_value("Sales Order", self.sales_order, "set_warehouse")
 
         if self.delivery_note:
-            return frappe.get_value(
+            return frappe.get_cached_value(
                 "Delivery Note", self.delivery_note, "set_warehouse"
             )
 
@@ -419,7 +419,7 @@ class MedicationChangeRequest(Document):
             ):
                 continue
 
-            item_code = frappe.get_value("Medication", row.get("drug_code"), "item")
+            item_code = frappe.get_cached_value("Medication", row.get("drug_code"), "item")
             if not item_code:
                 frappe.throw(
                     _(
@@ -428,7 +428,7 @@ class MedicationChangeRequest(Document):
                     )
                 )
 
-            item_name, item_description = frappe.get_value(
+            item_name, item_description = frappe.get_cached_value(
                 "Item", item_code, ["item_name", "description"]
             )
 
@@ -625,10 +625,10 @@ def get_delivery_note(patient, patient_encounter):
 @frappe.whitelist()
 def get_patient_encounter_name(delivery_note, sales_order):
     if delivery_note:
-        return frappe.db.get_value("Delivery Note", delivery_note, "reference_name")
+        return frappe.get_cached_value("Delivery Note", delivery_note, "reference_name")
 
     elif sales_order:
-        return frappe.db.get_value("Sales Order", sales_order, "patient_encounter")
+        return frappe.get_cached_value("Sales Order", sales_order, "patient_encounter")
 
     return ""
 
@@ -640,7 +640,7 @@ def get_patient_encounter_doc(patient_encounter):
 
 
 def get_insurance_details(self):
-    insurance_subscription, insurance_company, mop = frappe.get_value(
+    insurance_subscription, insurance_company, mop = frappe.get_cached_value(
         "Patient Appointment",
         self.appointment,
         ["insurance_subscription", "insurance_company", "mode_of_payment"],
@@ -805,7 +805,7 @@ def create_medication_change_request_from_so(doctype, name):
                 Please keep a comment and save the sales order, before creating med change request</b>"
         )
 
-    appointment, practitioner = frappe.db.get_value(
+    appointment, practitioner = frappe.get_cached_value(
         "Patient Encounter",
         source_doc.patient_encounter,
         ["appointment", "practitioner"],

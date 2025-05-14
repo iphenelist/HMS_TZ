@@ -764,7 +764,7 @@ def get_refdoc(doctype, childname, template, encounter):
 
     for refd in ref_docs:
         if refd.get("table") == doctype:
-            docname = frappe.get_value(
+            docname = frappe.get_cached_value(
                 refd.get("ref_d"),
                 {
                     "ref_doctype": "Patient Encounter",
@@ -1090,13 +1090,13 @@ def get_therapies(patient, appointment, company):
 
     for item in therapy_items:
         if item.therapy_type:
-            therapy_plan = frappe.get_value(
+            therapy_plan = frappe.get_cached_value(
                 "Therapy Plan",
                 {"ref_doctype": "Patient Encounter", "ref_docname": item.parent},
                 "name",
             )
 
-            plan_child_table_id = frappe.db.get_value(
+            plan_child_table_id = frappe.get_cached_value(
                 "Therapy Plan Detail",
                 {
                     "parent": therapy_plan,

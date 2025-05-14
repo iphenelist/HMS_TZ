@@ -64,7 +64,7 @@ def get_admission_types(company=None, caller=None):
             return
         
         for row in data:
-            admission = frappe.db.get_value("Healthcare Admission Type", {"admission_type_name": row["AdmissionTypeName"]}, "name")
+            admission = frappe.get_cached_value("Healthcare Admission Type", {"admission_type_name": row["AdmissionTypeName"]}, "name")
             if admission:
                 has_changed = False
                 doc = frappe.get_doc("Healthcare Admission Type", admission)
@@ -145,7 +145,7 @@ def get_discharge_types(company=None, caller=None):
             return
         
         for row in data:
-            discharge_type = frappe.db.get_value("Healthcare Discharge Type", {"discharge_type_name": row["DischargeTypeName"]}, "name")
+            discharge_type = frappe.get_cached_value("Healthcare Discharge Type", {"discharge_type_name": row["DischargeTypeName"]}, "name")
             if discharge_type:
                 has_changed = False
                 doc = frappe.get_doc("Healthcare Discharge Type", discharge_type)
@@ -226,7 +226,7 @@ def get_ward_types(company=None, caller=None):
             return
         
         for row in data:
-            ward_type = frappe.db.get_value("Healthcare Ward Type", {"ward_type_name": row["WardTypeName"]}, "name")
+            ward_type = frappe.get_cached_value("Healthcare Ward Type", {"ward_type_name": row["WardTypeName"]}, "name")
             if ward_type:
                 has_changed = False
                 doc = frappe.get_doc("Healthcare Ward Type", ward_type)
@@ -317,7 +317,7 @@ def get_room_types(company=None, caller=None):
             return
         
         for row in data:
-            room_type = frappe.db.get_value("Healthcare Room Type", {"room_type_name": row["RoomTypeName"]}, "name")
+            room_type = frappe.get_cached_value("Healthcare Room Type", {"room_type_name": row["RoomTypeName"]}, "name")
             if room_type:
                 has_changed = False
                 doc = frappe.get_doc("Healthcare Room Type", room_type)

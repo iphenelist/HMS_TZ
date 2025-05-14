@@ -44,7 +44,7 @@ def on_submit(doc, method):
 
 def validate_not_serviced(doc):
     if doc.therapy_plan:
-        status = frappe.db.get_value("Therapy Plan", doc.therapy_plan, "status")
+        status = frappe.get_cached_value("Therapy Plan", doc.therapy_plan, "status")
         if status == "Not Serviced":
             frappe.throw(
                 f"This Therapy Plan: {frappe.bold(doc.therapy_plan)} is Not Serviced,\

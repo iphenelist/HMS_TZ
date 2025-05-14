@@ -43,7 +43,7 @@ class HealthcarePractitioner(Document):
         if self.user_id:
             self.validate_user_id()
         else:
-            existing_user_id = frappe.db.get_value(
+            existing_user_id = frappe.get_cached_value(
                 "Healthcare Practitioner", self.name, "user_id"
             )
             if existing_user_id:
@@ -84,7 +84,7 @@ class HealthcarePractitioner(Document):
 
 
 def validate_service_item(item, msg):
-    if frappe.db.get_value("Item", item, "is_stock_item"):
+    if frappe.get_cached_value("Item", item, "is_stock_item"):
         frappe.throw(_(msg))
 
 

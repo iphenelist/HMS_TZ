@@ -81,7 +81,7 @@ def create_item_from_medication(doc):
 
 
 def make_item_price(item, item_price):
-    price_list_name = frappe.db.get_value("Price List", {"selling": 1})
+    price_list_name = frappe.get_cached_value("Price List", {"selling": 1})
     frappe.get_doc(
         {
             "doctype": "Item Price",

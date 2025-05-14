@@ -353,7 +353,7 @@ def update_cash_limit(kwargs):
 
 @frappe.whitelist()
 def validate_missing_patient_dob(patient: str):
-    patient_name, dob = frappe.get_value("Patient", patient, ["patient_name", "dob"])
+    patient_name, dob = frappe.get_cached_value("Patient", patient, ["patient_name", "dob"])
     if not dob:
         return False
     return True

@@ -112,7 +112,7 @@ def removed_type_custom_field():
     for row in fields:
         for key, value in row.items():
             for fieldname in value:
-                custom_field = frappe.get_value(
+                custom_field = frappe.get_cached_value(
                     "Custom Field", {"fieldname": fieldname, "dt": key}, "name"
                 )
                 if custom_field:

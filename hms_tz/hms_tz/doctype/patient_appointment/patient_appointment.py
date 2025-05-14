@@ -99,18 +99,18 @@ class PatientAppointment(Document):
                     "service_unit": self.service_unit,
                 },
             )
-            allow_overlap = frappe.get_value(
+            allow_overlap = frappe.get_cached_value(
                 "Healthcare Service Unit", self.service_unit, "overlap_appointments"
             )
             if allow_overlap:
                 if self.practitioner_availability:
-                    service_unit_capacity = frappe.get_value(
+                    service_unit_capacity = frappe.get_cached_value(
                         "Practitioner Availability",
                         self.practitioner_availability,
                         "total_service_unit_capacity",
                     )
                 else:
-                    service_unit_capacity = frappe.get_value(
+                    service_unit_capacity = frappe.get_cached_value(
                         "Healthcare Service Unit",
                         self.service_unit,
                         "total_service_unit_capacity",
@@ -150,7 +150,7 @@ class PatientAppointment(Document):
             )
 
         if self.service_unit:
-            service_unit_company = frappe.db.get_value(
+            service_unit_company = frappe.get_cached_value(
                 "Healthcare Service Unit", self.service_unit, "company"
             )
             if service_unit_company and service_unit_company != self.company:
@@ -166,7 +166,7 @@ class PatientAppointment(Document):
         if frappe.db.get_single_value(
             "Healthcare Settings", "automate_appointment_invoicing"
         ):
-            if not frappe.db.get_value("Patient", self.patient, "customer"):
+            if not frappe.get_cached_value("Patient", self.patient, "customer"):
                 msg = _("Please set a Customer linked to the Patient")
                 msg += f" <b><a href='#Form/Patient/{self.patient}'>{self.patient}</a></b>"
                 frappe.throw(msg, title=_("Customer Not Found"))
@@ -180,7 +180,7 @@ class PatientAppointment(Document):
                 1,
             )
             if self.procedure_template:
-                comments = frappe.db.get_value(
+                comments = frappe.get_cached_value(
                     "Procedure Prescription", self.procedure_prescription, "comments"
                 )
                 if comments:
@@ -228,7 +228,7 @@ def invoice_appointment(appointment_doc):
     automate_invoicing = frappe.db.get_single_value(
         "Healthcare Settings", "automate_appointment_invoicing"
     )
-    appointment_invoiced = frappe.db.get_value(
+    appointment_invoiced = frappe.get_cached_value(
         "Patient Appointment", appointment_doc.name, "invoiced"
     )
     enable_free_follow_ups = frappe.db.get_single_value(
@@ -251,7 +251,7 @@ def invoice_appointment(appointment_doc):
     if automate_invoicing and not appointment_invoiced and not fee_validity:
         sales_invoice = frappe.new_doc("Sales Invoice")
         sales_invoice.patient = appointment_doc.patient
-        sales_invoice.customer = frappe.get_value(
+        sales_invoice.customer = frappe.get_cached_value(
             "Patient", appointment_doc.patient, "customer"
         )
         sales_invoice.appointment = appointment_doc.name
@@ -348,7 +348,7 @@ def cancel_sales_invoice(sales_invoice):
 
 
 def check_sales_invoice_exists(appointment):
-    sales_invoice = frappe.db.get_value(
+    sales_invoice = frappe.db.get_cached_value(
         "Sales Invoice Item",
         {"reference_dt": "Patient Appointment", "reference_dn": appointment.name},
         "parent",
@@ -403,7 +403,7 @@ def check_employee_wise_availability(date, practitioner_doc):
     if practitioner_doc.employee:
         employee = practitioner_doc.employee
     elif practitioner_doc.user_id:
-        employee = frappe.db.get_value(
+        employee = frappe.get_cached_value(
             "Employee", {"user_id": practitioner_doc.user_id}, "name"
         )
 
@@ -527,7 +527,7 @@ def get_available_slots(practitioner_doc, date):
                     slot_name = (
                         schedule_entry.schedule + " - " + schedule_entry.service_unit
                     )
-                    allow_overlap, service_unit_capacity = frappe.get_value(
+                    allow_overlap, service_unit_capacity = frappe.get_cached_value(
                         "Healthcare Service Unit",
                         schedule_entry.service_unit,
                         ["overlap_appointments", "total_service_unit_capacity"],
@@ -603,7 +603,7 @@ def get_present_event_slots(present_events, date, practitioner):
 
                 if present_event.service_unit:
                     slot_name = slot_name + " - " + present_event.service_unit
-                    allow_overlap, service_unit_capacity = frappe.get_value(
+                    allow_overlap, service_unit_capacity = frappe.get_cached_value(
                         "Healthcare Service Unit",
                         present_event.service_unit,
                         ["overlap_appointments", "total_service_unit_capacity"],
@@ -689,7 +689,7 @@ def update_status(appointment_id, status):
         appointment_booked = False
         cancel_appointment(appointment_id)
 
-    procedure_prescription = frappe.db.get_value(
+    procedure_prescription = frappe.get_cached_value(
         "Patient Appointment", appointment_id, "procedure_prescription"
     )
     if procedure_prescription:
@@ -777,7 +777,7 @@ def send_appointment_reminder():
 
 
 def send_message(doc, message):
-    patient_mobile = frappe.db.get_value("Patient", doc.patient, "mobile")
+    patient_mobile = frappe.get_cached_value("Patient", doc.patient, "mobile")
     if patient_mobile:
         context = {"doc": doc, "alert": doc, "comments": None}
         if doc.get("_comments"):
@@ -836,7 +836,7 @@ def get_events(start, end, filters=None):
             item.title = item.title + " - " + item.patient_age
         item.title = item.title + ")"
         if item.triage:
-            color = frappe.db.get_value("Triage", item.triage, "color")
+            color = frappe.get_cached_value("Triage", item.triage, "color")
             if color:
                 item.color = color
     return data

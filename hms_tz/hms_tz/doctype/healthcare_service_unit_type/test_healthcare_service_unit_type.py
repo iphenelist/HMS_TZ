@@ -14,7 +14,7 @@ class TestHealthcareServiceUnitType(unittest.TestCase):
         # check item disabled
         unit_type.disabled = 1
         unit_type.save()
-        self.assertEqual(frappe.db.get_value("Item", unit_type.item, "disabled"), 1)
+        self.assertEqual(frappe.get_cached_value("Item", unit_type.item, "disabled"), 1)
 
 
 def get_unit_type():

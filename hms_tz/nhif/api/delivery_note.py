@@ -57,7 +57,7 @@ def update_dosage_details(item):
     """Update dosage details for Cash Patient only if dosage is not set"""
 
     if item.si_detail:
-        reference_dn = frappe.get_value(
+        reference_dn = frappe.get_cached_value(
             "Sales Invoice Item", item.si_detail, "reference_dn"
         )
         if not reference_dn:
@@ -193,12 +193,12 @@ def validate_medication_class(doc, row):
 def set_missing_values(doc):
     if doc.form_sales_invoice:
         if not doc.hms_tz_appointment_no or not doc.healthcare_practitioner:
-            si_reference_dn = frappe.get_value(
+            si_reference_dn = frappe.get_cached_value(
                 "Sales Invoice Item", doc.items[0].si_detail, "reference_dn"
             )
 
             if si_reference_dn:
-                parent_encounter = frappe.get_value(
+                parent_encounter = frappe.get_cached_value(
                     "Drug Prescription", si_reference_dn, "parent"
                 )
                 doc.reference_name = parent_encounter
@@ -206,7 +206,7 @@ def set_missing_values(doc):
                 (
                     doc.hms_tz_appointment_no,
                     doc.healthcare_practitioner,
-                ) = frappe.get_value(
+                ) = frappe.get_cached_value(
                     "Patient Encounter",
                     parent_encounter,
                     ["appointment", "practitioner"],
@@ -217,7 +217,7 @@ def set_missing_values(doc):
         and doc.reference_name
         and doc.reference_doctype == "Patient Encounter"
     ):
-        doc.patient = frappe.get_value(
+        doc.patient = frappe.get_cached_value(
             "Patient Encounter", doc.reference_name, "patient"
         )
 

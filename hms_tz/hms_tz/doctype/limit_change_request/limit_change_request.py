@@ -34,7 +34,7 @@ class LimitChangeRequest(Document):
 
     def validate_appointment_info(self):
         if self.appointment_no:
-            if "NHIF" in frappe.get_value(
+            if "NHIF" in frappe.get_cached_value(
                 "Patient Appointment", self.appointment_no, "insurance_company"
             ):
                 url = get_url_to_form("Patient Appointment", self.appointment_no)
@@ -43,7 +43,7 @@ class LimitChangeRequest(Document):
                 )
 
     def validate_draft_duplicate(self):
-        exists_lcr = frappe.get_value(
+        exists_lcr = frappe.get_cached_value(
             "Limit Change Request",
             {
                 "name": ["!=", self.name],
@@ -126,7 +126,7 @@ class LimitChangeRequest(Document):
 
     def on_cancel(self):
         if self.is_cash_inpatient and self.inpatient_record:
-            old_cash_limit = frappe.get_value(
+            old_cash_limit = frappe.get_cached_value(
                 "Patient", {"name": self.patient}, "cash_limit"
             )
             frappe.db.set_value(
@@ -134,17 +134,17 @@ class LimitChangeRequest(Document):
             )
 
         if self.is_non_nhif_patient and self.appointment_no:
-            insurance_subscription = frappe.get_value(
+            insurance_subscription = frappe.get_cached_value(
                 "Patient Appointment",
                 {"name": self.appointment_no},
                 "insurance_subscription",
             )
-            coverage_plan = frappe.get_value(
+            coverage_plan = frappe.get_cached_value(
                 "Healthcare Insurance Subscription",
                 insurance_subscription,
                 "healthcare_insurance_coverage_plan",
             )
-            old_daily_limit = frappe.get_value(
+            old_daily_limit = frappe.get_cached_value(
                 "Healthcare Insurance Coverage Plan", coverage_plan, "daily_limit"
             )
             frappe.db.set_value(
@@ -176,7 +176,7 @@ class LimitChangeRequest(Document):
             if encounters[0]["mode_of_payment"] and encounters[0]["inpatient_record"]:
                 self.inpatient_record = encounters[0]["inpatient_record"]
                 self.is_cash_inpatient = 1
-                self.previous_cash_limit = frappe.get_value(
+                self.previous_cash_limit = frappe.get_cached_value(
                     "Inpatient Record", self.inpatient_record, "cash_limit"
                 )
                 self.current_total_deposit = -1 * (

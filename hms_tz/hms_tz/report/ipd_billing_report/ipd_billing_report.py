@@ -330,8 +330,8 @@ def get_transaction_data(args):
 
 
 def get_report_summary(args, summary_data, is_summary=False):
-    customer = frappe.get_value("Patient", {"name": args.patient}, ["customer"])
-    cash_limit = frappe.get_value(
+    customer = frappe.get_cached_value("Patient", {"name": args.patient}, ["customer"])
+    cash_limit = frappe.get_cached_value(
         "Inpatient Record", args.inpatient_record, "cash_limit"
     )
 

@@ -10,7 +10,7 @@ def execute():
         "Therapy Plan Detail",
         "Diet Recommendation"
     ]:
-        custom_field_name = frappe.get_value("Custom Field", f"{doctype}-medical_code", "name")
+        custom_field_name = frappe.get_cached_value("Custom Field", f"{doctype}-medical_code", "name")
         if custom_field_name:
             frappe.db.set_value("Custom Field", f"{doctype}-medical_code", "reqd", 0)
     

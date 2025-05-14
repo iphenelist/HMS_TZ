@@ -16,9 +16,9 @@ def add_product(company, id, name=None):
         return
     abbr = frappe.get_cached_value("Company", company, "abbr")
     product_id = str(id) + "-" + str(abbr)
-    nhif_product_pr_key = frappe.get_value("NHIF Product", {"company": company, "nhif_product_code": id})
+    nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": company, "nhif_product_code": id})
     if not nhif_product_pr_key:
-        nhif_product_pr_key = frappe.get_value("NHIF Product", {"company": "", "nhif_product_code": id})
+        nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": "", "nhif_product_code": id})
     
     if nhif_product_pr_key:
         if (
