@@ -991,12 +991,18 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
         )
 
         encounter_child.lab_test_created = 1
+        encounter_child.delivered_quantity = 1
+        encounter_child.lab_test = doc.name
         encounter_child.db_update()
 
         if hsr_child:
             hsrp = DocType("Healthcare Service Request Payment")
             (
-                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                frappe.qb.update(hsrp)
+                .set(hsrp.lrpmt_doc_created, 1)
+                .set(hsrp.lrpmt_doctype, doc.doctype)
+                .set(hsrp.lrpmt_docname, doc.name)
+                .set(hsrp.lrpmt_status, "Draft")
                 .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
             ).run()
 
@@ -1072,12 +1078,18 @@ def create_individual_radiology_examination(source_doc, encounter_child, hsr_chi
         )
 
         encounter_child.radiology_examination_created = 1
+        encounter_child.delivered_quantity = 1
+        encounter_child.radiology_examination = doc.name
         encounter_child.db_update()
 
         if hsr_child:
             hsrp = DocType("Healthcare Service Request Payment")
             (
-                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                frappe.qb.update(hsrp)
+                .set(hsrp.lrpmt_doc_created, 1)
+                .set(hsrp.lrpmt_doctype, doc.doctype)
+                .set(hsrp.lrpmt_docname, doc.name)
+                .set(hsrp.lrpmt_status, "Draft")
                 .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
             ).run()
 
@@ -1147,12 +1159,18 @@ def create_individual_procedure_prescription(source_doc, encounter_child, hsr_ch
         )
 
         encounter_child.procedure_created = 1
+        encounter_child.delivered_quantity = 1
+        encounter_child.clinical_procedure = doc.name
         encounter_child.db_update()
 
         if hsr_child:
             hsrp = DocType("Healthcare Service Request Payment")
             (
-                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                frappe.qb.update(hsrp)
+                .set(hsrp.lrpmt_doc_created, 1)
+                .set(hsrp.lrpmt_doctype, doc.doctype)
+                .set(hsrp.lrpmt_docname, doc.name)
+                .set(hsrp.lrpmt_status, "Draft")
                 .where((hsrp.ref_docname == hsr_child.ref_docname) & (hsrp.request_id == hsr_child.request_id))
             ).run()
 
@@ -1207,6 +1225,7 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
                 alert=True,
             )
             return
+        
         if not enc_doc.appointment:
             frappe.msgprint(
                 _(
@@ -1288,6 +1307,7 @@ def create_plan(patient_encounter_docs, therapies, therapy_map={}):
                         "is_restricted": entry.is_restricted or 0,
                         "hms_tz_ref_childname": entry.name,
                         "no_of_sessions": entry.no_of_sessions - entry.sessions_cancelled,
+                        "department_hsu": entry.department_hsu
                     },
                 )
         if item_counts == 0:
@@ -1322,7 +1342,11 @@ def create_plan(patient_encounter_docs, therapies, therapy_map={}):
                         if therapy_child:
                             hsrp = DocType("Healthcare Service Request Payment")
                             (
-                                frappe.qb.update(hsrp).set(hsrp.lrpmt_doc_created, 1)
+                                frappe.qb.update(hsrp)
+                                .set(hsrp.lrpmt_doc_created, 1)
+                                .set(hsrp.lrpmt_doctype, doc.doctype)
+                                .set(hsrp.lrpmt_docname, doc.name)
+                                .set(hsrp.lrpmt_status, "Draft")
                                 .where((hsrp.ref_docname == therapy_child.ref_docname) & (hsrp.request_id == therapy_child.request_id))
                             ).run()
 
@@ -1519,8 +1543,9 @@ def create_delivery_note(encounter_doc, method):
                         frappe.db.set_value(
                             "Drug Prescription",
                             item.reference_name, {
-                                # "dn_detail": item.name,
+                                "dn_detail": item.name,
                                 "delivery_note": doc.name,
+                                "drug_prescription_created": 1,
                             },
                             update_modified=False
                         )
@@ -1686,18 +1711,23 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
             hsrp = DocType("Healthcare Service Request Payment")
             dp = DocType("Drug Prescription")
 
-            for d in drugs:
+            for item in doc.items:
                 (
                     frappe.qb.update(hsrp)
                     .set(hsrp.lrpmt_doc_created, 1)
-                    .where(hsrp.name == d.name)
+                    .set(hsrp.lrpmt_doctype, doc.doctype)
+                    .set(hsrp.lrpmt_docname, doc.name)
+                    .set(hsrp.lrpmt_status, "Draft")
+                    .set(hsrp.dn_detail, item.name)
+                    .where(hsrp.ref_docname == item.reference_name)
                 ).run()
 
                 (
                     frappe.qb.update(dp)
                     .set(dp.drug_prescription_created, 1)
                     .set(dp.delivery_note, doc.name)
-                    .where(dp.name == d.ref_docname)
+                    .set(dp.dn_detail, item.name)
+                    .where(dp.name == item.reference_name)
                 ).run()
 
             frappe.msgprint(
