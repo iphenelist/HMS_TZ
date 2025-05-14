@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-14 17:58:11.146360",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "service_type",
+  "service_name",
+  "column_break_zqdu4",
+  "itemcode",
+  "scheduleitemid",
+  "column_break_plgho",
+  "schemeid",
+  "yearno",
+  "percentcovered"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "service_type",
+   "fieldtype": "Select",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Service Type",
+   "options": "\nConsulation Charges\nLab Test Template\nRadiology Examination Template\nClinical Procedure Template\nMedication\nTherapy Type\nHealthcare Service Unit Type",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "service_name",
+   "fieldtype": "Dynamic Link",
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Service Name",
+   "options": "service_type",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_zqdu4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "itemcode",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "ItemCode",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "scheduleitemid",
+   "fieldtype": "Int",
+   "label": "ScheduleItemID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "yearno",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "YearNo",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_plgho",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "percentcovered",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "% Covered",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "schemeid",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "SchemeID",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-14 18:12:04.298020",
+ "modified_by": "Administrator",
+ "module": "NHIF",
+ "name": "NHIF Co-Payment Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
