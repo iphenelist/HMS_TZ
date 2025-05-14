@@ -13,9 +13,6 @@ from frappe.utils import getdate, nowdate, flt, cstr
 from hms_tz.nhif.api.healthcare_utils import remove_special_characters
 from datetime import date
 from frappe.utils.background_jobs import enqueue
-from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
-from hms_tz.nhif.doctype.nhif_product.nhif_product import add_product
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.nhif_api.verification import get_card_details_by_card_no, get_card_details_by_national_id
 
 from frappe.query_builder import DocType
@@ -175,39 +172,28 @@ def check_card_number(card_no, is_new=None, patient=None, caller=None):
 
 
 def create_subscription(doc):
-    if not frappe.db.exists("NHIF Product", {"nhif_product_code": doc.product_code}):
-        company = get_default_company()
-        if company:
-            add_product(company, doc.get("product_code"), None)
+    plan = frappe.db.get_list(
+        "Healthcare Insurance Coverage Plan",
+        filters={"nhif_scheme_id": doc.scheme_id, "is_active": 1},
+        fields=["name", "insurance_company"],
+    )    
 
-        return
-    
-    subscription_list = frappe.get_list(
-        "Healthcare Insurance Subscription",
-        filters={"patient": doc.name, "is_active": 1},
-    )
-    if len(subscription_list) > 0 or not doc.product_code:
+    plan_row = plan[0] if len(plan) == 1 else None
+    if not plan_row:
         frappe.msgprint(
             _(
-                "Existing Patient HIS was found. Create the Healthcare Insurance Subscription manually!"
-            )
+                f"Failed to find matching plan for SchemeId: {doc.scheme_id}"
+            ),
+            alert=True,
         )
         return
 
-    coverage_plan = get_coverage_plan(doc)
-    if not coverage_plan:
-        return
-
-    plan_doc = frappe.get_cached_doc(
-        "Healthcare Insurance Coverage Plan", coverage_plan
-    )
     sub_doc = frappe.new_doc("Healthcare Insurance Subscription")
     sub_doc.patient = doc.name
-    sub_doc.insurance_company = plan_doc.insurance_company
-    sub_doc.healthcare_insurance_coverage_plan = plan_doc.name
+    sub_doc.insurance_company = plan_row.insurance_company
+    sub_doc.healthcare_insurance_coverage_plan = plan_row.name
     sub_doc.coverage_plan_card_number = doc.card_no
     sub_doc.national_id = doc.national_id
-    sub_doc.hms_tz_product_code = doc.product_code
     sub_doc.hms_tz_scheme_id = doc.scheme_id
 
     
@@ -222,7 +208,7 @@ def create_subscription(doc):
     sub_doc.submit()
     frappe.msgprint(
         _(
-            f"<h3>AUTO</h3> Healthcare Insurance Subscription: {sub_doc.name} is created for {plan_doc.name}"
+            f"<h3>AUTO</h3> Healthcare Insurance Subscription: {sub_doc.name} is created for {plan_row.name}"
         )
     )
 
@@ -310,7 +296,7 @@ def after_insert(doc, method):
     if doc.card_no:
         doc.insurance_card_detail = (doc.card_no or "") + ", "
 
-    if not doc.product_code:
+    if not doc.scheme_id:
         return
 
     create_subscription(doc)
