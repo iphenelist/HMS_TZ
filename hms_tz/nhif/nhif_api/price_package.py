@@ -25,15 +25,18 @@ def enqueue_get_nhif_price_packages(company):
     )
     frappe.msgprint("Fetch price package via backgroud job", alert=True)
 
+
+@frappe.whitelist()
+def enqueue_get_nhif_copayment_items(company):
     enqueue(
-        method=get_nhif_cost_sharing,
-        job_name="get_nhif_cost_sharing",
+        method=get_nhif_copayment_items,
+        job_name="get_nhif_copayment_items",
         queue="long",
         timeout=1800,
         is_async=True,
         company=company,
     )
-    frappe.msgprint("Fetch NHIF cost sharing via backgroud job", alert=True)
+    frappe.msgprint("Fetch NHIF Co-Payment Item via backgroud job", alert=True)
 
 
 @frappe.whitelist()
@@ -760,50 +763,50 @@ def get_insurance_items(for_prices=False):
     return service_map
 
 
-def get_nhif_cost_sharing(company):
+def get_nhif_copayment_items(company):
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Packages/GetCostSharingSchedule"
+    url = f"{settings_doc.nhif_claim_url}/api/Packages/GetCoPaymentSchedule"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
     }
 
-    r = requests.request("Get", url, headers=headers, timeout=60)
+    r = requests.request("Get", url, headers=headers, timeout=180)
     if r.status_code != 200:
         add_log(
-            request_type="GetCostSharingSchedule",
+            request_type="GetCoPaymentSchedule",
             request_url=url,
             request_header=headers,
             request_body="",
             response_data=r.text,
             status_code=r.status_code,
             company=settings_doc.name,
-            ref_doctype="NHIF Cost Sharing",
+            ref_doctype="NHIF Co-Payment Item",
         )
         frappe.throw(json.loads(r.text))
     else:
         data = json.loads(r.text)
         log_name = add_log(
-            request_type="GetCostSharingSchedule",
+            request_type="GetCoPaymentSchedule",
             request_url=url,
             request_header=headers,
             request_body="",
             response_data=json.dumps(data),
             status_code=r.status_code,
             company=settings_doc.name,
-            ref_doctype="NHIF Cost Sharing",
+            ref_doctype="NHIF Co-Payment Item",
         )
 
-        sync_cost_sharing(data)
+        sync_copayment_items(data)
 
 
-def sync_cost_sharing(data):
+def sync_copayment_items(data):
     if len(data) == 0:
         return
     
-    ncs = DocType("NHIF Cost Sharing")
+    ncs = DocType("NHIF Co-Payment Item")
     frappe.qb.from_(ncs).delete().run()
 
     sleep(30)
@@ -818,9 +821,8 @@ def sync_cost_sharing(data):
         "service_name",
         "itemcode",
         "scheduleitemid",
+        "schemeid",
         "yearno",
-        "productcode",
-        "packageid",
         "percentcovered"
     ]
 
@@ -845,15 +847,14 @@ def sync_cost_sharing(data):
                 service_name,
                 row.get("ItemCode"),
                 row.get("ScheduleItemID"),
+                row.get("SchemeID"),
                 row.get("YearNo"),
-                row.get("ProductCode"),
-                row.get("PackageID"),
                 row.get("PercentCovered")
             )
         )
     
     frappe.db.bulk_insert(
-        "NHIF Cost Sharing",
+        "NHIF Co-Payment Item",
         fields=fields,
         values=values,
         ignore_duplicates=True
