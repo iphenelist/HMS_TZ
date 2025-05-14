@@ -36,6 +36,18 @@ var add_nhif_actions_btn = function (frm) {
         });
     }, __('NHIF Actions'));
 
+    frm.add_custom_button(__('Get NHIF Co-Payment Items'), function () {
+        frappe.call({
+            method: 'hms_tz.nhif.nhif_api.price_package.enqueue_get_nhif_copayment_items',
+            args: { company: frm.doc.company },
+            callback: function (data) {
+                if (data.message) {
+                    console.log(data.message)
+                }
+            }
+        });
+    }, __('NHIF Actions'));
+
     frm.add_custom_button(__('Get NHIF Schemes'), function () {
         frappe.call({
             method: 'hms_tz.nhif.nhif_api.price_package.get_nhif_schemes',
