@@ -175,7 +175,7 @@ def update_referral(ref_doctype, ref_docname):
     """
     Update referral.
     """
-    doc = frappe.get_doc(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     payload = {
         "referralNo": doc.referral_no,

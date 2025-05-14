@@ -75,7 +75,7 @@ class TherapySession(Document):
         self.update_sessions_count_in_therapy_plan(on_cancel=True)
 
     def update_sessions_count_in_therapy_plan(self, on_cancel=False):
-        therapy_plan = frappe.get_doc("Therapy Plan", self.therapy_plan)
+        therapy_plan = frappe.get_cached_doc("Therapy Plan", self.therapy_plan)
         for entry in therapy_plan.therapy_plan_details:
             if entry.therapy_type == self.therapy_type:
                 if on_cancel:
@@ -100,7 +100,7 @@ class TherapySession(Document):
 @frappe.whitelist()
 def create_therapy_session(source_name, target_doc=None):
     def set_missing_values(source, target):
-        therapy_type = frappe.get_doc("Therapy Type", source.therapy_type)
+        therapy_type = frappe.get_cached_doc("Therapy Type", source.therapy_type)
         target.exercises = therapy_type.exercises
 
     doc = get_mapped_doc(

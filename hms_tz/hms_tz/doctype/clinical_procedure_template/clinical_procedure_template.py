@@ -31,7 +31,7 @@ class ClinicalProcedureTemplate(Document):
 
     def update_item_and_item_price(self):
         if self.is_billable and self.item:
-            item_doc = frappe.get_doc("Item", {"item_code": self.item})
+            item_doc = frappe.get_cached_doc("Item", {"item_code": self.item})
             item_doc.item_name = self.template
             item_doc.item_group = self.item_group
             item_doc.description = self.description
@@ -39,7 +39,7 @@ class ClinicalProcedureTemplate(Document):
             item_doc.save(ignore_permissions=True)
 
             if self.rate:
-                item_price = frappe.get_doc("Item Price", {"item_code": self.item})
+                item_price = frappe.get_cached_doc("Item Price", {"item_code": self.item})
                 item_price.item_name = self.template
                 item_price.price_list_rate = self.rate
                 item_price.save()

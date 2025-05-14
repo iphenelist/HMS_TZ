@@ -75,7 +75,7 @@ def get_cash_amount(
 
 @frappe.whitelist()
 def invoice_appointment(name):
-    appointment_doc = frappe.get_doc("Patient Appointment", name)
+    appointment_doc = frappe.get_cached_doc("Patient Appointment", name)
     if appointment_doc.billing_item:
         if appointment_doc.mode_of_payment:
             appointment_doc.paid_amount = get_cash_amount(
@@ -143,7 +143,7 @@ def invoice_appointment(name):
         sales_invoice.calculate_taxes_and_totals()
         sales_invoice.submit()
         frappe.msgprint(_(f"Sales Invoice {sales_invoice.name} created"))
-        appointment_doc = frappe.get_doc("Patient Appointment", appointment_doc.name)
+        appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_doc.name)
         appointment_doc.ref_sales_invoice = sales_invoice.name
         appointment_doc.invoiced = 1
         appointment_doc.db_update()
@@ -235,7 +235,7 @@ def get_consulting_charge_item(
 
 @frappe.whitelist()
 def create_vital(appointment):
-    appointment_doc = frappe.get_doc("Patient Appointment", appointment)
+    appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment)
     make_vital(appointment_doc, "patient_appointment")
     appointment_doc.save()
     appointment_doc.reload()

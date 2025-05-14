@@ -317,7 +317,7 @@ def get_appointment_item(appointment_doc, item):
 
 
 def cancel_appointment(appointment_id):
-    appointment = frappe.get_doc("Patient Appointment", appointment_id)
+    appointment = frappe.get_cached_doc("Patient Appointment", appointment_id)
     if appointment.invoiced:
         sales_invoice = check_sales_invoice_exists(appointment)
         if sales_invoice and cancel_sales_invoice(sales_invoice):
@@ -355,7 +355,7 @@ def check_sales_invoice_exists(appointment):
     )
 
     if sales_invoice:
-        sales_invoice = frappe.get_doc("Sales Invoice", sales_invoice)
+        sales_invoice = frappe.get_cached_doc("Sales Invoice", sales_invoice)
         return sales_invoice
     return False
 
@@ -372,7 +372,7 @@ def get_availability_data(date, practitioner):
     date = getdate(date)
     weekday = date.strftime("%A")
 
-    practitioner_doc = frappe.get_doc("Healthcare Practitioner", practitioner)
+    practitioner_doc = frappe.get_cached_doc("Healthcare Practitioner", practitioner)
 
     check_employee_wise_availability(date, practitioner_doc)
     present_events = get_present_event(practitioner, date)
@@ -494,7 +494,7 @@ def get_available_slots(practitioner_doc, date):
 
     for schedule_entry in practitioner_doc.practitioner_schedules:
         if schedule_entry.schedule:
-            practitioner_schedule = frappe.get_doc(
+            practitioner_schedule = frappe.get_cached_doc(
                 "Practitioner Schedule", schedule_entry.schedule
             )
         else:
@@ -768,7 +768,7 @@ def send_appointment_reminder():
         )
 
         for appointment in appointment_list:
-            doc = frappe.get_doc("Patient Appointment", appointment.name)
+            doc = frappe.get_cached_doc("Patient Appointment", appointment.name)
             message = frappe.db.get_single_value(
                 "Healthcare Settings", "appointment_reminder_msg"
             )
@@ -887,7 +887,7 @@ def update_appointment_status():
     )
 
     for appointment in appointments:
-        frappe.get_doc("Patient Appointment", appointment.name).set_status()
+        frappe.get_cached_doc("Patient Appointment", appointment.name).set_status()
 
 
 def make_insurance_claim(doc):

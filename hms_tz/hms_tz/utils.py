@@ -18,7 +18,7 @@ from hms_tz.hms_tz.doctype.lab_test.lab_test import create_multiple
 
 @frappe.whitelist()
 def get_healthcare_services_to_invoice(patient, company):
-    patient = frappe.get_doc("Patient", patient)
+    patient = frappe.get_cached_doc("Patient", patient)
     items_to_invoice = []
     if patient:
         validate_customer_created(patient)
@@ -738,7 +738,7 @@ def check_fee_validity(appointment):
     if not validity:
         return
 
-    validity = frappe.get_doc("Fee Validity", validity)
+    validity = frappe.get_cached_doc("Fee Validity", validity)
     return validity
 
 
@@ -774,9 +774,9 @@ def manage_doc_for_appointment(dt_from_appointment, appointment, invoiced):
 
 @frappe.whitelist()
 def get_drugs_to_invoice(encounter):
-    encounter = frappe.get_doc("Patient Encounter", encounter)
+    encounter = frappe.get_cached_doc("Patient Encounter", encounter)
     if encounter:
-        patient = frappe.get_doc("Patient", encounter.patient)
+        patient = frappe.get_cached_doc("Patient", encounter.patient)
         if patient:
             if patient.customer:
                 items_to_invoice = []
@@ -905,7 +905,7 @@ def render_docs_as_html(docs):
 @frappe.whitelist()
 def render_doc_as_html(doctype, docname, exclude_fields=[]):
     # render document as html, three column layout will break
-    doc = frappe.get_doc(doctype, docname)
+    doc = frappe.get_cached_doc(doctype, docname)
     meta = frappe.get_meta(doctype)
     doc_html = "<div class='col-md-12 col-sm-12'>"
     section_html = ""
@@ -1054,7 +1054,7 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
 
 def update_address_link(address, method):
     # Healthcare Service Invoice.
-    domain_settings = frappe.get_doc("Domain Settings")
+    domain_settings = frappe.get_cached_doc("Domain Settings")
     active_domains = [d.domain for d in domain_settings.active_domains]
 
     if "Healthcare" in active_domains:
@@ -1291,7 +1291,7 @@ def get_insurance_details(service, insurance_subscription, billing_item):
     price_list_rate = 0
     claim_discount = 0
     is_auto_approval = 0
-    insurance_subscription = frappe.get_doc(
+    insurance_subscription = frappe.get_cached_doc(
         "Healthcare Insurance Subscription", insurance_subscription
     )
     if insurance_subscription and valid_insurance(
@@ -1422,7 +1422,7 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
     Render document as HTML
     """
     exclude_fields = exclude_fields or []
-    doc = frappe.get_doc(doctype, docname)
+    doc = frappe.get_cached_doc(doctype, docname)
     meta = frappe.get_meta(doctype)
     doc_html = section_html = section_label = html = ""
     sec_on = has_data = False

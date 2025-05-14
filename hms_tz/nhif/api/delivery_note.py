@@ -63,7 +63,7 @@ def update_dosage_details(item):
         if not reference_dn:
             return
 
-        drug_doc = frappe.get_doc("Drug Prescription", reference_dn)
+        drug_doc = frappe.get_cached_doc("Drug Prescription", reference_dn)
 
         description = ", <br>".join(
             [
@@ -265,7 +265,7 @@ def on_submit(doc, method):
 def update_drug_prescription(doc):
     if doc.patient and not doc.is_return:
         if doc.form_sales_invoice:
-            sales_invoice_doc = frappe.get_doc("Sales Invoice", doc.form_sales_invoice)
+            sales_invoice_doc = frappe.get_cached_doc("Sales Invoice", doc.form_sales_invoice)
 
             for item in sales_invoice_doc.items:
                 if item.reference_dt == "Drug Prescription":
@@ -312,7 +312,7 @@ def update_drug_prescription(doc):
 
         else:
             if doc.reference_doctype == "Patient Encounter":
-                patient_encounter_doc = frappe.get_doc(
+                patient_encounter_doc = frappe.get_cached_doc(
                     doc.reference_doctype, doc.reference_name
                 )
 
@@ -466,7 +466,7 @@ def convert_to_instock_item(name, row):
             "doctype": "Delivery Note Item",
         }
     )
-    doc = frappe.get_doc("Delivery Note", name)
+    doc = frappe.get_cached_doc("Delivery Note", name)
     prev_size = len(doc.items)
     doc.append("items", new_row)
 
@@ -502,7 +502,7 @@ def check_cash_drugs_from_encounter(doc):
         and doc.reference_name
         and doc.reference_doctype == "Patient Encounter"
     ):
-        encounter_doc = frappe.get_doc(doc.reference_doctype, doc.reference_name)
+        encounter_doc = frappe.get_cached_doc(doc.reference_doctype, doc.reference_name)
         if encounter_doc.insurance_subscription:
             cash_drugs = [
                 row.drug_code

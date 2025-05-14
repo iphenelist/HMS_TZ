@@ -49,14 +49,14 @@ class LabMachineMessage(Document):
             profile_name = self.machine_model + "-" + self.machine_make
             profile_exists = frappe.db.exists("Lab Machine Profile", profile_name)
             if profile_exists:
-                profile = frappe.get_doc("Lab Machine Profile", profile_name)
+                profile = frappe.get_cached_doc("Lab Machine Profile", profile_name)
 
                 lab_test_name = profile.lab_test_prefix + self.lab_test_name
                 lab_test_exists = frappe.db.exists("Lab Test", lab_test_name)
                 if not lab_test_exists:
                     return
 
-                lab_test = frappe.get_doc("Lab Test", lab_test_name)
+                lab_test = frappe.get_cached_doc("Lab Test", lab_test_name)
                 if lab_test.docstatus != 0:
                     return
 

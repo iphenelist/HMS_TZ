@@ -49,7 +49,7 @@ def before_save(doc, method):
 def validate_inpatient_occupancies(doc):
     if doc.is_new():
         return
-    old_doc = frappe.get_doc(doc.doctype, doc.name)
+    old_doc = frappe.get_cached_doc(doc.doctype, doc.name)
     count = 0
     for old_row in old_doc.inpatient_occupancies:
         count += 1
@@ -78,7 +78,7 @@ def daily_update_inpatient_occupancies():
 
     for item in occupancies:
         try:
-            doc = frappe.get_doc("Inpatient Record", item.name)
+            doc = frappe.get_cached_doc("Inpatient Record", item.name)
             occupancies_len = len(doc.inpatient_occupancies)
             if occupancies_len > 0:
                 last_row = doc.inpatient_occupancies[occupancies_len - 1]
@@ -185,7 +185,7 @@ def make_deposit(
                 )
             )
 
-    inpatient_record_doc = frappe.get_doc("Inpatient Record", inpatient_record)
+    inpatient_record_doc = frappe.get_cached_doc("Inpatient Record", inpatient_record)
     if inpatient_record_doc.insurance_subscription:
         frappe.throw(_("You cannot make deposit for insurance patient"))
 

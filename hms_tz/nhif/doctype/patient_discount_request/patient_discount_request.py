@@ -12,7 +12,7 @@ class PatientDiscountRequest(Document):
 
     def after_insert(self):
         if self.sales_invoice:
-            invoice_doc = frappe.get_doc("Sales Invoice", self.sales_invoice)
+            invoice_doc = frappe.get_cached_doc("Sales Invoice", self.sales_invoice)
             invoice_doc.hms_tz_discount_requested = 1
             invoice_doc.hms_tz_discount_status = "Pending"
             invoice_doc.save(ignore_permissions=True)
@@ -139,7 +139,7 @@ class PatientDiscountRequest(Document):
     def apply_cash_discount(self):
         if self.sales_invoice and not self.appointment:
             url = get_url_to_form("Patient Discount Request", self.name)
-            si_doc = frappe.get_doc("Sales Invoice", self.sales_invoice)
+            si_doc = frappe.get_cached_doc("Sales Invoice", self.sales_invoice)
 
             if self.apply_discount_on in ["Grand Total", "Net Total"]:
                 si_doc.apply_discount_on = self.apply_discount_on
@@ -208,7 +208,7 @@ class PatientDiscountRequest(Document):
 @frappe.whitelist()
 def get_item_details(invoice_no, item_category, item_code):
     items = []
-    invoice_doc = frappe.get_doc("Sales Invoice", invoice_no)
+    invoice_doc = frappe.get_cached_doc("Sales Invoice", invoice_no)
     for item in invoice_doc.items:
         if item.item_code == item_code:
             items.append(
@@ -229,7 +229,7 @@ def get_item_details(invoice_no, item_category, item_code):
 def get_items(invoice_no, reference_dt=None, reset_options=None):
     items = []
     item_codes = []
-    invoice_doc = frappe.get_doc("Sales Invoice", invoice_no)
+    invoice_doc = frappe.get_cached_doc("Sales Invoice", invoice_no)
     for item in invoice_doc.items:
         if item.reference_dt and reference_dt and item.reference_dt == reference_dt:
             item_codes.append(item.item_code)
@@ -312,7 +312,7 @@ def equeue_apply_insurance_discount(kwargs):
             return
 
         discount_amount = 0
-        appointment_doc = frappe.get_doc("Patient Appointment", self.appointment)
+        appointment_doc = frappe.get_cached_doc("Patient Appointment", self.appointment)
         if self.discount_percent:
             discount_amount = appointment_doc.paid_amount * (
                 self.discount_percent / 100
@@ -346,7 +346,7 @@ def equeue_apply_insurance_discount(kwargs):
             return
 
         for encounter in encounters:
-            encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+            encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 
             for table_field in [
                 "lab_test_prescription",
@@ -393,7 +393,7 @@ def equeue_apply_insurance_discount(kwargs):
         if not self.inpatient_record:
             return
 
-        inpatient_record_doc = frappe.get_doc("Inpatient Record", self.inpatient_record)
+        inpatient_record_doc = frappe.get_cached_doc("Inpatient Record", self.inpatient_record)
 
         discounted_items = []
         for bed in inpatient_record_doc.inpatient_occupancies:

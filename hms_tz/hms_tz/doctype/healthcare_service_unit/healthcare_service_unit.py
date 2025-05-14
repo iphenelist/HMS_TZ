@@ -37,7 +37,7 @@ class HealthcareServiceUnit(NestedSet):
             self.overlap_appointments = 0
             self.inpatient_occupancy = 0
         elif self.service_unit_type:
-            service_unit_type = frappe.get_doc(
+            service_unit_type = frappe.get_cached_doc(
                 "Healthcare Service Unit Type", self.service_unit_type
             )
             self.allow_appointments = service_unit_type.allow_appointments

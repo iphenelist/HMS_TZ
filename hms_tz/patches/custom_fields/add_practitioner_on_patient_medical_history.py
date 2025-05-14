@@ -33,7 +33,7 @@ def update_practitioner_to_old_records():
 
     for records in create_batch(medical_records, 100):
         for record in records:
-            doc = frappe.get_doc("Patient Medical Record", record.name)
+            doc = frappe.get_cached_doc("Patient Medical Record", record.name)
             set_practitioner(doc)
             doc.db_update()
             doc.db_update_all()

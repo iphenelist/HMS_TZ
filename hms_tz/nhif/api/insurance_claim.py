@@ -11,7 +11,7 @@ from hms_tz.nhif.api.healthcare_utils import get_item_rate
 
 def set_patient_encounter(doc, method):
     if doc.reference_dn:
-        reference_doc = frappe.get_doc(doc.reference_dt, doc.reference_dn)
+        reference_doc = frappe.get_cached_doc(doc.reference_dt, doc.reference_dn)
         if reference_doc.parenttype and reference_doc.parenttype == "Patient Encounter":
             doc.order_encounter = reference_doc.parent
         elif doc.reference_dt == "Healthcare Service Order":

@@ -19,7 +19,7 @@ class TestHealthcareServiceUnitType(unittest.TestCase):
 
 def get_unit_type():
     if frappe.db.exists("Healthcare Service Unit Type", "Inpatient Rooms"):
-        return frappe.get_doc("Healthcare Service Unit Type", "Inpatient Rooms")
+        return frappe.get_cached_doc("Healthcare Service Unit Type", "Inpatient Rooms")
 
     unit_type = frappe.new_doc("Healthcare Service Unit Type")
     unit_type.service_unit_type = "Inpatient Rooms"

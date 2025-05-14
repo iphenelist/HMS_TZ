@@ -95,7 +95,7 @@ def get_healthcare_services_to_invoice(
         if not inpatient_record and i.inpatient_record:
             inpatient_record = i.inpatient_record
 
-        encounter_doc = frappe.get_doc("Patient Encounter", i.name)
+        encounter_doc = frappe.get_cached_doc("Patient Encounter", i.name)
 
         for key, value in childs_map.items():
             table = encounter_doc.get(value.get("table"))
@@ -181,7 +181,7 @@ def get_healthcare_services_to_invoice(
     
     # Get services from Inpatient Record
     if inpatient_record:
-        inpatient_doc = frappe.get_doc("Inpatient Record", inpatient_record)
+        inpatient_doc = frappe.get_cached_doc("Inpatient Record", inpatient_record)
         for row in inpatient_doc.inpatient_occupancies:
             if row.is_confirmed == 0 or row.invoiced == 1:
                 continue
@@ -704,7 +704,7 @@ def get_restricted_LRPT(doc):
 def set_healthcare_services(doc, checked_values):
     import json
 
-    doc = frappe.get_doc(json.loads(doc))
+    doc = frappe.get_cached_doc(json.loads(doc))
     checked_values = json.loads(checked_values)
     doc.items = []
 
@@ -853,7 +853,7 @@ def create_healthcare_docs(reference_encounter, encounter_list=[], method="event
         )
 
     for encounter in encounter_list:
-        encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+        encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 
         create_lrp_docs(encounter_doc)
         create_therapy_plan(enc_doc=encounter_doc)
@@ -1179,7 +1179,7 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
 
             if therapy_child.parent not in encounter_ids:
                 encounter_ids.append(therapy_child.parent)
-                enc_doc = frappe.get_doc("Patient Encounter", therapy_child.parent)
+                enc_doc = frappe.get_cached_doc("Patient Encounter", therapy_child.parent)
                 patient_encounter_docs.append(enc_doc)
 
             if (
@@ -1741,7 +1741,7 @@ def set_uninvoiced_so_closed():
         },
     )
     for so in uninvoiced_so_list:
-        so_doc = frappe.get_doc("Sales Order", so.name)
+        so_doc = frappe.get_cached_doc("Sales Order", so.name)
         so_doc.update_status("Closed")
 
 
@@ -1807,7 +1807,7 @@ def delete_or_cancel_draft_document():
 
     for app_doc in appointments:
         try:
-            doc = frappe.get_doc("Patient Appointment", app_doc.name)
+            doc = frappe.get_cached_doc("Patient Appointment", app_doc.name)
             doc.status = "Cancelled"
             doc.save(ignore_permissions=True)
 
@@ -1846,7 +1846,7 @@ def delete_or_cancel_draft_document():
     )
 
     for delivery_note in delivery_documents:
-        delivery_note_doc = frappe.get_doc("Delivery Note", delivery_note.name)
+        delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note.name)
         try:
             return_quatity_or_cancel_delivery_note_via_lrpmt_returns(
                 delivery_note_doc, "Backend"
@@ -1870,7 +1870,7 @@ def return_quatity_or_cancel_delivery_note_via_lrpmt_returns(source_doc, method)
     Cancel draft delivery note if all items was not serviced
     """
 
-    source_doc = frappe.get_doc(frappe.parse_json(source_doc))
+    source_doc = frappe.get_cached_doc(frappe.parse_json(source_doc))
 
     status = ""
     if source_doc.docstatus == 1:
@@ -1949,7 +1949,7 @@ def create_invoiced_items_if_not_created():
     ).run(as_dict=1)
 
     for invoice in si_invoices:
-        si_doc = frappe.get_doc("Sales Invoice", invoice.name)
+        si_doc = frappe.get_cached_doc("Sales Invoice", invoice.name)
 
         therapy_items = []
 
@@ -1963,8 +1963,8 @@ def create_invoiced_items_if_not_created():
                     continue
 
                 try:
-                    child = frappe.get_doc(item.reference_dt, item.reference_dn)
-                    patient_encounter_doc = frappe.get_doc(
+                    child = frappe.get_cached_doc(item.reference_dt, item.reference_dn)
+                    patient_encounter_doc = frappe.get_cached_doc(
                         "Patient Encounter", child.parent
                     )
 
@@ -2150,7 +2150,7 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
     success_count = 0
     failed_count = 0
     for claim in patient_claims:
-        doc = frappe.get_doc("NHIF Patient Claim", claim.name)
+        doc = frappe.get_cached_doc("NHIF Patient Claim", claim.name)
         try:
             doc.submit()
             doc.reload()

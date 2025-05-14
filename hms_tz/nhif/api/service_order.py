@@ -29,7 +29,7 @@ def set_missing_values(doc, method):
 
 @frappe.whitelist()
 def clear_insurance_details(service_order):
-    service_order_doc = frappe.get_doc("Healthcare Service Order", service_order)
+    service_order_doc = frappe.get_cached_doc("Healthcare Service Order", service_order)
     if service_order_doc.docstatus != 0:
         return
     insurance_claim = service_order_doc.insurance_claim
@@ -56,7 +56,7 @@ def clear_insurance_details(service_order):
         service_order_doc.order_reference_doctype
         and service_order_doc.order_reference_name
     ):
-        child_row_doc = frappe.get_doc(
+        child_row_doc = frappe.get_cached_doc(
             service_order_doc.order_reference_doctype,
             service_order_doc.order_reference_name,
         )
@@ -81,7 +81,7 @@ def auto_submit(kwargs):
     import time
 
     time.sleep(5)
-    doc = frappe.get_doc("Healthcare Service Order", kwargs)
+    doc = frappe.get_cached_doc("Healthcare Service Order", kwargs)
     if doc.docstatus == 0 and doc.order_reference_name:
         doc.flags.ignore_permissions = True
         doc.submit()
@@ -92,7 +92,7 @@ def real_auto_submit():
     hso_list = frappe.get_all("Healthcare Service Order", filters={"docstatus": 0})
     for hso in hso_list:
         try:
-            doc = frappe.get_doc("Healthcare Service Order", hso.name)
+            doc = frappe.get_cached_doc("Healthcare Service Order", hso.name)
             if doc.docstatus == 0 and doc.order_reference_name:
                 doc.flags.ignore_permissions = True
                 doc.submit()

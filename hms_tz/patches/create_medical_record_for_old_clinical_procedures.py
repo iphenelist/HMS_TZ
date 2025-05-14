@@ -26,7 +26,7 @@ def execute():
 
     for procedure in procedures:
         if procedure not in medical_records:
-            doc = frappe.get_doc("Clinical Procedure", procedure)
+            doc = frappe.get_cached_doc("Clinical Procedure", procedure)
             insert_clinical_procedure_to_medical_record(doc)
 
     frappe.db.commit()

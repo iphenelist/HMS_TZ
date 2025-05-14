@@ -135,7 +135,7 @@ class LRPMTReturns(Document):
                 )
                 continue
 
-            doc = frappe.get_doc(item.reference_doctype, item.reference_docname)
+            doc = frappe.get_cached_doc(item.reference_doctype, item.reference_docname)
 
             if doc.docstatus < 2:
                 try:
@@ -231,7 +231,7 @@ class LRPMTReturns(Document):
         if unique_submitted_delivery_notes:
             for dn in unique_submitted_delivery_notes:
                 try:
-                    source_doc = frappe.get_doc("Delivery Note", dn)
+                    source_doc = frappe.get_cached_doc("Delivery Note", dn)
                     target_doc = return_drug_quantity_to_stock(self, source_doc)
 
                     if target_doc.get("name"):
@@ -264,7 +264,7 @@ class LRPMTReturns(Document):
 
         if returned_delivery_note_nos:
             for dn in returned_delivery_note_nos:
-                sales_doc = frappe.get_doc("Delivery Note", dn)
+                sales_doc = frappe.get_cached_doc("Delivery Note", dn)
 
                 for item in sales_doc.items:
                     for dd_n in self.drug_items:
@@ -321,7 +321,7 @@ class LRPMTReturns(Document):
                 amount = frappe.get_cached_value("Drug Prescription", item.child_name, "amount")
                 cost_amount += (amount * (item.quantity_prescribed - item.quantity_to_return)) or 0
 
-            encounter_doc = frappe.get_doc("Patient Encounter", encounters[0].name)
+            encounter_doc = frappe.get_cached_doc("Patient Encounter", encounters[0].name)
             validate_totals(encounter_doc, method="validate", show_alert=False)
 
             encounter_doc.current_total = abs(encounter_doc.current_total - cost_amount)
@@ -421,7 +421,7 @@ def update_therapy_session(
     total_sessions_cancelled,
 ):
     for session_id in item.get("therapy_session_ids"):
-        session_doc = frappe.get_doc("Therapy Session", session_id)
+        session_doc = frappe.get_cached_doc("Therapy Session", session_id)
         if session_doc.docstatus < 2:
             try:
                 apply_workflow(session_doc, "Not Serviced")
@@ -474,7 +474,7 @@ def update_drug_prescription_for_uncreated_delivery_note(self):
 
 def update_drug_description_for_draft_delivery_note(self, delivey_note):
     try:
-        dn_doc = frappe.get_doc("Delivery Note", delivey_note)
+        dn_doc = frappe.get_cached_doc("Delivery Note", delivey_note)
 
         if dn_doc.workflow_state != "Not Serviced":
             apply_workflow(dn_doc, "Not Serviced")
@@ -843,7 +843,7 @@ def get_patient_encounters(patient, appointment, company):
 
 @frappe.whitelist()
 def set_checked_lrp_items(doc, checked_items):
-    doc = frappe.get_doc(json.loads(doc))
+    doc = frappe.get_cached_doc(json.loads(doc))
     checked_items = json.loads(checked_items)
 
     doc.lrpt_items = []
@@ -1043,7 +1043,7 @@ def get_drugs(patient, appointment, company):
 
 @frappe.whitelist()
 def set_checked_drug_items(doc, checked_items):
-    doc = frappe.get_doc(json.loads(doc))
+    doc = frappe.get_cached_doc(json.loads(doc))
     checked_items = json.loads(checked_items)
 
     doc.drug_items = []
@@ -1187,7 +1187,7 @@ def get_therapies(patient, appointment, company):
 
 @frappe.whitelist()
 def set_checked_therapy_items(doc, checked_items):
-    doc = frappe.get_doc(json.loads(doc))
+    doc = frappe.get_cached_doc(json.loads(doc))
     checked_items = json.loads(checked_items)
 
     doc.therapy_items = []

@@ -52,7 +52,7 @@ class TestInpatientRecord(unittest.TestCase):
             ),
         )
 
-        ip_record1 = frappe.get_doc("Inpatient Record", ip_record.name)
+        ip_record1 = frappe.get_cached_doc("Inpatient Record", ip_record.name)
         # Validate Pending Invoices
         self.assertRaises(frappe.ValidationError, ip_record.discharge)
         mark_invoiced_inpatient_occupancy(ip_record1)
@@ -92,7 +92,7 @@ def mark_invoiced_inpatient_occupancy(ip_record):
 
 
 def create_inpatient(patient):
-    patient_obj = frappe.get_doc("Patient", patient)
+    patient_obj = frappe.get_cached_doc("Patient", patient)
     inpatient_record = frappe.new_doc("Inpatient Record")
     inpatient_record.patient = patient
     inpatient_record.patient_name = patient_obj.patient_name

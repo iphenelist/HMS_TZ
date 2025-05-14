@@ -914,7 +914,7 @@ def  get_nhif_schemes(company=None, caller=None):
             scheme_id = frappe.get_cached_value("NHIF Scheme", {"scheme_id": row["SchemeID"]}, "name")
             if scheme_id:
                 has_changed = False
-                doc = frappe.get_doc("NHIF Scheme", scheme_id)
+                doc = frappe.get_cached_doc("NHIF Scheme", scheme_id)
 
                 if doc.scheme_name != row["SchemeName"]:
                     doc.scheme_name = row["SchemeName"]
@@ -1034,7 +1034,7 @@ def add_nhif_product(row, company, abbr):
             row["ProductName"] != "null"
         ):
             has_changed = False
-            doc = frappe.get_doc("NHIF Product", nhif_product_pr_key)
+            doc = frappe.get_cached_doc("NHIF Product", nhif_product_pr_key)
 
             if doc.product_id != product_id:
                 doc.product_id = product_id
@@ -1152,7 +1152,7 @@ def  get_item_types(company=None, caller=None):
             item_type = frappe.get_cached_value("NHIF Item Type", {"item_type_id": item["ItemTypeID"]}, "name")
             if item_type:
                 has_changed = False
-                doc = frappe.get_doc("NHIF Item Type", item_type)
+                doc = frappe.get_cached_doc("NHIF Item Type", item_type)
 
                 if doc.type_name != item["TypeName"]:
                     doc.type_name = item["TypeName"]

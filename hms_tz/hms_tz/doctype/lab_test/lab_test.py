@@ -95,8 +95,8 @@ class LabTest(Document):
 
 
 def create_test_from_template(lab_test):
-    template = frappe.get_doc("Lab Test Template", lab_test.template)
-    patient = frappe.get_doc("Patient", lab_test.patient)
+    template = frappe.get_cached_doc("Lab Test Template", lab_test.template)
+    patient = frappe.get_cached_doc("Patient", lab_test.patient)
 
     lab_test.lab_test_name = template.lab_test_name
     lab_test.result_date = getdate()
@@ -143,10 +143,10 @@ def create_multiple(doctype, docname):
 
 def create_lab_test_from_encounter(encounter):
     lab_test_created = False
-    encounter = frappe.get_doc("Patient Encounter", encounter)
+    encounter = frappe.get_cached_doc("Patient Encounter", encounter)
 
     if encounter and encounter.lab_test_prescription:
-        patient = frappe.get_doc("Patient", encounter.patient)
+        patient = frappe.get_cached_doc("Patient", encounter.patient)
         for item in encounter.lab_test_prescription:
             if not item.lab_test_created:
                 template = get_lab_test_template(item.lab_test_code)
@@ -171,9 +171,9 @@ def create_lab_test_from_encounter(encounter):
 
 def create_lab_test_from_invoice(sales_invoice):
     lab_tests_created = False
-    invoice = frappe.get_doc("Sales Invoice", sales_invoice)
+    invoice = frappe.get_cached_doc("Sales Invoice", sales_invoice)
     if invoice and invoice.patient:
-        patient = frappe.get_doc("Patient", invoice.patient)
+        patient = frappe.get_cached_doc("Patient", invoice.patient)
         for item in invoice.items:
             lab_test_created = 0
             if item.reference_dt == "Lab Prescription":
@@ -215,7 +215,7 @@ def create_lab_test_from_invoice(sales_invoice):
 def get_lab_test_template(item):
     template_id = frappe.db.exists("Lab Test Template", {"item": item})
     if template_id:
-        return frappe.get_doc("Lab Test Template", template_id)
+        return frappe.get_cached_doc("Lab Test Template", template_id)
     return False
 
 
@@ -293,7 +293,7 @@ def create_sample_doc(template, patient, invoice, company=None):
 
         if sample_exists:
             # update sample collection by adding quantity
-            sample_collection = frappe.get_doc("Sample Collection", sample_exists[0][0])
+            sample_collection = frappe.get_cached_doc("Sample Collection", sample_exists[0][0])
             quantity = int(sample_collection.sample_qty) + int(template.sample_qty)
             if template.sample_details:
                 sample_details = (
@@ -378,7 +378,7 @@ def load_result_format(lab_test, template, prescription, invoice):
         for lab_test_group in template.lab_test_groups:
             # Template_in_group = None
             if lab_test_group.lab_test_template:
-                template_in_group = frappe.get_doc(
+                template_in_group = frappe.get_cached_doc(
                     "Lab Test Template", lab_test_group.lab_test_template
                 )
                 if template_in_group:
@@ -427,7 +427,7 @@ def load_result_format(lab_test, template, prescription, invoice):
 def get_employee_by_user_id(user_id):
     emp_id = frappe.db.exists("Employee", {"user_id": user_id})
     if emp_id:
-        return frappe.get_doc("Employee", emp_id)
+        return frappe.get_cached_doc("Employee", emp_id)
     return None
 
 

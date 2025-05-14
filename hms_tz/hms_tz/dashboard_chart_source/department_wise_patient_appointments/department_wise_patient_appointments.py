@@ -20,7 +20,7 @@ def get(
     heatmap_year=None,
 ):
     if chart_name:
-        chart = frappe.get_doc("Dashboard Chart", chart_name)
+        chart = frappe.get_cached_doc("Dashboard Chart", chart_name)
     else:
         chart = frappe._dict(frappe.parse_json(chart))
 

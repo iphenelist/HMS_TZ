@@ -14,7 +14,7 @@ def execute():
 
     def update_docs(doc_list, doctype):
         for doc_name in doc_list:
-            doc = frappe.get_doc(doctype, doc_name.get("name"))
+            doc = frappe.get_cached_doc(doctype, doc_name.get("name"))
             if not doc.healthcare_service_unit:
                 continue
             company = frappe.get_cached_value(

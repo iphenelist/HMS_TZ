@@ -69,7 +69,7 @@ class HealthcareReferral(Document):
 		
 		diagnosis = []
 		unique_diagnosis = []
-		encounter_doc = frappe.get_doc("Patient Encounter", self.encounter)
+		encounter_doc = frappe.get_cached_doc("Patient Encounter", self.encounter)
 		for d in encounter_doc.patient_encounter_final_diagnosis:
 			diagnosis.append({
 				"status": "Final",
@@ -99,7 +99,7 @@ class HealthcareReferral(Document):
 		
 		services = []
 		childs_map = get_childs_map()
-		encounter_doc = frappe.get_doc("Patient Encounter", self.encounter)
+		encounter_doc = frappe.get_cached_doc("Patient Encounter", self.encounter)
 
 		for child in childs_map:
 			if len(encounter_doc.get(child["table"])) == 0:

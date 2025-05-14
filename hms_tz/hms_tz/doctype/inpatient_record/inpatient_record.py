@@ -122,7 +122,7 @@ def schedule_inpatient(args):
     set_details_from_ip_order(inpatient_record, admission_order)
 
     # Patient details
-    patient = frappe.get_doc("Patient", admission_order["patient"])
+    patient = frappe.get_cached_doc("Patient", admission_order["patient"])
     inpatient_record.patient = patient.name
     inpatient_record.patient_name = patient.patient_name
     inpatient_record.gender = patient.sex
@@ -134,7 +134,7 @@ def schedule_inpatient(args):
     inpatient_record.scheduled_date = today()
 
     # Set encounter detials
-    encounter = frappe.get_doc(
+    encounter = frappe.get_cached_doc(
         "Patient Encounter", admission_order["admission_encounter"]
     )
     if encounter and encounter.symptoms:  # Symptoms
@@ -191,7 +191,7 @@ def schedule_discharge(args):
         "Patient", discharge_order["patient"], "inpatient_record"
     )
     if inpatient_record_id:
-        inpatient_record = frappe.get_doc("Inpatient Record", inpatient_record_id)
+        inpatient_record = frappe.get_cached_doc("Inpatient Record", inpatient_record_id)
         check_out_inpatient(inpatient_record)
         set_details_from_ip_order(inpatient_record, discharge_order)
         validate_discharge(inpatient_record)
@@ -229,7 +229,7 @@ def check_out_inpatient(inpatient_record):
             if inpatient_occupancy.left != 1:
                 inpatient_occupancy.left = True
                 inpatient_occupancy.check_out = now_datetime()
-                hsu = frappe.get_doc(
+                hsu = frappe.get_cached_doc(
                     "Healthcare Service Unit", inpatient_occupancy.service_unit
                 )
                 hsu.occupancy_status = "Vacant"
@@ -359,7 +359,7 @@ def transfer_patient(inpatient_record, service_unit, check_in):
 
     inpatient_record.save(ignore_permissions=True)
 
-    hsu = frappe.get_doc("Healthcare Service Unit", service_unit)
+    hsu = frappe.get_cached_doc("Healthcare Service Unit", service_unit)
     hsu.occupancy_status = "Occupied"
     hsu.save(ignore_permissions=True)
 
@@ -384,7 +384,7 @@ def patient_leave_service_unit(inpatient_record, check_out, leave_from):
                 inpatient_occupancy.left = True
                 inpatient_occupancy.check_out = check_out
 
-                hsu = frappe.get_doc(
+                hsu = frappe.get_cached_doc(
                     "Healthcare Service Unit", inpatient_occupancy.service_unit
                 )
                 hsu.occupancy_status = "Vacant"

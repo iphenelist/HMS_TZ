@@ -26,7 +26,7 @@ def add_product(company, id, name=None):
             name != "null" and
             product_id != nhif_product_pr_key 
         ):
-            doc = frappe.get_doc("NHIF Product", nhif_product_pr_key)
+            doc = frappe.get_cached_doc("NHIF Product", nhif_product_pr_key)
 
             doc.product_id = product_id
             doc.product_name = name

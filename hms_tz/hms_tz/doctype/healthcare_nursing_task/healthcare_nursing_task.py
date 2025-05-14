@@ -10,7 +10,7 @@ from frappe.model.document import Document
 class HealthcareNursingTask(Document):
     def on_update(self):
         if self.status:
-            clinical_procedure = frappe.get_doc(
+            clinical_procedure = frappe.get_cached_doc(
                 "Clinical Procedure", self.reference_docname
             )
             for nursing_tasks in clinical_procedure.nursing_tasks:
