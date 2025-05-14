@@ -342,6 +342,7 @@ def update_drug_prescription(doc):
                                     .set(hsrp.lrpmt_doctype, doc.doctype)
                                     .set(hsrp.lrpmt_docname, doc.name)
                                     .set(hsrp.dn_detail, dni.name)
+                                    .set(hsrp.lrpmt_status, "Submitted")
                                     .where((hsrp.ref_docname == dni.reference_name))
                                 ).run()
 
@@ -368,6 +369,7 @@ def update_drug_prescription(doc):
                                     .set(hsrp.is_cancelled, 1)
                                     .set(hsrp.lrpmt_doctype, doc.doctype)
                                     .set(hsrp.lrpmt_docname, doc.name)
+                                    .set(hsrp.lrpmt_status, "Submitted")
                                     .where((hsrp.ref_docname == original_item.reference_name))
                                 ).run()
 
