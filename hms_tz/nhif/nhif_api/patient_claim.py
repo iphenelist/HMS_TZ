@@ -308,7 +308,7 @@ def send_confirmation_code(ref_doctype, ref_docname):
     Send confirmation code to Patient
     """
 
-    doc = frappe.get_doc(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     payload = {
         "FacilityCode": doc.facility_code,
@@ -383,7 +383,7 @@ def get_receipt(ref_doctype, ref_docname):
     Get receipt from NHIF
     """
 
-    doc = frappe.get_doc(ref_doctype, ref_docname)
+    doc = frappe.get_dget_cached_dococ(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 

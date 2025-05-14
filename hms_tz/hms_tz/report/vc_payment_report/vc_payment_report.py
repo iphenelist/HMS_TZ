@@ -170,7 +170,7 @@ def get_commission_doc_details(filters):
         order_by="valid_from desc",
         limit=1,
     )
-    commission_doc = frappe.get_doc("Visiting Comission", commission_list[0].name)
+    commission_doc = frappe.get_cached_doc("Visiting Comission", commission_list[0].name)
     excluded_services_map = {}
     for row in commission_doc.excluded_service_rates:
         excluded_services_map.setdefault(row.document_type, []).append(row)

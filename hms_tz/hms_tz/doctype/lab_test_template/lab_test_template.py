@@ -67,7 +67,7 @@ class LabTestTemplate(Document):
                 frappe.db.set_value("Item", self.item, "disabled", 0)
 
     def update_item(self):
-        item = frappe.get_doc("Item", self.item)
+        item = frappe.get_cached_doc("Item", self.item)
         if item:
             item.update(
                 {

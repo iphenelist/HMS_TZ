@@ -25,7 +25,7 @@ class TestPatient(unittest.TestCase):
         settings.save()
 
         patient = create_patient()
-        patient = frappe.get_doc("Patient", patient)
+        patient = frappe.get_cached_doc("Patient", patient)
         self.assertEqual(patient.status, "Disabled")
 
         # check sales invoice and patient status

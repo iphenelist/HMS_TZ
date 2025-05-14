@@ -153,7 +153,7 @@ def get_lab_test_template(lab_test_name):
 
 def create_delivery_note(doc):
     if doc.ref_doctype and doc.ref_docname and doc.ref_doctype == "Patient Encounter":
-        patient_encounter_doc = frappe.get_doc(doc.ref_doctype, doc.ref_docname)
+        patient_encounter_doc = frappe.get_cached_doc(doc.ref_doctype, doc.ref_docname)
         create_delivery_note_from_LRPT(doc, patient_encounter_doc)
 
 
@@ -210,7 +210,7 @@ def create_sample_collection(doc):
     )
 
     if len(sample_docname) > 0:
-        sample_doc = frappe.get_doc("Sample Collection", sample_docname[0].name)
+        sample_doc = frappe.get_cached_doc("Sample Collection", sample_docname[0].name)
         sample_doc.append(
             "lab_tests",
             {
@@ -315,7 +315,7 @@ def send_sms_for_lab_results(doc):
 def check_cash_payments_from_encounter(doc, ref_doctype, ref_docname_field, prescription_field, item_name_field, item_descriptor, additional_checks=None):
     # Ensure there is a valid reference to an encounter
     if getattr(doc, ref_docname_field) and getattr(doc, ref_doctype) == "Patient Encounter":
-        encounter_doc = frappe.get_doc("Patient Encounter", getattr(doc, ref_docname_field))
+        encounter_doc = frappe.get_cached_doc("Patient Encounter", getattr(doc, ref_docname_field))
         
         # Check for insurance subscription
         if encounter_doc.insurance_subscription:

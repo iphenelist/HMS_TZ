@@ -39,7 +39,7 @@ def create_therapy_type():
         )
         therapy_type.save()
     else:
-        therapy_type = frappe.get_doc("Therapy Type", "Basic Rehab")
+        therapy_type = frappe.get_cached_doc("Therapy Type", "Basic Rehab")
     return therapy_type
 
 

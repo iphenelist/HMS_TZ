@@ -90,7 +90,7 @@ class LimitChangeRequest(Document):
                 "Inpatient Record", self.inpatient_record, "cash_limit", self.cash_limit
             )
 
-            inpatient_record_doc = frappe.get_doc(
+            inpatient_record_doc = frappe.get_cached_doc(
                 "Inpatient Record", self.inpatient_record
             )
 
@@ -206,7 +206,7 @@ class LimitChangeRequest(Document):
             "therapies",
         ]
         for encounter in encounters:
-            encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
+            encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter.name)
             for table_field in table_map:
                 if encounter_doc.get(table_field):
                     for item_row in encounter_doc.get(table_field):

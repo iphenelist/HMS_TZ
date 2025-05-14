@@ -52,7 +52,7 @@ def validate_create_delivery_note(doc):
 
 @frappe.whitelist()
 def create_pending_healthcare_docs(doc_name):
-    doc = frappe.get_doc("Sales Invoice", doc_name)
+    doc = frappe.get_cached_doc("Sales Invoice", doc_name)
     create_healthcare_docs(doc, "From Front End")
 
 
@@ -122,14 +122,14 @@ def create_healthcare_docs(doc, method):
                 "Radiology Procedure Prescription",
                 "Procedure Prescription",
             ]:
-                child = frappe.get_doc(item.reference_dt, item.reference_dn)
+                child = frappe.get_cached_doc(item.reference_dt, item.reference_dn)
                 if child.is_cancelled == 1:
                     frappe.throw(
                         f"Item: {frappe.bold(item.item_code)} RowNo#: {frappe.bold(item.idx)} is already cancelled,\
                         Please confirm cancellation of this item on Patient Encounter and remove this item from sales invoice"
                     )
 
-                patient_encounter_doc = frappe.get_doc(
+                patient_encounter_doc = frappe.get_cached_doc(
                     "Patient Encounter", child.parent
                 )
                 if child.doctype == "Lab Prescription":
@@ -186,7 +186,7 @@ def create_healthcare_docs(doc, method):
             
             if len(healthcare_service_parents) > 0:
                 for row in healthcare_service_parents:
-                    hsr_doc = frappe.get_doc("Healthcare Service Request", row.service_request_no)
+                    hsr_doc = frappe.get_cached_doc("Healthcare Service Request", row.service_request_no)
                     hsr_doc.create_healthcare_service_docs()
 
 

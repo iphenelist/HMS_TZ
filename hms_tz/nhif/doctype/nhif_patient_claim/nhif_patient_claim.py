@@ -425,7 +425,7 @@ class NHIFPatientClaim(Document):
         self.clinical_notes = ""
         if not inpatient_record:
             for encounter in self.patient_encounters:
-                encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
+                encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter.name)
 
                 self.set_clinical_notes(encounter_doc)
 
@@ -473,9 +473,9 @@ class NHIFPatientClaim(Document):
         else:
             dates = []
             occupancy_list = []
-            record_doc = frappe.get_doc("Inpatient Record", inpatient_record)
+            record_doc = frappe.get_cached_doc("Inpatient Record", inpatient_record)
 
-            admission_encounter_doc = frappe.get_doc(
+            admission_encounter_doc = frappe.get_cached_doc(
                 "Patient Encounter", record_doc.admission_encounter
             )
             for occupancy in record_doc.inpatient_occupancies:
@@ -569,7 +569,7 @@ class NHIFPatientClaim(Document):
                 for encounter in self.patient_encounters:
                     if str(encounter.encounter_date) != checkin_date:
                         continue
-                    encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
+                    encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter.name)
 
                     # allow clinical notes to be added to the claim even if the service is not chargeable and encounters will be ignored
                     self.set_clinical_notes(encounter_doc)
@@ -647,7 +647,7 @@ class NHIFPatientClaim(Document):
 
         appointment_idx = 1
         for appointment_no in patient_appointment_list:
-            patient_appointment_doc = frappe.get_doc(
+            patient_appointment_doc = frappe.get_cached_doc(
                 "Patient Appointment", appointment_no
             )
 
@@ -811,7 +811,7 @@ class NHIFPatientClaim(Document):
             ).insert(ignore_permissions=True)
             new_folio_doc.reload()
         else:
-            folio_doc = frappe.get_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
             folio_no = cint(folio_doc.folio_no) + 1
 
             folio_doc.folio_no += 1
@@ -841,7 +841,7 @@ class NHIFPatientClaim(Document):
         self.reload()
 
     def validate_appointment_info(self):
-        appointment_doc = frappe.get_doc(
+        appointment_doc = frappe.get_cached_doc(
             "Patient Appointment", self.patient_appointment
         )
         if self.authorization_no != appointment_doc.authorization_number:
@@ -975,7 +975,7 @@ def generate_pdf(doc):
         },
     )
     if file_list:
-        patientfile = frappe.get_doc("File", file_list[0].name)
+        patientfile = frappe.get_cached_doc("File", file_list[0].name)
         if patientfile:
             pdf = patientfile.get_content()
             return to_base64(pdf)
@@ -1250,7 +1250,7 @@ def reconcile_repeated_items(claim_no):
         else:
             return unique_items
 
-    claim_doc = frappe.get_doc("NHIF Patient Claim", claim_no)
+    claim_doc = frappe.get_cached_doc("NHIF Patient Claim", claim_no)
     claim_doc.allow_changes = 1
     claim_doc.nhif_patient_claim_item = reconcile_items(
         claim_doc.nhif_patient_claim_item

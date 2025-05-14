@@ -13,7 +13,7 @@ def execute():
         return
 
     for dn in delivery_notes:
-        dn_doc = frappe.get_doc("Delivery Note", dn.name)
+        dn_doc = frappe.get_cached_doc("Delivery Note", dn.name)
 
         if len(dn_doc.hms_tz_original_items) > 0:
             continue

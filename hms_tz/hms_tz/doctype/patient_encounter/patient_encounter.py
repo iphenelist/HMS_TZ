@@ -116,7 +116,7 @@ def set_subject_field(encounter):
 def create_healthcare_service_order(encounter):
     if encounter.drug_prescription:
         for drug in encounter.drug_prescription:
-            medication = frappe.get_doc("Medication", drug.drug_code)
+            medication = frappe.get_cached_doc("Medication", drug.drug_code)
             args = {
                 "healthcare_service_order_category": medication.get_value(
                     "healthcare_service_order_category"
@@ -150,7 +150,7 @@ def create_healthcare_service_order(encounter):
             make_healthcare_service_order(args)
     if encounter.lab_test_prescription:
         for labtest in encounter.lab_test_prescription:
-            lab_template = frappe.get_doc("Lab Test Template", labtest.lab_test_code)
+            lab_template = frappe.get_cached_doc("Lab Test Template", labtest.lab_test_code)
             args = {
                 "healthcare_service_order_category": lab_template.get_value(
                     "healthcare_service_order_category"
@@ -187,7 +187,7 @@ def create_healthcare_service_order(encounter):
             make_healthcare_service_order(args)
     if encounter.procedure_prescription:
         for procedure in encounter.procedure_prescription:
-            procedure_template = frappe.get_doc(
+            procedure_template = frappe.get_cached_doc(
                 "Clinical Procedure Template", procedure.procedure
             )
             args = {
@@ -227,7 +227,7 @@ def create_healthcare_service_order(encounter):
             make_healthcare_service_order(args)
     if encounter.therapies:
         for therapy in encounter.therapies:
-            therapy_type = frappe.get_doc("Therapy Type", therapy.therapy_type)
+            therapy_type = frappe.get_cached_doc("Therapy Type", therapy.therapy_type)
             args = {
                 "healthcare_service_order_category": therapy_type.get_value(
                     "healthcare_service_order_category"
@@ -262,7 +262,7 @@ def create_healthcare_service_order(encounter):
             make_healthcare_service_order(args)
     if encounter.radiology_procedure_prescription:
         for radiology in encounter.radiology_procedure_prescription:
-            radiology_template = frappe.get_doc(
+            radiology_template = frappe.get_cached_doc(
                 "Radiology Examination Template",
                 radiology.radiology_examination_template,
             )
@@ -335,16 +335,16 @@ def get_quantity(self):
     period = None
 
     if self.dosage:
-        dosage = frappe.get_doc("Prescription Dosage", self.dosage)
+        dosage = frappe.get_cached_doc("Prescription Dosage", self.dosage)
         for item in dosage.dosage_strength:
             quantity += item.strength
         if self.period and self.interval:
-            period = frappe.get_doc("Prescription Duration", self.period)
+            period = frappe.get_cached_doc("Prescription Duration", self.period)
             if self.interval < period.get_days():
                 quantity = quantity * (period.get_days() / self.interval)
 
     elif self.interval and self.interval_uom and self.period:
-        period = frappe.get_doc("Prescription Duration", self.period)
+        period = frappe.get_cached_doc("Prescription Duration", self.period)
         interval_in = self.interval_uom
         if interval_in == "Day" and self.interval < period.get_days():
             quantity = period.get_days() / self.interval

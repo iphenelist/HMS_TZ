@@ -78,21 +78,21 @@ class HealthcarePackageOrder(Document):
 	
 	def create_encounters(self):
 		if self.non_consultation_appointment:
-			appointment_doc = frappe.get_doc("Patient Appointment", self.non_consultation_appointment)
+			appointment_doc = frappe.get_cached_doc("Patient Appointment", self.non_consultation_appointment)
 			encounter = make_encounter(appointment_doc, "patient_encounter")
 			self.db_set("non_consultation_encounter", encounter, update_modified=False)
 			self.update_encounter_details(encounter, True)
 
 		for row in self.consultations:
 			if row.appointment:
-				appointment_doc = frappe.get_doc("Patient Appointment", row.appointment)
+				appointment_doc = frappe.get_cached_doc("Patient Appointment", row.appointment)
 				encounter = make_encounter(appointment_doc, "patient_encounter")
 				row.db_set("encounter", encounter, update_modified=False)
 				self.update_encounter_details(encounter)
 	
 	def update_encounter_details(self, encounter, has_items=False):
-		package_doc = frappe.get_doc("Healthcare Package", self.healthcare_package)
-		encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+		package_doc = frappe.get_cached_doc("Healthcare Package", self.healthcare_package)
+		encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 		update_encounter_items(encounter_doc, package_doc, has_items)
 		encounter_doc.save(ignore_permissions=True)
 

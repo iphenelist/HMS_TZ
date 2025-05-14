@@ -16,7 +16,7 @@ def get_service_preapproval(
     authorization_no=None,
     settings_doc=None, 
 ):
-    encounter_doc = frappe.get_doc(ref_doctype, ref_docname)
+    encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     services, service_map, diseases = get_encounter_services(encounter_doc)
     if len(services) == 0:
@@ -154,7 +154,7 @@ def cancel_preapproval(
     remarks,
     settings_doc=None,
 ):
-    encounter_doc = frappe.get_doc(ref_doctype, ref_docname)
+    encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
     services, service_map, diseases = get_encounter_services(encounter_doc, preapproval_no)
     if len(services) == 0:
         frappe.msgprint("No servuce(s) to cancel an Pre-Approvals")

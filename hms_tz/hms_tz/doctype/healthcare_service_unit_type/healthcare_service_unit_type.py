@@ -126,7 +126,7 @@ def make_item_price(item, price_list_name, item_price):
 
 
 def update_item(doc):
-    item = frappe.get_doc("Item", doc.item)
+    item = frappe.get_cached_doc("Item", doc.item)
     if item:
         item.update(
             {

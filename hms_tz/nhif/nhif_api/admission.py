@@ -67,7 +67,7 @@ def get_admission_types(company=None, caller=None):
             admission = frappe.get_cached_value("Healthcare Admission Type", {"admission_type_name": row["AdmissionTypeName"]}, "name")
             if admission:
                 has_changed = False
-                doc = frappe.get_doc("Healthcare Admission Type", admission)
+                doc = frappe.get_cached_doc("Healthcare Admission Type", admission)
 
                 if doc.admission_type_name != row["AdmissionTypeName"]:
                     doc.admission_type_name = row["AdmissionTypeName"]
@@ -148,7 +148,7 @@ def get_discharge_types(company=None, caller=None):
             discharge_type = frappe.get_cached_value("Healthcare Discharge Type", {"discharge_type_name": row["DischargeTypeName"]}, "name")
             if discharge_type:
                 has_changed = False
-                doc = frappe.get_doc("Healthcare Discharge Type", discharge_type)
+                doc = frappe.get_cached_doc("Healthcare Discharge Type", discharge_type)
 
                 if doc.discharge_type_name != row["DischargeTypeName"]:
                     doc.discharge_type_name = row["DischargeTypeName"]
@@ -229,7 +229,7 @@ def get_ward_types(company=None, caller=None):
             ward_type = frappe.get_cached_value("Healthcare Ward Type", {"ward_type_name": row["WardTypeName"]}, "name")
             if ward_type:
                 has_changed = False
-                doc = frappe.get_doc("Healthcare Ward Type", ward_type)
+                doc = frappe.get_cached_doc("Healthcare Ward Type", ward_type)
 
                 if doc.ward_type_name != row["WardTypeName"]:
                     doc.ward_type_name = row["WardTypeName"]
@@ -320,7 +320,7 @@ def get_room_types(company=None, caller=None):
             room_type = frappe.get_cached_value("Healthcare Room Type", {"room_type_name": row["RoomTypeName"]}, "name")
             if room_type:
                 has_changed = False
-                doc = frappe.get_doc("Healthcare Room Type", room_type)
+                doc = frappe.get_cached_doc("Healthcare Room Type", room_type)
 
                 if doc.room_type_name != row["RoomTypeName"]:
                     doc.room_type_name = row["RoomTypeName"]
@@ -648,7 +648,7 @@ def send_overstay_nofication():
         }
 
         for row in ip_records:
-            inpatient_doc = frappe.get_doc("Inpatient Recrod", row.inpatient_id)
+            inpatient_doc = frappe.get_cached_doc("Inpatient Recrod", row.inpatient_id)
             inpatient_occupancies = inpatient_doc.get("inpatient_occupancies")
             if len(inpatient_occupancies) == 0:
                 continue

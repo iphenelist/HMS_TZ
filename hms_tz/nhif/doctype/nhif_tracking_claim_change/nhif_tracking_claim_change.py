@@ -15,7 +15,7 @@ ref_docnames_list = []
 
 def track_changes_of_claim_items(claim_doc):
     claim_no = reconcile_original_nhif_patient_claim_items(claim_doc)
-    claim = frappe.get_doc("NHIF Patient Claim", claim_no)
+    claim = frappe.get_cached_doc("NHIF Patient Claim", claim_no)
     claim.reload()
 
     for row in claim.original_nhif_patient_claim_item:

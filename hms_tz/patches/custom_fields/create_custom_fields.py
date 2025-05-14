@@ -68,7 +68,7 @@ def export_custom_fields(docnames):
     custom_fields = []
 
     for docname in docnames:
-        doc = frappe.get_doc("Custom Field", docname)
+        doc = frappe.get_cached_doc("Custom Field", docname)
         custom_fields.append(
             doc.as_dict(
                 convert_dates_to_str=True, no_default_fields=True, no_nulls=True

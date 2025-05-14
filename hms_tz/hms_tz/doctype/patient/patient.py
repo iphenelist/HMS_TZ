@@ -51,7 +51,7 @@ class Patient(Document):
 
     def on_update(self):
         if self.customer:
-            customer = frappe.get_doc("Customer", self.customer)
+            customer = frappe.get_cached_doc("Customer", self.customer)
             if self.customer_group:
                 customer.customer_group = self.customer_group
             if self.territory:
@@ -186,7 +186,7 @@ class Patient(Document):
         if user:
             contact_name = frappe.db.exists("Contact", {"user": user})
             if contact_name:
-                contact = frappe.get_doc("Contact", contact_name)
+                contact = frappe.get_cached_doc("Contact", contact_name)
                 if contact:
                     contact.is_primary_contact = True
                     contact.append(
@@ -355,7 +355,7 @@ def update_contacts(doc):
 
     if existing_contacts:
         for contact_name in existing_contacts:
-            contact = frappe.get_doc("Contact", contact_name.get("name"))
+            contact = frappe.get_cached_doc("Contact", contact_name.get("name"))
             _update_contacts(doc, contact)
 
 
@@ -388,7 +388,7 @@ def make_contact(doc):
             if not contact_name:
                 return
 
-            contact = frappe.get_doc("Contact", contact_name)
+            contact = frappe.get_cached_doc("Contact", contact_name)
             _update_contacts(doc, contact)
         else:
             frappe.log_error(frappe.get_traceback(), _("Contact Creation Failed"))

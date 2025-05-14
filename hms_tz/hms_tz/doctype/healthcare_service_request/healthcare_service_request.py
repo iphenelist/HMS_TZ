@@ -397,7 +397,7 @@ def create_service_request(doc_obj=None, data=None):
 
 	if data:
 		data = json.loads(data)
-		doc = frappe.get_doc(data.get("source_doctype"), data.get("source_docname"))
+		doc = frappe.get_cached_doc(data.get("source_doctype"), data.get("source_docname"))
 	else:
 		doc = doc_obj
 	

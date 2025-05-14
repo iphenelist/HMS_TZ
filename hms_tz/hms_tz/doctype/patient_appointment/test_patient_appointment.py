@@ -249,7 +249,7 @@ def create_healthcare_service_items():
 
 def create_clinical_procedure_template():
     if frappe.db.exists("Clinical Procedure Template", "Knee Surgery and Rehab"):
-        return frappe.get_doc("Clinical Procedure Template", "Knee Surgery and Rehab")
+        return frappe.get_cached_doc("Clinical Procedure Template", "Knee Surgery and Rehab")
     template = frappe.new_doc("Clinical Procedure Template")
     template.template = "Knee Surgery and Rehab"
     template.item_code = "Knee Surgery and Rehab"

@@ -21,7 +21,7 @@ def get_service_approval(
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
 
-    doc = frappe.get_doc(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
@@ -97,7 +97,7 @@ def update_service_approval(
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
     
-    doc = frappe.get_doc(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
@@ -173,7 +173,7 @@ def issue_approved_service(
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
     
-    doc = frappe.get_doc(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     image_data = base64.b64encode(fingerprint_data.encode('utf-8')).decode('utf-8')
@@ -631,7 +631,7 @@ def get_approval_services(company=None, caller=None):
         for row in data:
             if frappe.db.exists("NHIF Service Type", row["ServiceTypeName"]):
                 has_changed = False
-                doc = frappe.get_doc("NHIF Service Type", row["ServiceTypeName"])
+                doc = frappe.get_cached_doc("NHIF Service Type", row["ServiceTypeName"])
                 if doc.service_type_id != row["ServiceTypeID"]:
                     has_changed = True
                     doc.service_type_id = row["ServiceTypeID"]

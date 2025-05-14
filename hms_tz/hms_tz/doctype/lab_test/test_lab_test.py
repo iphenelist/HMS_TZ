@@ -102,7 +102,7 @@ class TestLabTest(unittest.TestCase):
 def create_lab_test_template(test_sensitivity=0, sample_collection=1):
     medical_department = create_medical_department()
     if frappe.db.exists("Lab Test Template", "Insulin Resistance"):
-        return frappe.get_doc("Lab Test Template", "Insulin Resistance")
+        return frappe.get_cached_doc("Lab Test Template", "Insulin Resistance")
     template = frappe.new_doc("Lab Test Template")
     template.lab_test_name = "Insulin Resistance"
     template.lab_test_template_type = "Descriptive"

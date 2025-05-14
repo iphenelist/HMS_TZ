@@ -91,7 +91,7 @@ def get_radiology_procedure_prescribed(patient, encounter_practitioner=False):
 
 @frappe.whitelist()
 def create_radiology_examination(appointment):
-    appointment = frappe.get_doc("Patient Appointment", appointment)
+    appointment = frappe.get_cached_doc("Patient Appointment", appointment)
     radiology_examination = frappe.new_doc("Radiology Examination")
     radiology_examination.appointment = appointment.name
     radiology_examination.patient = appointment.patient

@@ -9,7 +9,7 @@ def before_insert(doc, method):
 
 def after_insert(doc, method):
     if doc.therapy_plan:
-        plan = frappe.get_doc("Therapy Plan", doc.therapy_plan)
+        plan = frappe.get_cached_doc("Therapy Plan", doc.therapy_plan)
         doc.hms_tz_insurance_coverage_plan = plan.hms_tz_insurance_coverage_plan
         doc.insurance_company = plan.insurance_company
         doc.ref_doctype = plan.ref_doctype

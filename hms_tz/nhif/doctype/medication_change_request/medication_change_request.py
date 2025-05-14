@@ -366,7 +366,7 @@ class MedicationChangeRequest(Document):
                 )
 
     def update_encounter(self):
-        doc = frappe.get_doc("Patient Encounter", self.patient_encounter)
+        doc = frappe.get_cached_doc("Patient Encounter", self.patient_encounter)
         for line in self.original_pharmacy_prescription:
             for row in doc.drug_prescription:
                 if (
@@ -409,7 +409,7 @@ class MedicationChangeRequest(Document):
         return doc
 
     def update_sales_order(self, encounter_doc):
-        so_doc = frappe.get_doc("Sales Order", self.sales_order)
+        so_doc = frappe.get_cached_doc("Sales Order", self.sales_order)
         so_doc.items = []
         for row in encounter_doc.get("drug_prescription"):
             if (
@@ -471,7 +471,7 @@ class MedicationChangeRequest(Document):
         so_doc.reload()
 
     def update_delivery_note(self, encounter_doc):
-        dn_doc = frappe.get_doc("Delivery Note", self.delivery_note)
+        dn_doc = frappe.get_cached_doc("Delivery Note", self.delivery_note)
         dn_doc.items = []
         dn_doc.hms_tz_original_items = []
 
@@ -548,7 +548,7 @@ class MedicationChangeRequest(Document):
 
     def update_delivery_note_workflow(self, state, action, dn_doc=None):
         if not dn_doc:
-            dn_doc = frappe.get_doc("Delivery Note", self.delivery_note)
+            dn_doc = frappe.get_cached_doc("Delivery Note", self.delivery_note)
 
         if dn_doc.form_sales_invoice:
             url = get_url_to_form("sales Ivoice", dn_doc.form_sales_invoice)
@@ -635,7 +635,7 @@ def get_patient_encounter_name(delivery_note, sales_order):
 
 @frappe.whitelist()
 def get_patient_encounter_doc(patient_encounter):
-    doc = frappe.get_doc("Patient Encounter", patient_encounter)
+    doc = frappe.get_cached_doc("Patient Encounter", patient_encounter)
     return doc
 
 
@@ -688,13 +688,13 @@ def validate_healthcare_service_unit(warehouse, item, method):
 
 @frappe.whitelist()
 def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
-    doc = frappe.get_doc("Medication Change Request", name)
+    doc = frappe.get_cached_doc("Medication Change Request", name)
 
     if not doc or not encounter or not delivery_note:
         return
 
     patient_encounter_doc = get_patient_encounter_doc(encounter)
-    delivery_note_doc = frappe.get_doc("Delivery Note", delivery_note)
+    delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note)
 
     doc.drug_prescription = []
     doc.original_pharmacy_prescription = []
@@ -718,7 +718,7 @@ def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
 
 @frappe.whitelist()
 def get_items_on_change_of_sales_order(name, encounter, sales_order):
-    doc = frappe.get_doc("Medication Change Request", name)
+    doc = frappe.get_cached_doc("Medication Change Request", name)
 
     if not doc or not encounter or not sales_order:
         return
@@ -759,7 +759,7 @@ def set_original_items(name, item):
 
 @frappe.whitelist()
 def create_medication_change_request_from_dn(doctype, name):
-    source_doc = frappe.get_doc(doctype, name)
+    source_doc = frappe.get_cached_doc(doctype, name)
 
     if source_doc.form_sales_invoice:
         url = get_url_to_form("sales Ivoice", source_doc.form_sales_invoice)
@@ -797,7 +797,7 @@ def create_medication_change_request_from_dn(doctype, name):
 
 @frappe.whitelist()
 def create_medication_change_request_from_so(doctype, name):
-    source_doc = frappe.get_doc(doctype, name)
+    source_doc = frappe.get_cached_doc(doctype, name)
 
     if not source_doc.med_change_request_comment:
         frappe.throw(
