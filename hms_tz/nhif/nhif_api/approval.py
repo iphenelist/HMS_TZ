@@ -606,7 +606,7 @@ def get_service_type_id(ref_code):
 
 
 @frappe.whitelist()
-def verify_service_approval_number(
+def verify_approval_number(
     company,
     approval_number,
     service_type,
@@ -647,7 +647,11 @@ def verify_service_approval_number(
             ref_docname=ref_docname,
             card_no=card_no
         )
-        frappe.msgprint(f"Error: <b>{r.text}</b>")
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Failed to Verify Service Approval Number<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+            indicator="red"
+        )
         return False
     else:
         data = json.loads(r.text)
