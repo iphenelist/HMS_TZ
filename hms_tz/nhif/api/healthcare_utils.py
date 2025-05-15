@@ -1459,6 +1459,9 @@ def create_delivery_note(encounter_doc, method):
 
             item.reference_doctype = row.doctype
             item.reference_name = row.name
+            item.healthcare_service_unit = row.healthcare_service_unit
+            item.healthcare_practitioner = encounter_doc.practitioner
+
             item.description = ", <br>".join(
                 [
                     "frequency: " + str(row.get("dosage") or "No Prescription Dosage"),
@@ -1643,6 +1646,8 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
 
             item.reference_doctype = row.ref_doctype
             item.reference_name = row.ref_docname
+            item.healthcare_service_unit = row.healthcare_service_unit
+            item.healthcare_practitioner = encounter_doc.practitioner
 
             drug_doc = frappe.get_cached_doc(row.ref_doctype, row.ref_docname)
             item.description = ", <br>".join(
