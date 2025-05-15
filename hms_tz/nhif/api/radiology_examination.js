@@ -55,7 +55,53 @@ frappe.ui.form.on("Radiology Examination", {
                     } else {
                         frappe.show_alert({
                             message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                                Approval Request Failed: "  + "</h4>"),
+                                Approval Request Failed: </h4>"),
+                            indicator: "red"
+                        }, 20);
+                        frappe.utils.play_sound("error");
+                    }
+                } else {
+                    frappe.utils.play_sound("error");
+                }
+            }
+        });
+    },
+    get_approval_status: (frm) => {
+        if (!frm.doc.insurance_company || !frm.doc.insurance_company.includes("NHIF")) {
+            frappe.show_alert({
+                message: __("This feature is only applicable for NHIF insurance"),
+                indicator: 'orange'
+            }, 5);
+            return;
+        }
+
+        if (frm.is_dirty()) {
+            frappe.msgprint("Please save the document before requesting approval status");
+            return;
+        }
+
+        frappe.call({
+            method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
+            args: {
+                ref_doctype: frm.doctype,
+                ref_docname: frm.docname,
+            },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            callback: function(r) {
+                if (r.message) {
+                    frm.refresh();
+                    if (r.message.status == "success") {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Request Approval Status Successful. Reference Number: " + r.message.reference_no + "</h4>"),
+                            indicator: "green"
+                        }, 15);
+                        frappe.utils.play_sound("submit");
+                    } else {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Request Approval Status Failed: </h4>"),
                             indicator: "red"
                         }, 20);
                         frappe.utils.play_sound("error");
