@@ -58,11 +58,22 @@ def get_service_approval(
             ref_docname=ref_docname,
         )
 
-        return {
-            "status": "error",
-            "message": f"Service approval request failed with status code {r.status_code}",
-            "data": r.text,
-        }
+        data = json.loads(r.text)
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Service approval request failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('message') or r.text}<b>",
+        )
+        doc.reload()
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Request Approval Failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('message') or r.text}<b>",
+            indicator="red"
+        )
+        if r.text:
+            return {
+                "status": "error",
+            }
     
     else:
         data = json.loads(r.text)
@@ -79,10 +90,25 @@ def get_service_approval(
             ref_docname=ref_docname,
         )
 
+        msg = "Request Approval successful!"
+        doc.service_authorization_id = data.get("ServiceAuthorizationID")
+        if data.get("ReferenceNo"):
+            msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
+            doc.approval_number = data.get("ReferenceNo")
+        else:
+            msg += "<br>ReferenceNo: <b>Not Provided</b><br> Please ask for <b>'Approval Statues'</b>"
+        
+        doc.save(ignore_permissions=True)
+        
+        doc.add_comment(
+            comment_type="Comment",
+            text=msg
+        )
+        doc.reload()
+
         return {
             "status": "success",
-            "message": "Service approval request successful",
-            "data": data,
+            "reference_no": data.get("ReferenceNo")
         }
 
 

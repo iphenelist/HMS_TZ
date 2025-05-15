@@ -53,6 +53,23 @@ frappe.ui.form.on("Radiology Examination", {
             callback: function(r) {
                 if (r.message) {
                     frm.refresh();
+                    if (r.message.status == "success") {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Approval Request Successful. Reference Number: " + r.message.reference_no + "</h4>"),
+                            indicator: "green"
+                        }, 15);
+                        frappe.utils.play_sound("submit");
+                    } else {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Approval Request Failed: "  + "</h4>"),
+                            indicator: "red"
+                        }, 20);
+                        frappe.utils.play_sound("error");
+                    }
+                } else {
+                    frappe.utils.play_sound("error");
                 }
             }
         });
