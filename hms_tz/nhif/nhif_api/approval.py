@@ -375,15 +375,15 @@ def get_request_approval_payload(
     payload = {
         "firstName": patient_doc.first_name,
         "lastName": patient_doc.last_name,
-        "gender": doc.get("hms_tz_patient_sex") or patient_doc.sex,
+        "gender": doc.get("hms_tz_patient_sex") or doc.get("patient_sex") or patient_doc.sex,
         "telephoneNo": patient_doc.mobile,
         "clinicalNotes": clinical_notes,
         "dateOfBirth": str(patient_doc.dob),
         "authorizationNo": appointment_info.authorization_number,
         "facilityPatientFileNumber": doc.patient,
         "attendanceDate": str(appointment_info.appointment_date),
-        "serviceDate": str(doc.start_date),
-        "expiryDate": str(doc.start_date),
+        "serviceDate": str(doc.start_date) or str(doc.result_date),
+        "expiryDate": str(doc.start_date) or str(doc.result_date),
         "sourceFacilityCode": facility_code,
         "practitionerNo": practitioner_no,
         "prescribedBy": doc.practitioner,
@@ -447,9 +447,7 @@ def get_authorized_items(
         doc.insurance_company
     )
 
-    service_type_id = frappe.get_cached_value(
-        "NHIF Item", {"itemcode": ref_code}, "servicetypeid"
-    )
+    service_type_id = get_service_type_id(ref_code)
 
     scheme_id = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
@@ -491,8 +489,8 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
         "nhif_scheme_id"
     )
 
-    service_type_id = get_service_type_id("hfvbhfvfdjvf")
     ref_code = get_item_refcode(service_type, service_name)
+    service_type_id = get_service_type_id(ref_code)
     item = frappe.get_cached_value(service_type, service_name, "item")
     item_rate = get_item_rate(
         item,
@@ -526,8 +524,8 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
         "facilityPatientFileNumber": doc.patient,
         "yearOfBirth": patient_doc.dob[:-4],
         "attendanceDate": str(appointment_info.appointment_date),
-        "serviceDate": str(doc.start_date),
-        "expiryDate": "",
+        "serviceDate": str(doc.start_date) or str(doc.result_date),
+        "expiryDate": str(doc.start_date) or str(doc.result_date),
         "sourceFacilityCode": facility_code,
         "approvalStatusID": 0,
         "practitionerNo": practitioner_no,
