@@ -134,11 +134,11 @@ def update_service_approval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
-        return {
-            "status": "error",
-            "message": f"Service approval update failed with status code {r.status_code}",
-            "data": r.text,
-        }
+        # return {
+        #     "status": "error",
+        #     "message": f"Service approval update failed with status code {r.status_code}",
+        #     "data": r.text,
+        # }
     else:
         data = json.loads(r.text)
         add_log(
@@ -152,11 +152,11 @@ def update_service_approval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
-        return {
-            "status": "success",
-            "message": "Service approval update successful",
-            "data": data,
-        }
+        # return {
+        #     "status": "success",
+        #     "message": "Service approval update successful",
+        #     "data": data,
+        # }
 
 
 @frappe.whitelist()
@@ -269,12 +269,12 @@ def get_request_approval_payload(
         "gender": doc.get("hms_tz_patient_sex") or patient_doc.sex,
         "telephoneNo": patient_doc.mobile,
         "clinicalNotes": clinical_notes,
-        "dateOfBirth": patient_doc.dob,
+        "dateOfBirth": str(patient_doc.dob),
         "authorizationNo": appointment_info.authorization_number,
         "facilityPatientFileNumber": doc.patient,
-        "attendanceDate": appointment_info.appointment_date,
-        "serviceDate": nowdate(),
-        "expiryDate": "",
+        "attendanceDate": str(appointment_info.appointment_date),
+        "serviceDate": str(doc.start_date),
+        "expiryDate": str(doc.start_date),
         "sourceFacilityCode": facility_code,
         "practitionerNo": practitioner_no,
         "prescribedBy": doc.practitioner,
@@ -288,7 +288,7 @@ def get_request_approval_payload(
             appointment_info.years_of_insurance,
             qty=qty
         ),
-        "approvalSupportingDocuments": [] # TODO: add supporting documents
+        "approvalSupportingDocuments": []# TODO: add supporting documents
     }
 
     #   "approvalSupportingDocuments": [
@@ -314,7 +314,7 @@ def get_approval_diseases(doc):
             "diseaseCode": get_disease_code(d.code),
             "notes": d.description,
             "createdBy": doc.practitioner,
-            "dateCreated": str(doc.creation)
+            "dateCreated": str(doc.creation.isoformat())
         })
 
     return diseases
@@ -344,25 +344,14 @@ def get_authorized_items(
 
     scheme_id = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
-        doc.healthcare_insurance_coverage_plan,
+        doc.hms_tz_insurance_coverage_plan,
         "nhif_scheme_id"
     )
 
-    product_code = frappe.get_cached_value(
-        "NHIF Product", {
-            "schemeid": scheme_id,
-            "company": doc.company,
-            "healthcare_insurance_coverage_plan": doc.hms_tz_insurance_coverage_plan
-        }, "nhif_product_code"
-    )
-
-    if not product_code:
-        frappe.throw(f"NHIF Product Code for {doc.healthcare_insurance_coverage_plan} not found")
-
     percent_covered = frappe.get_cached_value(
-        "NHIF Cost Sharing", {	
+        "NHIF Co-Payment Item", {	
             "itemcode": ref_code,
-            "productcode": product_code,
+            "schemeid": scheme_id,
             "yearno": years_of_insurance
         }, "percentcovered"
     )
@@ -375,7 +364,7 @@ def get_authorized_items(
         "unitPrice": item_rate or 0,
         "percentCovered": percent_covered,
         "createdBy": doc.practitioner,
-        "dateCreated": str(doc.creation)
+        "dateCreated": str(doc.creation.isoformat())
     })
 
     return items
@@ -389,19 +378,9 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "tz_mct_code")
     scheme_id = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
-        doc.healthcare_insurance_coverage_plan,
+        doc.hms_tz_insurance_coverage_plan,
         "nhif_scheme_id"
     )
-
-    product_code = frappe.get_cached_value(
-        "NHIF Product", {
-            "schemeid": scheme_id,
-            "company": doc.company,
-            "healthcare_insurance_coverage_plan": doc.hms_tz_insurance_coverage_plan
-        }, "nhif_product_code"
-    )
-    if not product_code:
-        frappe.throw(f"NHIF Product Code for {doc.healthcare_insurance_coverage_plan} not found")
 
     service_type_id = get_service_type_id("hfvbhfvfdjvf")
     ref_code = get_item_refcode(service_type, service_name)
@@ -414,9 +393,9 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
     )
     
     percent_covered = frappe.get_cached_value(
-        "NHIF Cost Sharing", {	
+        "NHIF Co-Payment Item", {	
             "itemcode": ref_code,
-            "productcode": product_code,
+            "schemeid": scheme_id,
             "yearno": appointment_info.years_of_insurance
         }, "percentcovered"
     )
@@ -431,14 +410,14 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
         "gender": doc.get("hms_tz_patient_sex") or patient_doc.sex,
         "telephoneNo": patient_doc.mobile,
         "clinicalNotes": clinical_notes,
-        "dateOfBirth": patient_doc.dob,
+        "dateOfBirth": str(patient_doc.dob),
         "schemeID": scheme_id,
-        "productCode": product_code,
+        "productCode": "",
         "authorizationNo": appointment_info.authorization_number,
         "facilityPatientFileNumber": doc.patient,
         "yearOfBirth": patient_doc.dob[:-4],
-        "attendanceDate": appointment_info.appointment_date,
-        "serviceDate": nowdate(),
+        "attendanceDate": str(appointment_info.appointment_date),
+        "serviceDate": str(doc.start_date),
         "expiryDate": "",
         "sourceFacilityCode": facility_code,
         "approvalStatusID": 0,
@@ -454,9 +433,9 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
         "approvedBy": "", # TODO: add approved by
         "approvedDate": "", # TODO: add approved date
         "createdBy": doc.practitioner,
-        "dateCreated": str(doc.creation),
+        "dateCreated": str(doc.creation.isoformat()),
         "lastModifiedBy": get_fullname(doc.modified_by),
-        "lastModified": str(doc.modified),
+        "lastModified": str(doc.modified.isoformat()),
         "approvalDiseases": [
             {
                 "appDiseaseID": "", # TODO: add app disease id
@@ -464,9 +443,9 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
                 "diseaseCode": "string",
                 "notes": "string",
                 "createdBy": doc.practitioner,
-                "dateCreated": str(doc.creation),
+                "dateCreated": str(doc.creation.isoformat()),
                 "lastModifiedBy": get_fullname(doc.modified_by), 
-                "lastModified": str(doc.modified)
+                "lastModified": str(doc.modified.isoformat())
             }
         ],
         "authorizedItems": [
@@ -481,9 +460,9 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
                 "unitPrice": item_rate or 0,
                 "percentCovered": percent_covered,
                 "createdBy": doc.practitioner,
-                "dateCreated": str(doc.creation),
+                "dateCreated": str(doc.creation.isoformat()),
                 "lastModifiedBy": get_fullname(doc.modified_by),
-                "lastModified": str(doc.modified)
+                "lastModified": str(doc.modified.isoformat())
             }
         ],
         "approvalSupportingDocuments": [] # TODO: add supporting documents
