@@ -1,14 +1,6 @@
 frappe.ui.form.on("Radiology Examination", {
     refresh: (frm) => {
         $('[data-label="Not%20Serviced"]').parent().hide();
-
-        // Add Request Approval button for NHIF patients with restricted services
-        if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") &&
-            frm.doc.docstatus === 0 && frm.doc.is_restricted && !frm.doc.approval_number) {
-            frm.add_custom_button(__('Request Approval'), function() {
-                frm.events.request_approval(frm);
-            }).addClass("btn-primary");
-        }
     },
     onload: (frm) => {
         $('[data-label="Not%20Serviced"]').parent().hide();
@@ -20,7 +12,7 @@ frappe.ui.form.on("Radiology Examination", {
         }
     },
 
-    request_approval: (frm) => {
+    request_approval_no: (frm) => {
         if (!frm.doc.insurance_company || !frm.doc.insurance_company.includes("NHIF")) {
             frappe.show_alert({
                 message: __("This feature is only applicable for NHIF insurance"),
