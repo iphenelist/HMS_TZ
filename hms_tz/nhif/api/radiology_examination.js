@@ -11,7 +11,6 @@ frappe.ui.form.on("Radiology Examination", {
             });
         }
     },
-
     request_approval_no: (frm) => {
         if (!frm.doc.insurance_company || !frm.doc.insurance_company.includes("NHIF")) {
             frappe.show_alert({

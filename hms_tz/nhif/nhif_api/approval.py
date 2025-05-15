@@ -375,7 +375,7 @@ def get_request_approval_payload(
     payload = {
         "firstName": patient_doc.first_name,
         "lastName": patient_doc.last_name,
-        "gender": doc.get("hms_tz_patient_sex") or doc.get("patient_sex") or patient_doc.sex,
+        "gender": patient_doc.sex,
         "telephoneNo": patient_doc.mobile,
         "clinicalNotes": clinical_notes,
         "dateOfBirth": str(patient_doc.dob),
@@ -440,10 +440,14 @@ def get_authorized_items(
 
     item = frappe.get_cached_value(service_type, service_name, "item")
     ref_code = get_item_refcode(service_type, service_name)
+    insurance_subscription = doc.get("insurance_subscription")
+    if not insurance_subscription:
+        insurance_subscription = frappe.get_cached_value("Patient Appointment", doc.appointment, "insurance_subscription")
+    
     item_rate = get_item_rate(
         item,
         doc.company,
-        doc.insurance_subscription,
+        insurance_subscription,
         doc.insurance_company
     )
 
