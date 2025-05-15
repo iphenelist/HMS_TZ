@@ -1693,6 +1693,8 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
                     "Company", encounter_doc.company, "default_currency"
                 ),
                 items=items,
+                healthcare_service_unit=encounter_doc.healthcare_service_unit,
+                healthcare_practitioner=encounter_doc.practitioner,
                 coverage_plan_name=insurance_coverage_plan,
                 reference_doctype=encounter_doc.doctype,
                 reference_name=encounter_doc.name,
