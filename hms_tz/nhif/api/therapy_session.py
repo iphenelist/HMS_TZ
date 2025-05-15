@@ -23,6 +23,7 @@ def after_insert(doc, method):
             if row.therapy_type == doc.therapy_type:
                 doc.is_restricted = row.is_restricted
                 doc.hms_tz_ref_childname = row.hms_tz_ref_childname
+                doc.service_unit = row.department_hsu
                 break
 
     doc.save(ignore_permissions=True)
