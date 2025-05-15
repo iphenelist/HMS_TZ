@@ -113,6 +113,89 @@ def get_service_approval(
 
 
 @frappe.whitelist()
+def get_approval_status(
+    ref_doctype,
+    ref_docname,
+):
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    authorization_no = frappe.get_cached_value("Patient Appointment", doc.appointment, "authorization_number")
+
+    url = f"{settings_doc.nhifservice_url}/api/Approvals/GetApprovalStatus?authorizationNo={authorization_no}"
+
+    token = settings_doc.get_nhif_token()
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    r = requests.request("GET", url, headers=headers, timeout=120)
+    if r.status_code != 200:
+        add_log(
+            request_type="GetApprovalStatus",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+        )
+        return {
+            "status": "error",
+        }
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="GetApprovalStatus",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+        )
+        records = frappe.db.get_all(
+            "Radiology Examination", 
+            filters={"appointment": doc.appointment, "is_restricted": 1, "approval_number": ("is", "not set")}, 
+            fields=["name", "service_authorization_id"]
+        )
+        reference_no = ""
+        for record in records:
+            for row in data:
+                if row.get("ServiceAuthorizationID") == record.get("service_authorization_id"):
+                    rad_doc = None
+                    if record.get("name") == doc.name:
+                        rad_doc = doc
+                    else:
+                        rad_doc = frappe.get_cached_doc("Radiology Examination", record.get("name"))
+
+                    if row.get("ReferenceNo"):
+                        rad_doc.approval_number = row.get("ReferenceNo")
+                        if record.get("name") == doc.name:
+                            reference_no = row.get("ReferenceNo")
+
+                    rad_doc.approval_date = row.get("ApprovalDate")
+                    rad_doc.approval_status = row.get("ApprovalStatus")
+                    rad_doc.authorized_item_id = row.get("AuthorizedItemID")
+                    rad_doc.save(ignore_permissions=True)
+
+                    rad_doc.add_comment(
+                        comment_type="Comment",
+                        text=f"Approval status: <b>{row.get('ApprovalStatus')}</b><br>ReferenceNo: <b>{row.get('ReferenceNo') or 'Not Provided'}</b>"
+                    )
+                    rad_doc.reload()
+        return {
+            "status": "success",
+            "reference_no": reference_no
+        }
+
+
+@frappe.whitelist()
 def update_service_approval(
     ref_doctype,
     ref_docname,
