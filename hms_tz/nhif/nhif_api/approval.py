@@ -96,7 +96,7 @@ def get_service_approval(
             msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
             doc.approval_number = data.get("ReferenceNo")
         else:
-            msg += "<br>ReferenceNo: <b>Not Provided</b><br> Please ask for <b>'Approval Statues'</b>"
+            msg += "<br>ReferenceNo: <b>Not Provided</b><br><br> Please try to ask for <b>'Approval Statues'</b>"
         
         doc.save(ignore_permissions=True)
         
@@ -160,7 +160,7 @@ def get_approval_status(
             ref_docname=ref_docname,
         )
         records = frappe.db.get_all(
-            "Radiology Examination", 
+            doc.doctype, 
             filters={"appointment": doc.appointment, "is_restricted": 1, "approval_number": ("is", "not set")}, 
             fields=["name", "service_authorization_id"]
         )
@@ -172,7 +172,7 @@ def get_approval_status(
                     if record.get("name") == doc.name:
                         rad_doc = doc
                     else:
-                        rad_doc = frappe.get_cached_doc("Radiology Examination", record.get("name"))
+                        rad_doc = frappe.get_cached_doc(doc.doctype, record.get("name"))
 
                     if row.get("ReferenceNo"):
                         rad_doc.approval_number = row.get("ReferenceNo")
