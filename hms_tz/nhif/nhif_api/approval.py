@@ -385,6 +385,7 @@ def get_request_approval_payload(
     
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+    start_date = doc.get("start_date") or doc.get("result_date") or doc.get("posting_date")
 
     payload = {
         "firstName": patient_doc.first_name,
@@ -396,8 +397,8 @@ def get_request_approval_payload(
         "authorizationNo": appointment_info.authorization_number,
         "facilityPatientFileNumber": doc.patient,
         "attendanceDate": str(appointment_info.appointment_date),
-        "serviceDate": str(doc.start_date) or str(doc.result_date),
-        "expiryDate": str(doc.start_date) or str(doc.result_date),
+        "serviceDate": str(start_date),
+        "expiryDate": str(start_date),
         "sourceFacilityCode": facility_code,
         "practitionerNo": practitioner_no,
         "prescribedBy": practitioner,
@@ -561,6 +562,7 @@ def get_update_approval_payload(
             "yearno": appointment_info.years_of_insurance
         }, "percentcovered"
     )
+    start_date = doc.get("start_date") or doc.get("result_date") or doc.get("posting_date")
 
     payload = {
         "serviceAuthorizationID": doc.get("service_authorization_id") or item_row.get("service_authorization_id"),
@@ -579,8 +581,8 @@ def get_update_approval_payload(
         "facilityPatientFileNumber": doc.patient,
         "yearOfBirth": patient_doc.dob[:-4],
         "attendanceDate": str(appointment_info.appointment_date),
-        "serviceDate": str(doc.start_date) or str(doc.result_date),
-        "expiryDate": str(doc.start_date) or str(doc.result_date),
+        "serviceDate": str(start_date),
+        "expiryDate": str(start_date),
         "sourceFacilityCode": facility_code,
         "approvalStatusID": 0,
         "practitionerNo": practitioner_no,
@@ -852,7 +854,7 @@ def update_approval_status(doc, appointment, data, dni_id=None):
         .where(
             (dn.hms_tz_appointment_no == appointment)
             & (dni.is_restricted == 1)
-            & (dni.approval_number.isnull() | (dn.approval_number == ""))
+            & (dni.approval_number.isnull() | (dni.approval_number == ""))
         )
     ).run(as_dict=True)
 
