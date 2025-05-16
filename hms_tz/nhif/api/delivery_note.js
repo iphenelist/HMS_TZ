@@ -146,11 +146,14 @@ frappe.ui.form.on("Delivery Note Item", {
             return;
         }
 
+        let row = locals[cdt][cdn]
+
         frappe.call({
             method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
             args: {
                 ref_doctype: frm.doctype,
                 ref_docname: frm.docname,
+                dni_id: row.name
             },
             freeze: true,
             freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
@@ -188,6 +191,11 @@ frappe.ui.form.on("Delivery Note Item", {
         }
         if (!frm.doc.approval_number) {
             frappe.msgprint("Approval Number is required to verify");
+            return;
+        }
+
+        if (frm.is_dirty()) {
+            frappe.msgprint("Please save the document before requesting approval status");
             return;
         }
 

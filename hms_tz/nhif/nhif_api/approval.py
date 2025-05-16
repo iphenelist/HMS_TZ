@@ -145,10 +145,17 @@ def get_service_approval(
 def get_approval_status(
     ref_doctype,
     ref_docname,
+    dni_id=None
 ):
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
-    authorization_no = frappe.get_cached_value("Patient Appointment", doc.appointment, "authorization_number")
+    appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
+
+    authorization_no = ""
+    if doc.doctype == "Delivery Note":
+        authorization_no = doc.get("authorization_number")
+    else:
+        authorization_no = frappe.get_cached_value("Patient Appointment", appointment, "authorization_number")
 
     url = f"{settings_doc.nhifservice_url}/api/Approvals/GetApprovalStatus?authorizationNo={authorization_no}"
 
@@ -188,41 +195,8 @@ def get_approval_status(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
-        records = frappe.db.get_all(
-            doc.doctype, 
-            filters={"appointment": doc.appointment, "is_restricted": 1, "approval_number": ("is", "not set")}, 
-            fields=["name", "service_authorization_id"]
-        )
-        reference_no = ""
-        for record in records:
-            for row in data:
-                if row.get("ServiceAuthorizationID") == record.get("service_authorization_id"):
-                    rad_doc = None
-                    if record.get("name") == doc.name:
-                        rad_doc = doc
-                    else:
-                        rad_doc = frappe.get_cached_doc(doc.doctype, record.get("name"))
 
-                    if row.get("ReferenceNo"):
-                        rad_doc.approval_number = row.get("ReferenceNo")
-                        if record.get("name") == doc.name:
-                            reference_no = row.get("ReferenceNo")
-
-                    rad_doc.approval_date = row.get("ApprovalDate")
-                    rad_doc.approval_status = row.get("ApprovalStatus")
-                    rad_doc.authorized_item_id = row.get("AuthorizedItemID")
-                    rad_doc.save(ignore_permissions=True)
-
-                    rad_doc.add_comment(
-                        comment_type="Comment",
-                        text=f"Approval status: <b>{row.get('ApprovalStatus')}</b><br>ReferenceNo: <b>{row.get('ReferenceNo') or 'Not Provided'}</b>"
-                    )
-                    rad_doc.reload()
-        return {
-            "status": "success",
-            "reference_no": reference_no
-        }
-
+        return update_approval_status(doc, appointment, data, dni_id=dni_id)
 
 @frappe.whitelist()
 def update_service_approval(
@@ -825,3 +799,107 @@ def get_approval_services(company=None, caller=None):
         
         if company and caller == 'Front End':
             frappe.msgprint("successfully fetched Service Types", alert=True, indicator="green")
+
+
+
+def update_approval_status(doc, appointment, data, dni_id=None):
+    records = frappe.db.get_all(
+        doc.doctype, 
+        filters={"appointment": appointment, "is_restricted": 1, "approval_number": ("is", "not set")}, 
+        fields=["name", "service_authorization_id"]
+    )
+
+    dni_reference_no = ""
+    lrpt_reference_no = ""
+    for record in records:
+        for row in data:
+            if row.get("ServiceAuthorizationID") == record.get("service_authorization_id"):
+                rad_doc = None
+                if record.get("name") == doc.name:
+                    rad_doc = doc
+                else:
+                    rad_doc = frappe.get_cached_doc(doc.doctype, record.get("name"))
+
+                if row.get("ReferenceNo"):
+                    rad_doc.approval_number = row.get("ReferenceNo")
+                    if record.get("name") == doc.name:
+                        lrpt_reference_no = row.get("ReferenceNo")
+
+                rad_doc.approval_date = row.get("ApprovalDate")
+                rad_doc.approval_status = row.get("ApprovalStatus")
+                rad_doc.authorized_item_id = row.get("AuthorizedItemID")
+                rad_doc.save(ignore_permissions=True)
+
+                rad_doc.add_comment(
+                    comment_type="Comment",
+                    text=f"Approval status: <b>{row.get('ApprovalStatus')}</b><br>ReferenceNo: <b>{row.get('ReferenceNo') or 'Not Provided'}</b>"
+                )
+                rad_doc.reload()
+    
+    dn = DocType("Delivery Note")
+    dni = DocType("Delivery Note Item")
+
+    dn_records = (
+        frappe.qb.from_(dn)
+        .inner_join(dni)
+        .on(dn.name == dni.parent)
+        .select(
+            dni.item_code,
+            dn.name.as_("dn_id"),
+            dni.name.as_("dni_id"),
+            dni.service_authorization_id
+        )
+        .where(
+            (dn.hms_tz_appointment_no == appointment)
+            & (dni.is_restricted == 1)
+            & (dni.approval_number.isnull() | (dn.approval_number == ""))
+        )
+    ).run(as_dict=True)
+
+    if len(dn_records) > 0:
+        dn_map = {}
+        reference_no = None
+        for row in dn_records:
+            dn_map.setdefault(row.get("dn_id"), []).append(row)
+        
+        for dn_id, dni_rows in dn_map.items():
+            dn_doc = frappe.get_cached_doc("Delivery Note", dn_id)
+
+            for dni in dni_rows:
+                for row in data:
+                    if row.get("ServiceAuthorizationID") == dni.get("service_authorization_id"):
+                        fields = {
+                            "approval_status": row.get("ApprovalStatus"),
+                            "approval_date": row.get("ApprovalDate"),
+                            "authorized_item_id": row.get("AuthorizedItemID")
+                        }
+                        if row.get("ReferenceNo"):
+                            fields["approval_number"] = row.get("ReferenceNo")
+
+                            if dni.get("dni_id") == dni_id:
+                                dni_reference_no = row.get("ReferenceNo")
+
+                        frappe.db.set_value(
+                            "Delivery Note Item",
+                            dni.get("dni_id"),
+                            fields
+                        )
+                        comment = f"Item: <b>{dni.get('item_code')}</b><br>Approval status: <b>{row.get('ApprovalStatus')}</b><br>\
+                                ReferenceNo: <b>{row.get('ReferenceNo') or 'Not Provided'}</b>"
+                        
+                        dn_doc.add_comment(
+                            comment_type="Comment",
+                            text=comment
+                        )
+                        dn_doc.reload()
+    
+    reference_no = None
+    if dni_id:
+        reference_no = dni_reference_no
+    else:
+        reference_no = lrpt_reference_no
+    
+    return {
+        "status": "success",
+        "reference_no": reference_no
+    }
