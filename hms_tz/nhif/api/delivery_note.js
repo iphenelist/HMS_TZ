@@ -78,6 +78,159 @@ frappe.ui.form.on("Delivery Note Item", {
             frm.fields_dict.items.grid.wrapper.find('.grid-move-row').hide();
         }
     },
+    request_approval_no: (frm, cdt, cdn) => {
+        if (!frm.doc.customer || !frm.doc.customer.includes("NHIF")) {
+            frappe.show_alert({
+                message: __("This feature is only applicable for NHIF insurance"),
+                indicator: 'orange'
+            }, 5);
+            return;
+        }
+
+        if (frm.is_dirty()) {
+            frappe.msgprint("Please save the document before requesting approval");
+            return;
+        }
+
+        let row = locals[cdt][cdn]
+
+        frappe.call({
+            method: "hms_tz.nhif.nhif_api.approval.get_service_approval",
+            args: {
+                ref_doctype: frm.doctype,
+                ref_docname: frm.docname,
+                service_type: "Medication",
+                service_name: "",
+                qty: 1,
+                item_code: row.item_code,
+                reference_name: row.reference_name,
+                reference_doctype: row.reference_doctype
+            },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            callback: function(r) {
+                if (r.message) {
+                    frm.refresh();
+                    if (r.message.status == "success") {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Approval Request Successful. Reference Number: " + r.message.reference_no + "</h4>"),
+                            indicator: "green"
+                        }, 15);
+                        frappe.utils.play_sound("submit");
+                    } else {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Approval Request Failed: </h4>"),
+                            indicator: "red"
+                        }, 20);
+                        frappe.utils.play_sound("error");
+                    }
+                } else {
+                    frappe.utils.play_sound("error");
+                }
+            }
+        });
+    },
+    get_approval_status: (frm, cdt, cdn) => {
+        if (!frm.doc.customer || !frm.doc.customer.includes("NHIF")) {
+            frappe.show_alert({
+                message: __("This feature is only applicable for NHIF insurance"),
+                indicator: 'orange'
+            }, 5);
+            return;
+        }
+
+        if (frm.is_dirty()) {
+            frappe.msgprint("Please save the document before requesting approval status");
+            return;
+        }
+
+        frappe.call({
+            method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
+            args: {
+                ref_doctype: frm.doctype,
+                ref_docname: frm.docname,
+            },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            callback: function(r) {
+                if (r.message) {
+                    frm.refresh();
+                    if (r.message.status == "success") {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Request Approval Status Successful. Reference Number: " + r.message.reference_no + "</h4>"),
+                            indicator: "green"
+                        }, 15);
+                        frappe.utils.play_sound("submit");
+                    } else {
+                        frappe.show_alert({
+                            message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Request Approval Status Failed: </h4>"),
+                            indicator: "red"
+                        }, 20);
+                        frappe.utils.play_sound("error");
+                    }
+                } else {
+                    frappe.utils.play_sound("error");
+                }
+            }
+        });
+    },
+    verify_approval_no: (frm, cdt, cdn) => {
+        if (!frm.doc.customer || !frm.doc.customer.includes("NHIF")) {
+            frappe.show_alert({
+                message: __("This feature is only applicable for NHIF insurance"),
+                indicator: 'orange'
+            }, 5);
+            return;
+        }
+        if (!frm.doc.approval_number) {
+            frappe.msgprint("Approval Number is required to verify");
+            return;
+        }
+
+        let row = locals[cdt][cdn]
+
+        frappe.call({
+            method: "hms_tz.nhif.nhif_api.approval.verify_approval_number",
+            args: {
+                company: frm.doc.company,
+                approval_number: row.approval_number,
+                service_type: "Medication",
+                service_name: "",
+                appointment: frm.doc.hms_tz_appointment_no,
+                ref_doctype: frm.doctype,
+                ref_docname: frm.docname
+            },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+
+        }).then(r => {
+            if (r.message && r.message == "approval number validation is disabled") {
+                frappe.utils.play_sound("error");
+                return
+            }
+            else if (r.message) {
+                frappe.utils.play_sound("submit");
+                frappe.show_alert({
+                    message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                        Approval Number is Valid</h4>"),
+                    indicator: "green"
+                }, 20);
+
+            } else {
+                frappe.utils.play_sound("error");
+                frm.set_value("approval_number", "");
+                frappe.show_alert({
+                    message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                        Approval Number is not Valid</h4>"),
+                    indicator: "Red"
+                }, 20);
+            }
+        });
+    },
     approval_number: (frm, cdt, cdn) => {
         let row = locals[cdt][cdn]
         if (row.approval_number != "" && row.approval_number != undefined) {

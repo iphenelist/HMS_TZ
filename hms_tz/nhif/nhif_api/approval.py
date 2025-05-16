@@ -2,6 +2,7 @@ import json
 import frappe
 import requests
 import base64
+from frappe.query_builder import DocType
 from hms_tz.nhif.nhif_api.referral import get_disease_code
 from frappe.utils import get_datetime, nowdate, get_fullname
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
@@ -16,7 +17,10 @@ def get_service_approval(
     ref_docname,
     service_type,
     service_name,
-    qty=1
+    qty=1,
+    item_code=None,
+    reference_name=None,
+    reference_doctype=None
 ):
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
@@ -30,7 +34,10 @@ def get_service_approval(
         settings_doc.facility_code,
         service_type,
         service_name,
-        qty
+        qty,
+        item_code=item_code,
+        reference_name=reference_name,
+        reference_doctype=reference_doctype
     )
 
     payload = json.dumps(payload)
@@ -91,14 +98,36 @@ def get_service_approval(
         )
 
         msg = "Request Approval successful!"
-        doc.service_authorization_id = data.get("ServiceAuthorizationID")
-        if data.get("ReferenceNo"):
-            msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
-            doc.approval_number = data.get("ReferenceNo")
+        if doc.doctype == "Delivery Note":
+            fields = {
+                "service_authorization_id": data.get("ServiceAuthorizationID"),
+            }
+            if data.get("ReferenceNo"):
+                msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
+                fields["approval_number"] = data.get("ReferenceNo")
+            else:
+                msg += "<br>ReferenceNo: <b>Not Provided</b><br><br> Please try to ask for <b>'Approval Statues'</b>"
+            
+            frappe.db.set_value(
+                "Delivery Note Item",
+                {
+                    "parent": doc.name,
+                    "item_code": item_code,
+                    "reference_name": reference_name,
+                    "reference_doctype": reference_doctype
+                },
+                fields
+            )
         else:
-            msg += "<br>ReferenceNo: <b>Not Provided</b><br><br> Please try to ask for <b>'Approval Statues'</b>"
-        
-        doc.save(ignore_permissions=True)
+            doc.service_authorization_id = data.get("ServiceAuthorizationID")
+
+            if data.get("ReferenceNo"):
+                msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
+                doc.approval_number = data.get("ReferenceNo")
+            else:
+                msg += "<br>ReferenceNo: <b>Not Provided</b><br><br> Please try to ask for <b>'Approval Statues'</b>"
+            
+            doc.save(ignore_permissions=True)
         
         doc.add_comment(
             comment_type="Comment",
@@ -201,7 +230,8 @@ def update_service_approval(
     ref_docname,
     service_type,
     service_name,
-    qty=1
+    qty=1,
+    item_row=None
 ):
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
@@ -209,13 +239,16 @@ def update_service_approval(
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     payload = get_update_approval_payload(
         doc,
         settings_doc.facility_code,
         service_type,
         service_name,
-        qty
+        appointment,
+        qty,
+        item_row=item_row
     )
 
     payload = json.dumps(payload)
@@ -363,14 +396,21 @@ def get_request_approval_payload(
     facility_code,
     service_type,
     service_name,
-    qty=1
+    qty=1,
+    item_code=None,
+    reference_name=None,
+    reference_doctype=None
 ):
     patient_doc = frappe.get_cached_doc("Patient", doc.patient)
-    appointment_info = get_appointment_details(doc.appointment)
 
-    clinical_notes = frappe.get_cached_value("Patient Encounter", doc.ref_docname, "examination_detail") or ""
+    appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
+    appointment_info = get_appointment_details(appointment)
 
-    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "tz_mct_code")
+    encounter_id = doc.get("ref_docname") or doc.get("reference_name")
+    clinical_notes = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
+    
+    practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
+    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
 
     payload = {
         "firstName": patient_doc.first_name,
@@ -386,16 +426,21 @@ def get_request_approval_payload(
         "expiryDate": str(doc.start_date) or str(doc.result_date),
         "sourceFacilityCode": facility_code,
         "practitionerNo": practitioner_no,
-        "prescribedBy": doc.practitioner,
-        "requestedBy": doc.practitioner,
-        "createdBy": doc.practitioner,
-        "approvalDiseases": get_approval_diseases(doc),
+        "prescribedBy": practitioner,
+        "requestedBy": practitioner,
+        "createdBy": practitioner,
+        "approvalDiseases": get_approval_diseases(doc, practitioner, encounter_id),
         "authorizedItems": get_authorized_items(
             doc,
             service_type,
             service_name, 
             appointment_info.years_of_insurance,
-            qty=qty
+            appointment,
+            practitioner,
+            qty=qty,
+            item_code=item_code,
+            reference_name=reference_name,
+            reference_doctype=reference_doctype
         ),
         "approvalSupportingDocuments": []# TODO: add supporting documents
     }
@@ -413,16 +458,16 @@ def get_request_approval_payload(
     return payload
 
 
-def get_approval_diseases(doc):
+def get_approval_diseases(doc, practitioner, encounter_id):
     diseases = []
     
-    encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.ref_docname)
+    encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter_id)
 
     for d in encounter_doc.patient_encounter_preliminary_diagnosis:
         diseases.append({
             "diseaseCode": get_disease_code(d.code),
             "notes": d.description,
-            "createdBy": doc.practitioner,
+            "createdBy": practitioner,
             "dateCreated": str(doc.creation.isoformat())
         })
 
@@ -434,28 +479,43 @@ def get_authorized_items(
     service_type, 
     service_name,
     years_of_insurance,
-    qty=1
+    appointment,
+    practitioner,
+    qty=1,
+    item_code=None,
+    reference_name=None,
+    reference_doctype=None
 ):
     items = []
 
-    item = frappe.get_cached_value(service_type, service_name, "item")
+    item = ""
+    if doc.doctype == "Delivery Note" and item_code:
+        item = item_code
+
+        if not service_name and reference_name and reference_doctype:
+            service_name = frappe.get_cached_value(reference_doctype, reference_name, "drug_code")
+    else:
+        item = frappe.get_cached_value(service_type, service_name, "item")
+    
     ref_code = get_item_refcode(service_type, service_name)
+
+    insurance_coverage_plan = doc.get("hms_tz_insurance_coverage_plan") or doc.get("coverage_plan_name")
     insurance_subscription = doc.get("insurance_subscription")
     if not insurance_subscription:
-        insurance_subscription = frappe.get_cached_value("Patient Appointment", doc.appointment, "insurance_subscription")
+        insurance_subscription = frappe.get_cached_value("Patient Appointment", appointment, "insurance_subscription")
     
     item_rate = get_item_rate(
         item,
         doc.company,
         insurance_subscription,
-        doc.insurance_company
+        doc.get("insurance_company")
     )
 
     service_type_id = get_service_type_id(ref_code)
 
     scheme_id = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
-        doc.hms_tz_insurance_coverage_plan,
+        insurance_coverage_plan,
         "nhif_scheme_id"
     )
 
@@ -474,22 +534,39 @@ def get_authorized_items(
         "quantityRequested": qty,
         "unitPrice": item_rate or 0,
         "percentCovered": percent_covered,
-        "createdBy": doc.practitioner,
+        "createdBy": practitioner,
         "dateCreated": str(doc.creation.isoformat())
     })
 
     return items
 
 
-def get_update_approval_payload(doc, facility_code, service_type, service_name, qty=1):
+def get_update_approval_payload(
+    doc,
+    facility_code,
+    service_type,
+    service_name,
+    appointment,
+    qty=1,
+    item_row=None
+):
     patient_doc = frappe.get_cached_doc("Patient", doc.patient)
-    appointment_info = get_appointment_details(doc.appointment)
-    clinical_notes = frappe.get_cached_value("Patient Encounter", doc.ref_docname, "examination_detail") or ""
+    appointment_info = get_appointment_details(appointment)
 
-    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "tz_mct_code")
+    encounter_id = doc.get("ref_docname") or doc.get("reference_name")
+    clinical_notes = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
+
+    practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
+    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+
+    insurance_coverage_plan = doc.get("hms_tz_insurance_coverage_plan") or doc.get("coverage_plan_name")
+    insurance_subscription = doc.get("insurance_subscription")
+    if not insurance_subscription:
+        insurance_subscription = frappe.get_cached_value("Patient Appointment", appointment, "insurance_subscription")
+    
     scheme_id = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
-        doc.hms_tz_insurance_coverage_plan,
+        insurance_coverage_plan,
         "nhif_scheme_id"
     )
 
@@ -499,8 +576,8 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
     item_rate = get_item_rate(
         item,
         doc.company,
-        doc.insurance_subscription,
-        doc.insurance_company
+        insurance_subscription,
+        doc.get("insurance_company")
     )
     
     percent_covered = frappe.get_cached_value(
@@ -512,7 +589,7 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
     )
 
     payload = {
-        "serviceAuthorizationID": doc.service_authorization_id,
+        "serviceAuthorizationID": doc.get("service_authorization_id") or item_row.get("service_authorization_id"),
         "serviceTypeID": service_type_id,
         "cardNo": appointment_info.coverage_plan_card_number or appointment_info.national_id,
         "cardExistence": "",
@@ -533,27 +610,27 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
         "sourceFacilityCode": facility_code,
         "approvalStatusID": 0,
         "practitionerNo": practitioner_no,
-        "prescribedBy": doc.practitioner,
+        "prescribedBy": practitioner,
         "qualificationID": 0,
         "issuingFacilityCode": facility_code,
         "approvalIssuingFacilityCode": facility_code,
         "officeCode": "",
-        "referenceNo": doc.approval_number,
+        "referenceNo": doc.get("approval_number") or item_row.get("approval_number"),
         "serviceState": "",
         "requestedBy": "", # TODO: add requested by
         "approvedBy": "", # TODO: add approved by
         "approvedDate": "", # TODO: add approved date
-        "createdBy": doc.practitioner,
+        "createdBy": practitioner,
         "dateCreated": str(doc.creation.isoformat()),
         "lastModifiedBy": get_fullname(doc.modified_by),
         "lastModified": str(doc.modified.isoformat()),
         "approvalDiseases": [
             {
                 "appDiseaseID": "", # TODO: add app disease id
-                "serviceAuthorizationID": doc.service_authorization_id,
+                "serviceAuthorizationID": doc.get("service_authorization_id") or item_row.get("service_authorization_id"),
                 "diseaseCode": "string",
                 "notes": "string",
-                "createdBy": doc.practitioner,
+                "createdBy": practitioner,
                 "dateCreated": str(doc.creation.isoformat()),
                 "lastModifiedBy": get_fullname(doc.modified_by), 
                 "lastModified": str(doc.modified.isoformat())
@@ -561,8 +638,8 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
         ],
         "authorizedItems": [
             {
-                "authorizedItemID": doc.item_authorization_id,
-                "serviceAuthorizationID": doc.service_authorization_id,
+                "authorizedItemID": doc.get("item_authorization_id") or item_row.get("item_authorization_id"),
+                "serviceAuthorizationID": doc.get("service_authorization_id") or item_row.get("service_authorization_id"),
                 "serviceTypeID": service_type_id,
                 "itemCode": ref_code,
                 "description": service_name,
@@ -570,7 +647,7 @@ def get_update_approval_payload(doc, facility_code, service_type, service_name, 
                 "quantityRequested": qty,
                 "unitPrice": item_rate or 0,
                 "percentCovered": percent_covered,
-                "createdBy": doc.practitioner,
+                "createdBy": practitioner,
                 "dateCreated": str(doc.creation.isoformat()),
                 "lastModifiedBy": get_fullname(doc.modified_by),
                 "lastModified": str(doc.modified.isoformat())
