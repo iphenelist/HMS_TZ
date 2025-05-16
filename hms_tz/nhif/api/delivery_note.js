@@ -238,44 +238,6 @@ frappe.ui.form.on("Delivery Note Item", {
                 }, 20);
             }
         });
-    },
-    approval_number: (frm, cdt, cdn) => {
-        let row = locals[cdt][cdn]
-        if (row.approval_number != "" && row.approval_number != undefined) {
-            if (!frm.doc.customer.includes("NHIF")) {
-                return;
-            }
-            frappe.call({
-                method: "hms_tz.nhif.api.healthcare_utils.verify_service_approval_number_for_LRPMT",
-                args: {
-                    company: frm.doc.company,
-                    approval_number: row.approval_number,
-                    template_doctype: "Medication",
-                    template_name: row.item_code,
-                    encounter: frm.doc.reference_name
-                },
-                freeze: true,
-                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            }).then(r => {
-                if (r.message && r.message == "approval number validation is disabled") {
-                        return
-                    }
-                else if (r.message) {
-                    frappe.show_alert({
-                        message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                            Approval Number is Valid</h4>"),
-                        indicator: "green"
-                    }, 20);
-                } else {
-                    row.approval_number = ""
-                    frappe.show_alert({
-                        message: __("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                            Approval Number is not Valid</h4>"),
-                        indicator: "Red"
-                    }, 20);
-                }
-            });
-        }
     }
 });
 
