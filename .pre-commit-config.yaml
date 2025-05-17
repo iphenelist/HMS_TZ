@@ -1,0 +1,79 @@
+exclude: "node_modules|.git"
+default_stages: [commit]
+fail_fast: false
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        files: "hms_tz.*"
+        exclude: ".*json$|.*txt$|.*csv|.*md"
+      - id: check-yaml
+      - id: no-commit-to-branch
+        args: ["--branch", "develop", "--branch", "master", "--branch", "production"]
+      - id: check-merge-conflict
+      - id: check-ast
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        # Initially run in check mode only to avoid massive reformatting
+        args: ["--check"]
+        # Uncomment the line below and remove the --check above when ready to apply formatting
+        # args: []
+        files: "hms_tz/.*"
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        # Initially run in check mode only
+        args: ["--check-only"]
+        # Uncomment the line below and remove the --check-only above when ready to apply formatting
+        # args: []
+        files: "hms_tz/.*"
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.7.1
+    hooks:
+      - id: prettier
+        types_or: [javascript, vue, scss]
+        files: "hms_tz/.*"
+        # Ignore any files that might contain jinja / bundles
+        exclude: |
+          (?x)^(
+              hms_tz/public/dist/.*|
+              cypress/.*|
+              .*node_modules.*|
+              .*boilerplate.*
+          )$
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.44.0
+    hooks:
+      - id: eslint
+        types_or: [javascript]
+        files: "hms_tz/.*"
+        args: ["--quiet"]
+        # Ignore any files that might contain jinja / bundles
+        exclude: |
+          (?x)^(
+              hms_tz/public/dist/.*|
+              cypress/.*|
+              .*node_modules.*|
+              .*boilerplate.*
+          )$
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+        - id: flake8
+          additional_dependencies: [flake8-isort, flake8-bugbear]
+          files: "hms_tz/.*"
+
+ci:
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
