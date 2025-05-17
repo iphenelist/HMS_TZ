@@ -3,5 +3,12 @@
     "@digitalpersona/devices": "^0.2.6",
     "async": "^3.2.6",
     "es6-promise": "^4.2.8"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.0.0",
+    "@commitlint/config-conventional": "^17.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install"
   }
 }
