@@ -216,6 +216,7 @@
   {
    "fieldname": "patient_file",
    "fieldtype": "Markdown Editor",
+   "hidden": 1,
    "label": "Patient File",
    "no_copy": 1,
    "print_hide": 1,
@@ -339,6 +340,7 @@
    "collapsible": 1,
    "fieldname": "patient_file_section",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Patient File",
    "print_hide": 1,
    "report_hide": 1
@@ -363,11 +365,13 @@
    "collapsible": 1,
    "fieldname": "claim_file_section",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Claim File"
   },
   {
    "fieldname": "claim_file",
    "fieldtype": "Markdown Editor",
+   "hidden": 1,
    "label": "Claim File",
    "read_only": 1
   },
@@ -548,7 +552,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-18 13:16:43.392726",
+ "modified": "2025-05-19 00:28:55.257122",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
