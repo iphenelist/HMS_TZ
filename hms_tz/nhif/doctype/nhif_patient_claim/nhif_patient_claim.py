@@ -38,6 +38,83 @@ ct = DocType("Codification Table")
 
 
 class NHIFPatientClaim(Document):
+    def before_insert(self):
+        if frappe.db.exists(
+            {
+                "doctype": "NHIF Patient Claim",
+                "patient": self.patient,
+                "patient_appointment": self.patient_appointment,
+                "cardno": self.cardno,
+                "docstatus": 0,
+            }
+        ):
+            frappe.throw(
+                f"NHIF Patient Claim is already exist for patient: #<b>{self.patient}</b> with appointment: #<b>{self.patient_appointment}</b>"
+            )
+
+        self.validate_appointment_info()
+        self.validate_multiple_appointments_per_authorization_no("before_insert")
+    
+    def after_insert(self):
+        folio_counter = frappe.db.get_all(
+            "NHIF Folio Counter",
+            filters={
+                "company": self.company,
+                "claim_year": self.claim_year,
+                "claim_month": self.claim_month,
+            },
+            fields=["name"],
+            page_length=1,
+        )
+
+        folio_no = 1
+        if len(folio_counter) == 0:
+            new_folio_doc = frappe.get_doc(
+                {
+                    "doctype": "NHIF Folio Counter",
+                    "company": self.company,
+                    "claim_year": self.claim_year,
+                    "claim_month": self.claim_month,
+                    "posting_date": now_datetime(),
+                    "folio_no": folio_no,
+                }
+            ).insert(ignore_permissions=True)
+            new_folio_doc.reload()
+        else:
+            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_no = cint(folio_doc.folio_no) + 1
+
+            folio_doc.folio_no += 1
+            folio_doc.posting_date = now_datetime()
+            folio_doc.save(ignore_permissions=True)
+
+        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
+
+        items = []
+        for row in self.nhif_patient_claim_item:
+            new_row = row.as_dict()
+            for fieldname in [
+                "name",
+                "owner",
+                "creation",
+                "modified",
+                "modified_by",
+                "docstatus",
+            ]:
+                new_row[fieldname] = None
+            
+            items.append(new_row)
+
+        if len(items) > 0:
+            frappe.set_value(
+                self.doctype,
+                self.name,
+                "original_nhif_patient_claim_item",
+                items,
+            )
+
+        self.reload()
+
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
@@ -681,83 +758,6 @@ class NHIFPatientClaim(Document):
         self.hms_tz_claim_appointment_list = json.dumps(app_list)
 
         self.save(ignore_permissions=True)
-
-    def before_insert(self):
-        if frappe.db.exists(
-            {
-                "doctype": "NHIF Patient Claim",
-                "patient": self.patient,
-                "patient_appointment": self.patient_appointment,
-                "cardno": self.cardno,
-                "docstatus": 0,
-            }
-        ):
-            frappe.throw(
-                f"NHIF Patient Claim is already exist for patient: #<b>{self.patient}</b> with appointment: #<b>{self.patient_appointment}</b>"
-            )
-
-        self.validate_appointment_info()
-        self.validate_multiple_appointments_per_authorization_no("before_insert")
-
-    def after_insert(self):
-        folio_counter = frappe.db.get_all(
-            "NHIF Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-            },
-            fields=["name"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if not folio_counter:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "NHIF Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
-            folio_no = cint(folio_doc.folio_no) + 1
-
-            folio_doc.folio_no += 1
-            folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
-
-        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
-
-        items = []
-        for row in self.nhif_patient_claim_item:
-            new_row = row.as_dict()
-            for fieldname in [
-                "name",
-                "owner",
-                "creation",
-                "modified",
-                "modified_by",
-                "docstatus",
-            ]:
-                new_row[fieldname] = None
-            
-            items.append(new_row)
-
-        if len(items) > 0:
-            frappe.set_value(
-                self.doctype,
-                self.name,
-                "original_nhif_patient_claim_item",
-                items,
-            )
-
-        self.reload()
 
     def validate_appointment_info(self):
         appointment_doc = frappe.get_cached_doc("Patient Appointment", self.patient_appointment)
