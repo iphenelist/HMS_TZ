@@ -231,12 +231,33 @@ class NHIFPatientClaim(Document):
             self.patient_appointment,
             ["appointment_date", "appointment_time"],
         )
-
+        self.set_practitioner_values(encounter_list)
         self.set_inpatient_values(encounter_list)
 
         # if not self.allow_changes:
         #     self.set_patient_claim_disease()
         #     self.set_patient_claim_item(self.inpatient_record)
+
+    def set_practitioner_values(self, encounter_list):
+        practitioners = list(set([d.practitioner for d in encounter_list if d.practitioner]))
+
+        practitioner_details = frappe.db.get_all(
+            "Healthcare Practitioner",
+            {"name": ["in", practitioners]},
+            ["name", "tz_mct_code"],
+        )
+
+        for practitioner in practitioner_details:
+            if not practitioner.tz_mct_code:
+                frappe.throw(_(f"There is no TZ MCT Code for Practitioner: {practitioner.name}"))
+
+            self.append(
+                "practitioners",
+                {
+                    "practitioner": practitioner.name,
+                    "mct_code": practitioner.tz_mct_code,
+                }
+            )
 
     def set_inpatient_values(self, encounter_list):
         inpatient_record = list(set([h.inpatient_record for h in encounter_list if h.inpatient_record]))
@@ -276,6 +297,7 @@ class NHIFPatientClaim(Document):
             if self.date_admitted == getdate(discharge_date):
                 self.patient_type_code = "OUT"
                 self.date_admitted = None
+                self.admitted_time = None
             else:
                 self.patient_type_code = "IN"
                 self.date_discharge = discharge_date
