@@ -66,6 +66,8 @@
   "section_break_40",
   "clinical_notes_section",
   "clinical_notes",
+  "attending_practitioner_section",
+  "practitioners",
   "section_break_28",
   "nhif_patient_claim_disease",
   "section_break_30",
@@ -562,12 +564,24 @@
   {
    "fieldname": "column_break_znuxw",
    "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "attending_practitioner_section",
+   "fieldtype": "Section Break",
+   "label": "Attending Practitioner"
+  },
+  {
+   "fieldname": "practitioners",
+   "fieldtype": "Table",
+   "label": "Practitioner(s)",
+   "options": "NHIF Patient Claim Practitioner"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 00:31:47.986463",
+ "modified": "2025-05-19 00:34:53.279842",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
