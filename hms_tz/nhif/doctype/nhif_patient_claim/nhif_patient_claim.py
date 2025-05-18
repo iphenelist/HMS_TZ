@@ -617,41 +617,73 @@ class NHIFPatientClaim(Document):
                 _(f"Encounter {encounter_doc.name} does not have Examination Details defined. Check the encounter."),
                 alert=True,
             )
-            # return
+        
         department = frappe.get_cached_value("Healthcare Practitioner", encounter_doc.practitioner, "department")
-        self.clinical_notes += f"<br>PractitionerName: <i>{encounter_doc.practitioner_name},</i> Speciality: <i>{department},</i> DateofService: <i>{encounter_doc.encounter_date} {encounter_doc.encounter_time}</i> <br>"
+        self.clinical_notes += f"<br>PractitionerName: <i>{encounter_doc.practitioner_name},</i> Speciality: <i>{department},\
+            </i> DateofService: <i>{encounter_doc.encounter_date} {encounter_doc.encounter_time}</i> <br>"
         self.clinical_notes += encounter_doc.examination_detail or ""
 
+        #Lab Tests
+        if len(encounter_doc.get("lab_test_prescription")) > 0:
+            self.clinical_notes += "<br>Lab Test(s): <br>"
+            for row in encounter_doc.get("lab_test_prescription"):
+                serv_info = ""
+                if row.medical_code:
+                    serv_info  += f", Medical Code: {row.medical_code}"
+                self.clinical_notes += f"Lab Test Name: {row.lab_test_name} {serv_info} <br>"
+        
+        #Radiology
+        if len(encounter_doc.get("radiology_procedure_prescription")) > 0:
+            self.clinical_notes += "<br>Radiology: <br>"
+            for row in encounter_doc.get("radiology_procedure_prescription"):
+                serv_info = ""
+                if row.medical_code:
+                    serv_info += f", Medical Code: {row.medical_code}"
+                self.clinical_notes += f"Service Name: {row.radiology_procedure_name} {serv_info} <br>"
+        
+        #Clinical Procedures
         if len(encounter_doc.get("procedure_prescription")) > 0:
-            procedure_notes = ""
+            self.clinical_notes += "<br>Procedure(s): <br>"
             for row in encounter_doc.get("procedure_prescription"):
+                serv_info = ""
+                if row.medical_code:
+                    serv_info += f", Medical Code: {row.medical_code}"
+                
                 if row.clinical_procedure:
-                    notes = (
-                        frappe.get_cached_value(
-                            "Clinical Procedure",
-                            row.clinical_procedure,
-                            "procedure_notes",
-                        )
-                        or ""
-                    )
-                    procedure_notes += f"Procedure: {row.procedure} {notes}<br>"
-
-            if procedure_notes:
-                self.clinical_notes += f"<br>{procedure_notes}<br>"
-
+                    notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
+                    
+                    serv_info += f", Procedure Notes: {notes}"
+                
+                self.clinical_notes += f"Procedure: {row.procedure_name} {serv_info}<br>"
+        
+        #Medications
         if len(encounter_doc.get("drug_prescription")) > 0:
             self.clinical_notes += "<br>Medication(s): <br>"
             for row in encounter_doc.get("drug_prescription"):
                 med_info = ""
+                if row.medical_code:
+                    med_info += f", Medical Code: {row.medical_code}"
+
                 if row.dosage:
                     med_info += f", Dosage: {row.dosage}"
+
                 if row.period:
                     med_info += f", Period: {row.period}"
+
                 if row.dosage_form:
                     med_info += f", Dosage Form: {row.dosage_form}"
 
-                self.clinical_notes += f"Drug: {row.drug_code} {med_info}"
-                self.clinical_notes += "<br>"
+                self.clinical_notes += f"Drug: {row.drug_code} {med_info} <br>"
+        
+        #Therapies
+        if len(encounter_doc.get("therapies")) > 0:
+            self.clinical_notes += "<br>Therapies: <br>"
+            for row in encounter_doc.get("therapies"):
+                serv_info = ""
+                if row.medical_code:
+                    serv_info += f", Medical Code: {row.medical_code}"
+                self.clinical_notes += f"Therapy: {row.therapy_type} {serv_info} <br>"
+        
         self.clinical_notes = self.clinical_notes.replace('"', " ")
 
     def calculate_totals(self):
