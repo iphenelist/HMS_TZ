@@ -188,82 +188,6 @@ class NHIFPatientClaim(Document):
     def on_submit(self):
         track_changes_of_claim_items(self)
 
-    def validate_multiple_appointments_per_authorization_no(self, caller=None):
-        """Validate if patient gets multiple appointments with same authorization number"""
-
-        # Check if there are multiple claims with same authorization number
-        claim_details = frappe.db.get_all(
-            "NHIF Patient Claim",
-            filters={
-                "patient": self.patient,
-                "authorization_no": self.authorization_no,
-                "cardno": self.cardno,
-                "docstatus": 0,
-            },
-            fields=[
-                "name",
-                "patient",
-                "patient_name",
-                "hms_tz_claim_appointment_list",
-            ],
-        )
-        claim_name_list = ""
-        merged_appointments = []
-        for claim in claim_details:
-            url = get_url_to_form("NHIF Patient Claim", claim["name"])
-            claim_name_list += f"<a href='{url}'><b>{claim['name']}</b> </a> , "
-
-            if claim["hms_tz_claim_appointment_list"]:
-                merged_appointments += json.loads(claim["hms_tz_claim_appointment_list"])
-
-        if len(claim_details) > 1 and not caller:
-            frappe.throw(
-                f"<p style='text-align: justify; font-size: 14px;'>This Authorization Number: <b>{self.authorization_no}</b> has used multiple times in NHIF Patient Claim: {claim_name_list}. \
-                Please merge these <b>{len(claim_details)}</b> claims to Proceed</p>")
-
-        # rock: 139
-        # Check if there are multiple appointments with same authorization number
-        appointment_documents = frappe.db.get_all(
-            "Patient Appointment",
-            filters={
-                "patient": self.patient,
-                "authorization_number": self.authorization_no,
-                "coverage_plan_card_number": self.cardno,
-                "status": ["!=", "Cancelled"],
-            },
-            pluck="name",
-        )
-
-        if len(appointment_documents) > 1:
-            validate_hold_card_status(
-                self,
-                appointment_documents,
-                claim_details,
-                merged_appointments,
-                caller,
-            )
-        else:
-            if caller:
-                frappe.msgprint("Release Patient Card", 20, alert=True)
-
-    def set_claim_values(self, encounter_list):
-        self.facility_code = frappe.get_cached_value("HMS TZ Settings", self.company, "facility_code")
-        self.posting_date = nowdate()
-        self.serial_no = int(self.name[-9:])
-        self.item_crt_by = get_fullname(frappe.session.user)
-        self.patient_file_no = self.patient
-        self.attendance_date, self.attendance_time = frappe.get_cached_value(
-            "Patient Appointment",
-            self.patient_appointment,
-            ["appointment_date", "appointment_time"],
-        )
-
-        self.set_inpatient_values(encounter_list)
-
-        # if not self.allow_changes:
-        #     self.set_patient_claim_disease()
-        #     self.set_patient_claim_item(self.inpatient_record)
-
     def get_patient_encounters(self):
         # rock 173
         appointment = None
@@ -295,6 +219,24 @@ class NHIFPatientClaim(Document):
             frappe.throw(_("There are no submitted encounters for this application"))
         
         return patient_encounters
+
+    def set_claim_values(self, encounter_list):
+        self.facility_code = frappe.get_cached_value("HMS TZ Settings", self.company, "facility_code")
+        self.posting_date = nowdate()
+        self.serial_no = int(self.name[-9:])
+        self.item_crt_by = get_fullname(frappe.session.user)
+        self.patient_file_no = self.patient
+        self.attendance_date, self.attendance_time = frappe.get_cached_value(
+            "Patient Appointment",
+            self.patient_appointment,
+            ["appointment_date", "appointment_time"],
+        )
+
+        self.set_inpatient_values(encounter_list)
+
+        # if not self.allow_changes:
+        #     self.set_patient_claim_disease()
+        #     self.set_patient_claim_item(self.inpatient_record)
 
     def set_inpatient_values(self, encounter_list):
         inpatient_record = list(set([h.inpatient_record for h in encounter_list if h.inpatient_record]))
@@ -651,17 +593,6 @@ class NHIFPatientClaim(Document):
                 new_row.idx = appointment_idx
                 appointment_idx += 1
 
-    def calculate_totals(self):
-        self.total_amount = 0
-        for item in self.nhif_patient_claim_item:
-            item.amount_claimed = item.unit_price * item.item_quantity
-            item.date_created = item.date_created or nowdate()
-
-            self.total_amount += item.amount_claimed
-        
-        for item in self.nhif_patient_claim_disease:
-            item.date_created = item.date_created or nowdate()
-
     def set_clinical_notes(self, encounter_doc):
         if not self.clinical_notes:
             patient_name = f"Patient: <b>{self.patient_name}</b>,"
@@ -711,6 +642,17 @@ class NHIFPatientClaim(Document):
                 self.clinical_notes += f"Drug: {row.drug_code} {med_info}"
                 self.clinical_notes += "<br>"
         self.clinical_notes = self.clinical_notes.replace('"', " ")
+
+    def calculate_totals(self):
+        self.total_amount = 0
+        for item in self.nhif_patient_claim_item:
+            item.amount_claimed = item.unit_price * item.item_quantity
+            item.date_created = item.date_created or nowdate()
+
+            self.total_amount += item.amount_claimed
+        
+        for item in self.nhif_patient_claim_disease:
+            item.date_created = item.date_created or nowdate()
 
     @frappe.whitelist()
     def get_appointments(self):
@@ -779,6 +721,64 @@ class NHIFPatientClaim(Document):
                   <b>Please rectify before creating this Claim</b>"
                 )
             )
+
+    def validate_multiple_appointments_per_authorization_no(self, caller=None):
+        """Validate if patient gets multiple appointments with same authorization number"""
+
+        # Check if there are multiple claims with same authorization number
+        claim_details = frappe.db.get_all(
+            "NHIF Patient Claim",
+            filters={
+                "patient": self.patient,
+                "authorization_no": self.authorization_no,
+                "cardno": self.cardno,
+                "docstatus": 0,
+            },
+            fields=[
+                "name",
+                "patient",
+                "patient_name",
+                "hms_tz_claim_appointment_list",
+            ],
+        )
+        claim_name_list = ""
+        merged_appointments = []
+        for claim in claim_details:
+            url = get_url_to_form("NHIF Patient Claim", claim["name"])
+            claim_name_list += f"<a href='{url}'><b>{claim['name']}</b> </a> , "
+
+            if claim["hms_tz_claim_appointment_list"]:
+                merged_appointments += json.loads(claim["hms_tz_claim_appointment_list"])
+
+        if len(claim_details) > 1 and not caller:
+            frappe.throw(
+                f"<p style='text-align: justify; font-size: 14px;'>This Authorization Number: <b>{self.authorization_no}</b> has used multiple times in NHIF Patient Claim: {claim_name_list}. \
+                Please merge these <b>{len(claim_details)}</b> claims to Proceed</p>")
+
+        # rock: 139
+        # Check if there are multiple appointments with same authorization number
+        appointment_documents = frappe.db.get_all(
+            "Patient Appointment",
+            filters={
+                "patient": self.patient,
+                "authorization_number": self.authorization_no,
+                "coverage_plan_card_number": self.cardno,
+                "status": ["!=", "Cancelled"],
+            },
+            pluck="name",
+        )
+
+        if len(appointment_documents) > 1:
+            validate_hold_card_status(
+                self,
+                appointment_documents,
+                claim_details,
+                merged_appointments,
+                caller,
+            )
+        else:
+            if caller:
+                frappe.msgprint("Release Patient Card", 20, alert=True)
 
 
 def get_missing_patient_signature(self):
