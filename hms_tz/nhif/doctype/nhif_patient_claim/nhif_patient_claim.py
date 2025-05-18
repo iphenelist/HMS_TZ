@@ -171,8 +171,6 @@ class NHIFPatientClaim(Document):
 
         validate_item_status(self)
 
-        # self.patient_encounters = self.get_patient_encounters()
-
         if not self.patient_signature:
             get_missing_patient_signature(self)
 
@@ -234,7 +232,7 @@ class NHIFPatientClaim(Document):
         self.set_practitioner_values(encounter_list)
         self.set_inpatient_values(encounter_list)
         self.set_patient_claim_disease(encounter_list)
-        # self.set_patient_claim_item(self.inpatient_record)
+        self.set_patient_claim_item(encounter_list, inpatient_record=self.inpatient_record)
 
     def set_practitioner_values(self, encounter_list):
         self.practitioners = []
@@ -364,16 +362,18 @@ class NHIFPatientClaim(Document):
             new_row.item_crt_by = row.practitioner
             new_row.date_created = row.modified.strftime("%Y-%m-%d")
 
-    def set_patient_claim_item(self, inpatient_record=None, called_method=None):
-        if called_method == "enqueue":
-            self.reload()
-            self.final_patient_encounter = self.get_final_patient_encounter()
-            self.patient_encounters = self.get_patient_encounters()
+    def set_patient_claim_item(
+            self,
+            encounter_list,
+            inpatient_record=None
+        ):
+        
+        self.clinical_notes = ""
         childs_map = get_child_map()
         self.nhif_patient_claim_item = []
-        self.clinical_notes = ""
+
         if not inpatient_record:
-            for encounter in self.patient_encounters:
+            for encounter in encounter_list:
                 encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter.name)
 
                 self.set_clinical_notes(encounter_doc)
@@ -500,9 +500,10 @@ class NHIFPatientClaim(Document):
                             new_row.date_created = row_item.modified.strftime("%Y-%m-%d")
                             new_row.item_crt_by = get_fullname(row_item.modified_by)
 
-                for encounter in self.patient_encounters:
+                for encounter in encounter_list:
                     if str(encounter.encounter_date) != checkin_date:
                         continue
+
                     encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter.name)
 
                     # allow clinical notes to be added to the claim even if the
@@ -570,6 +571,7 @@ class NHIFPatientClaim(Document):
         for row in sorted_patient_claim_item:
             row.idx = idx
             idx += 1
+        
         self.nhif_patient_claim_item = sorted_patient_claim_item
 
         appointment_idx = 1
