@@ -5,7 +5,10 @@ from frappe.utils import nowdate
 def execute():
     today = nowdate()
     encounters = frappe.get_all(
-        "Patient Encounter", {"encounter_date": ["<=", today]}, ["name"], pluck="name"
+        "Patient Encounter",
+        {"encounter_date": ["<=", today]},
+        ["name"],
+        pluck="name",
     )
 
     if len(encounters) == 0:

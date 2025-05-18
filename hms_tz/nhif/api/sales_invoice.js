@@ -1,268 +1,296 @@
-frappe.ui.form.on('Sales Invoice', {
-	onload: function (frm) {
-		frm.trigger('add_get_info_btn');
-	},
-	is_pos: function(frm) {
-        if (frm.doc.is_pos) {
-            load_pos_profile(frm);
-        }
-    },
-    pos_profile: function(frm) {
-        if (frm.doc.pos_profile) {
-            load_pos_profile(frm);
-        }
-    },
+frappe.ui.form.on("Sales Invoice", {
+  onload: function (frm) {
+    frm.trigger("add_get_info_btn");
+  },
+  is_pos: function (frm) {
+    if (frm.doc.is_pos) {
+      load_pos_profile(frm);
+    }
+  },
+  pos_profile: function (frm) {
+    if (frm.doc.pos_profile) {
+      load_pos_profile(frm);
+    }
+  },
 
-	// patient: function (frm) {
-	// 	frm.clear_table("items")
-	// },
-	refresh: function (frm) {
-		if (frappe.boot.active_domains.includes("Healthcare")) {
-			frm.set_df_property("patient", "hidden", 0);
-			frm.set_df_property("patient_name", "hidden", 0);
-			frm.set_df_property("ref_practitioner", "hidden", 0);
-			frm.remove_custom_button('Healthcare Services', 'Get Items From');
-			frm.remove_custom_button('Prescriptions', 'Get Items From');
+  // patient: function (frm) {
+  // 	frm.clear_table("items")
+  // },
+  refresh: function (frm) {
+    if (frappe.boot.active_domains.includes("Healthcare")) {
+      frm.set_df_property("patient", "hidden", 0);
+      frm.set_df_property("patient_name", "hidden", 0);
+      frm.set_df_property("ref_practitioner", "hidden", 0);
+      frm.remove_custom_button("Healthcare Services", "Get Items From");
+      frm.remove_custom_button("Prescriptions", "Get Items From");
 
-			if (cint(frm.doc.docstatus == 0) && cur_frm.page.current_view_name !== "pos" && !frm.doc.is_return) {
-				frm.add_custom_button(__('Get Healthcare Services'), function () {
-					get_healthcare_services_to_invoice(frm);
-				});
-				frm.add_custom_button(__('Get Sales Order'),
-					function () {
-						erpnext.utils.map_current_doc({
-							method: "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice",
-							source_doctype: "Sales Order",
-							target: me.frm,
-							setters: {
-								customer: me.frm.doc.customer || undefined,
-							},
-							get_query_filters: {
-								docstatus: 1,
-								status: ["not in", ["Closed", "On Hold"]],
-								per_billed: ["<", 99.99],
-								company: me.frm.doc.company
-							}
-						});
-					});
-				frm.add_custom_button(__('Healthcare Services'), function () {
-					get_healthcare_services_to_invoice(frm);
-				}, "Get Items From");
-			}
-			if (frm.doc.docstatus == 1) {
-				frm.add_custom_button(__("Create Pending Healthcare Services"), function () {
-					frappe.call({
-						method: 'hms_tz.nhif.api.sales_invoice.create_pending_healthcare_docs',
-						args: {
-							doc_name: frm.doc.name,
-						},
-						callback: function (r) {
-							// Any other code
-						}
-					});
-				});
-			};
-		}
-		else {
-			frm.set_df_property("patient", "hidden", 1);
-			frm.set_df_property("patient_name", "hidden", 1);
-			frm.set_df_property("ref_practitioner", "hidden", 1);
-		}
-	},
-	hms_tz_request_discount: (frm) => {
-		show_disocunt_dialog(frm);
-	}
+      if (
+        cint(frm.doc.docstatus == 0) &&
+        cur_frm.page.current_view_name !== "pos" &&
+        !frm.doc.is_return
+      ) {
+        frm.add_custom_button(__("Get Healthcare Services"), function () {
+          get_healthcare_services_to_invoice(frm);
+        });
+        frm.add_custom_button(__("Get Sales Order"), function () {
+          erpnext.utils.map_current_doc({
+            method:
+              "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice",
+            source_doctype: "Sales Order",
+            target: me.frm,
+            setters: {
+              customer: me.frm.doc.customer || undefined,
+            },
+            get_query_filters: {
+              docstatus: 1,
+              status: ["not in", ["Closed", "On Hold"]],
+              per_billed: ["<", 99.99],
+              company: me.frm.doc.company,
+            },
+          });
+        });
+        frm.add_custom_button(
+          __("Healthcare Services"),
+          function () {
+            get_healthcare_services_to_invoice(frm);
+          },
+          "Get Items From"
+        );
+      }
+      if (frm.doc.docstatus == 1) {
+        frm.add_custom_button(
+          __("Create Pending Healthcare Services"),
+          function () {
+            frappe.call({
+              method:
+                "hms_tz.nhif.api.sales_invoice.create_pending_healthcare_docs",
+              args: {
+                doc_name: frm.doc.name,
+              },
+              callback: function (r) {
+                // Any other code
+              },
+            });
+          }
+        );
+      }
+    } else {
+      frm.set_df_property("patient", "hidden", 1);
+      frm.set_df_property("patient_name", "hidden", 1);
+      frm.set_df_property("ref_practitioner", "hidden", 1);
+    }
+  },
+  hms_tz_request_discount: (frm) => {
+    show_disocunt_dialog(frm);
+  },
 });
 
 var get_healthcare_services_to_invoice = function (frm) {
-	var me = this;
-	let selected_patient = '';
-	var dialog = new frappe.ui.Dialog({
-		title: __("Get Items From Healthcare Services"),
-		fields: [
-			{
-				fieldtype: 'Link',
-				options: 'Patient',
-				label: 'Patient',
-				fieldname: "patient",
-				reqd: true,
-			},
-			{
-				fieldtype: 'Link',
-				options: 'Patient Encounter',
-				label: 'Patient Encounter',
-				fieldname: "encounter",
-				reqd: true,
-				get_query: function (doc) {
-					return {
-						filters: {
-							patient: dialog.get_value("patient"),
-							company: frm.doc.company,
-							encounter_date: [">", frappe.datetime.add_days(frappe.datetime.now_date(true), -7)],
-							is_not_billable: 0,
-							duplicated: 0,
-							docstatus: 1
-						}
-					};
-				}
-			},
-			{
-				fieldtype: 'Button',
-				label: 'Get Items',
-				fieldname: "get_items",
-			},
-			{ fieldtype: 'Section Break' },
-			{ fieldtype: 'HTML', fieldname: 'results_area' }
-		]
-	});
-	var $wrapper;
-	var $results;
-	var $placeholder;
-	dialog.set_values({
-		'patient': frm.doc.patient
-	});
-	dialog.fields_dict.get_items.input.onclick = function () {
-		var patient = dialog.fields_dict.patient.input.value;
-		var encounter = dialog.fields_dict.encounter.input.value;
-		if (patient && encounter) {
-			selected_patient = patient;
-			var method = "hms_tz.nhif.api.healthcare_utils.get_healthcare_services_to_invoice";
-			var args = {
-				encounter: encounter,
-			};
-			var columns = (["service", "reference_name", "reference_type"]);
-			get_healthcare_items(frm, $results, $placeholder, method, args, columns);
-		}
-		else if (!patient) {
-			selected_patient = '';
-			$results.empty();
-			$results.append($placeholder);
-		}
-	};
-	$wrapper = dialog.fields_dict.results_area.$wrapper.append(`<div class="results"
+  var me = this;
+  let selected_patient = "";
+  var dialog = new frappe.ui.Dialog({
+    title: __("Get Items From Healthcare Services"),
+    fields: [
+      {
+        fieldtype: "Link",
+        options: "Patient",
+        label: "Patient",
+        fieldname: "patient",
+        reqd: true,
+      },
+      {
+        fieldtype: "Link",
+        options: "Patient Encounter",
+        label: "Patient Encounter",
+        fieldname: "encounter",
+        reqd: true,
+        get_query: function (doc) {
+          return {
+            filters: {
+              patient: dialog.get_value("patient"),
+              company: frm.doc.company,
+              encounter_date: [
+                ">",
+                frappe.datetime.add_days(frappe.datetime.now_date(true), -7),
+              ],
+              is_not_billable: 0,
+              duplicated: 0,
+              docstatus: 1,
+            },
+          };
+        },
+      },
+      {
+        fieldtype: "Button",
+        label: "Get Items",
+        fieldname: "get_items",
+      },
+      { fieldtype: "Section Break" },
+      { fieldtype: "HTML", fieldname: "results_area" },
+    ],
+  });
+  var $wrapper;
+  var $results;
+  var $placeholder;
+  dialog.set_values({
+    patient: frm.doc.patient,
+  });
+  dialog.fields_dict.get_items.input.onclick = function () {
+    var patient = dialog.fields_dict.patient.input.value;
+    var encounter = dialog.fields_dict.encounter.input.value;
+    if (patient && encounter) {
+      selected_patient = patient;
+      var method =
+        "hms_tz.nhif.api.healthcare_utils.get_healthcare_services_to_invoice";
+      var args = {
+        encounter: encounter,
+      };
+      var columns = ["service", "reference_name", "reference_type"];
+      get_healthcare_items(frm, $results, $placeholder, method, args, columns);
+    } else if (!patient) {
+      selected_patient = "";
+      $results.empty();
+      $results.append($placeholder);
+    }
+  };
+  $wrapper = dialog.fields_dict.results_area.$wrapper
+    .append(`<div class="results"
 		style="border: 1px solid #d1d8dd; border-radius: 3px; height: 300px; overflow: auto;"></div>`);
-	$results = $wrapper.find('.results');
-	$placeholder = $(`<div class="multiselect-empty-state">
+  $results = $wrapper.find(".results");
+  $placeholder = $(`<div class="multiselect-empty-state">
 				<span class="text-center" style="margin-top: -40px;">
 					<i class="fa fa-2x fa-heartbeat text-extra-muted"></i>
 					<p class="text-extra-muted">No billable Healthcare Services found</p>
 				</span>
 			</div>`);
-	$results.on('click', '.list-item--head :checkbox', (e) => {
-		$results.find('.list-item-container .list-row-check')
-			.prop("checked", ($(e.target).is(':checked')));
-	});
-	set_primary_action(frm, dialog, $results);
-	dialog.show();
+  $results.on("click", ".list-item--head :checkbox", (e) => {
+    $results
+      .find(".list-item-container .list-row-check")
+      .prop("checked", $(e.target).is(":checked"));
+  });
+  set_primary_action(frm, dialog, $results);
+  dialog.show();
 };
 
-
-var get_healthcare_items = function (frm, $results, $placeholder, method, args, columns) {
-	var me = this;
-	$results.empty();
-	frappe.call({
-		method: method,
-		args: args,
-		callback: function (data) {
-			if (data.message) {
-				$results.append(make_list_row(columns));
-				for (let i = 0; i < data.message.length; i++) {
-					$results.append(make_list_row(columns, data.message[i]));
-				}
-			} else {
-				$results.append($placeholder);
-			}
-		}
-	});
+var get_healthcare_items = function (
+  frm,
+  $results,
+  $placeholder,
+  method,
+  args,
+  columns
+) {
+  var me = this;
+  $results.empty();
+  frappe.call({
+    method: method,
+    args: args,
+    callback: function (data) {
+      if (data.message) {
+        $results.append(make_list_row(columns));
+        for (let i = 0; i < data.message.length; i++) {
+          $results.append(make_list_row(columns, data.message[i]));
+        }
+      } else {
+        $results.append($placeholder);
+      }
+    },
+  });
 };
 
 var make_list_row = function (columns, result = {}) {
-	var me = this;
-	// Make a head row by default (if result not passed)
-	let head = Object.keys(result).length === 0;
-	let contents = ``;
-	columns.forEach(function (column) {
-		contents += `<div class="list-item__content ellipsis">
-			${head ? `<span class="ellipsis">${__(frappe.model.unscrub(column))}</span>`
-
-				: (column !== "name" ? `<span class="ellipsis">${__(result[column])}</span>`
-					: `<a class="list-id ellipsis">
-						${__(result[column])}</a>`)
-			}
+  var me = this;
+  // Make a head row by default (if result not passed)
+  let head = Object.keys(result).length === 0;
+  let contents = ``;
+  columns.forEach(function (column) {
+    contents += `<div class="list-item__content ellipsis">
+			${
+        head
+          ? `<span class="ellipsis">${__(frappe.model.unscrub(column))}</span>`
+          : column !== "name"
+          ? `<span class="ellipsis">${__(result[column])}</span>`
+          : `<a class="list-id ellipsis">
+						${__(result[column])}</a>`
+      }
 		</div>`;
-	});
+  });
 
-	let $row = $(`<div class="list-item">
+  let $row = $(`<div class="list-item">
 		<div class="list-item__content" style="flex: 0 0 10px;">
-			<input type="checkbox" class="list-row-check" ${result.checked ? 'checked' : ''}>
+			<input type="checkbox" class="list-row-check" ${
+        result.checked ? "checked" : ""
+      }>
 		</div>
 		${contents}
 	</div>`);
 
-	$row = list_row_data_items(head, $row, result);
-	return $row;
+  $row = list_row_data_items(head, $row, result);
+  return $row;
 };
 
 var set_primary_action = function (frm, dialog, $results) {
-	var me = this;
-	dialog.set_primary_action(__('Add'), function () {
-		let checked_values = get_checked_values($results);
-		if (checked_values.length > 0) {
-			frm.set_value("patient", dialog.fields_dict.patient.input.value);
-			add_to_item_line(frm, checked_values);
-			dialog.hide();
-		}
-		else {
-			frappe.msgprint(__("Please select Healthcare Service"));
-		}
-	});
+  var me = this;
+  dialog.set_primary_action(__("Add"), function () {
+    let checked_values = get_checked_values($results);
+    if (checked_values.length > 0) {
+      frm.set_value("patient", dialog.fields_dict.patient.input.value);
+      add_to_item_line(frm, checked_values);
+      dialog.hide();
+    } else {
+      frappe.msgprint(__("Please select Healthcare Service"));
+    }
+  });
 };
 
 var get_checked_values = function ($results) {
-	return $results.find('.list-item-container').map(function () {
-		let checked_values = {};
-		if ($(this).find('.list-row-check:checkbox:checked').length > 0) {
-			checked_values['dn'] = $(this).attr('data-dn');
-			checked_values['dt'] = $(this).attr('data-dt');
-			checked_values['item'] = $(this).attr('data-item');
-			if ($(this).attr('data-rate') != 'undefined') {
-				checked_values['rate'] = $(this).attr('data-rate');
-			}
-			else {
-				checked_values['rate'] = false;
-			}
-			if ($(this).attr('data-qty') != 'undefined') {
-				checked_values['qty'] = $(this).attr('data-qty');
-			}
-			else {
-				checked_values['qty'] = false;
-			}
-			if ($(this).attr('data-description') != 'undefined') {
-				checked_values['description'] = $(this).attr('data-description');
-			}
-			else {
-				checked_values['description'] = false;
-			}
-			if ($(this).attr('data-service_request') != 'undefined') {
-				checked_values['service_request'] = $(this).attr('data-service_request');
-			}
-			else {
-				checked_values['service_request'] = false;
-			}
-			if ($(this).attr('data-discount-percentage') != 'undefined') {
-				checked_values['discount_percentage'] = $(this).attr('data-discount-percentage');
-			}
-			else {
-				checked_values['discount_percentage'] = false;
-			}
-			return checked_values;
-		}
-	}).get();
+  return $results
+    .find(".list-item-container")
+    .map(function () {
+      let checked_values = {};
+      if ($(this).find(".list-row-check:checkbox:checked").length > 0) {
+        checked_values["dn"] = $(this).attr("data-dn");
+        checked_values["dt"] = $(this).attr("data-dt");
+        checked_values["item"] = $(this).attr("data-item");
+        if ($(this).attr("data-rate") != "undefined") {
+          checked_values["rate"] = $(this).attr("data-rate");
+        } else {
+          checked_values["rate"] = false;
+        }
+        if ($(this).attr("data-qty") != "undefined") {
+          checked_values["qty"] = $(this).attr("data-qty");
+        } else {
+          checked_values["qty"] = false;
+        }
+        if ($(this).attr("data-description") != "undefined") {
+          checked_values["description"] = $(this).attr("data-description");
+        } else {
+          checked_values["description"] = false;
+        }
+        if ($(this).attr("data-service_request") != "undefined") {
+          checked_values["service_request"] = $(this).attr(
+            "data-service_request"
+          );
+        } else {
+          checked_values["service_request"] = false;
+        }
+        if ($(this).attr("data-discount-percentage") != "undefined") {
+          checked_values["discount_percentage"] = $(this).attr(
+            "data-discount-percentage"
+          );
+        } else {
+          checked_values["discount_percentage"] = false;
+        }
+        return checked_values;
+      }
+    })
+    .get();
 };
 
 var list_row_data_items = function (head, $row, result) {
-	head ? $row.addClass('list-item--head')
-		: $row = $(`<div class="list-item-container"
+  head
+    ? $row.addClass("list-item--head")
+    : ($row = $(`<div class="list-item-container"
 			data-dn= "${result.reference_name}"
 			data-dt= "${result.reference_type}"
 			data-item= "${result.service}"
@@ -271,241 +299,262 @@ var list_row_data_items = function (head, $row, result) {
 			data-description = "${result.description}"
 			data-service_request = "${result.service_request}"
 			data-discount-percentage = ${result.discount_percentage}
-			</div>`).append($row);
-	return $row;
+			</div>`).append($row));
+  return $row;
 };
 
 var add_to_item_line = function (frm, checked_values) {
-	frappe.call({
-		method: "hms_tz.nhif.api.healthcare_utils.set_healthcare_services",
-		args: {
-			doc: frm.doc,
-			checked_values: checked_values
-		},
-		callback: function (r) {
-			frm.trigger("validate");
-			frm.refresh_fields();
-			if (frm.is_new()) {
-				frappe.set_route('Form', 'Sales Invoice', r.message);
-			} else {
-				frm.reload_doc();
-			}
-		}
-	});
+  frappe.call({
+    method: "hms_tz.nhif.api.healthcare_utils.set_healthcare_services",
+    args: {
+      doc: frm.doc,
+      checked_values: checked_values,
+    },
+    callback: function (r) {
+      frm.trigger("validate");
+      frm.refresh_fields();
+      if (frm.is_new()) {
+        frappe.set_route("Form", "Sales Invoice", r.message);
+      } else {
+        frm.reload_doc();
+      }
+    },
+  });
 };
 
 var show_disocunt_dialog = (frm) => {
-	let dialog = new frappe.ui.Dialog({
-		title: __("Patient Discount Request"),
-		fields: [
-			{
-				fieldname: "apply_discount_on",
-				label: __("Apply Discount On"),
-				fieldtype: "Select",
-				options: "\nGrand Total\nNet Total\nSingle Items", //\nGroup of Items
-				reqd: 1,
-			},
-			{
-				fieldname: "item_category",
-				label: __("Item Category"),
-				fieldtype: "Select",
-				options: "\nAll Items\nAll OPD Consultations\nAll Lab Prescriptions\nAll Radiology Procedure Prescription\nAll Procedure Prescriptions\nAll Therapy Plan Details\nAll Drug Prescriptions\nAll Other Items",
-				depends_on: "eval:doc.apply_discount_on == 'Group of Items'",
-				mandatory_depends_on: "eval:doc.apply_discount_on == 'Group of Items'",
-			},
-			{
-				fieldname: "grand_total",
-				label: __("Grand Total"),
-				fieldtype: "Float",
-				read_only: 1,
-				hidden: 1,
-			},
-			{
-				fieldname: "net_total",
-				label: __("Net Total"),
-				fieldtype: "Float",
-				read_only: 1,
-				hidden: 1,
-			},
-			{
-				fieldname: "dc_cb",
-				label: "",
-				fieldtype: "Column Break",
-			},
-			{
-				fieldname: "discount_criteria",
-				label: __("Discount Criteria"),
-				fieldtype: "Select",
-				options: "\nDiscount Based on Percentage\nDiscount Based on Actual Amount",
-				reqd: 1,
-			},
-			{
-				fieldname: "discount_percent",
-				label: __("Discount (%)"),
-				fieldtype: "Percent",
-				depends_on: "eval:doc.discount_criteria == 'Discount Based on Percentage'",
-				mandatory_depends_on: "eval:doc.discount_criteria == 'Discount Based on Percentage'",
-			},
-			{
-				fieldname: "discount_amount",
-				label: __("Discount Amount"),
-				fieldtype: "Float",
-				depends_on: "eval:doc.discount_criteria == 'Discount Based on Actual Amount'",
-				mandatory_depends_on: "eval:doc.discount_criteria == 'Discount Based on Actual Amount'",
-			},
-			{
-				fieldname: "reason_sec",
-				label: "",
-				fieldtype: "Section Break",
-			},
-			{
-				fieldname: "discount_reason",
-				label: __("Discount Reason"),
-				fieldtype: "Small Text",
-				reqd: 1,
-				description: __("Reason to why patient is requesting for a discount"),
-			},
-			{
-				fieldname: "items_sec",
-				label: "",
-				fieldtype: "Section Break",
-			},
-			{
-				fieldname: "items",
-				label: __("Items"),
-				fieldtype: "HTML",
-			}
-		],
-	});
-	let wrapper = dialog.fields_dict.items.$wrapper;
-	dialog.fields_dict.apply_discount_on.df.onchange = () => {
-		if (dialog.fields_dict.apply_discount_on.get_value() == "Grand Total") {
-			dialog.set_df_property("net_total", "hidden", 1);
-			dialog.set_value("net_total", 0);
-			dialog.set_value("grand_total", frm.doc.grand_total);
-			dialog.set_df_property("grand_total", "hidden", 0);
-		} else if (dialog.fields_dict.apply_discount_on.get_value() == "Net Total") {
-			dialog.set_df_property("grand_total", "hidden", 1);
-			dialog.set_value("grand_total", 0);
+  let dialog = new frappe.ui.Dialog({
+    title: __("Patient Discount Request"),
+    fields: [
+      {
+        fieldname: "apply_discount_on",
+        label: __("Apply Discount On"),
+        fieldtype: "Select",
+        options: "\nGrand Total\nNet Total\nSingle Items", //\nGroup of Items
+        reqd: 1,
+      },
+      {
+        fieldname: "item_category",
+        label: __("Item Category"),
+        fieldtype: "Select",
+        options:
+          "\nAll Items\nAll OPD Consultations\nAll Lab Prescriptions\nAll Radiology Procedure Prescription\nAll Procedure Prescriptions\nAll Therapy Plan Details\nAll Drug Prescriptions\nAll Other Items",
+        depends_on: "eval:doc.apply_discount_on == 'Group of Items'",
+        mandatory_depends_on: "eval:doc.apply_discount_on == 'Group of Items'",
+      },
+      {
+        fieldname: "grand_total",
+        label: __("Grand Total"),
+        fieldtype: "Float",
+        read_only: 1,
+        hidden: 1,
+      },
+      {
+        fieldname: "net_total",
+        label: __("Net Total"),
+        fieldtype: "Float",
+        read_only: 1,
+        hidden: 1,
+      },
+      {
+        fieldname: "dc_cb",
+        label: "",
+        fieldtype: "Column Break",
+      },
+      {
+        fieldname: "discount_criteria",
+        label: __("Discount Criteria"),
+        fieldtype: "Select",
+        options:
+          "\nDiscount Based on Percentage\nDiscount Based on Actual Amount",
+        reqd: 1,
+      },
+      {
+        fieldname: "discount_percent",
+        label: __("Discount (%)"),
+        fieldtype: "Percent",
+        depends_on:
+          "eval:doc.discount_criteria == 'Discount Based on Percentage'",
+        mandatory_depends_on:
+          "eval:doc.discount_criteria == 'Discount Based on Percentage'",
+      },
+      {
+        fieldname: "discount_amount",
+        label: __("Discount Amount"),
+        fieldtype: "Float",
+        depends_on:
+          "eval:doc.discount_criteria == 'Discount Based on Actual Amount'",
+        mandatory_depends_on:
+          "eval:doc.discount_criteria == 'Discount Based on Actual Amount'",
+      },
+      {
+        fieldname: "reason_sec",
+        label: "",
+        fieldtype: "Section Break",
+      },
+      {
+        fieldname: "discount_reason",
+        label: __("Discount Reason"),
+        fieldtype: "Small Text",
+        reqd: 1,
+        description: __("Reason to why patient is requesting for a discount"),
+      },
+      {
+        fieldname: "items_sec",
+        label: "",
+        fieldtype: "Section Break",
+      },
+      {
+        fieldname: "items",
+        label: __("Items"),
+        fieldtype: "HTML",
+      },
+    ],
+  });
+  let wrapper = dialog.fields_dict.items.$wrapper;
+  dialog.fields_dict.apply_discount_on.df.onchange = () => {
+    if (dialog.fields_dict.apply_discount_on.get_value() == "Grand Total") {
+      dialog.set_df_property("net_total", "hidden", 1);
+      dialog.set_value("net_total", 0);
+      dialog.set_value("grand_total", frm.doc.grand_total);
+      dialog.set_df_property("grand_total", "hidden", 0);
+    } else if (
+      dialog.fields_dict.apply_discount_on.get_value() == "Net Total"
+    ) {
+      dialog.set_df_property("grand_total", "hidden", 1);
+      dialog.set_value("grand_total", 0);
 
-			dialog.set_value("net_total", frm.doc.net_total);
-			dialog.set_df_property("net_total", "hidden", 0);
-		} else if (dialog.fields_dict.apply_discount_on.get_value() == "Single Items") {
-			dialog.set_values({
-				"grand_total": 0,
-				"net_total": 0
-			});
-			dialog.set_df_property("grand_total", "hidden", 1);
-			dialog.set_df_property("net_total", "hidden", 1);
+      dialog.set_value("net_total", frm.doc.net_total);
+      dialog.set_df_property("net_total", "hidden", 0);
+    } else if (
+      dialog.fields_dict.apply_discount_on.get_value() == "Single Items"
+    ) {
+      dialog.set_values({
+        grand_total: 0,
+        net_total: 0,
+      });
+      dialog.set_df_property("grand_total", "hidden", 1);
+      dialog.set_df_property("net_total", "hidden", 1);
 
-			if (dialog.get_value("discount_percent") > 0 || dialog.get_value("discount_amount") > 0) {
-				get_discount_data(frm, dialog, wrapper);
-			}
+      if (
+        dialog.get_value("discount_percent") > 0 ||
+        dialog.get_value("discount_amount") > 0
+      ) {
+        get_discount_data(frm, dialog, wrapper);
+      }
+    } else if (
+      dialog.fields_dict.apply_discount_on.get_value() == "Group of Items"
+    ) {
+      dialog.set_values({
+        grand_total: 0,
+        net_total: 0,
+      });
+      dialog.set_df_property("grand_total", "hidden", 1);
+      dialog.set_df_property("net_total", "hidden", 1);
 
-		} else if (dialog.fields_dict.apply_discount_on.get_value() == "Group of Items") {
-			dialog.set_values({
-				"grand_total": 0,
-				"net_total": 0
-			});
-			dialog.set_df_property("grand_total", "hidden", 1);
-			dialog.set_df_property("net_total", "hidden", 1);
+      // get_discount_data(frm, dialog, wrapper);
+    }
+  };
+  dialog.fields_dict.discount_percent.df.onchange = () => {
+    if (dialog.fields_dict.discount_percent.get_value() > 0) {
+      dialog.set_value("discount_amount", 0);
+      if (dialog.fields_dict.apply_discount_on.get_value() == "Single Items") {
+        get_discount_data(frm, dialog, wrapper);
+      }
+    }
+  };
+  dialog.fields_dict.discount_amount.df.onchange = () => {
+    if (dialog.fields_dict.discount_amount.get_value() > 0) {
+      dialog.set_value("discount_percent", 0);
+      if (dialog.fields_dict.apply_discount_on.get_value() == "Single Items") {
+        get_discount_data(frm, dialog, wrapper);
+      }
+    }
+  };
 
-			// get_discount_data(frm, dialog, wrapper);
-		}
-	}
-	dialog.fields_dict.discount_percent.df.onchange = () => {
-		if (dialog.fields_dict.discount_percent.get_value() > 0) {
-			dialog.set_value("discount_amount", 0);
-			if (dialog.fields_dict.apply_discount_on.get_value() == "Single Items") {
-				get_discount_data(frm, dialog, wrapper);
-			}
-		}
-	};
-	dialog.fields_dict.discount_amount.df.onchange = () => {
-		if (dialog.fields_dict.discount_amount.get_value() > 0) {
-			dialog.set_value("discount_percent", 0);
-			if (dialog.fields_dict.apply_discount_on.get_value() == "Single Items") {
-				get_discount_data(frm, dialog, wrapper);
-			}
-		}
-	};
-
-	set_discount_action(frm, dialog, wrapper);
-	dialog.$wrapper.find(".modal-dialog").css({
-		"width": "800px",
-		"max-height": "1600px",
-		"overflow": "auto",
-	});
-	dialog.show();
+  set_discount_action(frm, dialog, wrapper);
+  dialog.$wrapper.find(".modal-dialog").css({
+    width: "800px",
+    "max-height": "1600px",
+    overflow: "auto",
+  });
+  dialog.show();
 };
 
 var set_discount_action = (frm, dialog, wrapper) => {
-	dialog.set_primary_action(__("Request Discount"), () => {
-		let data = dialog.get_values();
-		console.log(data);
+  dialog.set_primary_action(__("Request Discount"), () => {
+    let data = dialog.get_values();
+    console.log(data);
 
-		if (dialog.get_value("apply_discount_on") == "Single Items") {
-			let items = [];
+    if (dialog.get_value("apply_discount_on") == "Single Items") {
+      let items = [];
 
-			wrapper.find('tr:has(input:checked)').each(function () {
-				if ($(this).find("#th").is(":checked")) {
-					return;
-				}
-				items.push({
-					reference_dt: $(this).find("#reference_dt").attr("data-reference_dt"),
-					item_code: $(this).find("#item_code").attr("data-item_code"),
-					actual_price: $(this).find("#amount").attr("data-amount"),
-					discount_amount: $(this).find("#discounted_amount").attr("data-discounted_amount"),
-					amount_after_discount: $(this).find("#amount_after_discount").attr("data-amount_after_discount"),
-					sales_invoice: frm.doc.name,
-					si_detail: $(this).find("#si_detail").attr("data-si_detail"),
-				});
-			});
+      wrapper.find("tr:has(input:checked)").each(function () {
+        if ($(this).find("#th").is(":checked")) {
+          return;
+        }
+        items.push({
+          reference_dt: $(this)
+            .find("#reference_dt")
+            .attr("data-reference_dt"),
+          item_code: $(this).find("#item_code").attr("data-item_code"),
+          actual_price: $(this).find("#amount").attr("data-amount"),
+          discount_amount: $(this)
+            .find("#discounted_amount")
+            .attr("data-discounted_amount"),
+          amount_after_discount: $(this)
+            .find("#amount_after_discount")
+            .attr("data-amount_after_discount"),
+          sales_invoice: frm.doc.name,
+          si_detail: $(this).find("#si_detail").attr("data-si_detail"),
+        });
+      });
 
-			if (items.length > 0) {
-				get_patient_discount_request(frm, data, items);
-				dialog.hide();
-
-			} else {
-				frappe.msgprint({
-					title: __('Message'),
-					indicator: 'red',
-					message: __(
-						'<h4 class="text-center" style="background-color: #D3D3D3; font-weight: bold;">\
+      if (items.length > 0) {
+        get_patient_discount_request(frm, data, items);
+        dialog.hide();
+      } else {
+        frappe.msgprint({
+          title: __("Message"),
+          indicator: "red",
+          message: __(
+            '<h4 class="text-center" style="background-color: #D3D3D3; font-weight: bold;">\
 								No any Item selected<h4>'
-					)
-				});
-			}
-		} else {
-			get_patient_discount_request(frm, data);
-			dialog.hide();
-		}
-	});
+          ),
+        });
+      }
+    } else {
+      get_patient_discount_request(frm, data);
+      dialog.hide();
+    }
+  });
 };
 
 var get_discount_data = (frm, dialog, wrapper) => {
-	wrapper.html("");
+  wrapper.html("");
 
-	return frappe.call({
-		method: "hms_tz.nhif.api.sales_invoice.get_discount_items",
-		args: {
-			invoice_no: frm.doc.name,
-		}
-	}).then(r => {
-		const results = r.message;
-		if (results.length > 0) {
-			let html = show_disocunt_details(dialog, results);
-			wrapper.html(html);
+  return frappe
+    .call({
+      method: "hms_tz.nhif.api.sales_invoice.get_discount_items",
+      args: {
+        invoice_no: frm.doc.name,
+      },
+    })
+    .then((r) => {
+      const results = r.message;
+      if (results.length > 0) {
+        let html = show_disocunt_details(dialog, results);
+        wrapper.html(html);
 
-			$("#th").on("click", function () {
-				if ($(this).is(":checked")) {
-					wrapper.find("input[type='checkbox']").prop("checked", true);
-				} else {
-					wrapper.find("input[type='checkbox']").prop("checked", false);
-				}
-			});
-		} else {
-			wrapper.append(`<div class="multiselect-empty-state"
+        $("#th").on("click", function () {
+          if ($(this).is(":checked")) {
+            wrapper.find("input[type='checkbox']").prop("checked", true);
+          } else {
+            wrapper.find("input[type='checkbox']").prop("checked", false);
+          }
+        });
+      } else {
+        wrapper.append(`<div class="multiselect-empty-state"
 				style="border: 1px solid #d1d8dd; border-radius: 3px; height: 200px; overflow: auto;">
 				<span class="text-center" style="margin-top: -40px;">
 					<i class="fa fa-2x fa-heartbeat text-extra-muted"></i>
@@ -513,12 +562,12 @@ var get_discount_data = (frm, dialog, wrapper) => {
 					No Item(s) requested</p>
 				</span>
 			</div>`);
-		}
-	});
+      }
+    });
 };
 
 var show_disocunt_details = (dialog, data) => {
-	let html = `<table class="table table-hover" style="width:100%;">
+  let html = `<table class="table table-hover" style="width:100%;">
 		<colgroup>
 			<col width="5%">
 			<col width="25%">
@@ -538,94 +587,107 @@ var show_disocunt_details = (dialog, data) => {
 			<th style="background-color: #D3D3D3;"></th>
 		</tr>`;
 
-	data.forEach(row => {
-		let discount_amount = 0
-		if (dialog.get_value("discount_percent") > 0) {
-			discount_amount = row.amount * (dialog.get_value("discount_percent") / 100);
-		} else if (dialog.get_value("discount_amount") > 0) {
-			discount_amount = dialog.get_value("discount_amount");
+  data.forEach((row) => {
+    let discount_amount = 0;
+    if (dialog.get_value("discount_percent") > 0) {
+      discount_amount =
+        row.amount * (dialog.get_value("discount_percent") / 100);
+    } else if (dialog.get_value("discount_amount") > 0) {
+      discount_amount = dialog.get_value("discount_amount");
+    }
+    let amount_after_discount = row.amount - discount_amount;
+    let reference_dt = row.reference_dt ? row.reference_dt : "";
 
-		}
-		let amount_after_discount = row.amount - discount_amount;
-		let reference_dt = row.reference_dt ? row.reference_dt : "";
-
-		html += `<tr>
+    html += `<tr>
 			<td><input type="checkbox"/></td>
 			<td id="reference_dt" data-reference_dt="${reference_dt}">${reference_dt}</td>
 			<td id="item_code" data-item_code="${row.item_code}">${row.item_code}</td>
-			<td id="amount" data-amount="${parseFloat(row.amount).toFixed(2)}">${parseFloat(row.amount).toFixed(2)}</td>
-			<td id="discounted_amount" data-discounted_amount="${parseFloat(discount_amount).toFixed(2)}">${parseFloat(discount_amount).toFixed(2)}</td>
-			<td id="amount_after_discount" data-amount_after_discount="${parseFloat(amount_after_discount).toFixed(2)}">${parseFloat(amount_after_discount).toFixed(2)}</td>
+			<td id="amount" data-amount="${parseFloat(row.amount).toFixed(
+        2
+      )}">${parseFloat(row.amount).toFixed(2)}</td>
+			<td id="discounted_amount" data-discounted_amount="${parseFloat(
+        discount_amount
+      ).toFixed(2)}">${parseFloat(discount_amount).toFixed(2)}</td>
+			<td id="amount_after_discount" data-amount_after_discount="${parseFloat(
+        amount_after_discount
+      ).toFixed(2)}">${parseFloat(amount_after_discount).toFixed(2)}</td>
 			<td class="d-none" id="si_detail" data-si_detail="${row.name}">${row.name}</td>
 		</tr>`;
-	});
-	html += `</table>`;
-	return html;
+  });
+  html += `</table>`;
+  return html;
 };
 
 var get_patient_discount_request = (frm, data, items = null) => {
-	data["patient"] = frm.doc.patient;
-	data["patient_name"] = frm.doc.patient_name;
-	data["customer"] = frm.doc.customer;
-	data["company"] = frm.doc.company;
-	data["items"] = items;
-	data["sales_invoice"] = frm.doc.name;
-	data["payment_type"] = "Cash";
+  data["patient"] = frm.doc.patient;
+  data["patient_name"] = frm.doc.patient_name;
+  data["customer"] = frm.doc.customer;
+  data["company"] = frm.doc.company;
+  data["items"] = items;
+  data["sales_invoice"] = frm.doc.name;
+  data["payment_type"] = "Cash";
 
-	return frappe.call({
-		method: "hms_tz.nhif.doctype.patient_discount_request.patient_discount_request.get_patient_discount_request",
-		args: {
-			data: data,
-		},
-		freeze: true,
-		freeze_message: __("Please wait..."),
-	}).then(r => {
-		if (r.message) {
-			frappe.msgprint({
-				title: __("Message"),
-				indicator: "green",
-				message: __(
-					"<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+  return frappe
+    .call({
+      method:
+        "hms_tz.nhif.doctype.patient_discount_request.patient_discount_request.get_patient_discount_request",
+      args: {
+        data: data,
+      },
+      freeze: true,
+      freeze_message: __("Please wait..."),
+    })
+    .then((r) => {
+      if (r.message) {
+        frappe.msgprint({
+          title: __("Message"),
+          indicator: "green",
+          message: __(
+            "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
 						Discount Request created successfully<h4>"
-				)
-			});
-		} else {
-			frappe.dom.unfreeze();
-			frappe.msgprint({
-				title: __("Message"),
-				indicator: "red",
-				message: __(
-					"<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+          ),
+        });
+      } else {
+        frappe.dom.unfreeze();
+        frappe.msgprint({
+          title: __("Message"),
+          indicator: "red",
+          message: __(
+            "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
 						Discount Request failed to create<h4>"
-				)
-			});
-		}
-	});
+          ),
+        });
+      }
+    });
 };
 
 var load_pos_profile = (frm) => {
-    frappe.call({
-        method: "hms_tz.nhif.api.sales_invoice.get_pos_profile",
-        args: {
-            current_user: frappe.session.user
-        },
-        callback: function(modes) {
-            if (modes && modes.message) {
-                let existing_modes = frm.doc.payments.map(row => row.mode_of_payment);
+  frappe.call({
+    method: "hms_tz.nhif.api.sales_invoice.get_pos_profile",
+    args: {
+      current_user: frappe.session.user,
+    },
+    callback: function (modes) {
+      if (modes && modes.message) {
+        let existing_modes = frm.doc.payments.map(
+          (row) => row.mode_of_payment
+        );
 
-                // Check if any of the modes in modes.message are already in existing_modes
-                let modes_found = modes.message.some(mode => existing_modes.includes(mode.mode_of_payment));
+        // Check if any of the modes in modes.message are already in existing_modes
+        let modes_found = modes.message.some((mode) =>
+          existing_modes.includes(mode.mode_of_payment)
+        );
 
-                // If no modes are found, insert the new modes
-                if (!modes_found) {
-                    modes.message.forEach(function(mode) {
-                        let new_row = frm.add_child('payments');
-                        new_row.mode_of_payment = mode.mode_of_payment;
-                    });
+        // If no modes are found, insert the new modes
+        if (!modes_found) {
+          modes.message.forEach(function (mode) {
+            let new_row = frm.add_child("payments");
+            new_row.mode_of_payment = mode.mode_of_payment;
+          });
 
-                    frm.refresh_field('payments');
-                }
-            }
+          frm.refresh_field("payments");
         }
-    });
+      }
+    },
+  });
 };

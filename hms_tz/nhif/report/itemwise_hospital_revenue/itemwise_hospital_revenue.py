@@ -4,15 +4,12 @@
 
 import frappe
 from frappe.query_builder import DocType
-from pypika.functions import Sum, Count, Max, IfNull, Date
-from pypika.terms import Case, Criterion, ValueWrapper, Not
+from pypika.functions import Date, IfNull
+from pypika.terms import Case, Criterion, Not, ValueWrapper
 
 
 def execute(filters=None):
-    if (
-        filters.get("show_only_ongoing_ipds") == 1
-        and filters.get("show_only_prev_items_for_discharged_ipds") == 1
-    ):
+    if filters.get("show_only_ongoing_ipds") == 1 and filters.get("show_only_prev_items_for_discharged_ipds") == 1:
         frappe.throw(
             "Cannot filter by both Ongoing IPDs and Discharged IPDs<br>\
             Uncheck one of the filters either 'Show Ongoing IPDs or Show prev items for discharged IPDs\
@@ -43,7 +40,12 @@ def execute(filters=None):
 
 def get_columns(filters):
     columns = [
-        {"fieldname": "date", "label": "Date", "fieldtype": "Date", "width": 120},
+        {
+            "fieldname": "date",
+            "label": "Date",
+            "fieldtype": "Date",
+            "width": 120,
+        },
         {
             "fieldname": "patient",
             "label": "Patient",
@@ -90,7 +92,12 @@ def get_columns(filters):
                 "fieldtype": "Data",
                 "width": 120,
             },
-            {"fieldname": "qty", "label": "Qty", "fieldtype": "Int", "width": 50},
+            {
+                "fieldname": "qty",
+                "label": "Qty",
+                "fieldtype": "Int",
+                "width": 50,
+            },
             {
                 "fieldname": "rate",
                 "label": "Rate",
@@ -183,7 +190,12 @@ def get_columns(filters):
                 "fieldtype": "Data",
                 "width": 120,
             },
-            {"fieldname": "qty", "label": "Qty", "fieldtype": "Int", "width": 50},
+            {
+                "fieldname": "qty",
+                "label": "Qty",
+                "fieldtype": "Int",
+                "width": 50,
+            },
             {
                 "fieldname": "rate",
                 "label": "Rate",
@@ -315,20 +327,14 @@ def get_insurance_appointment_data(filters, appoints):
             pa.name.as_("bill_no"),
             pa.patient.as_("patient"),
             pa.patient_name.as_("patient_name"),
-            Case()
-            .when(pa.appointment_type.like("Emergency"), "In-Patient")
-            .else_("Out-Patient")
-            .as_("patient_type"),
+            Case().when(pa.appointment_type.like("Emergency"), "In-Patient").else_("Out-Patient").as_("patient_type"),
             item.item_group.as_("service_type"),
             pa.billing_item.as_("service_name"),
             pa.coverage_plan_name.as_("payment_method"),
             ValueWrapper(1).as_("qty"),
             pa.paid_amount.as_("rate"),
             pa.paid_amount.as_("amount"),
-            Case()
-            .when(pa.status == "Closed", "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(pa.status == "Closed", "Submitted").else_("Draft").as_("status"),
             pa.practitioner.as_("practitioner"),
             pa.department.as_("department"),
             pa.service_unit.as_("service_unit"),
@@ -339,10 +345,7 @@ def get_insurance_appointment_data(filters, appoints):
             & (pa.status != "Cancelled")
             & (pa.follow_up == 0)
             & (pa.has_no_consultation_charges == 0)
-            & (
-                (pa.insurance_subscription.isnotnull())
-                & (pa.insurance_subscription != "")
-            )
+            & ((pa.insurance_subscription.isnotnull()) & (pa.insurance_subscription != ""))
         )
     )
 
@@ -356,19 +359,13 @@ def get_insurance_appointment_data(filters, appoints):
         )
 
     if filters.service_type:
-        insurance_appointment_query = insurance_appointment_query.where(
-            item.item_group == filters.service_type
-        )
+        insurance_appointment_query = insurance_appointment_query.where(item.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_appointment_query = insurance_appointment_query.where(
-            pa.insurance_company == filters.payment_mode
-        )
+        insurance_appointment_query = insurance_appointment_query.where(pa.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        insurance_appointment_query = insurance_appointment_query.where(
-            pa.name.isin(appoints)
-        )
+        insurance_appointment_query = insurance_appointment_query.where(pa.name.isin(appoints))
 
     insurance_appointment_data = insurance_appointment_query.run(as_dict=True)
 
@@ -392,10 +389,7 @@ def get_cash_appointment_data(filters, appoints):
             pa.name.as_("bill_no"),
             pa.patient.as_("patient"),
             pa.patient_name.as_("patient_name"),
-            Case()
-            .when(pa.appointment_type.like("Emergency"), "In-Patient")
-            .else_("Out-Patient")
-            .as_("patient_type"),
+            Case().when(pa.appointment_type.like("Emergency"), "In-Patient").else_("Out-Patient").as_("patient_type"),
             item.item_group.as_("service_type"),
             pa.billing_item.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
@@ -403,10 +397,7 @@ def get_cash_appointment_data(filters, appoints):
             pa.paid_amount.as_("rate"),
             (sii.amount - sii.net_amount).as_("discount_amount"),
             sii.net_amount.as_("amount"),
-            Case()
-            .when(pa.status == "Closed", "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(pa.status == "Closed", "Submitted").else_("Draft").as_("status"),
             pa.practitioner.as_("practitioner"),
             pa.department.as_("department"),
             pa.service_unit.as_("service_unit"),
@@ -434,9 +425,7 @@ def get_cash_appointment_data(filters, appoints):
         )
 
     if filters.service_type:
-        cash_appointment_query = cash_appointment_query.where(
-            item.item_group == filters.service_type
-        )
+        cash_appointment_query = cash_appointment_query.where(item.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         cash_appointment_query = cash_appointment_query.where(pa.name.isin(appoints))
@@ -466,10 +455,7 @@ def get_insurance_lab_data(filters, appoints):
             lab.name.as_("bill_no"),
             lab.patient.as_("patient"),
             lab.patient_name.as_("patient_name"),
-            Case()
-            .when(lab.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(lab.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             template.lab_test_group.as_("service_type"),
             lab.template.as_("service_name"),
             lab.hms_tz_insurance_coverage_plan.as_("payment_method"),
@@ -484,12 +470,7 @@ def get_insurance_lab_data(filters, appoints):
         )
         .where(
             (pe.company == filters.company)
-            & (
-                (
-                    lab.hms_tz_insurance_coverage_plan.isnotnull()
-                    & (lab.hms_tz_insurance_coverage_plan != "")
-                )
-            )
+            & ((lab.hms_tz_insurance_coverage_plan.isnotnull() & (lab.hms_tz_insurance_coverage_plan != "")))
             & (lab.docstatus != 2)
             & (lab.ref_doctype == "Patient Encounter")
             & (lab.ref_docname == lab_prescription.parent)
@@ -504,19 +485,13 @@ def get_insurance_lab_data(filters, appoints):
             (pe.encounter_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        insurance_lab_query = insurance_lab_query.where(
-            (pe.encounter_date.between(filters.from_date, filters.to_date))
-        )
+        insurance_lab_query = insurance_lab_query.where((pe.encounter_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        insurance_lab_query = insurance_lab_query.where(
-            template.lab_test_group == filters.service_type
-        )
+        insurance_lab_query = insurance_lab_query.where(template.lab_test_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_lab_query = insurance_lab_query.where(
-            lab.insurance_company == filters.payment_mode
-        )
+        insurance_lab_query = insurance_lab_query.where(lab.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         insurance_lab_query = insurance_lab_query.where(pe.appointment.isin(appoints))
@@ -531,7 +506,7 @@ def get_cash_lab_data(filters, appoints):
     lab_prescription = DocType("Lab Prescription")
     template = DocType("Lab Test Template")
     sii = DocType("Sales Invoice Item")
-    si = DocType("Sales Invoice")
+    DocType("Sales Invoice")
     pe = DocType("Patient Encounter")
 
     # Paid Lab Data for OPD Patients, Admitted and Discharged Patients
@@ -554,10 +529,7 @@ def get_cash_lab_data(filters, appoints):
             lab.name.as_("bill_no"),
             lab.patient.as_("patient"),
             lab.patient_name.as_("patient_name"),
-            Case()
-            .when(lab.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(lab.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             template.lab_test_group.as_("service_type"),
             lab.template.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
@@ -594,14 +566,10 @@ def get_cash_lab_data(filters, appoints):
             (lab.result_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        paid_cash_lab_query = paid_cash_lab_query.where(
-            (lab.result_date.between(filters.from_date, filters.to_date))
-        )
+        paid_cash_lab_query = paid_cash_lab_query.where((lab.result_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        paid_cash_lab_query = paid_cash_lab_query.where(
-            template.lab_test_group == filters.service_type
-        )
+        paid_cash_lab_query = paid_cash_lab_query.where(template.lab_test_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         paid_cash_lab_query = paid_cash_lab_query.where(pe.appointment.isin(appoints))
@@ -661,14 +629,10 @@ def get_cash_lab_data(filters, appoints):
             (lab.result_date.between(filters.from_date, filters.to_date))
         )
     if filters.service_type:
-        unpaid_cash_lab_query = unpaid_cash_lab_query.where(
-            template.lab_test_group == filters.service_type
-        )
+        unpaid_cash_lab_query = unpaid_cash_lab_query.where(template.lab_test_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        unpaid_cash_lab_query = unpaid_cash_lab_query.where(
-            pe.appointment.isin(appoints)
-        )
+        unpaid_cash_lab_query = unpaid_cash_lab_query.where(pe.appointment.isin(appoints))
 
     unpaid_cash_lab_data = unpaid_cash_lab_query.run(as_dict=True)
 
@@ -695,10 +659,7 @@ def get_insurance_radiology_data(filters, appoints):
             rad.name.as_("bill_no"),
             rad.patient.as_("patient"),
             rad.patient_name.as_("patient_name"),
-            Case()
-            .when(rad.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(rad.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             template.item_group.as_("service_type"),
             rad.radiology_examination_template.as_("service_name"),
             rad.hms_tz_insurance_coverage_plan.as_("payment_method"),
@@ -713,10 +674,7 @@ def get_insurance_radiology_data(filters, appoints):
         )
         .where(
             (pe.company == filters.company)
-            & (
-                (rad.hms_tz_insurance_coverage_plan.isnotnull())
-                & (rad.hms_tz_insurance_coverage_plan != "")
-            )
+            & ((rad.hms_tz_insurance_coverage_plan.isnotnull()) & (rad.hms_tz_insurance_coverage_plan != ""))
             & (rad.docstatus != 2)
             & (rad.ref_doctype == "Patient Encounter")
             & (rad.ref_docname == rad_prescription.parent)
@@ -732,19 +690,13 @@ def get_insurance_radiology_data(filters, appoints):
             (pe.encounter_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        insurance_rad_query = insurance_rad_query.where(
-            (pe.encounter_date.between(filters.from_date, filters.to_date))
-        )
+        insurance_rad_query = insurance_rad_query.where((pe.encounter_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        insurance_rad_query = insurance_rad_query.where(
-            template.item_group == filters.service_type
-        )
+        insurance_rad_query = insurance_rad_query.where(template.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_rad_query = insurance_rad_query.where(
-            rad.insurance_company == filters.payment_mode
-        )
+        insurance_rad_query = insurance_rad_query.where(rad.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         insurance_rad_query = insurance_rad_query.where(pe.appointment.isin(appoints))
@@ -759,7 +711,7 @@ def get_cash_radiology_data(filters, appoints):
     rad_prescription = DocType("Radiology Procedure Prescription")
     template = DocType("Radiology Examination Template")
     sii = DocType("Sales Invoice Item")
-    si = DocType("Sales Invoice")
+    DocType("Sales Invoice")
     pe = DocType("Patient Encounter")
 
     # Paid Radiology Data for OPD Patients, Admitted and Discharged Patients
@@ -782,10 +734,7 @@ def get_cash_radiology_data(filters, appoints):
             rad.name.as_("bill_no"),
             rad.patient.as_("patient"),
             rad.patient_name.as_("patient_name"),
-            Case()
-            .when(rad.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(rad.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             template.item_group.as_("service_type"),
             rad.radiology_examination_template.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
@@ -822,14 +771,10 @@ def get_cash_radiology_data(filters, appoints):
             (rad.start_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        paid_cash_rad_query = paid_cash_rad_query.where(
-            (rad.start_date.between(filters.from_date, filters.to_date))
-        )
+        paid_cash_rad_query = paid_cash_rad_query.where((rad.start_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        paid_cash_rad_query = paid_cash_rad_query.where(
-            template.item_group == filters.service_type
-        )
+        paid_cash_rad_query = paid_cash_rad_query.where(template.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         paid_cash_rad_query = paid_cash_rad_query.where(pe.appointment.isin(appoints))
@@ -890,14 +835,10 @@ def get_cash_radiology_data(filters, appoints):
         )
 
     if filters.service_type:
-        unpaid_cash_rad_query = unpaid_cash_rad_query.where(
-            template.item_group == filters.service_type
-        )
+        unpaid_cash_rad_query = unpaid_cash_rad_query.where(template.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        unpaid_cash_rad_query = unpaid_cash_rad_query.where(
-            pe.appointment.isin(appoints)
-        )
+        unpaid_cash_rad_query = unpaid_cash_rad_query.where(pe.appointment.isin(appoints))
 
     unpaid_cash_rad_data = unpaid_cash_rad_query.run(as_dict=True)
 
@@ -924,20 +865,14 @@ def get_insurance_procedure_data(filters, appoints):
             procedure.name.as_("bill_no"),
             procedure.patient.as_("patient"),
             procedure.patient_name.as_("patient_name"),
-            Case()
-            .when(procedure.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(procedure.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             template.item_group.as_("service_type"),
             procedure.procedure_template.as_("service_name"),
             procedure.hms_tz_insurance_coverage_plan.as_("payment_method"),
             ValueWrapper(1).as_("qty"),
             pp.amount.as_("rate"),
             pp.amount.as_("amount"),
-            Case()
-            .when(procedure.docstatus == 1, "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(procedure.docstatus == 1, "Submitted").else_("Draft").as_("status"),
             procedure.practitioner.as_("practitioner"),
             procedure.medical_department.as_("department"),
             pp.department_hsu.as_("service_unit"),
@@ -969,19 +904,13 @@ def get_insurance_procedure_data(filters, appoints):
         )
 
     if filters.service_type:
-        insurance_procedure_query = insurance_procedure_query.where(
-            template.item_group == filters.service_type
-        )
+        insurance_procedure_query = insurance_procedure_query.where(template.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_procedure_query = insurance_procedure_query.where(
-            pe.insurance_company == filters.payment_mode
-        )
+        insurance_procedure_query = insurance_procedure_query.where(pe.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        insurance_procedure_query = insurance_procedure_query.where(
-            pe.appointment.isin(appoints)
-        )
+        insurance_procedure_query = insurance_procedure_query.where(pe.appointment.isin(appoints))
 
     insurance_procedure_data = insurance_procedure_query.run(as_dict=True)
 
@@ -993,7 +922,7 @@ def get_cash_procedure_data(filters, appoints):
     pp = DocType("Procedure Prescription")
     template = DocType("Clinical Procedure Template")
     sii = DocType("Sales Invoice Item")
-    si = DocType("Sales Invoice")
+    DocType("Sales Invoice")
     pe = DocType("Patient Encounter")
 
     # Paid Procedure Data for OPD Patients, Admitted and Discharged Patients
@@ -1016,10 +945,7 @@ def get_cash_procedure_data(filters, appoints):
             procedure.name.as_("bill_no"),
             procedure.patient.as_("patient"),
             procedure.patient_name.as_("patient_name"),
-            Case()
-            .when(procedure.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(procedure.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             template.item_group.as_("service_type"),
             procedure.procedure_template.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
@@ -1027,10 +953,7 @@ def get_cash_procedure_data(filters, appoints):
             pp.amount.as_("rate"),
             (sii.amount - sii.net_amount).as_("discount_amount"),
             sii.net_amount.as_("amount"),
-            Case()
-            .when(procedure.docstatus == 1, "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(procedure.docstatus == 1, "Submitted").else_("Draft").as_("status"),
             procedure.practitioner.as_("practitioner"),
             procedure.medical_department.as_("department"),
             pp.department_hsu.as_("service_unit"),
@@ -1065,9 +988,7 @@ def get_cash_procedure_data(filters, appoints):
         )
 
     if filters.service_type:
-        paid_procedure_query = paid_procedure_query.where(
-            template.item_group == filters.service_type
-        )
+        paid_procedure_query = paid_procedure_query.where(template.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         paid_procedure_query = paid_procedure_query.where(pe.appointment.isin(appoints))
@@ -1097,10 +1018,7 @@ def get_cash_procedure_data(filters, appoints):
             ValueWrapper(1).as_("qty"),
             pp.amount.as_("rate"),
             pp.amount.as_("amount"),
-            Case()
-            .when(procedure.docstatus == 1, "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(procedure.docstatus == 1, "Submitted").else_("Draft").as_("status"),
             procedure.practitioner.as_("practitioner"),
             procedure.medical_department.as_("department"),
             pp.department_hsu.as_("service_unit"),
@@ -1113,10 +1031,7 @@ def get_cash_procedure_data(filters, appoints):
             & (procedure.ref_doctype == "Patient Encounter")
             & (procedure.ref_docname.isnotnull())
             & (procedure.ref_docname == pp.parent)
-            & (
-                (procedure.inpatient_record.isnotnull())
-                & (procedure.inpatient_record != "")
-            )
+            & ((procedure.inpatient_record.isnotnull()) & (procedure.inpatient_record != ""))
             & (pp.prescribe == 1)
             & (pp.invoiced == 0)
             & (pp.is_cancelled == 0)
@@ -1135,14 +1050,10 @@ def get_cash_procedure_data(filters, appoints):
         )
 
     if filters.service_type:
-        unpaid_procedure_query = unpaid_procedure_query.where(
-            template.item_group == filters.service_type
-        )
+        unpaid_procedure_query = unpaid_procedure_query.where(template.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        unpaid_procedure_query = unpaid_procedure_query.where(
-            pe.appointment.isin(appoints)
-        )
+        unpaid_procedure_query = unpaid_procedure_query.where(pe.appointment.isin(appoints))
 
     unpaid_procedure_data = unpaid_procedure_query.run(as_dict=True)
 
@@ -1169,10 +1080,7 @@ def get_insurance_drug_data(filters, appoints):
             dn.name.as_("bill_no"),
             pe.patient.as_("patient"),
             pe.patient_name.as_("patient_name"),
-            Case()
-            .when(pe.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(pe.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             md.item_group.as_("service_type"),
             dp.drug_code.as_("service_name"),
             pe.insurance_coverage_plan.as_("payment_method"),
@@ -1206,14 +1114,10 @@ def get_insurance_drug_data(filters, appoints):
         )
 
     if filters.service_type:
-        insurance_drug_query = insurance_drug_query.where(
-            md.item_group == filters.service_type
-        )
+        insurance_drug_query = insurance_drug_query.where(md.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_drug_query = insurance_drug_query.where(
-            pe.insurance_company == filters.payment_mode
-        )
+        insurance_drug_query = insurance_drug_query.where(pe.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         insurance_drug_query = insurance_drug_query.where(pe.appointment.isin(appoints))
@@ -1229,7 +1133,7 @@ def get_cash_drug_data(filters, appoints):
     dn = DocType("Delivery Note")
     md = DocType("Medication")
     sii = DocType("Sales Invoice Item")
-    si = DocType("Sales Invoice")
+    DocType("Sales Invoice")
 
     # Paid Drug Data for OPD Patients, Admitted and Discharged Patients
     # Link to Sales invoice
@@ -1251,18 +1155,13 @@ def get_cash_drug_data(filters, appoints):
             dn.name.as_("bill_no"),
             pe.patient.as_("patient"),
             pe.patient_name.as_("patient_name"),
-            Case()
-            .when(pe.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(pe.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             md.item_group.as_("service_type"),
             dp.drug_code.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
             (dp.quantity - dp.quantity_returned).as_("qty"),
             dp.amount.as_("rate"),
-            (((dp.quantity - dp.quantity_returned) * dp.amount) - sii.net_amount).as_(
-                "discount_amount"
-            ),
+            (((dp.quantity - dp.quantity_returned) * dp.amount) - sii.net_amount).as_("discount_amount"),
             ((dp.quantity - dp.quantity_returned) * sii.net_rate).as_("amount"),
             Case().when(dn.docstatus == 1, "Submitted").else_("Draft").as_("status"),
             pe.practitioner.as_("practitioner"),
@@ -1290,9 +1189,7 @@ def get_cash_drug_data(filters, appoints):
             (pe.encounter_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        paid_drug_query = paid_drug_query.where(
-            (pe.encounter_date.between(filters.from_date, filters.to_date))
-        )
+        paid_drug_query = paid_drug_query.where((pe.encounter_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
         paid_drug_query = paid_drug_query.where(md.item_group == filters.service_type)
@@ -1311,7 +1208,9 @@ def get_cash_drug_data(filters, appoints):
         .inner_join(md)
         .on(dp.drug_code == md.name)
         .inner_join(dn)
-        .on(pe.name == dn.reference_name) # reference to encounter since every inpatient encounter will have a delivery note created
+        .on(
+            pe.name == dn.reference_name
+        )  # reference to encounter since every inpatient encounter will have a delivery note created
         .select(
             pe.encounter_date.as_("date"),
             pe.appointment.as_("appointment_no"),
@@ -1349,14 +1248,10 @@ def get_cash_drug_data(filters, appoints):
             (pe.encounter_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        unpaid_drug_query = unpaid_drug_query.where(
-            (pe.encounter_date.between(filters.from_date, filters.to_date))
-        )
+        unpaid_drug_query = unpaid_drug_query.where((pe.encounter_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        unpaid_drug_query = unpaid_drug_query.where(
-            md.item_group == filters.service_type
-        )
+        unpaid_drug_query = unpaid_drug_query.where(md.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         unpaid_drug_query = unpaid_drug_query.where(pe.appointment.isin(appoints))
@@ -1386,20 +1281,14 @@ def get_insurance_therapy_data(filters, appoints):
             tp.name.as_("bill_no"),
             tp.patient.as_("patient"),
             tp.patient_name.as_("patient_name"),
-            Case()
-            .when(pe.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(pe.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             tt.item_group.as_("service_type"),
             tpd.therapy_type.as_("service_name"),
             tp.hms_tz_insurance_coverage_plan.as_("payment_method"),
             (tpd.no_of_sessions - tpd.sessions_cancelled).as_("qty"),
             tpd.amount.as_("rate"),
             ((tpd.no_of_sessions - tpd.sessions_cancelled) * tpd.amount).as_("amount"),
-            Case()
-            .when(tp.status == "Completed", "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(tp.status == "Completed", "Submitted").else_("Draft").as_("status"),
             pe.practitioner.as_("practitioner"),
             tt.medical_department.as_("department"),
             tpd.department_hsu.as_("service_unit"),
@@ -1410,10 +1299,7 @@ def get_insurance_therapy_data(filters, appoints):
             & (tpd.is_cancelled == 0)
             & (tpd.is_not_available_inhouse == 0)
             & (tpd.invoiced == 0)
-            & (
-                (tp.hms_tz_insurance_coverage_plan.isnotnull())
-                & (tp.hms_tz_insurance_coverage_plan != "")
-            )
+            & ((tp.hms_tz_insurance_coverage_plan.isnotnull()) & (tp.hms_tz_insurance_coverage_plan != ""))
         )
     )
 
@@ -1427,19 +1313,13 @@ def get_insurance_therapy_data(filters, appoints):
         )
 
     if filters.service_type:
-        insurance_therapy_query = insurance_therapy_query.where(
-            tt.item_group == filters.service_type
-        )
+        insurance_therapy_query = insurance_therapy_query.where(tt.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_therapy_query = insurance_therapy_query.where(
-            pe.insurance_company == filters.payment_mode
-        )
+        insurance_therapy_query = insurance_therapy_query.where(pe.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        insurance_therapy_query = insurance_therapy_query.where(
-            pe.appointment.isin(appoints)
-        )
+        insurance_therapy_query = insurance_therapy_query.where(pe.appointment.isin(appoints))
 
     insurance_therapy_data = insurance_therapy_query.run(as_dict=True)
 
@@ -1451,7 +1331,7 @@ def get_cash_therapy_data(filters, appoints):
     tpd = DocType("Therapy Plan Detail")
     tt = DocType("Therapy Type")
     sii = DocType("Sales Invoice Item")
-    si = DocType("Sales Invoice")
+    DocType("Sales Invoice")
     pe = DocType("Patient Encounter")
 
     # Paid Therapy Data for OPD Patients, Admitted and Discharged Patients
@@ -1474,10 +1354,7 @@ def get_cash_therapy_data(filters, appoints):
             tp.name.as_("bill_no"),
             tp.patient.as_("patient"),
             tp.patient_name.as_("patient_name"),
-            Case()
-            .when(pe.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(pe.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             tt.item_group.as_("service_type"),
             tpd.therapy_type.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
@@ -1485,10 +1362,7 @@ def get_cash_therapy_data(filters, appoints):
             tpd.amount.as_("rate"),
             (sii.amount - sii.net_amount).as_("discount_amount"),
             sii.net_amount.as_("amount"),
-            Case()
-            .when(tp.status == "Completed", "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(tp.status == "Completed", "Submitted").else_("Draft").as_("status"),
             pe.practitioner.as_("practitioner"),
             tt.medical_department.as_("department"),
             tpd.department_hsu.as_("service_unit"),
@@ -1514,14 +1388,10 @@ def get_cash_therapy_data(filters, appoints):
             (tp.start_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        paid_therapy_query = paid_therapy_query.where(
-            (tp.start_date.between(filters.from_date, filters.to_date))
-        )
+        paid_therapy_query = paid_therapy_query.where((tp.start_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        paid_therapy_query = paid_therapy_query.where(
-            tt.item_group == filters.service_type
-        )
+        paid_therapy_query = paid_therapy_query.where(tt.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         paid_therapy_query = paid_therapy_query.where(pe.appointment.isin(appoints))
@@ -1544,20 +1414,14 @@ def get_cash_therapy_data(filters, appoints):
             tp.name.as_("bill_no"),
             tp.patient.as_("patient"),
             tp.patient_name.as_("patient_name"),
-            Case()
-            .when(pe.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(pe.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             tt.item_group.as_("service_type"),
             tpd.therapy_type.as_("service_name"),
             ValueWrapper("Cash").as_("payment_method"),
             (tpd.no_of_sessions - tpd.sessions_cancelled).as_("qty"),
             tpd.amount.as_("rate"),
             ((tpd.no_of_sessions - tpd.sessions_cancelled) * tpd.amount).as_("amount"),
-            Case()
-            .when(tp.status == "Completed", "Submitted")
-            .else_("Draft")
-            .as_("status"),
+            Case().when(tp.status == "Completed", "Submitted").else_("Draft").as_("status"),
             pe.practitioner.as_("practitioner"),
             tt.medical_department.as_("department"),
             tpd.department_hsu.as_("service_unit"),
@@ -1580,14 +1444,10 @@ def get_cash_therapy_data(filters, appoints):
             (tp.start_date < filters.from_date) & (pe.appointment.isin(appoints))
         )
     else:
-        unpaid_therapy_query = unpaid_therapy_query.where(
-            (tp.start_date.between(filters.from_date, filters.to_date))
-        )
+        unpaid_therapy_query = unpaid_therapy_query.where((tp.start_date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        unpaid_therapy_query = unpaid_therapy_query.where(
-            tt.item_group == filters.service_type
-        )
+        unpaid_therapy_query = unpaid_therapy_query.where(tt.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
         unpaid_therapy_query = unpaid_therapy_query.where(pe.appointment.isin(appoints))
@@ -1631,10 +1491,7 @@ def get_insurance_ipd_beds_data(filters, appoints):
         .where(
             (ip.company == filters.company)
             & (io.is_confirmed == 1)
-            & (
-                (ip.insurance_coverage_plan.isnotnull())
-                & (ip.insurance_coverage_plan != "")
-            )
+            & ((ip.insurance_coverage_plan.isnotnull()) & (ip.insurance_coverage_plan != ""))
         )
     )
 
@@ -1648,19 +1505,13 @@ def get_insurance_ipd_beds_data(filters, appoints):
         )
 
     if filters.service_type:
-        insurance_ipd_beds_query = insurance_ipd_beds_query.where(
-            hsut.item_group == filters.service_type
-        )
+        insurance_ipd_beds_query = insurance_ipd_beds_query.where(hsut.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_ipd_beds_query = insurance_ipd_beds_query.where(
-            ip.insurance_company == filters.payment_mode
-        )
+        insurance_ipd_beds_query = insurance_ipd_beds_query.where(ip.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        insurance_ipd_beds_query = insurance_ipd_beds_query.where(
-            ip.patient_appointment.isin(appoints)
-        )
+        insurance_ipd_beds_query = insurance_ipd_beds_query.where(ip.patient_appointment.isin(appoints))
 
     insurance_ipd_beds_data = insurance_ipd_beds_query.run(as_dict=True)
 
@@ -1725,17 +1576,12 @@ def get_cash_ipd_beds_data(filters, appoints):
         )
 
     if filters.service_type:
-        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(
-            hsut.item_group == filters.service_type
-        )
+        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(hsut.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(
-            ip.patient_appointment.isin(appoints)
-        )
+        paid_cash_ipd_beds_query = paid_cash_ipd_beds_query.where(ip.patient_appointment.isin(appoints))
 
     paid_cash_ipd_beds_data = paid_cash_ipd_beds_query.run(as_dict=True)
-
 
     # UnPaid Beds Data for ongoing Admitted Patients
     # No Link to Sales invoice
@@ -1784,14 +1630,10 @@ def get_cash_ipd_beds_data(filters, appoints):
         )
 
     if filters.service_type:
-        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(
-            hsut.item_group == filters.service_type
-        )
+        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(hsut.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(
-            ip.patient_appointment.isin(appoints)
-        )
+        unpaid_cash_ipd_beds_query = unpaid_cash_ipd_beds_query.where(ip.patient_appointment.isin(appoints))
 
     unpaid_cash_ipd_beds_data = unpaid_cash_ipd_beds_query.run(as_dict=True)
 
@@ -1833,10 +1675,7 @@ def get_insurance_ipd_cons_data(filters, appoints):
         .where(
             (ip.company == filters.company)
             & (ic.is_confirmed == 1)
-            & (
-                (ip.insurance_coverage_plan.isnotnull())
-                & (ip.insurance_coverage_plan != "")
-            )
+            & ((ip.insurance_coverage_plan.isnotnull()) & (ip.insurance_coverage_plan != ""))
         )
     )
 
@@ -1845,24 +1684,16 @@ def get_insurance_ipd_cons_data(filters, appoints):
             (ic.date < filters.from_date) & (ip.patient_appointment.isin(appoints))
         )
     else:
-        insurance_ipd_cons_query = insurance_ipd_cons_query.where(
-            (ic.date.between(filters.from_date, filters.to_date))
-        )
+        insurance_ipd_cons_query = insurance_ipd_cons_query.where((ic.date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        insurance_ipd_cons_query = insurance_ipd_cons_query.where(
-            it.item_group == filters.service_type
-        )
+        insurance_ipd_cons_query = insurance_ipd_cons_query.where(it.item_group == filters.service_type)
 
     if filters.payment_mode and filters.payment_mode != "Cash":
-        insurance_ipd_cons_query = insurance_ipd_cons_query.where(
-            ip.insurance_company == filters.payment_mode
-        )
+        insurance_ipd_cons_query = insurance_ipd_cons_query.where(ip.insurance_company == filters.payment_mode)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        insurance_ipd_cons_query = insurance_ipd_cons_query.where(
-            ip.patient_appointment.isin(appoints)
-        )
+        insurance_ipd_cons_query = insurance_ipd_cons_query.where(ip.patient_appointment.isin(appoints))
 
     insurance_ipd_cons_data = insurance_ipd_cons_query.run(as_dict=True)
 
@@ -1912,10 +1743,7 @@ def get_cash_ipd_cons_data(filters, appoints):
             (ip.company == filters.company)
             & (ic.is_confirmed == 1)
             & (ic.hms_tz_invoiced == 1)
-            & (
-                (ip.insurance_coverage_plan.isnull())
-                | (ip.insurance_coverage_plan == "")
-            )
+            & ((ip.insurance_coverage_plan.isnull()) | (ip.insurance_coverage_plan == ""))
             & ((sii.sales_invoice_item.isnull()) | (sii.sales_invoice_item == ""))
         )
     )
@@ -1925,22 +1753,15 @@ def get_cash_ipd_cons_data(filters, appoints):
             (ic.date < filters.from_date) & (ip.patient_appointment.isin(appoints))
         )
     else:
-        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
-            (ic.date.between(filters.from_date, filters.to_date))
-        )
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where((ic.date.between(filters.from_date, filters.to_date)))
 
     if filters.service_type:
-        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
-            it.item_group == filters.service_type
-        )
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(it.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(
-            ip.patient_appointment.isin(appoints)
-        )
+        paid_cash_ipd_cons_query = paid_cash_ipd_cons_query.where(ip.patient_appointment.isin(appoints))
 
     paid_cash_ipd_cons_data = paid_cash_ipd_cons_query.run(as_dict=True)
-
 
     # Unpaid IPD Cons Data for Admitted and Discharged Patients
     # No Link to Sales invoice
@@ -1976,10 +1797,7 @@ def get_cash_ipd_cons_data(filters, appoints):
             & (ip.status != "Discharged")
             & (ic.is_confirmed == 1)
             & (ic.hms_tz_invoiced == 0)
-            & (
-                (ip.insurance_coverage_plan.isnull())
-                | (ip.insurance_coverage_plan == "")
-            )
+            & ((ip.insurance_coverage_plan.isnull()) | (ip.insurance_coverage_plan == ""))
         )
     )
 
@@ -1993,14 +1811,10 @@ def get_cash_ipd_cons_data(filters, appoints):
         )
 
     if filters.service_type:
-        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(
-            it.item_group == filters.service_type
-        )
+        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(it.item_group == filters.service_type)
 
     if filters.show_only_ongoing_ipds == 1 and len(appoints) > 0:
-        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(
-            ip.patient_appointment.isin(appoints)
-        )
+        unpaid_cash_ipd_cons_query = unpaid_cash_ipd_cons_query.where(ip.patient_appointment.isin(appoints))
 
     unpaid_cash_ipd_cons_data = unpaid_cash_ipd_cons_query.run(as_dict=True)
 
@@ -2069,15 +1883,11 @@ def get_cancelled_lab_items(filters):
             Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
-            Case()
-            .when(lreturn.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(lreturn.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             ireturn.item_name.as_("service_name"),
             Case()
             .when(
-                (pe.insurance_coverage_plan.isnull())
-                | (pe.insurance_coverage_plan == ""),
+                (pe.insurance_coverage_plan.isnull()) | (pe.insurance_coverage_plan == ""),
                 "Cash",
             )
             .else_(pe.insurance_coverage_plan)
@@ -2112,7 +1922,8 @@ def get_cancelled_lab_items(filters):
 
     if filters.get("payment_mode") and filters.get("payment_mode") == "Cash":
         lab_item_query = lab_item_query.where(
-            # pick only prescribed items so as to include uncovered items from insurance encounters
+            # pick only prescribed items so as to include uncovered items from
+            # insurance encounters
             (lp.prescribe == 1)
         )
 
@@ -2139,15 +1950,11 @@ def get_cancelled_radiology_items(filters):
             Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
-            Case()
-            .when(lreturn.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(lreturn.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             ireturn.item_name.as_("service_name"),
             Case()
             .when(
-                (pe.insurance_coverage_plan.isnull())
-                | (pe.insurance_coverage_plan == ""),
+                (pe.insurance_coverage_plan.isnull()) | (pe.insurance_coverage_plan == ""),
                 "Cash",
             )
             .else_(pe.insurance_coverage_plan)
@@ -2182,7 +1989,8 @@ def get_cancelled_radiology_items(filters):
 
     if filters.get("payment_mode") and filters.get("payment_mode") == "Cash":
         radiology_item_query = radiology_item_query.where(
-            # pick only prescribed items so as to include uncovered items from insurance encounters
+            # pick only prescribed items so as to include uncovered items from
+            # insurance encounters
             (rpp.prescribe == 1)
         )
 
@@ -2209,15 +2017,11 @@ def get_cancelled_procedure_items(filters):
             Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
-            Case()
-            .when(lreturn.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(lreturn.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             ireturn.item_name.as_("service_name"),
             Case()
             .when(
-                (pe.insurance_coverage_plan.isnull())
-                | (pe.insurance_coverage_plan == ""),
+                (pe.insurance_coverage_plan.isnull()) | (pe.insurance_coverage_plan == ""),
                 "Cash",
             )
             .else_(pe.insurance_coverage_plan)
@@ -2251,7 +2055,8 @@ def get_cancelled_procedure_items(filters):
 
     if filters.get("payment_mode") and filters.get("payment_mode") == "Cash":
         precedure_item_query = precedure_item_query.where(
-            # pick only prescribed items so as to include uncovered items from insurance encounters
+            # pick only prescribed items so as to include uncovered items from
+            # insurance encounters
             (pp.prescribe == 1)
         )
 
@@ -2278,15 +2083,11 @@ def get_cancelled_drug_items(filters):
             Date(lreturn.modified).as_("date"),
             lreturn.patient.as_("patient"),
             lreturn.patient_name.as_("patient_name"),
-            Case()
-            .when(lreturn.inpatient_record.isnull(), "Out-Patient")
-            .else_("In-Patient")
-            .as_("patient_type"),
+            Case().when(lreturn.inpatient_record.isnull(), "Out-Patient").else_("In-Patient").as_("patient_type"),
             mreturn.drug_name.as_("service_name"),
             Case()
             .when(
-                (pe.insurance_coverage_plan.isnull())
-                | (pe.insurance_coverage_plan == ""),
+                (pe.insurance_coverage_plan.isnull()) | (pe.insurance_coverage_plan == ""),
                 "Cash",
             )
             .else_(pe.insurance_coverage_plan)
@@ -2320,7 +2121,8 @@ def get_cancelled_drug_items(filters):
 
     if filters.get("payment_mode") and filters.get("payment_mode") == "Cash":
         drug_item_query = drug_item_query.where(
-            # pick only prescribed items so as to include uncovered items from insurance encounters
+            # pick only prescribed items so as to include uncovered items from
+            # insurance encounters
             (dp.prescribe == 1)
         )
 
@@ -2364,9 +2166,7 @@ def get_prev_and_ongoing_ipds(filters):
     )
 
     if filters.payment_mode and filters.payment_mode == "Cash":
-        ipd_query = ipd_query.where(
-            (ip.insurance_subscription.isnull()) | (ip.insurance_subscription == "")
-        )
+        ipd_query = ipd_query.where((ip.insurance_subscription.isnull()) | (ip.insurance_subscription == ""))
 
     if filters.payment_mode and filters.payment_mode != "Cash":
         ipd_query = ipd_query.where(ip.insurance_company == filters.payment_mode)
@@ -2375,11 +2175,9 @@ def get_prev_and_ongoing_ipds(filters):
         ipd_query = ipd_query.where(
             Criterion.any(
                 [
-                    # Get all inpatient records that are not discharged within filters selected date range:
-                    (
-                        (ip.scheduled_date <= filters.to_date)
-                        & (ip.status != "Discharged")
-                    ),
+                    # Get all inpatient records that are not discharged within
+                    # filters selected date range:
+                    ((ip.scheduled_date <= filters.to_date) & (ip.status != "Discharged")),
                     # Get all inpatient records that were discharged next month of the filters selected date range:
                     # Assumption: Filters date range is always for a month
                     (

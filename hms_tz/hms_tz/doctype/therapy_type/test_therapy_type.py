@@ -3,8 +3,9 @@
 # See license.txt
 from __future__ import unicode_literals
 
-import frappe
 import unittest
+
+import frappe
 
 
 class TestTherapyType(unittest.TestCase):
@@ -48,8 +49,6 @@ def create_exercise_type():
     if not exercise_type:
         exercise_type = frappe.new_doc("Exercise Type")
         exercise_type.exercise_name = "Sit to Stand"
-        exercise_type.append(
-            "steps_table", {"title": "Step 1", "description": "Squat and Rise"}
-        )
+        exercise_type.append("steps_table", {"title": "Step 1", "description": "Squat and Rise"})
         exercise_type.save()
     return exercise_type

@@ -1,5 +1,5 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
 
 def execute():
     fields = {
@@ -69,7 +69,7 @@ def execute():
                 "insert_after": "healthcare_service_unit_cb",
                 "options": "Healthcare Service Unit",
                 "depends_on": "eval:doc.docstatus == 0",
-            }
+            },
         ],
     }
     create_custom_fields(fields, update=True)

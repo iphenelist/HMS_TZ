@@ -1,5 +1,5 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
 
 def execute():
     fields = {
@@ -54,23 +54,23 @@ def execute():
                 "translatable": 1,
             },
             {
-                "label":"SchemeId",
-                "fieldname":"hms_tz_scheme_id",
-                "insert_after":"hms_tz_scheme_column_break",
-                "fieldtype":"Data",
+                "label": "SchemeId",
+                "fieldname": "hms_tz_scheme_id",
+                "insert_after": "hms_tz_scheme_column_break",
+                "fieldtype": "Data",
                 "allow_on_submit": 1,
                 "read_only": 1,
-                "translatable":1,
+                "translatable": 1,
             },
             {
-                "label":"Scheme Name",
-                "fieldname":"hms_tz_scheme_name",
-                "insert_after":"hms_tz_scheme_id",
-                "fieldtype":"Data",
+                "label": "Scheme Name",
+                "fieldname": "hms_tz_scheme_name",
+                "insert_after": "hms_tz_scheme_id",
+                "fieldtype": "Data",
                 "allow_on_submit": 1,
                 "read_only": 1,
-                "translatable":1,
-            }
+                "translatable": 1,
+            },
         ],
         "Radiology Examination": [
             {

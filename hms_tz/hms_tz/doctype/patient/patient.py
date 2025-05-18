@@ -3,21 +3,19 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
-from frappe import _
-from frappe.model.document import Document
-from frappe.utils import cint, cstr, getdate, flt
+
 import dateutil
-from frappe.contacts.address_and_contact import (
-    load_address_and_contact,
-    delete_contact_and_address,
-)
-from frappe.model.naming import set_name_by_naming_series
-from frappe.utils.nestedset import get_root_of
+import frappe
 from erpnext import get_default_currency
+from frappe import _
+from frappe.contacts.address_and_contact import load_address_and_contact
+from frappe.model.document import Document
+from frappe.model.naming import set_name_by_naming_series
+from frappe.utils import cint, cstr, flt, getdate
+from frappe.utils.nestedset import get_root_of
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
-    get_receivable_account,
     get_income_account,
+    get_receivable_account,
     send_registration_sms,
 )
 
@@ -34,16 +32,9 @@ class Patient(Document):
         self.set_missing_customer_details()
 
     def after_insert(self):
-        if (
-            frappe.db.get_single_value(
-                "Healthcare Settings", "link_customer_to_patient"
-            )
-            and not self.customer
-        ):
+        if frappe.db.get_single_value("Healthcare Settings", "link_customer_to_patient") and not self.customer:
             create_customer(self)
-        if frappe.db.get_single_value(
-            "Healthcare Settings", "collect_registration_fee"
-        ):
+        if frappe.db.get_single_value("Healthcare Settings", "collect_registration_fee"):
             frappe.db.set_value("Patient", self.name, "status", "Disabled")
         else:
             send_registration_sms(self)
@@ -64,9 +55,7 @@ class Patient(Document):
             customer.ignore_mandatory = True
             customer.save(ignore_permissions=True)
         else:
-            if frappe.db.get_single_value(
-                "Healthcare Settings", "link_customer_to_patient"
-            ):
+            if frappe.db.get_single_value("Healthcare Settings", "link_customer_to_patient"):
                 create_customer(self)
         if self.email and self.invite_user:
             self.add_as_website_user()
@@ -77,26 +66,30 @@ class Patient(Document):
     def set_full_name(self):
         self.patient_name = " ".join(
             filter(
-                None, [self.first_name, self.middle_name or "", self.last_name or ""]
+                None,
+                [
+                    self.first_name,
+                    self.middle_name or "",
+                    self.last_name or "",
+                ],
             )
         )
 
     def set_missing_customer_details(self):
         if not self.customer_group:
-            self.customer_group = frappe.db.get_single_value(
-                "Selling Settings", "customer_group"
-            ) or get_root_of("Customer Group")
+            self.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or get_root_of(
+                "Customer Group"
+            )
         if not self.territory:
-            self.territory = frappe.db.get_single_value(
-                "Selling Settings", "territory"
-            ) or get_root_of("Territory")
+            self.territory = frappe.db.get_single_value("Selling Settings", "territory") or get_root_of("Territory")
         # if not self.default_price_list:
         #     self.default_price_list = frappe.db.get_single_value(
         #         'Selling Settings', 'selling_price_list')
 
         # if not self.customer_group or not self.territory or not self.default_price_list:
         #     frappe.msgprint(
-        #         _('Please set defaults for Customer Group, Territory and Selling Price List in Selling Settings'), alert=True)
+        # _('Please set defaults for Customer Group, Territory and Selling
+        # Price List in Selling Settings'), alert=True)
 
         if not self.default_currency:
             self.default_currency = get_default_currency()
@@ -121,9 +114,7 @@ class Patient(Document):
                 user.add_roles("Patient")
 
     def autoname(self):
-        patient_name_by = frappe.db.get_single_value(
-            "Healthcare Settings", "patient_name_by"
-        )
+        patient_name_by = frappe.db.get_single_value("Healthcare Settings", "patient_name_by")
         if patient_name_by == "Patient Name":
             self.name = self.get_patient_name()
         else:
@@ -149,14 +140,7 @@ class Patient(Document):
         if self.dob:
             dob = getdate(self.dob)
             age = dateutil.relativedelta.relativedelta(getdate(), dob)
-            age_str = (
-                str(age.years)
-                + " year(s) "
-                + str(age.months)
-                + " month(s) "
-                + str(age.days)
-                + " day(s)"
-            )
+            age_str = str(age.years) + " year(s) " + str(age.months) + " month(s) " + str(age.days) + " day(s)"
         return age_str
 
     @frappe.whitelist()
@@ -164,9 +148,7 @@ class Patient(Document):
         if frappe.db.get_single_value("Healthcare Settings", "registration_fee"):
             company = frappe.defaults.get_user_default("company")
             if not company:
-                company = frappe.db.get_single_value(
-                    "Global Defaults", "default_company"
-                )
+                company = frappe.db.get_single_value("Global Defaults", "default_company")
 
             sales_invoice = make_invoice(self.name, company)
             sales_invoice.save(ignore_permissions=True)
@@ -190,10 +172,12 @@ class Patient(Document):
                 if contact:
                     contact.is_primary_contact = True
                     contact.append(
-                        "links", dict(link_doctype="Customer", link_name=self.customer)
+                        "links",
+                        dict(link_doctype="Customer", link_name=self.customer),
                     )
                     contact.append(
-                        "links", dict(link_doctype="Patient", link_name=self.name)
+                        "links",
+                        dict(link_doctype="Patient", link_name=self.name),
                     )
                     contact.save(ignore_permissions=True)
 
@@ -203,10 +187,8 @@ def create_customer(doc):
         {
             "doctype": "Customer",
             "customer_name": doc.patient_name,
-            "customer_group": doc.customer_group
-            or frappe.db.get_single_value("Selling Settings", "customer_group"),
-            "territory": doc.territory
-            or frappe.db.get_single_value("Selling Settings", "territory"),
+            "customer_group": doc.customer_group or frappe.db.get_single_value("Selling Settings", "customer_group"),
+            "territory": doc.territory or frappe.db.get_single_value("Selling Settings", "territory"),
             "customer_type": "Individual",
             "default_currency": doc.default_currency,
             # 'default_price_list': doc.default_price_list,
@@ -219,9 +201,7 @@ def create_customer(doc):
 
 
 def make_invoice(patient, company):
-    uom = frappe.db.exists("UOM", "Nos") or frappe.db.get_single_value(
-        "Stock Settings", "stock_uom"
-    )
+    uom = frappe.db.exists("UOM", "Nos") or frappe.db.get_single_value("Stock Settings", "stock_uom")
     sales_invoice = frappe.new_doc("Sales Invoice")
     sales_invoice.customer = frappe.get_cached_value("Patient", patient, "customer")
     sales_invoice.due_date = getdate()
@@ -236,9 +216,7 @@ def make_invoice(patient, company):
     item_line.uom = uom
     item_line.conversion_factor = 1
     item_line.income_account = get_income_account(None, company)
-    item_line.rate = frappe.db.get_single_value(
-        "Healthcare Settings", "registration_fee"
-    )
+    item_line.rate = frappe.db.get_single_value("Healthcare Settings", "registration_fee")
     item_line.amount = item_line.rate
     sales_invoice.set_missing_values()
     return sales_invoice
@@ -246,9 +224,7 @@ def make_invoice(patient, company):
 
 @frappe.whitelist()
 def get_patient_detail(patient):
-    patient_dict = frappe.db.sql(
-        """select * from tabPatient where name=%s""", (patient), as_dict=1
-    )
+    patient_dict = frappe.db.sql("""select * from tabPatient where name=%s""", (patient), as_dict=1)
     if not patient_dict:
         frappe.throw(_("Patient not found"))
     vital_sign = frappe.db.sql(
@@ -272,38 +248,28 @@ def get_patient_billing_info(patient, ip_billing_info=False):
     company = False
     if ip_billing_info and patient.inpatient_record:
         filters["inpatient_record"] = patient.inpatient_record
-        company = frappe.get_cached_value(
-            "Inpatient Record", patient.inpatient_record, "company"
-        )
+        company = frappe.get_cached_value("Inpatient Record", patient.inpatient_record, "company")
 
     fields = [
         "patient",
         "sum(grand_total) as grand_total",
         "sum(base_grand_total) as base_grand_total",
     ]
-    patient_grand_total = frappe.get_all(
-        "Sales Invoice", filters=filters, fields=fields
-    )
+    patient_grand_total = frappe.get_all("Sales Invoice", filters=filters, fields=fields)
 
     filters["status"] = ["not in", "Paid"]
     fields = ["patient", "sum(outstanding_amount) as outstanding_amount"]
-    patient_total_unpaid = frappe.get_all(
-        "Sales Invoice", filters=filters, fields=fields
-    )
+    patient_total_unpaid = frappe.get_all("Sales Invoice", filters=filters, fields=fields)
 
     if not company:
         company = frappe.defaults.get_user_default("company")
     if not company:
         company = frappe.db.get_single_value("Global Defaults", "default_company")
 
-    company_default_currency = frappe.get_cached_value(
-        "Company", company, "default_currency"
-    )
+    company_default_currency = frappe.get_cached_value("Company", company, "default_currency")
     from erpnext.accounts.party import get_party_account_currency
 
-    party_account_currency = get_party_account_currency(
-        "Customer", patient.customer, company
-    )
+    party_account_currency = get_party_account_currency("Customer", patient.customer, company)
 
     if party_account_currency == company_default_currency:
         billing_this_year = flt(patient_grand_total[0]["base_grand_total"])
@@ -315,9 +281,7 @@ def get_patient_billing_info(patient, ip_billing_info=False):
     info["total_billing"] = flt(billing_this_year) if billing_this_year else 0
     info["currency"] = party_account_currency
     info["total_unpaid"] = flt(total_unpaid) if total_unpaid else 0
-    info["party_balance"] = get_balance_on(
-        party_type="Customer", party=patient.customer
-    )
+    info["party_balance"] = get_balance_on(party_type="Customer", party=patient.customer)
     return info
 
 
@@ -369,17 +333,15 @@ def make_contact(doc):
             }
         )
         if doc.customer:
-            contact.append(
-                "links", dict(link_doctype="Customer", link_name=doc.customer)
-            )
+            contact.append("links", dict(link_doctype="Customer", link_name=doc.customer))
         if doc.get("email_id"):
             contact.add_email(doc.get("email_id"), is_primary=True)
         if doc.get("mobile"):
             contact.add_phone(doc.get("mobile"), is_primary_mobile_no=True)
-        
+
         if doc.doctype == "Patient":
             contact.append("links", {"link_doctype": "Patient", "link_name": doc.name})
-        
+
         contact.insert()
 
     except frappe.exceptions.DuplicateEntryError:
@@ -400,11 +362,7 @@ def _update_contacts(doc, contact):
         contact.add_email(doc.get("email_id"), is_primary=True)
     if doc.get("phone"):
         if len(contact.phone_nos) > 0:
-            primary_phone = [
-                phone.phone
-                for phone in contact.phone_nos
-                if phone.get("is_primary_phone")
-            ]
+            primary_phone = [phone.phone for phone in contact.phone_nos if phone.get("is_primary_phone")]
             if primary_phone and primary_phone[0] != doc.get("phone"):
                 update_primary_phone(contact, "is_primary_phone")
                 contact.add_phone(doc.get("phone"), is_primary_phone=True)
@@ -414,11 +372,7 @@ def _update_contacts(doc, contact):
             contact.add_phone(doc.get("phone"), is_primary_phone=True)
     if doc.get("mobile"):
         if len(contact.phone_nos) > 0:
-            primary_phone = [
-                phone.phone
-                for phone in contact.phone_nos
-                if phone.get("is_primary_mobile_no")
-            ]
+            primary_phone = [phone.phone for phone in contact.phone_nos if phone.get("is_primary_mobile_no")]
             if primary_phone and primary_phone[0] != doc.get("mobile"):
                 update_primary_phone(contact, "is_primary_mobile_no")
                 contact.add_phone(doc.get("mobile"), is_primary_mobile_no=True)

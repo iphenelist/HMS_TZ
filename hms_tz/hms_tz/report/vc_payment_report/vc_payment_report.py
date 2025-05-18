@@ -1,8 +1,8 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, flt
 from frappe.query_builder import DocType as dt
-from frappe.query_builder.functions import Sum, Count
+from frappe.query_builder.functions import Count, Sum
+from frappe.utils import flt
 from pypika import Case
 
 
@@ -177,9 +177,7 @@ def get_commission_doc_details(filters):
 
     vc_lab_users = [row.user_field for row in commission_doc.lab_users]
     vc_radiology_users = [row.user_field for row in commission_doc.radiology_users]
-    vc_practitioners = [
-        row.healathcare_practitioner for row in commission_doc.practitioners
-    ]
+    vc_practitioners = [row.healathcare_practitioner for row in commission_doc.practitioners]
 
     return (
         commission_doc,
@@ -190,9 +188,7 @@ def get_commission_doc_details(filters):
     )
 
 
-def get_opd_commissions(
-    filters, cash_rates, insurance_rates, vc_practitioners, practitioner_list
-):
+def get_opd_commissions(filters, cash_rates, insurance_rates, vc_practitioners, practitioner_list):
     if filters.get("vc_technician"):
         return []
 
@@ -219,7 +215,8 @@ def get_opd_commissions(
             Count(appointment.billing_item).as_("item_count"),
             Case()
             .when(
-                appointment.insurance_subscription != "", appointment.coverage_plan_name
+                appointment.insurance_subscription != "",
+                appointment.coverage_plan_name,
             )
             .else_("CASH")
             .as_("mode"),
@@ -243,7 +240,8 @@ def get_opd_commissions(
         .groupby(
             Case()
             .when(
-                appointment.insurance_subscription != "", appointment.coverage_plan_name
+                appointment.insurance_subscription != "",
+                appointment.coverage_plan_name,
             )
             .else_("CASH")
             .as_("mode"),
@@ -278,9 +276,7 @@ def get_opd_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -291,10 +287,7 @@ def get_opd_commissions(
                 "name",
             )
             for rate_row in insurance_rates:
-                if (
-                    rate_row.coverage_plan == coverage_plan
-                    and rate_row.document_type == "Patient Appointment"
-                ):
+                if rate_row.coverage_plan == coverage_plan and rate_row.document_type == "Patient Appointment":
                     for prac in practitioner_list:
                         if row.practitioner == prac.healathcare_practitioner:
                             vc_amount = flt(row.amount * flt(rate_row.vc_rate / 100))
@@ -312,9 +305,7 @@ def get_opd_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -357,10 +348,7 @@ def get_lab_commissions(
             prescription.amount.as_("rate"),
             Count(lab.patient).as_("patient_count"),
             Count(lab.template).as_("item_count"),
-            Case()
-            .when(prescription.prescribe == 0, lab.hms_tz_insurance_coverage_plan)
-            .else_("CASH")
-            .as_("mode"),
+            Case().when(prescription.prescribe == 0, lab.hms_tz_insurance_coverage_plan).else_("CASH").as_("mode"),
         )
         .where(
             (lab.ref_doctype == "Patient Encounter")
@@ -374,10 +362,7 @@ def get_lab_commissions(
             & case_wh
         )
         .groupby(
-            Case()
-            .when(prescription.prescribe == 0, lab.hms_tz_insurance_coverage_plan)
-            .else_("CASH")
-            .as_("mode"),
+            Case().when(prescription.prescribe == 0, lab.hms_tz_insurance_coverage_plan).else_("CASH").as_("mode"),
             lab.hms_tz_user_id,
             lab.template,
             prescription.amount,
@@ -397,9 +382,7 @@ def get_lab_commissions(
                 if row.template == excluded_lab_test.healthcare_service:
                     for lab_tech in lab_tech_list:
                         if row.hms_tz_user_id == lab_tech.user_field:
-                            vc_amount = flt(
-                                row.amount * flt(excluded_lab_test.vc_rate / 100)
-                            )
+                            vc_amount = flt(row.amount * flt(excluded_lab_test.vc_rate / 100))
                             vc_wtax_amount = vc_amount * (lab_tech.wtax / 100)
                             lab_list.append(
                                 {
@@ -414,10 +397,7 @@ def get_lab_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount
-                                        * flt(excluded_lab_test.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(excluded_lab_test.company_rate / 100)),
                                 }
                             )
 
@@ -441,9 +421,7 @@ def get_lab_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -456,10 +434,7 @@ def get_lab_commissions(
                     "coverage_plan_name",
                 )
             for rate_row in insurance_rates:
-                if (
-                    rate_row.coverage_plan == row.mode
-                    and rate_row.document_type == "Lab Test"
-                ):
+                if rate_row.coverage_plan == row.mode and rate_row.document_type == "Lab Test":
                     for lab_tech in lab_tech_list:
                         if row.hms_tz_user_id == lab_tech.user_field:
                             vc_amount = flt(row.amount * flt(rate_row.vc_rate / 100))
@@ -471,19 +446,13 @@ def get_lab_commissions(
                                     "billing_item": row.template,
                                     "patient_count": row.patient_count,
                                     "item_count": row.item_count,
-                                    "mode": (
-                                        coverage_plan_name
-                                        if coverage_plan_name
-                                        else row.mode
-                                    ),
+                                    "mode": (coverage_plan_name if coverage_plan_name else row.mode),
                                     "rate": row.rate,
                                     "paid_amount": row.amount,
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -515,8 +484,7 @@ def get_radiology_commissions(
         .on(
             radiology.hms_tz_ref_childname == prescription.name
             and radiology.ref_docname == prescription.parent
-            and radiology.radiology_examination_template
-            == prescription.radiology_examination_template
+            and radiology.radiology_examination_template == prescription.radiology_examination_template
         )
         .select(
             radiology.radiology_examination_template,
@@ -528,7 +496,10 @@ def get_radiology_commissions(
             Count(radiology.patient).as_("patient_count"),
             Count(radiology.radiology_examination_template).as_("item_count"),
             Case()
-            .when(prescription.prescribe == 0, radiology.hms_tz_insurance_coverage_plan)
+            .when(
+                prescription.prescribe == 0,
+                radiology.hms_tz_insurance_coverage_plan,
+            )
             .else_("CASH")
             .as_("mode"),
         )
@@ -545,7 +516,10 @@ def get_radiology_commissions(
         )
         .groupby(
             Case()
-            .when(prescription.prescribe == 0, radiology.hms_tz_insurance_coverage_plan)
+            .when(
+                prescription.prescribe == 0,
+                radiology.hms_tz_insurance_coverage_plan,
+            )
             .else_("CASH")
             .as_("mode"),
             radiology.hms_tz_user_id,
@@ -555,9 +529,7 @@ def get_radiology_commissions(
     ).run(as_dict=1)
 
     radiology_list = []
-    excluded_radiologies = excluded_services_map.get(
-        "Radiology Examination Template", []
-    )
+    excluded_radiologies = excluded_services_map.get("Radiology Examination Template", [])
     radiology_templates = [row.healthcare_service for row in excluded_radiologies]
 
     for row in radiology_records:
@@ -566,15 +538,10 @@ def get_radiology_commissions(
 
         if row.radiology_examination_template in radiology_templates:
             for excluded_radiology in excluded_radiologies:
-                if (
-                    row.radiology_examination_template
-                    == excluded_radiology.healthcare_service
-                ):
+                if row.radiology_examination_template == excluded_radiology.healthcare_service:
                     for rad_tech in rad_tech_list:
                         if row.hms_tz_user_id == rad_tech.user_field:
-                            vc_amount = flt(
-                                row.amount * flt(excluded_radiology.vc_rate / 100)
-                            )
+                            vc_amount = flt(row.amount * flt(excluded_radiology.vc_rate / 100))
                             vc_wtax_amount = vc_amount * (rad_tech.wtax / 100)
                             radiology_list.append(
                                 {
@@ -589,10 +556,7 @@ def get_radiology_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount
-                                        * flt(excluded_radiology.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(excluded_radiology.company_rate / 100)),
                                 }
                             )
 
@@ -616,9 +580,7 @@ def get_radiology_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -631,10 +593,7 @@ def get_radiology_commissions(
                     "coverage_plan_name",
                 )
             for rate_row in insurance_rates:
-                if (
-                    rate_row.coverage_plan == row.mode
-                    and rate_row.document_type == "Radiology Examination"
-                ):
+                if rate_row.coverage_plan == row.mode and rate_row.document_type == "Radiology Examination":
                     for rad_tech in rad_tech_list:
                         if row.hms_tz_user_id == rad_tech.user_field:
                             vc_amount = flt(row.amount * flt(rate_row.vc_rate / 100))
@@ -646,19 +605,13 @@ def get_radiology_commissions(
                                     "billing_item": row.radiology_examination_template,
                                     "patient_count": row.patient_count,
                                     "item_count": row.item_count,
-                                    "mode": (
-                                        coverage_plan_name
-                                        if coverage_plan_name
-                                        else row.mode
-                                    ),
+                                    "mode": (coverage_plan_name if coverage_plan_name else row.mode),
                                     "rate": row.rate,
                                     "paid_amount": row.amount,
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -701,7 +654,10 @@ def get_procedure_commissions(
             Count(procedure.patient).as_("patient_count"),
             Count(procedure.procedure_template).as_("item_count"),
             Case()
-            .when(prescription.prescribe == 0, procedure.hms_tz_insurance_coverage_plan)
+            .when(
+                prescription.prescribe == 0,
+                procedure.hms_tz_insurance_coverage_plan,
+            )
             .else_("CASH")
             .as_("mode"),
         )
@@ -718,7 +674,10 @@ def get_procedure_commissions(
         )
         .groupby(
             Case()
-            .when(prescription.prescribe == 0, procedure.hms_tz_insurance_coverage_plan)
+            .when(
+                prescription.prescribe == 0,
+                procedure.hms_tz_insurance_coverage_plan,
+            )
             .else_("CASH")
             .as_("mode"),
             procedure.practitioner,
@@ -729,9 +688,7 @@ def get_procedure_commissions(
 
     procedure_list = []
     excluded_procedures = excluded_services_map.get("Clinical Procedure Template", [])
-    excluded_procedure_templates = [
-        row.healthcare_service for row in excluded_procedures
-    ]
+    excluded_procedure_templates = [row.healthcare_service for row in excluded_procedures]
 
     for row in procedure_records:
         if row.practitioner not in vc_practitioners:
@@ -742,9 +699,7 @@ def get_procedure_commissions(
                 if row.procedure_template == excluded_procedure.healthcare_service:
                     for prac in practitioner_list:
                         if row.practitioner == prac.healathcare_practitioner:
-                            vc_amount = flt(
-                                row.amount * flt(excluded_procedure.vc_rate / 100)
-                            )
+                            vc_amount = flt(row.amount * flt(excluded_procedure.vc_rate / 100))
                             vc_wtax_amount = vc_amount * (prac.wtax / 100)
                             procedure_list.append(
                                 {
@@ -759,10 +714,7 @@ def get_procedure_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount
-                                        * flt(excluded_procedure.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(excluded_procedure.company_rate / 100)),
                                 }
                             )
 
@@ -786,9 +738,7 @@ def get_procedure_commissions(
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -801,10 +751,7 @@ def get_procedure_commissions(
                     "coverage_plan_name",
                 )
             for rate_row in insurance_rates:
-                if (
-                    rate_row.coverage_plan == row.mode
-                    and rate_row.document_type == "Clinical Procedure"
-                ):
+                if rate_row.coverage_plan == row.mode and rate_row.document_type == "Clinical Procedure":
                     for prac in practitioner_list:
                         if row.practitioner == prac.healathcare_practitioner:
                             vc_amount = flt(row.amount * flt(rate_row.vc_rate / 100))
@@ -816,19 +763,13 @@ def get_procedure_commissions(
                                     "billing_item": row.procedure_template,
                                     "patient_count": row.patient_count,
                                     "item_count": row.item_count,
-                                    "mode": (
-                                        coverage_plan_name
-                                        if coverage_plan_name
-                                        else row.mode
-                                    ),
+                                    "mode": (coverage_plan_name if coverage_plan_name else row.mode),
                                     "rate": row.rate,
                                     "paid_amount": row.amount,
                                     "vc_amount": vc_amount,
                                     "vc_wtax_amount": vc_wtax_amount,
                                     "vc_net_amount": vc_amount - vc_wtax_amount,
-                                    "company_amount": flt(
-                                        row.amount * flt(rate_row.company_rate / 100)
-                                    ),
+                                    "company_amount": flt(row.amount * flt(rate_row.company_rate / 100)),
                                 }
                             )
 
@@ -836,33 +777,11 @@ def get_procedure_commissions(
 
 
 def get_report_summary(args, summary_data):
-    total_paid_amount = sum(
-        [flt(row.get("paid_amount")) for row in summary_data if row.get("paid_amount")]
-    )
-    total_vc_amount = sum(
-        [flt(row.get("vc_amount")) for row in summary_data if row.get("vc_amount")]
-    )
-    total_company_amount = sum(
-        [
-            flt(row.get("company_amount"))
-            for row in summary_data
-            if row.get("company_amount")
-        ]
-    )
-    total_vc_wtax_amount = sum(
-        [
-            flt(row.get("vc_wtax_amount"))
-            for row in summary_data
-            if row.get("vc_wtax_amount")
-        ]
-    )
-    total_vc_net_amount = sum(
-        [
-            flt(row.get("vc_net_amount"))
-            for row in summary_data
-            if row.get("vc_net_amount")
-        ]
-    )
+    total_paid_amount = sum([flt(row.get("paid_amount")) for row in summary_data if row.get("paid_amount")])
+    total_vc_amount = sum([flt(row.get("vc_amount")) for row in summary_data if row.get("vc_amount")])
+    total_company_amount = sum([flt(row.get("company_amount")) for row in summary_data if row.get("company_amount")])
+    total_vc_wtax_amount = sum([flt(row.get("vc_wtax_amount")) for row in summary_data if row.get("vc_wtax_amount")])
+    total_vc_net_amount = sum([flt(row.get("vc_net_amount")) for row in summary_data if row.get("vc_net_amount")])
 
     currency = frappe.get_cached_value("Company", args.company, "default_currency")
     return [

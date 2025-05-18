@@ -1,5 +1,5 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
 
 def execute():
     fields = {
@@ -43,7 +43,7 @@ def execute():
                 "insert_after": "hms_tz_insurance_min_no_of_days_for_prescription",
                 "depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
                 "mandatory_depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
-            }
+            },
         ],
         "Radiology Examination Template": [
             {
@@ -85,7 +85,7 @@ def execute():
                 "insert_after": "hms_tz_insurance_min_no_of_days_for_prescription",
                 "depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
                 "mandatory_depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
-            }
+            },
         ],
         "Clinical Procedure Template": [
             {
@@ -127,7 +127,7 @@ def execute():
                 "insert_after": "hms_tz_insurance_min_no_of_days_for_prescription",
                 "depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
                 "mandatory_depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
-            }
+            },
         ],
         "Medication": [
             {
@@ -169,7 +169,7 @@ def execute():
                 "insert_after": "hms_tz_insurance_min_no_of_days_for_prescription",
                 "depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
                 "mandatory_depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
-            }
+            },
         ],
         "Therapy Type": [
             {
@@ -211,7 +211,7 @@ def execute():
                 "insert_after": "hms_tz_insurance_min_no_of_days_for_prescription",
                 "depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
                 "mandatory_depends_on": "eval: doc.hms_tz_validate_prescription_days_for_cash",
-            }
+            },
         ],
     }
 

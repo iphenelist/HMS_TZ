@@ -2,12 +2,15 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
+import json
+
 import frappe
+import requests
 from frappe import _
+
 from hms_tz.nhif.api.token import get_claimsservice_token
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-import json
-import requests
 
 
 def execute(filters=None):
@@ -140,12 +143,17 @@ def get_data(filters):
 def get_nhif_data(filters):
     token = get_claimsservice_token(filters.company)
     claimsserver_url, facility_code = frappe.get_cached_value(
-        "Company NHIF Settings", filters.company, ["claimsserver_url", "facility_code"]
+        "Company NHIF Settings",
+        filters.company,
+        ["claimsserver_url", "facility_code"],
     )
-    headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
-    url = str(
-        claimsserver_url
-    ) + f"/claimsserver/api/v1/Claims/getSubmittedClaims?FacilityCode={facility_code}&ClaimYear={filters.ClaimYear}&ClaimMonth={filters.ClaimMonth}"
+    headers = {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+    }
+    url = (
+        str(claimsserver_url) +
+        f"/claimsserver/api/v1/Claims/getSubmittedClaims?FacilityCode={facility_code}&ClaimYear={filters.ClaimYear}&ClaimMonth={filters.ClaimMonth}")
     r = requests.get(url, headers=headers, timeout=300)
     if r.status_code != 200:
         add_log(

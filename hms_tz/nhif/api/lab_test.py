@@ -3,14 +3,16 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
+import dateutil
 import frappe
 from frappe import _
-import dateutil
-from frappe.query_builder import DocType
-from frappe.utils import getdate, get_fullname
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
-from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from frappe.query_builder import DocType
+from frappe.utils import get_fullname, getdate
+
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
+from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
 
 
 def validate(doc, method):
@@ -19,13 +21,13 @@ def validate(doc, method):
 
 def onload(doc, method):
     check_cash_payments_from_encounter(
-    doc=doc,
-    ref_doctype="ref_doctype",
-    ref_docname_field="ref_docname",
-    prescription_field="lab_test_prescription",
-    item_name_field="lab_test_name",
-    item_descriptor="Lab Tests",
-)
+        doc=doc,
+        ref_doctype="ref_doctype",
+        ref_docname_field="ref_docname",
+        prescription_field="lab_test_prescription",
+        item_name_field="lab_test_name",
+        item_descriptor="Lab Tests",
+    )
 
 
 def after_insert(doc, method):
@@ -36,10 +38,7 @@ def after_insert(doc, method):
 def before_submit(doc, method):
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(
-            _(
-                f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."
-            )
-        )
+            _(f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."))
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
@@ -48,12 +47,9 @@ def before_submit(doc, method):
     # stop this validation for now
     return
     if doc.approval_number and doc.approval_status != "Verified":
-        frappe.throw(
-            _(
-                f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.radiology_examination_template}</b> is not verified.>br>\
-                    Please verify the Approval Number."
-            )
-        )
+        frappe.throw(_(
+            f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.radiology_examination_template}</b> is not verified.>br>\
+                    Please verify the Approval Number."))
 
 
 def on_submit(doc, method):
@@ -142,13 +138,10 @@ def get_normals(lab_test_name, patient_age, patient_sex):
 
 
 def get_lab_test_template(lab_test_name):
-    template_id = frappe.db.exists(
-        "Lab Test Template", {"lab_test_code": lab_test_name}
-    )
+    template_id = frappe.db.exists("Lab Test Template", {"lab_test_code": lab_test_name})
     if template_id:
         return frappe.get_cached_doc("Lab Test Template", lab_test_name)
     return False
-
 
 
 def create_delivery_note(doc):
@@ -173,9 +166,7 @@ def on_cancel(doc, method):
     doc.flags.ignore_links = True
 
     if doc.docstatus == 2:
-        frappe.db.set_value(
-            "Lab Prescription", doc.hms_tz_ref_childname, "lab_test", ""
-        )
+        frappe.db.set_value("Lab Prescription", doc.hms_tz_ref_childname, "lab_test", "")
 
         new_lab_doc = frappe.copy_doc(doc)
         new_lab_doc.status = "Draft"
@@ -299,17 +290,29 @@ def send_sms_for_lab_results(doc):
                     msg = frappe.render_template(lab_result_sms_template, {"doc": doc})
                     send_sms(phone_number, msg, success_msg=False)
                     sms_sent = True
-                    frappe.msgprint(_(f"SMS sent to Patient: {doc.patient_name}, PhoneNo: {doc.mobile}"), alert=True)
+                    frappe.msgprint(
+                        _(f"SMS sent to Patient: {doc.patient_name}, PhoneNo: {doc.mobile}"),
+                        alert=True,
+                    )
 
         if sms_sent:
             for row in all_labs_per_encounter:
                 frappe.db.set_value("Lab Test", row.name, "sms_sent", 1)
 
-def check_cash_payments_from_encounter(doc, ref_doctype, ref_docname_field, prescription_field, item_name_field, item_descriptor, additional_checks=None):
+
+def check_cash_payments_from_encounter(
+    doc,
+    ref_doctype,
+    ref_docname_field,
+    prescription_field,
+    item_name_field,
+    item_descriptor,
+    additional_checks=None,
+):
     # Ensure there is a valid reference to an encounter
     if getattr(doc, ref_docname_field) and getattr(doc, ref_doctype) == "Patient Encounter":
         encounter_doc = frappe.get_cached_doc("Patient Encounter", getattr(doc, ref_docname_field))
-        
+
         # Check for insurance subscription
         if encounter_doc.insurance_subscription:
             # Filter items based on prescription details and additional checks

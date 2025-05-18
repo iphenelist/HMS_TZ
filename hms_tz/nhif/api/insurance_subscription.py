@@ -3,12 +3,11 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
-from frappe import _
 
 # from frappe import _
-from hms_tz.nhif.api.patient import get_nhif_patient_info, get_card_verifier
-
+from hms_tz.nhif.api.patient import get_card_verifier, get_nhif_patient_info
 
 
 def before_insert(doc, method):
@@ -37,15 +36,19 @@ def on_cancel(doc, method):
 def validate_card_no(doc):
     if not doc.coverage_plan_card_number:
         return
-    
+
     filters = {
         "is_active": 1,
         "docstatus": 1,
         "coverage_plan_card_number": doc.coverage_plan_card_number,
-        "name": ["!=", doc.name]
+        "name": ["!=", doc.name],
     }
-    
-    his = frappe.db.get_all("Healthcare Insurance Subscription", filters=filters, fields=["name", "patient_name"])
+
+    his = frappe.db.get_all(
+        "Healthcare Insurance Subscription",
+        filters=filters,
+        fields=["name", "patient_name"],
+    )
     if len(his) > 0:
         frappe.throw(
             f"Cardno: <b>{doc.coverage_plan_card_number}</b> used with HIS: {his[0].name} patient: <b>{his[0].patient_name}</b>, Please change Cardno to Proceed"
@@ -55,15 +58,19 @@ def validate_card_no(doc):
 def validate_national_id(doc):
     if not doc.national_id:
         return
-    
+
     filters = {
         "is_active": 1,
         "docstatus": 1,
         "national_id": doc.national_id,
-        "name": ["!=", doc.name]
+        "name": ["!=", doc.name],
     }
-    
-    his = frappe.db.get_all("Healthcare Insurance Subscription", filters=filters, fields=["name", "patient_name"])
+
+    his = frappe.db.get_all(
+        "Healthcare Insurance Subscription",
+        filters=filters,
+        fields=["name", "patient_name"],
+    )
     if len(his) > 0:
         frappe.throw(
             f"NationalID: <b>{doc.national_id}</b> used with HIS: {his[0].name} Patient: <b>{his[0].patient_name}</b>, Please change NationalID to Proceed"
@@ -105,11 +112,11 @@ def check_patient_info(
     card_no=None,
     national_id=None,
     ref_doctype=None,
-    ref_docname=None
+    ref_docname=None,
 ):
     if not patient or (not card_no and not national_id):
         return
-        
+
     patient_info = get_nhif_patient_info(
         card_no=card_no,
         national_id=national_id,
@@ -118,10 +125,7 @@ def check_patient_info(
         check_patient_info_from_his=True,
     )
 
-    if (
-        patient_info and 
-        patient_name != patient_info.get("FullName")
-    ):
+    if patient_info and patient_name != patient_info.get("FullName"):
         patient_doc = frappe.get_cached_doc("Patient", patient)
         patient_doc.patient_name = patient_info.get("FullName")
         patient_doc.first_name = patient_info.get("FirstName")
@@ -136,9 +140,8 @@ def check_patient_info(
         patient_doc.save(ignore_permissions=True)
 
         verifier_entry = get_card_verifier(patient_doc, card_no, national_id)
-        verifier_entry['full_name'] = patient_info.get("FullName")
+        verifier_entry["full_name"] = patient_info.get("FullName")
 
         return verifier_entry
-    
-    return None
 
+    return None

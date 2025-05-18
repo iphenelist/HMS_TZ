@@ -1,10 +1,11 @@
 # Copyright (c) 2013, Aakvatech and contributors
 # For license information, please see license.txt
 
+import calendar
+
 import frappe
 from frappe import _
 from frappe.utils import getdate
-import calendar
 
 
 def execute(filters):
@@ -70,12 +71,8 @@ def get_data(filters):
     details = []
     parent_list = []
 
-    male_count = (
-        female_count
-    ) = total_amount = total_amount_for_out_patient = total_amount_for_inpatient = 0
-    consultation = (
-        diagnostic_examination
-    ) = surgical_produceral_charge = medicine = inpatient_charges = 0
+    male_count = female_count = total_amount = total_amount_for_out_patient = total_amount_for_inpatient = 0
+    consultation = diagnostic_examination = surgical_produceral_charge = medicine = inpatient_charges = 0
 
     claims = frappe.get_all(
         "NHIF Patient Claim",
@@ -112,30 +109,17 @@ def get_data(filters):
             consultation += item.amount_claimed
         elif item.ref_doctype == "Drug Prescription":
             medicine += item.amount_claimed
-        elif (item.ref_doctype == "Lab Prescription") | (
-            item.ref_doctype == "Radiology Procedure Prescription"
-        ):
+        elif (item.ref_doctype == "Lab Prescription") | (item.ref_doctype == "Radiology Procedure Prescription"):
             diagnostic_examination += item.amount_claimed
-        elif (item.ref_doctype == "Procedure Prescription") | (
-            item.ref_doctype == "Therapy Plan Detail"
-        ):
+        elif (item.ref_doctype == "Procedure Prescription") | (item.ref_doctype == "Therapy Plan Detail"):
             surgical_produceral_charge += item.amount_claimed
         else:
             inpatient_charges += item.amount_claimed
 
-    total_amount = (
-        consultation
-        + medicine
-        + diagnostic_examination
-        + surgical_produceral_charge
-        + inpatient_charges
-    )
+    total_amount = consultation + medicine + diagnostic_examination + surgical_produceral_charge + inpatient_charges
 
     first_day_of_month = getdate(
-        str(filters.get("submit_claim_year"))
-        + "-"
-        + str(filters.get("submit_claim_month"))
-        + "-1"
+        str(filters.get("submit_claim_year")) + "-" + str(filters.get("submit_claim_month")) + "-1"
     )
 
     last_day_of_month = first_day_of_month.replace(

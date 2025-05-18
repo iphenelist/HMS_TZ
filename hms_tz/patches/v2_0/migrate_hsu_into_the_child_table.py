@@ -2,6 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 
 
@@ -18,7 +19,9 @@ def execute():
             if not doc.healthcare_service_unit:
                 continue
             company = frappe.get_cached_value(
-                "Healthcare Service Unit", doc.healthcare_service_unit, "company"
+                "Healthcare Service Unit",
+                doc.healthcare_service_unit,
+                "company",
             )
             row = doc.append("company_options", {})
             row.company = company
@@ -38,6 +41,7 @@ def execute():
 
     for doctype in doctypes:
         doc_list = frappe.get_all(
-            doctype, filters={"healthcare_service_unit": ["not in", ["", None]]}
+            doctype,
+            filters={"healthcare_service_unit": ["not in", ["", None]]},
         )
         update_docs(doc_list, doctype)

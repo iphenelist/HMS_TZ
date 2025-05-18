@@ -3,14 +3,15 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
-from frappe.utils import getdate, get_fullname, nowdate
-from hms_tz.nhif.api.healthcare_utils import get_restricted_LRPT
-from hms_tz.nhif.api.lab_test import check_cash_payments_from_encounter
-from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from frappe.utils import get_fullname, nowdate
+
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
+from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from hms_tz.nhif.api.lab_test import check_cash_payments_from_encounter
 
 
 def after_insert(doc, method):
@@ -19,21 +20,19 @@ def after_insert(doc, method):
 
 def onload(doc, method):
     check_cash_payments_from_encounter(
-    doc=doc,
-    ref_doctype="ref_doctype",
-    ref_docname_field="ref_docname",
-    prescription_field="radiology_procedure_prescription",
-    item_name_field="radiology_procedure_name",
-    item_descriptor="Radiology Examinations"
-)
+        doc=doc,
+        ref_doctype="ref_doctype",
+        ref_docname_field="ref_docname",
+        prescription_field="radiology_procedure_prescription",
+        item_name_field="radiology_procedure_name",
+        item_descriptor="Radiology Examinations",
+    )
+
 
 def before_submit(doc, method):
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(
-            _(
-                f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."
-            )
-        )
+            _(f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."))
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
@@ -45,8 +44,9 @@ def before_submit(doc, method):
     if doc.approval_number and doc.approval_status != "Verified":
         frappe.throw(
             _(
-                f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.radiology_examination_template}</b> is not verified.>br>\
-                    Please verify the Approval Number."
+                f"Approval number: <b>{doc.approval_number}</b> for \
+                item: <b>{doc.radiology_examination_template}</b> is not \
+                verified.>br> Please verify the Approval Number."
             )
         )
 
@@ -72,9 +72,7 @@ def on_cancel(doc, method):
         new_radiology_doc.amended_from = doc.name
         new_radiology_doc.save(ignore_permissions=True)
 
-        url = frappe.utils.get_url_to_form(
-            new_radiology_doc.doctype, new_radiology_doc.name
-        )
+        url = frappe.utils.get_url_to_form(new_radiology_doc.doctype, new_radiology_doc.name)
         frappe.msgprint(
             f"Radiology Examination: <strong>{doc.name}</strong> is cancelled:<br>\
             New Radiology Examination: <a href='{url}'><strong>{new_radiology_doc.name}</strong></a> is successful created"

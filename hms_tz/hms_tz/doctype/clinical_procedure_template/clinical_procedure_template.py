@@ -3,10 +3,14 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe, json
+
+import json
+
+import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.rename_doc import rename_doc
+
 from hms_tz.nhif.api.healthcare_utils import validate_hsu_healthcare_template
 
 
@@ -81,9 +85,7 @@ def create_item_from_template(doc):
     if doc.is_billable and not doc.disabled:
         disabled = 0
 
-    uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value(
-        "Stock Settings", "stock_uom"
-    )
+    uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value("Stock Settings", "stock_uom")
     item = frappe.get_doc(
         {
             "doctype": "Item",
@@ -126,7 +128,5 @@ def change_item_code_from_template(item_code, doc):
         frappe.throw(_(f"Item with Item Code {item_code} already exists"))
     else:
         rename_doc("Item", doc.item_code, item_code, ignore_permissions=True)
-        frappe.db.set_value(
-            "Clinical Procedure Template", doc.name, "item_code", item_code
-        )
+        frappe.db.set_value("Clinical Procedure Template", doc.name, "item_code", item_code)
     return

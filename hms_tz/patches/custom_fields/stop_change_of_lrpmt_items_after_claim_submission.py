@@ -11,8 +11,6 @@ def execute():
                 "insert_after": "hms_tz_settings_sb",
                 "default": 1,
                 "description": "If checked, user will not be able to Change/Cancel/Return LRPMT items after NHIF Claim submission.",
-            }
-        ]
-    }
+            }]}
 
     create_custom_fields(fields, update=True)

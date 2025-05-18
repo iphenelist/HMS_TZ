@@ -22,9 +22,7 @@ def execute():
             set_original_item(dn_doc)
 
         except Exception:
-            frappe.log_error(
-                frappe.get_traceback(), str("Update original items via Patch")
-            )
+            frappe.log_error(frappe.get_traceback(), str("Update original items via Patch"))
 
 
 def set_original_item(doc):
@@ -46,4 +44,11 @@ def set_original_item(doc):
 
 
 def get_fields_to_clear():
-    return ["name", "owner", "creation", "modified", "modified_by", "docstatus"]
+    return [
+        "name",
+        "owner",
+        "creation",
+        "modified",
+        "modified_by",
+        "docstatus",
+    ]

@@ -2,9 +2,8 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe import msgprint, _
 import pandas as pd
-import numpy as np
+from frappe import _, msgprint
 
 
 def execute(filters=None):
@@ -14,9 +13,7 @@ def execute(filters=None):
     lab_details = get_lab_results(filters)
     if not lab_details:
         msgprint(
-            frappe.bold(
-                "No Record Found for Filters You Specified, Please Choose Different Filters and Try Again..!! "
-            )
+            frappe.bold("No Record Found for Filters You Specified, Please Choose Different Filters and Try Again..!! ")
         )
     else:
         lab_colnames = [key for key in lab_details[0].keys()]
@@ -38,7 +35,11 @@ def execute(filters=None):
 
 def get_columns(filters):
     columns = [
-        {"fieldname": "lab_test_name", "fieldtype": "Data", "label": _("Lab Test Name")}
+        {
+            "fieldname": "lab_test_name",
+            "fieldtype": "Data",
+            "label": _("Lab Test Name"),
+        }
     ]
     return columns
 

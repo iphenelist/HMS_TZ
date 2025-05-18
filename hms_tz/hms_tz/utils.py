@@ -3,16 +3,17 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import math
+
 import json
+import math
+
 import frappe
 from frappe import _
+from frappe.utils import cstr, getdate, nowdate, rounded, time_diff_in_hours
 from frappe.utils.formatters import format_value
-from frappe.utils import time_diff_in_hours, rounded, getdate, nowdate, cstr
-from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
-    get_income_account,
-)
 from healthcare.healthcare.doctype.fee_validity.fee_validity import create_fee_validity
+from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_income_account
+
 from hms_tz.hms_tz.doctype.lab_test.lab_test import create_multiple
 
 
@@ -40,7 +41,7 @@ def validate_customer_created(patient):
     if not frappe.get_cached_value("Patient", patient.name, "customer"):
         msg = _("Please set a Customer linked to the Patient")
         msg += f" <b><a href='#Form/Patient/{patient.name}'>{patient.name}</a></b>"
-        frappe.throw(msg, title=_("Customer Not Found"))
+        frappe.throw(msg(title=_("Customer Not Found")))
 
 
 def get_appointments_to_invoice(patient, company):
@@ -74,9 +75,7 @@ def get_appointments_to_invoice(patient, company):
                 )
         # Consultation Appointments, should check fee validity
         else:
-            if frappe.db.get_single_value(
-                "Healthcare Settings", "enable_free_follow_ups"
-            ) and frappe.db.exists(
+            if frappe.db.get_single_value("Healthcare Settings", "enable_free_follow_ups") and frappe.db.exists(
                 "Fee Validity Reference", {"appointment": appointment.name}
             ):
                 continue  # Skip invoicing, fee validty present
@@ -88,9 +87,7 @@ def get_appointments_to_invoice(patient, company):
                     service_item,
                     practitioner_charge,
                 ) = get_service_item_and_practitioner_charge(appointment)
-                income_account = get_income_account(
-                    appointment.practitioner, appointment.company
-                )
+                income_account = get_income_account(appointment.practitioner, appointment.company)
             appointments_to_invoice.append(
                 {
                     "reference_type": "Patient Appointment",
@@ -126,7 +123,8 @@ def get_encounters_to_invoice(patient, company):
                 service_item = None
                 if encounter.practitioner:
                     if encounter.inpatient_record and frappe.db.get_single_value(
-                        "Healthcare Settings", "do_not_bill_inpatient_encounters"
+                        "Healthcare Settings",
+                        "do_not_bill_inpatient_encounters",
                     ):
                         continue
 
@@ -134,9 +132,7 @@ def get_encounters_to_invoice(patient, company):
                         service_item,
                         practitioner_charge,
                     ) = get_service_item_and_practitioner_charge(encounter)
-                    income_account = get_income_account(
-                        encounter.practitioner, encounter.company
-                    )
+                    income_account = get_income_account(encounter.practitioner, encounter.company)
 
                 encounters_to_invoice.append(
                     {
@@ -164,9 +160,7 @@ def get_lab_tests_to_invoice(patient, company):
         },
     )
     for lab_test in lab_tests:
-        item, is_billable = frappe.get_cached_value(
-            "Lab Test Template", lab_test.template, ["item", "is_billable"]
-        )
+        item, is_billable = frappe.get_cached_value("Lab Test Template", lab_test.template, ["item", "is_billable"])
         if is_billable:
             if lab_test.insurance_claim:
                 if lab_test.claim_status == "Approved":
@@ -212,7 +206,9 @@ def get_lab_tests_to_invoice(patient, company):
 
     for prescription in lab_prescriptions:
         item, is_billable = frappe.get_cached_value(
-            "Lab Test Template", prescription.lab_test_code, ["item", "is_billable"]
+            "Lab Test Template",
+            prescription.lab_test_code,
+            ["item", "is_billable"],
         )
         if prescription.lab_test_code and is_billable:
             lab_tests_to_invoice.append(
@@ -231,7 +227,11 @@ def get_clinical_procedures_to_invoice(patient, company):
     procedures = frappe.get_list(
         "Clinical Procedure",
         fields="*",
-        filters={"patient": patient.name, "company": company, "invoiced": False},
+        filters={
+            "patient": patient.name,
+            "company": company,
+            "invoiced": False,
+        },
     )
     for procedure in procedures:
         if not procedure.appointment:
@@ -275,13 +275,11 @@ def get_clinical_procedures_to_invoice(patient, company):
             and procedure.status == "Completed"
             and not procedure.consumption_invoiced
         ):
-            service_item = get_healthcare_service_item(
-                "clinical_procedure_consumable_item"
-            )
+            service_item = get_healthcare_service_item("clinical_procedure_consumable_item")
             if not service_item:
                 msg = _("Please Configure Clinical Procedure Consumable Item in ")
                 msg += """<b><a href='#Form/Healthcare Settings'>Healthcare Settings</a></b>"""
-                frappe.throw(msg, title=_("Missing Configuration"))
+                frappe.throw(msg(title=_("Missing Configuration")))
 
             clinical_procedures_to_invoice.append(
                 {
@@ -353,13 +351,9 @@ def get_inpatient_services_to_invoice(patient, company):
             inpatient_occupancy.service_unit,
             "service_unit_type",
         )
-        service_unit_type = frappe.get_cached_doc(
-            "Healthcare Service Unit Type", service_unit_type
-        )
+        service_unit_type = frappe.get_cached_doc("Healthcare Service Unit Type", service_unit_type)
         if service_unit_type and service_unit_type.is_billable:
-            hours_occupied = time_diff_in_hours(
-                inpatient_occupancy.check_out, inpatient_occupancy.check_in
-            )
+            hours_occupied = time_diff_in_hours(inpatient_occupancy.check_out, inpatient_occupancy.check_in)
             qty = 0.5
             if hours_occupied > 0:
                 actual_qty = hours_occupied / service_unit_type.no_of_hours
@@ -401,7 +395,9 @@ def get_therapy_plans_to_invoice(patient, company):
                 "reference_type": "Therapy Plan",
                 "reference_name": plan.name,
                 "service": frappe.get_cached_value(
-                    "Therapy Plan Template", plan.therapy_plan_template, "linked_item"
+                    "Therapy Plan Template",
+                    plan.therapy_plan_template,
+                    "linked_item",
                 ),
             }
         )
@@ -411,9 +407,7 @@ def get_therapy_plans_to_invoice(patient, company):
 
 def get_therapy_sessions_to_invoice(patient, company):
     therapy_sessions_to_invoice = []
-    therapy_plans = frappe.db.get_all(
-        "Therapy Plan", {"therapy_plan_template": ("!=", "")}
-    )
+    therapy_plans = frappe.db.get_all("Therapy Plan", {"therapy_plan_template": ("!=", "")})
     therapy_plans_created_from_template = []
     for entry in therapy_plans:
         therapy_plans_created_from_template.append(entry.name)
@@ -430,16 +424,12 @@ def get_therapy_sessions_to_invoice(patient, company):
     )
     for therapy in therapy_sessions:
         if not therapy.appointment:
-            if therapy.therapy_type and frappe.get_cached_value(
-                "Therapy Type", therapy.therapy_type, "is_billable"
-            ):
+            if therapy.therapy_type and frappe.get_cached_value("Therapy Type", therapy.therapy_type, "is_billable"):
                 therapy_sessions_to_invoice.append(
                     {
                         "reference_type": "Therapy Session",
                         "reference_name": therapy.name,
-                        "service": frappe.get_cached_value(
-                            "Therapy Type", therapy.therapy_type, "item"
-                        ),
+                        "service": frappe.get_cached_value("Therapy Type", therapy.therapy_type, "item"),
                     }
                 )
 
@@ -500,11 +490,17 @@ def get_healthcare_service_orders_to_invoice(patient, company):
     service_orders = frappe.get_list(
         "Healthcare Service Order",
         fields="*",
-        filters={"patient": patient.name, "company": company, "invoiced": False},
+        filters={
+            "patient": patient.name,
+            "company": company,
+            "invoiced": False,
+        },
     )
     for service_order in service_orders:
         item, is_billable = frappe.get_cached_value(
-            service_order.order_doctype, service_order.order, ["item", "is_billable"]
+            service_order.order_doctype,
+            service_order.order,
+            ["item", "is_billable"],
         )
         if is_billable:
             if service_order.insurance_claim:
@@ -520,9 +516,7 @@ def get_healthcare_service_orders_to_invoice(patient, company):
                             "reference_name": service_order.name,
                             "service": item,
                             "rate": rate,
-                            "qty": service_order.quantity
-                            if service_order.quantity
-                            else 1,
+                            "qty": (service_order.quantity if service_order.quantity else 1),
                             "discount_percentage": discount,
                             "insurance_claim_coverage": coverage,
                             "insurance_claim": service_order.insurance_claim,
@@ -534,7 +528,7 @@ def get_healthcare_service_orders_to_invoice(patient, company):
                         "reference_type": "Healthcare Service Order",
                         "reference_name": service_order.name,
                         "service": item,
-                        "qty": service_order.quantity if service_order.quantity else 1,
+                        "qty": (service_order.quantity if service_order.quantity else 1),
                     }
                 )
     return service_order_to_invoice
@@ -543,26 +537,16 @@ def get_healthcare_service_orders_to_invoice(patient, company):
 def get_service_item_and_practitioner_charge(doc):
     is_inpatient = doc.inpatient_record
     if is_inpatient:
-        service_item = get_practitioner_service_item(
-            doc.practitioner, "inpatient_visit_charge_item"
-        )
+        service_item = get_practitioner_service_item(doc.practitioner, "inpatient_visit_charge_item")
         if not service_item:
-            service_item = get_appointment_type_service_item(
-                doc.appointment_type, "inpatient_visit_charge_item"
-            )
+            service_item = get_appointment_type_service_item(doc.appointment_type, "inpatient_visit_charge_item")
             if not service_item:
-                service_item = get_healthcare_service_item(
-                    "inpatient_visit_charge_item"
-                )
+                service_item = get_healthcare_service_item("inpatient_visit_charge_item")
 
     else:
-        service_item = get_practitioner_service_item(
-            doc.practitioner, "op_consulting_charge_item"
-        )
+        service_item = get_practitioner_service_item(doc.practitioner, "op_consulting_charge_item")
         if not service_item:
-            service_item = get_appointment_type_service_item(
-                doc.appointment_type, "out_patient_consulting_charge_item"
-            )
+            service_item = get_appointment_type_service_item(doc.appointment_type, "out_patient_consulting_charge_item")
             if not service_item:
                 service_item = get_healthcare_service_item("op_consulting_charge_item")
     if not service_item:
@@ -584,7 +568,7 @@ def throw_config_service_item(is_inpatient):
         f"Please Configure {service_item_label} in "
         + """<b><a href='#Form/Healthcare Settings'>Healthcare Settings</a></b>"""
     )
-    frappe.throw(msg, title=_("Missing Configuration"))
+    frappe.throw(msg(title=_("Missing Configuration")))
 
 
 def throw_config_practitioner_charge(is_inpatient, practitioner):
@@ -596,13 +580,11 @@ def throw_config_practitioner_charge(is_inpatient, practitioner):
         f"Please Configure {charge_name} for Healthcare Practitioner"
         + f""" <b><a href='#Form/Healthcare Practitioner/{practitioner}'>{practitioner}</a></b>"""
     )
-    frappe.throw(msg, title=_("Missing Configuration"))
+    frappe.throw(msg(title=_("Missing Configuration")))
 
 
 def get_practitioner_service_item(practitioner, service_item_field):
-    return frappe.get_cached_value(
-        "Healthcare Practitioner", practitioner, service_item_field
-    )
+    return frappe.get_cached_value("Healthcare Practitioner", practitioner, service_item_field)
 
 
 def get_appointment_type_service_item(appointment_type, service_item_field):
@@ -615,13 +597,9 @@ def get_healthcare_service_item(service_item_field):
 
 def get_practitioner_charge(practitioner, is_inpatient):
     if is_inpatient:
-        practitioner_charge = frappe.get_cached_value(
-            "Healthcare Practitioner", practitioner, "inpatient_visit_charge"
-        )
+        practitioner_charge = frappe.get_cached_value("Healthcare Practitioner", practitioner, "inpatient_visit_charge")
     else:
-        practitioner_charge = frappe.get_cached_value(
-            "Healthcare Practitioner", practitioner, "op_consulting_charge"
-        )
+        practitioner_charge = frappe.get_cached_value("Healthcare Practitioner", practitioner, "op_consulting_charge")
     if practitioner_charge:
         return practitioner_charge
     return False
@@ -634,13 +612,9 @@ def manage_invoice_submit_cancel(doc, method):
                 if frappe.get_meta(item.reference_dt).has_field("invoiced"):
                     set_invoiced(item, method, doc.name)
             if item.get("insurance_claim"):
-                update_insurance_claim(
-                    item.insurance_claim, doc.name, doc.posting_date, doc.total
-                )
+                update_insurance_claim(item.insurance_claim, doc.name, doc.posting_date, doc.total)
 
-    if method == "on_submit" and frappe.db.get_single_value(
-        "Healthcare Settings", "create_lab_test_on_si_submit"
-    ):
+    if method == "on_submit" and frappe.db.get_single_value("Healthcare Settings", "create_lab_test_on_si_submit"):
         create_multiple("Sales Invoice", doc.name)
 
 
@@ -651,24 +625,20 @@ def set_invoiced(item, method, ref_invoice=None):
         invoiced = True
 
     if item.reference_dt == "Clinical Procedure":
-        if (
-            get_healthcare_service_item("clinical_procedure_consumable_item")
-            == item.item_code
-        ):
+        if get_healthcare_service_item("clinical_procedure_consumable_item") == item.item_code:
             frappe.db.set_value(
-                item.reference_dt, item.reference_dn, "consumption_invoiced", invoiced
+                item.reference_dt,
+                item.reference_dn,
+                "consumption_invoiced",
+                invoiced,
             )
         else:
-            frappe.db.set_value(
-                item.reference_dt, item.reference_dn, "invoiced", invoiced
-            )
+            frappe.db.set_value(item.reference_dt, item.reference_dn, "invoiced", invoiced)
     else:
         frappe.db.set_value(item.reference_dt, item.reference_dn, "invoiced", invoiced)
 
     if item.reference_dt == "Patient Appointment":
-        if frappe.get_cached_value(
-            "Patient Appointment", item.reference_dn, "procedure_template"
-        ):
+        if frappe.get_cached_value("Patient Appointment", item.reference_dn, "procedure_template"):
             dt_from_appointment = "Clinical Procedure"
         else:
             dt_from_appointment = "Patient Encounter"
@@ -699,20 +669,13 @@ def set_invoiced(item, method, ref_invoice=None):
 def validate_invoiced_on_submit(item):
     if (
         item.reference_dt == "Clinical Procedure"
-        and get_healthcare_service_item("clinical_procedure_consumable_item")
-        == item.item_code
+        and get_healthcare_service_item("clinical_procedure_consumable_item") == item.item_code
     ):
-        is_invoiced = frappe.get_cached_value(
-            item.reference_dt, item.reference_dn, "consumption_invoiced"
-        )
+        is_invoiced = frappe.get_cached_value(item.reference_dt, item.reference_dn, "consumption_invoiced")
     else:
-        is_invoiced = frappe.get_cached_value(
-            item.reference_dt, item.reference_dn, "invoiced"
-        )
+        is_invoiced = frappe.get_cached_value(item.reference_dt, item.reference_dn, "invoiced")
     if is_invoiced:
-        frappe.throw(
-            _(f"The item referenced by {item.reference_dt} - {item.reference_dn} is already invoiced")
-        )
+        frappe.throw(_(f"The item referenced by {item.reference_dt} - {item.reference_dn} is already invoiced"))
 
 
 def manage_prescriptions(invoiced, ref_dt, ref_dn, dt, created_check_field):
@@ -748,9 +711,7 @@ def manage_fee_validity(appointment):
     if fee_validity:
         if appointment.status == "Cancelled" and fee_validity.visited > 0:
             fee_validity.visited -= 1
-            frappe.db.delete(
-                "Fee Validity Reference", {"appointment": appointment.name}
-            )
+            frappe.db.delete("Fee Validity Reference", {"appointment": appointment.name})
         elif fee_validity.status == "Completed":
             return
         else:
@@ -763,13 +724,9 @@ def manage_fee_validity(appointment):
 
 
 def manage_doc_for_appointment(dt_from_appointment, appointment, invoiced):
-    dn_from_appointment = frappe.get_cached_value(
-        dt_from_appointment, filters={"appointment": appointment}
-    )
+    dn_from_appointment = frappe.get_cached_value(dt_from_appointment, filters={"appointment": appointment})
     if dn_from_appointment:
-        frappe.db.set_value(
-            dt_from_appointment, dn_from_appointment, "invoiced", invoiced
-        )
+        frappe.db.set_value(dt_from_appointment, dn_from_appointment, "invoiced", invoiced)
 
 
 @frappe.whitelist()
@@ -783,12 +740,7 @@ def get_drugs_to_invoice(encounter):
                 for drug_line in encounter.drug_prescription:
                     if drug_line.drug_code:
                         qty = 1
-                        if (
-                            frappe.get_cached_value(
-                                "Item", drug_line.drug_code, "stock_uom"
-                            )
-                            == "Nos"
-                        ):
+                        if frappe.get_cached_value("Item", drug_line.drug_code, "stock_uom") == "Nos":
                             # Remarked by MPC_TZ 2022-06-10 16:16 to avoid automatic qty calculations
                             # qty = drug_line.get_quantity()
                             qty = 0
@@ -814,9 +766,7 @@ def get_children(doctype, parent, company, is_root=False):
     parent_fieldname = "parent_" + doctype.lower().replace(" ", "_")
     fields = ["name as value", "is_group as expandable", "lft", "rgt"]
     # fields = [ "name", "is_group", "lft", "rgt" ]
-    filters = [
-        [f"ifnull(`{parent_fieldname}`,'')", "=", "" if is_root else parent]
-    ]
+    filters = [[f"ifnull(`{parent_fieldname}`,'')", "=", "" if is_root else parent]]
 
     if is_root:
         fields += ["service_unit_type"] if doctype == "Healthcare Service Unit" else []
@@ -867,9 +817,7 @@ def get_children(doctype, parent, company, is_root=False):
                         vacant += 1
                 if vacant and occupied:
                     occupancy_total = vacant + occupied
-                    occupancy_msg = (
-                        str(occupied) + " Occupied out of " + str(occupancy_total)
-                    )
+                    occupancy_msg = str(occupied) + " Occupied out of " + str(occupancy_total)
             each["occupied_out_of_vacant"] = occupancy_msg
     return hc_service_units
 
@@ -896,9 +844,7 @@ def render_docs_as_html(docs):
     # docs key value pair {doctype: docname}
     docs_html = "<div class='col-md-12 col-sm-12 text-muted'>"
     for doc in docs:
-        docs_html += (
-            render_doc_as_html(doc["doctype"], doc["docname"])["html"] + "<br/>"
-        )
+        docs_html += render_doc_as_html(doc["doctype"], doc["docname"])["html"] + "<br/>"
         return {"html": docs_html}
 
 
@@ -965,7 +911,8 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
             if df.label:
                 html += "<br>" + df.label
             continue
-        # on table iterate in items and create table based on in_list_view, append to section html or doc html
+        # on table iterate in items and create table based on in_list_view,
+        # append to section html or doc html
         if df.fieldtype == "Table":
             items = doc.get(df.fieldname)
             if not items:
@@ -997,12 +944,7 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
                     + "</table>"
                 )
             else:
-                html += (
-                    "<table class='table table-condensed table-bordered'>"
-                    + table_head
-                    + table_row
-                    + "</table>"
-                )
+                html += "<table class='table table-condensed table-bordered'>" + table_head + table_row + "</table>"
             continue
         if df.fieldtype == "Table MultiSelect":
             multiselect_items = doc.get(df.fieldname)
@@ -1016,16 +958,9 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
                     html += f"<br>{df.label or df.fieldname} :&nbsp;{m_items.get(mdf.fieldname)}"
 
         # on other field types add label and value to html
-        if (
-            not df.hidden
-            and not df.print_hide
-            and doc.get(df.fieldname)
-            and df.fieldname not in exclude_fields
-        ):
+        if not df.hidden and not df.print_hide and doc.get(df.fieldname) and df.fieldname not in exclude_fields:
             html += f"<br>{df.label or df.fieldname} : {doc.get(df.fieldname)}"
-            formatted_value = format_value(
-                doc.get(df.fieldname), meta.get_field(df.fieldname), doc
-            )
+            formatted_value = format_value(doc.get(df.fieldname), meta.get_field(df.fieldname), doc)
             html += f"<br>{df.label or df.fieldname} : {formatted_value}"
 
             if not has_data:
@@ -1043,11 +978,8 @@ def render_doc_as_html(doctype, docname, exclude_fields=[]):
         )
     if doc_html:
         doc_html = (
-            "<div class='small'><div class='col-md-12 text-right'><a class='btn btn-default btn-xs' href='#Form/%s/%s'></a></div>"
-            % (doctype, docname)
-            + doc_html
-            + "</div>"
-        )
+            "<div class='small'><div class='col-md-12 text-right'><a class='btn btn-default btn-xs' href='#Form/%s/%s'></a></div>" %
+            (doctype, docname) + doc_html + "</div>")
 
     return {"html": doc_html}
 
@@ -1065,9 +997,7 @@ def update_address_link(address, method):
         if address_patient:
             customer = frappe.get_cached_value("Patient", address_patient, "customer")
             if not address.has_link("Customer", customer):
-                address.append(
-                    "links", dict(link_doctype="Customer", link_name=customer)
-                )
+                address.append("links", dict(link_doctype="Customer", link_name=customer))
                 address.save()
 
 
@@ -1098,9 +1028,7 @@ def create_item_from_doc(doc, item_name):
     # insert item price
     # get item price list to insert item price
     if doc.rate != 0.0:
-        price_list_name = frappe.get_cached_value(
-            "Selling Settings", None, "selling_price_list"
-        )
+        price_list_name = frappe.get_cached_value("Selling Settings", None, "selling_price_list")
         if not price_list_name:
             price_list_name = frappe.get_cached_value("Price List", {"selling": 1})
         if price_list_name:
@@ -1174,7 +1102,8 @@ def on_trash_doc_having_item_reference(doc):
 @frappe.whitelist()
 def manage_healthcare_doc_cancel(doc):
     if frappe.get_meta(doc.doctype).has_field("invoiced"):
-        # if doc.invoiced and get_sales_invoice_for_healthcare_doc(doc.doctype, doc.name):
+        # if doc.invoiced and get_sales_invoice_for_healthcare_doc(doc.doctype,
+        # doc.name):
         if doc.invoiced:
             frappe.throw(_(f"Can not cancel invoiced {doc.doctype}"))
     check_if_healthcare_doc_is_linked(doc, "Cancel")
@@ -1184,11 +1113,9 @@ def manage_healthcare_doc_cancel(doc):
 def check_if_healthcare_doc_is_linked(doc, method):
     item_linked = {}
     exclude_docs = ["Patient Medical Record"]
-    from frappe.desk.form.linked_with import get_linked_doctypes, get_linked_docs
+    from frappe.desk.form.linked_with import get_linked_docs, get_linked_doctypes
 
-    linked_docs = get_linked_docs(
-        doc.doctype, doc.name, linkinfo=get_linked_doctypes(doc.doctype)
-    )
+    linked_docs = get_linked_docs(doc.doctype, doc.name, linkinfo=get_linked_doctypes(doc.doctype))
     for linked_doc in linked_docs:
         if linked_doc not in exclude_docs:
             for linked_doc_obj in linked_docs[linked_doc]:
@@ -1243,9 +1170,7 @@ def make_healthcare_service_order(args):
 def create_insurance_claim(doc, service_doctype, service, qty, billing_item):
     # skip as we do not use this feature
     return
-    insurance_details = get_insurance_details(
-        service, doc.insurance_subscription, billing_item
-    )
+    insurance_details = get_insurance_details(service, doc.insurance_subscription, billing_item)
     insurance_claim = frappe.new_doc("Healthcare Insurance Claim")
     insurance_claim.patient = doc.patient
     insurance_claim.reference_dt = doc.doctype
@@ -1254,12 +1179,8 @@ def create_insurance_claim(doc, service_doctype, service, qty, billing_item):
     insurance_claim.insurance_company = doc.insurance_company
     insurance_claim.healthcare_service_type = service_doctype
     insurance_claim.service_template = service
-    insurance_claim.claim_status = (
-        "Approved" if insurance_details.is_auto_approval else "Pending"
-    )
-    insurance_claim.mode_of_claim_approval = (
-        "Automatic" if insurance_details.is_auto_approval else ""
-    )
+    insurance_claim.claim_status = "Approved" if insurance_details.is_auto_approval else "Pending"
+    insurance_claim.mode_of_claim_approval = "Automatic" if insurance_details.is_auto_approval else ""
     insurance_claim.claim_posting_date = nowdate()
     insurance_claim.quantity = qty
     insurance_claim.service_doctype = doc.doctype
@@ -1269,17 +1190,11 @@ def create_insurance_claim(doc, service_doctype, service, qty, billing_item):
     insurance_claim.amount = float(insurance_details.rate) * float(qty)
     if insurance_claim.discount and float(insurance_claim.discount) > 0:
         insurance_claim.discount_amount = (
-            float(insurance_claim.price_list_rate)
-            * float(insurance_claim.discount)
-            * 0.01
+            float(insurance_claim.price_list_rate) * float(insurance_claim.discount) * 0.01
         )
-        insurance_claim.amount = float(
-            insurance_details.rate - insurance_claim.discount_amount
-        ) * float(qty)
+        insurance_claim.amount = float(insurance_details.rate - insurance_claim.discount_amount) * float(qty)
     insurance_claim.coverage = insurance_details.coverage
-    insurance_claim.coverage_amount = (
-        float(insurance_claim.amount) * 0.01 * float(insurance_claim.coverage)
-    )
+    insurance_claim.coverage_amount = float(insurance_claim.amount) * 0.01 * float(insurance_claim.coverage)
     insurance_claim.save(ignore_permissions=True)
     insurance_claim.submit()
     return insurance_claim.name, insurance_claim.claim_status
@@ -1291,9 +1206,7 @@ def get_insurance_details(service, insurance_subscription, billing_item):
     price_list_rate = 0
     claim_discount = 0
     is_auto_approval = 0
-    insurance_subscription = frappe.get_cached_doc(
-        "Healthcare Insurance Subscription", insurance_subscription
-    )
+    insurance_subscription = frappe.get_cached_doc("Healthcare Insurance Subscription", insurance_subscription)
     if insurance_subscription and valid_insurance(
         insurance_subscription.name,
         insurance_subscription.insurance_company,
@@ -1301,10 +1214,12 @@ def get_insurance_details(service, insurance_subscription, billing_item):
     ):
         if insurance_subscription.healthcare_insurance_coverage_plan:
             price_list_rate = get_insurance_price_list_rate(
-                insurance_subscription.healthcare_insurance_coverage_plan, billing_item
+                insurance_subscription.healthcare_insurance_coverage_plan,
+                billing_item,
             )
             coverage, discount, is_auto_approval = get_insurance_coverage_details(
-                insurance_subscription.healthcare_insurance_coverage_plan, service
+                insurance_subscription.healthcare_insurance_coverage_plan,
+                service,
             ) or (0, 0, 0)
             if coverage and discount:
                 claim_discount = discount
@@ -1352,7 +1267,8 @@ def get_insurance_price_list_rate(healthcare_insurance_coverage_plan, billing_it
         )
         if price_list:
             item_price = frappe.db.exists(
-                "Item Price", {"item_code": billing_item, "price_list": price_list}
+                "Item Price",
+                {"item_code": billing_item, "price_list": price_list},
             )
         if item_price:
             rate = frappe.get_cached_value("Item Price", item_price, "price_list_rate")
@@ -1393,9 +1309,7 @@ def get_insurance_coverage_details(healthcare_insurance_coverage_plan, service):
             return coverage, discount, is_auto_approval
 
 
-def update_insurance_claim(
-    insurance_claim, sales_invoice_name, posting_date, total_amount
-):
+def update_insurance_claim(insurance_claim, sales_invoice_name, posting_date, total_amount):
     frappe.set_value(
         "Healthcare Insurance Claim",
         insurance_claim,
@@ -1409,10 +1323,16 @@ def update_insurance_claim(
         posting_date,
     )
     frappe.set_value(
-        "Healthcare Insurance Claim", insurance_claim, "billing_date", nowdate()
+        "Healthcare Insurance Claim",
+        insurance_claim,
+        "billing_date",
+        nowdate(),
     )
     frappe.set_value(
-        "Healthcare Insurance Claim", insurance_claim, "billing_amount", total_amount
+        "Healthcare Insurance Claim",
+        insurance_claim,
+        "billing_amount",
+        total_amount,
     )
 
 
@@ -1431,17 +1351,9 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
     only_filds = []
     if use_setttings:
         settings = frappe.get_single("Patient History Settings")
-        selected_fields = [
-            d.selected_fields
-            for d in settings.standard_doctypes
-            if d.document_type == doctype
-        ]
+        selected_fields = [d.selected_fields for d in settings.standard_doctypes if d.document_type == doctype]
         if not selected_fields:
-            selected_fields = [
-                d.selected_fields
-                for d in settings.custom_doctypes
-                if d.document_type == doctype
-            ]
+            selected_fields = [d.selected_fields for d in settings.custom_doctypes if d.document_type == doctype]
         if selected_fields and selected_fields[0]:
             selected_fields = json.loads(selected_fields[0])
             only_filds = [f["fieldname"] for f in selected_fields]
@@ -1538,13 +1450,9 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
                 for cdf in child_meta.fields:
                     if cdf.in_list_view:
                         if create_head:
-                            table_head += (
-                                "<th class='text-muted'>" + cdf.label + "</th>"
-                            )
+                            table_head += "<th class='text-muted'>" + cdf.label + "</th>"
                         if item.get(cdf.fieldname):
-                            table_row += (
-                                "<td>" + cstr(item.get(cdf.fieldname)) + "</td>"
-                            )
+                            table_row += "<td>" + cstr(item.get(cdf.fieldname)) + "</td>"
                         else:
                             table_row += "<td></td>"
 
@@ -1566,18 +1474,11 @@ def render_doc_as_html(doctype, docname, exclude_fields=None, use_setttings=Fals
             continue
 
         # on any other field type add label and value to html
-        if (
-            not df.hidden
-            and not df.print_hide
-            and doc.get(df.fieldname)
-            and df.fieldname not in exclude_fields
-        ):
+        if not df.hidden and not df.print_hide and doc.get(df.fieldname) and df.fieldname not in exclude_fields:
             if use_setttings and only_filds:
                 if df.fieldname not in only_filds:
                     continue
-            formatted_value = format_value(
-                doc.get(df.fieldname), meta.get_field(df.fieldname), doc
-            )
+            formatted_value = format_value(doc.get(df.fieldname), meta.get_field(df.fieldname), doc)
             html += f"<br>{df.label or df.fieldname} : {formatted_value}"
 
             if not has_data:

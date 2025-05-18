@@ -52,9 +52,7 @@ def execute():
     files = list(
         filter(
             lambda x: x.endswith(".json"),
-            os.listdir(
-                os.path.join(os.path.abspath(os.path.dirname(__file__)), folder)
-            ),
+            os.listdir(os.path.join(os.path.abspath(os.path.dirname(__file__)), folder)),
         )
     )
     for file in files:
@@ -71,7 +69,9 @@ def export_custom_fields(docnames):
         doc = frappe.get_cached_doc("Custom Field", docname)
         custom_fields.append(
             doc.as_dict(
-                convert_dates_to_str=True, no_default_fields=True, no_nulls=True
+                convert_dates_to_str=True,
+                no_default_fields=True,
+                no_nulls=True,
             )
         )
 

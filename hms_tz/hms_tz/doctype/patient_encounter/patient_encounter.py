@@ -3,12 +3,14 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
+
 import json
+
+import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr
-from frappe import _
+
 from hms_tz.hms_tz.utils import make_healthcare_service_order
 
 
@@ -24,9 +26,7 @@ class PatientEncounter(Document):
 
     def on_update(self):
         if self.appointment:
-            frappe.db.set_value(
-                "Patient Appointment", self.appointment, "status", "Closed"
-            )
+            frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
         update_encounter_medical_record(self)
 
     def after_insert(self):
@@ -39,9 +39,7 @@ class PatientEncounter(Document):
 
     def on_cancel(self):
         if self.appointment:
-            frappe.db.set_value(
-                "Patient Appointment", self.appointment, "status", "Open"
-            )
+            frappe.db.set_value("Patient Appointment", self.appointment, "status", "Open")
         delete_medical_record(self)
 
     def set_title(self):
@@ -62,29 +60,26 @@ def insert_encounter_to_medical_record(doc):
 
 
 def update_encounter_medical_record(encounter):
-    medical_record_id = frappe.db.exists(
-        "Patient Medical Record", {"reference_name": encounter.name}
-    )
+    medical_record_id = frappe.db.exists("Patient Medical Record", {"reference_name": encounter.name})
 
     if medical_record_id and medical_record_id[0][0]:
         subject = set_subject_field(encounter)
         frappe.db.set_value(
-            "Patient Medical Record", medical_record_id[0][0], "subject", subject
+            "Patient Medical Record",
+            medical_record_id[0][0],
+            "subject",
+            subject,
         )
     else:
         insert_encounter_to_medical_record(encounter)
 
 
 def delete_medical_record(encounter):
-    frappe.delete_doc_if_exists(
-        "Patient Medical Record", "reference_name", encounter.name
-    )
+    frappe.delete_doc_if_exists("Patient Medical Record", "reference_name", encounter.name)
 
 
 def set_subject_field(encounter):
-    subject = (
-        frappe.bold(_("Healthcare Practitioner: ")) + encounter.practitioner + "<br>"
-    )
+    subject = frappe.bold(_("Healthcare Practitioner: ")) + encounter.practitioner + "<br>"
     if encounter.symptoms:
         subject += frappe.bold(_("Symptoms: ")) + "<br>"
         for entry in encounter.symptoms:
@@ -118,9 +113,7 @@ def create_healthcare_service_order(encounter):
         for drug in encounter.drug_prescription:
             medication = frappe.get_cached_doc("Medication", drug.drug_code)
             args = {
-                "healthcare_service_order_category": medication.get_value(
-                    "healthcare_service_order_category"
-                ),
+                "healthcare_service_order_category": medication.get_value("healthcare_service_order_category"),
                 "patient_care_type": medication.get_value("patient_care_type"),
                 "order_date": encounter.get_value("encounter_date"),
                 "ordered_by": encounter.get_value("practitioner"),
@@ -141,9 +134,9 @@ def create_healthcare_service_order(encounter):
                 "note": drug.get_value("note"),
                 "patient_instruction": drug.get_value("patient_instruction"),
                 "company": encounter.company,
-                "insurance_subscription": encounter.insurance_subscription
-                if encounter.insurance_subscription
-                else "",
+                "insurance_subscription": (
+                    encounter.insurance_subscription if encounter.insurance_subscription else ""
+                ),
                 "order_reference_doctype": "Drug Prescription",
                 "order_reference_name": drug.name,
             }
@@ -152,9 +145,7 @@ def create_healthcare_service_order(encounter):
         for labtest in encounter.lab_test_prescription:
             lab_template = frappe.get_cached_doc("Lab Test Template", labtest.lab_test_code)
             args = {
-                "healthcare_service_order_category": lab_template.get_value(
-                    "healthcare_service_order_category"
-                ),
+                "healthcare_service_order_category": lab_template.get_value("healthcare_service_order_category"),
                 "patient_care_type": lab_template.get_value("patient_care_type"),
                 "order_date": encounter.get_value("encounter_date"),
                 "ordered_by": encounter.get_value("practitioner"),
@@ -172,28 +163,22 @@ def create_healthcare_service_order(encounter):
                 "staff_role": lab_template.get_value("staff_role"),
                 "note": labtest.get_value("note"),
                 "patient_instruction": labtest.get_value("patient_instruction"),
-                "healthcare_service_unit_type": lab_template.get_value(
-                    "healthcare_service_unit_type"
-                ),
+                "healthcare_service_unit_type": lab_template.get_value("healthcare_service_unit_type"),
                 "company": encounter.company,
                 "source": encounter.source,
                 "referring_practitioner": encounter.referring_practitioner,
-                "insurance_subscription": encounter.insurance_subscription
-                if encounter.insurance_subscription
-                else "",
+                "insurance_subscription": (
+                    encounter.insurance_subscription if encounter.insurance_subscription else ""
+                ),
                 "order_reference_doctype": "Lab Prescription",
                 "order_reference_name": labtest.name,
             }
             make_healthcare_service_order(args)
     if encounter.procedure_prescription:
         for procedure in encounter.procedure_prescription:
-            procedure_template = frappe.get_cached_doc(
-                "Clinical Procedure Template", procedure.procedure
-            )
+            procedure_template = frappe.get_cached_doc("Clinical Procedure Template", procedure.procedure)
             args = {
-                "healthcare_service_order_category": procedure_template.get_value(
-                    "healthcare_service_order_category"
-                ),
+                "healthcare_service_order_category": procedure_template.get_value("healthcare_service_order_category"),
                 "patient_care_type": procedure_template.get_value("patient_care_type"),
                 "order_date": encounter.get_value("encounter_date"),
                 "ordered_by": encounter.get_value("practitioner"),
@@ -212,15 +197,13 @@ def create_healthcare_service_order(encounter):
                 "staff_role": procedure_template.get_value("staff_role"),
                 "note": procedure.get_value("note"),
                 "patient_instruction": procedure.get_value("patient_instruction"),
-                "healthcare_service_unit_type": procedure_template.get_value(
-                    "healthcare_service_unit_type"
-                ),
+                "healthcare_service_unit_type": procedure_template.get_value("healthcare_service_unit_type"),
                 "company": encounter.company,
                 "source": encounter.source,
                 "referring_practitioner": encounter.referring_practitioner,
-                "insurance_subscription": encounter.insurance_subscription
-                if encounter.insurance_subscription
-                else "",
+                "insurance_subscription": (
+                    encounter.insurance_subscription if encounter.insurance_subscription else ""
+                ),
                 "order_reference_doctype": "Procedure Prescription",
                 "order_reference_name": procedure.name,
             }
@@ -229,9 +212,7 @@ def create_healthcare_service_order(encounter):
         for therapy in encounter.therapies:
             therapy_type = frappe.get_cached_doc("Therapy Type", therapy.therapy_type)
             args = {
-                "healthcare_service_order_category": therapy_type.get_value(
-                    "healthcare_service_order_category"
-                ),
+                "healthcare_service_order_category": therapy_type.get_value("healthcare_service_order_category"),
                 "patient_care_type": therapy_type.get_value("patient_care_type"),
                 "order_date": encounter.get_value("encounter_date"),
                 "ordered_by": encounter.get_value("practitioner"),
@@ -252,11 +233,11 @@ def create_healthcare_service_order(encounter):
                 "company": encounter.company,
                 "source": encounter.source,
                 "referring_practitioner": encounter.referring_practitioner,
-                "insurance_subscription": encounter.insurance_subscription
-                if encounter.insurance_subscription
-                else "",
+                "insurance_subscription": (
+                    encounter.insurance_subscription if encounter.insurance_subscription else ""
+                ),
                 "order_reference_doctype": "Therapy Plan Detail",
-                "order_reference_name": therapy.name
+                "order_reference_name": therapy.name,
                 # 'healthcare_service_unit_type':therapy_type.get_value('healthcare_service_unit_type')
             }
             make_healthcare_service_order(args)
@@ -267,9 +248,7 @@ def create_healthcare_service_order(encounter):
                 radiology.radiology_examination_template,
             )
             args = {
-                "healthcare_service_order_category": radiology_template.get_value(
-                    "healthcare_service_order_category"
-                ),
+                "healthcare_service_order_category": radiology_template.get_value("healthcare_service_order_category"),
                 "patient_care_type": radiology_template.get_value("patient_care_type"),
                 "order_date": encounter.get_value("encounter_date"),
                 "ordered_by": encounter.get_value("practitioner"),
@@ -287,15 +266,13 @@ def create_healthcare_service_order(encounter):
                 "staff_role": radiology_template.get_value("staff_role"),
                 "note": radiology.get_value("note"),
                 "patient_instruction": radiology.get_value("patient_instruction"),
-                "healthcare_service_unit_type": radiology_template.get_value(
-                    "healthcare_service_unit_type"
-                ),
+                "healthcare_service_unit_type": radiology_template.get_value("healthcare_service_unit_type"),
                 "company": encounter.company,
                 "source": encounter.source,
                 "referring_practitioner": encounter.referring_practitioner,
-                "insurance_subscription": encounter.insurance_subscription
-                if encounter.insurance_subscription
-                else "",
+                "insurance_subscription": (
+                    encounter.insurance_subscription if encounter.insurance_subscription else ""
+                ),
                 "order_reference_doctype": "Radiology Procedure Prescription",
                 "order_reference_name": radiology.name,
             }
@@ -314,10 +291,7 @@ def create_patient_referral(args):
 def make_insurance_claim(doc):
     return
     if doc.insurance_subscription:
-        from hms_tz.hms_tz.utils import (
-            create_insurance_claim,
-            get_service_item_and_practitioner_charge,
-        )
+        from hms_tz.hms_tz.utils import create_insurance_claim, get_service_item_and_practitioner_charge
 
         billing_item, rate = get_service_item_and_practitioner_charge(doc)
         insurance_claim, claim_status = create_insurance_claim(

@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -61,9 +62,7 @@ class HealthcareServiceUnitType(Document):
                 else:
                     make_item_price(self.item_code, price_list_name, 0.0)
             else:
-                frappe.db.set_value(
-                    "Item Price", item_price, "price_list_rate", self.rate
-                )
+                frappe.db.set_value("Item Price", item_price, "price_list_rate", self.rate)
 
             frappe.db.set_value(self.doctype, self.name, "change_in_item", 0)
         elif not self.is_billable and self.item:
@@ -146,6 +145,4 @@ def change_item_code(item, item_code, doc_name):
         frappe.throw(_(f"Item with Item Code {item_code} already exists"))
     else:
         rename_doc("Item", item, item_code, ignore_permissions=True)
-        frappe.db.set_value(
-            "Healthcare Service Unit Type", doc_name, "item_code", item_code
-        )
+        frappe.db.set_value("Healthcare Service Unit Type", doc_name, "item_code", item_code)

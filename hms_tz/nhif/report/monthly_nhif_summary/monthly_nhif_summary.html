@@ -79,13 +79,13 @@
                     <li>ACCREDITATION NUMBER: <b><u> {%= data[0].accreditation_no %} </u></b> </li>
                     <li>NAME OF FACILITY: <b><u> {%= data[0].facility_name %} </u> </b></li>
                     <li>ADDRESS: <b><u> {%= data[0].address %} </u></b></li>
-                    <li>REGION: <b><u> {%= data[0].region %} </u></b> </li> 
+                    <li>REGION: <b><u> {%= data[0].region %} </u></b> </li>
                     <li>DISTRICT: <b><u> {%= data[0].district %} </u></b> </li>
                     <br>
                     <li>FACILITY OWNERSHIP: <b><u> {%= data[0].ownership %} </u></b> </li>
                     <li>FACILITY CODE: <b><u> {%= data[0].facility_code %} </u></b></li>
                     <br>
-                    <li>NUMBER OF BENEFICIARIES TREATED: 
+                    <li>NUMBER OF BENEFICIARIES TREATED:
                         <ul>
                             <li>Male: <b><u> {%= data[0].male %} </u></b></li>
                             <li>Female: <b><u> {%= data[0].female %} </u></b></li>
@@ -93,7 +93,7 @@
                         </ul>
                     </li>
                     <br>
-                    <li>DATE OF TREATMENT: 
+                    <li>DATE OF TREATMENT:
                         <ul>
                             <li>From: <b><u> {%= data[0].from_date %} </u></b></li>
                             <li>To: <b><u> {%= data[0].to_date %} </u></b></li>
@@ -148,9 +148,9 @@
                     <tr>
                         <th colspan=2>Total:</th>
                         <th style="text-align:right">
-                            {% 
+                            {%
                                 var total_amount_claimed = data[0][("consultation")] +  data[0][("diagnostic_examination")] +data[0][("medicine")]
-                                + data[0][("surgical_produceral_charge")] + data[0][("inpatient_charges")]; 
+                                + data[0][("surgical_produceral_charge")] + data[0][("inpatient_charges")];
                             %}
                             {%= total_amount_claimed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %}
                         </th>

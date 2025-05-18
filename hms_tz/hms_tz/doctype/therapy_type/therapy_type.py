@@ -3,12 +3,14 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
+
 import json
+
+import frappe
 from frappe import _
-from frappe.utils import cint
 from frappe.model.document import Document
 from frappe.model.rename_doc import rename_doc
+from frappe.utils import cint
 
 
 class TherapyType(Document):
@@ -18,7 +20,7 @@ class TherapyType(Document):
     def after_insert(self):
         try:
             create_item_from_therapy(self)
-        except Exception as e:
+        except Exception:
             frappe.log_error(frappe.get_traceback(), "Therapy Item Creation Error")
 
     def on_update(self):
@@ -91,9 +93,7 @@ def create_item_from_therapy(doc):
     if doc.is_billable and not doc.disabled:
         disabled = 0
 
-    uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value(
-        "Stock Settings", "stock_uom"
-    )
+    uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value("Stock Settings", "stock_uom")
 
     item = frappe.get_doc(
         {

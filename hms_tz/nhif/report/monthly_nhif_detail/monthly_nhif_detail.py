@@ -1,6 +1,5 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, cint
 from frappe.query_builder import DocType
 
 
@@ -161,7 +160,8 @@ def get_data(filters):
 #   AND npc.claim_month = %(claim_month)s
 #   AND npc.claim_year = %(claim_year)s
 #   AND npc.company = %(company)s
-# GROUP BY npc.patient, npc.patient_appointment, npci.ref_doctype, npci.item_name, npc.gender,npc.attendance_date, npc.date_discharge
+# GROUP BY npc.patient, npc.patient_appointment, npci.ref_doctype,
+# npci.item_name, npc.gender,npc.attendance_date, npc.date_discharge
 
 
 # "filters": [

@@ -3,21 +3,21 @@
 // and remove above this line
 
 QUnit.test("test: Practitioner Availability Type", function (assert) {
-	let done = assert.async();
+  let done = assert.async();
 
-	// number of asserts
-	assert.expect(1);
+  // number of asserts
+  assert.expect(1);
 
-	frappe.run_serially([
-		// insert a new Practitioner Availability Type
-		() => frappe.tests.make('Practitioner Availability Type', [
-			// values to be set
-			{key: 'value'}
-		]),
-		() => {
-			assert.equal(cur_frm.doc.key, 'value');
-		},
-		() => done()
-	]);
-
+  frappe.run_serially([
+    // insert a new Practitioner Availability Type
+    () =>
+      frappe.tests.make("Practitioner Availability Type", [
+        // values to be set
+        { key: "value" },
+      ]),
+    () => {
+      assert.equal(cur_frm.doc.key, "value");
+    },
+    () => done(),
+  ]);
 });

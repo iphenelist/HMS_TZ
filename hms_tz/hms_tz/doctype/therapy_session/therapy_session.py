@@ -3,16 +3,17 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
+
 import datetime
-from frappe.model.document import Document
-from frappe.utils import get_time, flt
-from frappe.model.mapper import get_mapped_doc
+
+import frappe
 from frappe import _
-from frappe.utils import cstr, getdate, get_link_to_form
+from frappe.model.document import Document
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cstr, flt, get_link_to_form, get_time, getdate
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
-    get_receivable_account,
     get_income_account,
+    get_receivable_account,
 )
 
 
@@ -22,9 +23,9 @@ class TherapySession(Document):
         self.set_total_counts()
 
     def validate_duplicate(self):
-        end_time = datetime.datetime.combine(
-            getdate(self.start_date), get_time(self.start_time)
-        ) + datetime.timedelta(minutes=flt(self.duration))
+        end_time = datetime.datetime.combine(getdate(self.start_date), get_time(self.start_time)) + datetime.timedelta(
+            minutes=flt(self.duration)
+        )
 
         overlaps = frappe.db.sql(
             """
@@ -53,8 +54,10 @@ class TherapySession(Document):
         )
 
         if overlaps:
-            overlapping_details = _(f"Therapy Session overlaps with {get_link_to_form('Therapy Session', overlaps[0][0])}")
-            frappe.throw(overlapping_details, title=_("Therapy Sessions Overlapping"))
+            overlapping_details = _(
+                f"Therapy Session overlaps with {get_link_to_form('Therapy Session', overlaps[0][0])}"
+            )
+            frappe.throw(overlapping_details(title=_("Therapy Sessions Overlapping")))
 
     def on_submit(self):
         self.update_sessions_count_in_therapy_plan()
@@ -62,15 +65,11 @@ class TherapySession(Document):
 
     def on_update(self):
         if self.appointment:
-            frappe.db.set_value(
-                "Patient Appointment", self.appointment, "status", "Closed"
-            )
+            frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
 
     def on_cancel(self):
         if self.appointment:
-            frappe.db.set_value(
-                "Patient Appointment", self.appointment, "status", "Open"
-            )
+            frappe.db.set_value("Patient Appointment", self.appointment, "status", "Open")
 
         self.update_sessions_count_in_therapy_plan(on_cancel=True)
 
@@ -168,9 +167,7 @@ def get_therapy_item(therapy, item):
     item.item_code = frappe.get_cached_value("Therapy Type", therapy.therapy_type, "item")
     item.description = _(f"Therapy Session Charges: {therapy.practitioner}")
     item.income_account = get_income_account(therapy.practitioner, therapy.company)
-    item.cost_center = frappe.get_cached_value(
-        "Company", therapy.company, "cost_center"
-    )
+    item.cost_center = frappe.get_cached_value("Company", therapy.company, "cost_center")
     item.rate = therapy.rate
     item.amount = therapy.rate
     item.qty = 1
@@ -185,16 +182,8 @@ def insert_session_medical_record(doc):
         subject += frappe.bold(_("Therapy Plan: ")) + cstr(doc.therapy_plan) + "<br>"
     if doc.practitioner:
         subject += frappe.bold(_("Healthcare Practitioner: ")) + doc.practitioner
-    subject += (
-        frappe.bold(_("Total Counts Targeted: "))
-        + cstr(doc.total_counts_targeted)
-        + "<br>"
-    )
-    subject += (
-        frappe.bold(_("Total Counts Completed: "))
-        + cstr(doc.total_counts_completed)
-        + "<br>"
-    )
+    subject += frappe.bold(_("Total Counts Targeted: ")) + cstr(doc.total_counts_targeted) + "<br>"
+    subject += frappe.bold(_("Total Counts Completed: ")) + cstr(doc.total_counts_completed) + "<br>"
 
     medical_record = frappe.new_doc("Patient Medical Record")
     medical_record.patient = doc.patient

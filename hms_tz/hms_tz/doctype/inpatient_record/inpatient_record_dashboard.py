@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 from frappe import _
 
 
@@ -25,7 +26,11 @@ def get_data():
             },
             {
                 "label": _("Rehabilitation and Physiotherapy"),
-                "items": ["Therapy Plan", "Therapy Session", "Patient Assessment"],
+                "items": [
+                    "Therapy Plan",
+                    "Therapy Session",
+                    "Patient Assessment",
+                ],
             },
         ],
     }

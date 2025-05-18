@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe.model.document import Document
 
@@ -19,13 +20,9 @@ def add_product(company, id, name=None):
     nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": company, "nhif_product_code": id})
     if not nhif_product_pr_key:
         nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": "", "nhif_product_code": id})
-    
+
     if nhif_product_pr_key:
-        if (
-            name  and
-            name != "null" and
-            product_id != nhif_product_pr_key 
-        ):
+        if name and name != "null" and product_id != nhif_product_pr_key:
             doc = frappe.get_cached_doc("NHIF Product", nhif_product_pr_key)
 
             doc.product_id = product_id
@@ -34,7 +31,7 @@ def add_product(company, id, name=None):
             doc.save(ignore_permissions=True)
             frappe.db.commit()
     else:
-        doc = frappe.new_doc('NHIF Product')
+        doc = frappe.new_doc("NHIF Product")
         doc.product_id = product_id
         doc.company = company
         doc.nhif_product_code = id

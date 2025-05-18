@@ -4,10 +4,10 @@
 from __future__ import unicode_literals
 
 import unittest
+
 import frappe
-from hms_tz.hms_tz.doctype.patient_appointment.test_patient_appointment import (
-    create_patient,
-)
+
+from hms_tz.hms_tz.doctype.patient_appointment.test_patient_appointment import create_patient
 
 
 class TestPatient(unittest.TestCase):

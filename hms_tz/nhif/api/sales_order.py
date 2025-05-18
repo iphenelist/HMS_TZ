@@ -1,8 +1,9 @@
 import frappe
 from frappe import _
-from frappe.utils import nowdate
 from frappe.query_builder import DocType
 from frappe.query_builder.functions import CombineDatetime
+from frappe.utils import nowdate
+
 from hms_tz.nhif.api.healthcare_utils import msgThrow
 
 
@@ -14,8 +15,9 @@ def validate(doc, method):
 def before_submit(doc, method):
     if doc.med_change_request_status == "Pending":
         frappe.throw(
-            "This sales order has pending medication change request.\
-                Please inform the doctor: <b>{doc.healthcare_practitioner}</b> to approve the request."
+            f"This sales order has pending medication change request. \
+                Please inform the doctor: <b>{doc.healthcare_practitioner}</b> \
+                    to approve the request."
         )
 
     for item in doc.items:
@@ -39,12 +41,10 @@ def create_sales_order(doc, method):
     if company_details.auto_create_sales_order_from_encounter == 0:
         return
 
-    if (
-        not company_details.sales_order_opd_pharmacy
-        and not company_details.sales_order_ipd_pharmacy
-    ):
+    if not company_details.sales_order_opd_pharmacy and not company_details.sales_order_ipd_pharmacy:
         frappe.throw(
-            f"Please set Sales Order OPD Pharmacy or Sales Order IPD Pharmacy in Company: {doc.company}"
+            f"Please set Sales Order OPD Pharmacy or \
+                Sales Order IPD Pharmacy in Company: {doc.company}"
         )
 
     warehouse = ""
@@ -55,9 +55,7 @@ def create_sales_order(doc, method):
 
     drug_items, lrpt_items = get_items_from_encounter(doc, warehouse)
     if len(drug_items) > 0:
-        drug_order_name = create_sales_order_from_encounter(
-            doc, drug_items, warehouse, allow_md_change_request=True
-        )
+        drug_order_name = create_sales_order_from_encounter(doc, drug_items, warehouse, allow_md_change_request=True)
         if drug_order_name:
             frappe.msgprint("<b>Sales Order for Drug Items created Successfully</b>")
 
@@ -65,7 +63,8 @@ def create_sales_order(doc, method):
         lrpt_order_name = create_sales_order_from_encounter(doc, lrpt_items, warehouse)
         if lrpt_order_name:
             frappe.msgprint(
-                "<b>Sales Order for Lab/Radiology/Procedure/Therapy Items created Successfully</b>"
+                "<b>Sales Order for Lab/Radiology/Procedure/Therapy \
+                    Items created Successfully</b>"
             )
 
 
@@ -74,27 +73,20 @@ def get_items_from_encounter(doc, warehouse):
     lrpt_items = []
     for field in get_childs_map():
         for row in doc.get(field.get("table")):
-            if (
-                row.prescribe == 0
-                or row.is_not_available_inhouse == 1
-                or row.is_cancelled == 1
-            ):
+            if row.prescribe == 0 or row.is_not_available_inhouse == 1 or row.is_cancelled == 1:
                 continue
 
-            item_code = frappe.get_cached_value(
-                field.get("template"), row.get(field.get("item_field")), "item"
-            )
+            item_code = frappe.get_cached_value(field.get("template"), row.get(field.get("item_field")), "item")
             if not item_code:
                 frappe.throw(
                     _(
-                        f"The Item Code for {row.get(field.get('item_field'))} is not found!<br>\
-                            Please request administrator to set item code in {row.get(field.get('item_field'))}."
+                        f"The Item Code for {row.get(field.get('item_field'))} \
+                        is not found!<br> Please request administrator to set \
+                        item code in {row.get(field.get('item_field'))}."
                     )
                 )
 
-            item_name, item_description = frappe.get_cached_value(
-                "Item", item_code, ["item_name", "description"]
-            )
+            item_name, item_description = frappe.get_cached_value("Item", item_code, ["item_name", "description"])
 
             new_row = {
                 "item_code": item_code,
@@ -111,16 +103,13 @@ def get_items_from_encounter(doc, warehouse):
             if row.doctype == "Drug Prescription":
                 dosage_info = ", <br>".join(
                     [
-                        "frequency: "
-                        + str(row.get("dosage") or "No Prescription Dosage"),
+                        "frequency: " + str(row.get("dosage") or "No Prescription Dosage"),
                         "period: " + str(row.get("period") or "No Prescription Period"),
                         "dosage_form: " + str(row.get("dosage_form") or ""),
                         "interval: " + str(row.get("interval") or ""),
                         "interval_uom: " + str(row.get("interval_uom") or ""),
-                        "medical_code: "
-                        + str(row.get("medical_code") or "No medical code"),
-                        "Doctor's comment: "
-                        + (row.get("comment") or "Take medication as per dosage."),
+                        "medical_code: " + str(row.get("medical_code") or "No medical code"),
+                        "Doctor's comment: " + (row.get("comment") or "Take medication as per dosage."),
                     ]
                 )
                 new_row.update(
@@ -133,26 +122,26 @@ def get_items_from_encounter(doc, warehouse):
 
             else:
                 if row.doctype == "Therapy Plan Detail":
-                    new_row.update({"qty": row.no_of_sessions - row.sessions_cancelled,})
+                    new_row.update(
+                        {
+                            "qty": row.no_of_sessions - row.sessions_cancelled,
+                        }
+                    )
                 lrpt_items.append(new_row)
 
     return drug_items, lrpt_items
 
 
-def create_sales_order_from_encounter(
-    doc, items, warehouse, allow_md_change_request=False
-):
-    price_list = frappe.get_cached_value(
-        "Mode of Payment", doc.get("mode_of_payment"), "price_list"
-    )
+def create_sales_order_from_encounter(doc, items, warehouse, allow_md_change_request=False):
+    price_list = frappe.get_cached_value("Mode of Payment", doc.get("mode_of_payment"), "price_list")
     if not price_list:
         price_list = frappe.get_cached_value(
-            "Mode of Payment", doc.get("encounter_mode_of_payment"), "price_list"
+            "Mode of Payment",
+            doc.get("encounter_mode_of_payment"),
+            "price_list",
         )
     if not price_list:
-        price_list = frappe.get_cached_value(
-            "Company", doc.get("company"), "default_price_list"
-        )
+        price_list = frappe.get_cached_value("Company", doc.get("company"), "default_price_list")
     if not price_list:
         frappe.throw("Please set Price List in Mode of Payment or Company")
 
@@ -219,8 +208,9 @@ def validate_stock_item(item, warehouse, method):
         if float(item.qty) > float(stock_qty):
             msgThrow(
                 (
-                    f"Available quantity for item: <h4 style='background-color:\
-                        LightCoral'>{item.item_code} is {stock_qty}</h4>In {warehouse}."
+                    f"Available quantity for item: \
+                    <h4 style='background-color:LightCoral'>\
+                    {item.item_code} is {stock_qty}</h4>In {warehouse}."
                 ),
                 method,
             )
@@ -228,7 +218,9 @@ def validate_stock_item(item, warehouse, method):
     elif item.reference_dt == "Drug Prescription":
         msgThrow(
             (
-                f"Item: <b>{item.item_code}</b> RowNo: <b>{item.idx}</b> is not a stock item, delivery note cannot be create for this Item"
+                f"Item: <b>{item.item_code}</b> RowNo: \
+                <b>{item.idx}</b> is not a stock item, \
+                delivery note cannot be create for this Item"
             ),
             method,
         )
@@ -245,13 +237,11 @@ def get_stock_availability(item_code, warehouse):
             sle.name,
         )
         .where(
-            (sle.item_code == item_code)
-            & (sle.warehouse == warehouse)
-            & (sle.is_cancelled == 0)
-            & (sle.docstatus < 2)
+            (sle.item_code == item_code) & (sle.warehouse == warehouse) & (sle.is_cancelled == 0) & (sle.docstatus < 2)
         )
         .orderby(
-            CombineDatetime(sle.posting_date, sle.posting_time), order=frappe.qb.desc
+            CombineDatetime(sle.posting_date, sle.posting_time),
+            order=frappe.qb.desc,
         )
         .limit(1)
     ).run(as_dict=True)

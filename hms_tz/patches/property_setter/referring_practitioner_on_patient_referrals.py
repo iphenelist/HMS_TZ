@@ -1,6 +1,7 @@
 import frappe
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
+
 def execute():
     make_property_setter(
         "Patient Referral",
@@ -9,7 +10,7 @@ def execute():
         False,
         "Check",
         for_doctype=False,
-        validate_fields_for_doctype=False
+        validate_fields_for_doctype=False,
     )
-    
+
     frappe.db.commit()

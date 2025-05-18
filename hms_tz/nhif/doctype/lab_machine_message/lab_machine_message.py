@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe.model.document import Document
 
@@ -36,9 +37,7 @@ class LabMachineMessage(Document):
                 break
 
         if sample_collection:
-            sample_collection_exists = frappe.db.exists(
-                "Sample Collection", sample_collection
-            )
+            sample_collection_exists = frappe.db.exists("Sample Collection", sample_collection)
             if sample_collection_exists:
                 return sample_collection
 
@@ -61,7 +60,7 @@ class LabMachineMessage(Document):
                     return
 
                 msg_lines = self.message.splitlines()
-                for line in msg_lines[profile.obx_nm_start : profile.obx_nm_end]:
+                for line in msg_lines[profile.obx_nm_start: profile.obx_nm_end]:
                     if "^" in line:
                         test_name = line.split("|")[3].split("^")[1].replace("*", "")
                     else:
@@ -80,10 +79,8 @@ class LabMachineMessage(Document):
                 frappe.db.commit()
 
         if self.sample_collection:
-            sample_collection_doc = frappe.get_cached_doc(
-                "Sample Collection", self.sample_collection
-            )
-            ## try to upodate each lab test in the sample collection
+            sample_collection_doc = frappe.get_cached_doc("Sample Collection", self.sample_collection)
+            # try to upodate each lab test in the sample collection
             for lab_test in sample_collection_doc.lab_tests:
                 lab_test_doc = frappe.get_cached_doc("Lab Test", lab_test.lab_test)
                 if lab_test_doc.docstatus != 0:
@@ -95,9 +92,7 @@ class LabMachineMessage(Document):
                         if fields[2] == "NM":
                             test_name = None
                             if "^" in line:
-                                test_name = (
-                                    line.split("|")[3].split("^")[1].replace("*", "")
-                                )
+                                test_name = line.split("|")[3].split("^")[1].replace("*", "")
                             else:
                                 test_name = line.split("|")[4].replace("*", "")
                             test_result = fields[5]

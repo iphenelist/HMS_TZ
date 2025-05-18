@@ -1,5 +1,5 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
 
 def execute():
     fields = {
@@ -32,7 +32,7 @@ def execute():
                 "read_only": 1,
                 "allow_on_submit": 1,
                 "translatable": 1,
-            }
-        ]
+            },
+        ],
     }
     create_custom_fields(fields)

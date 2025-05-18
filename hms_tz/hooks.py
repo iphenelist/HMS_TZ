@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from . import __version__ as app_version
 
 app_name = "hms_tz"
 app_title = "HMS TZ"
@@ -18,7 +17,7 @@ app_license = "MIT"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/hms_tz/css/hms_tz.css"
 # app_include_js = "/assets/hms_tz/js/hms_tz.js"
-app_include_js = 'hms_tz.bundle.js'
+app_include_js = "hms_tz.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/hms_tz/css/hms_tz.css"
@@ -178,7 +177,7 @@ doc_events = {
         "on_trash": "hms_tz.nhif.api.practitioner_availability.on_trash",
     },
     "Lab Test": {
-        "onload":"hms_tz.nhif.api.lab_test.onload",
+        "onload": "hms_tz.nhif.api.lab_test.onload",
         "before_submit": "hms_tz.nhif.api.lab_test.before_submit",
         "on_submit": "hms_tz.nhif.api.lab_test.on_submit",
         "after_insert": "hms_tz.nhif.api.lab_test.after_insert",
@@ -187,15 +186,15 @@ doc_events = {
         "validate": "hms_tz.nhif.api.lab_test.validate",
     },
     "Radiology Examination": {
-        "after_insert":"hms_tz.nhif.api.radiology_examination.after_insert",
-        "onload":"hms_tz.nhif.api.radiology_examination.onload",
+        "after_insert": "hms_tz.nhif.api.radiology_examination.after_insert",
+        "onload": "hms_tz.nhif.api.radiology_examination.onload",
         "before_submit": "hms_tz.nhif.api.radiology_examination.before_submit",
         "on_submit": "hms_tz.nhif.api.radiology_examination.on_submit",
         "on_cancel": "hms_tz.nhif.api.radiology_examination.on_cancel",
     },
     "Clinical Procedure": {
-        "after_insert":"hms_tz.nhif.api.clinical_procedure.after_insert",
-        "onload":"hms_tz.nhif.api.clinical_procedure.onload",
+        "after_insert": "hms_tz.nhif.api.clinical_procedure.after_insert",
+        "onload": "hms_tz.nhif.api.clinical_procedure.onload",
         "before_submit": "hms_tz.nhif.api.clinical_procedure.before_submit",
         "on_submit": "hms_tz.nhif.api.clinical_procedure.on_submit",
     },
@@ -249,26 +248,18 @@ scheduler_events = {
     "daily": ["hms_tz.nhif.api.inpatient_record.daily_update_inpatient_occupancies"],
     "cron": {
         # Routine for every day 00:01 am at night
-        "1 0 * * *": [
-            "hms_tz.nhif.api.healthcare_utils.auto_submit_nhif_patient_claim"
-        ],
+        "1 0 * * *": ["hms_tz.nhif.api.healthcare_utils.auto_submit_nhif_patient_claim"],
         # Routine for every day 01:30am at night
         "30 1 * * *": [
             "hms_tz.nhif.api.healthcare_utils.enqueue_auto_create_nhif_patient_claims",
-            "hms_tz.nhif.nhif_api.admission.send_overstay_nofication"
+            "hms_tz.nhif.nhif_api.admission.send_overstay_nofication",
         ],
         # Routine for every day 2:30am at night
-        "30 2 * * *": [
-            "hms_tz.nhif.api.healthcare_utils.delete_or_cancel_draft_document"
-        ],
+        "30 2 * * *": ["hms_tz.nhif.api.healthcare_utils.delete_or_cancel_draft_document"],
         # Routine for every 10min
-        "*/10 * * * *": [
-            "hms_tz.nhif.api.healthcare_utils.create_invoiced_items_if_not_created"
-        ],
+        "*/10 * * * *": ["hms_tz.nhif.api.healthcare_utils.create_invoiced_items_if_not_created"],
         # Routine for every day every after 30min from 03:00am to 05:00am
-        "*/30 3-4 * * *": [
-            "hms_tz.nhif.api.healthcare_utils.auto_finalize_patient_encounters"
-        ],
+        "*/30 3-4 * * *": ["hms_tz.nhif.api.healthcare_utils.auto_finalize_patient_encounters"],
         # Routine for every Saturday 01:00 am at night
         "0 1 * * 6": [
             "hms_tz.nhif.nhif_api.verification.get_visit_types",

@@ -1,7 +1,9 @@
 import json
+
 import frappe
 import requests
-from frappe.utils import now_datetime, get_fullname, flt
+from frappe.utils import flt, get_fullname, now_datetime
+
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -19,26 +21,20 @@ def submit_folio(doc):
     url = f"{settings_doc.nhif_claim_url}/api/Claims/SubmitFolio"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = None
     try:
         r = requests.request("Post", url, data=payload, headers=headers, timeout=300)
         if r.status_code != 200:
-            if (
-                str(r) and 
-                r.status_code == 500 and
-                "A claim with Similar" in r.text
-            ):
-                    frappe.msgprint(
-                        f"This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
-                        + str(now_datetime())
-                    )
+            if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
+                frappe.msgprint(
+                    f"This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
+                    + str(now_datetime())
+                )
             elif (
-                str(r)
-                and r.status_code == 406
-                and f"Folio Number {doc.folio_no} has already been submited." in r.text
+                str(r) and r.status_code == 406 and f"Folio Number {doc.folio_no} has already been submited." in r.text
             ):
                 frappe.msgprint(
                     f"This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
@@ -61,14 +57,14 @@ def submit_folio(doc):
                 status_code=r.status_code,
                 company=settings_doc.name,
                 ref_doctype=doc.doctype,
-                ref_docname=doc.name
+                ref_docname=doc.name,
             )
             frappe.msgprint(str(r.text))
             frappe.msgprint("The claim has been sent successfully", alert=True)
 
             # TODO: update response values to Healthcare Referral doc
 
-    except Exception as e:
+    except Exception:
         add_log(
             request_type="SubmitFolio",
             request_url=url,
@@ -78,7 +74,7 @@ def submit_folio(doc):
             status_code=(r.status_code if str(r) else "NO STATUS CODE"),
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
         doc.add_comment(
             comment_type="Comment",
@@ -143,7 +139,7 @@ def get_payload(doc):
         item_dict = {
             "ItemCode": item.item_code,
             "ItemName": item.item_name,
-            "ItemTypeID": None, # TODO: add item type id functionality
+            "ItemTypeID": None,  # TODO: add item type id functionality
             "ItemQuantity": item.item_quantity,
             "UnitPrice": item.unit_price,
             "AmountClaimed": item.amount_claimed,
@@ -171,7 +167,7 @@ def get_submitted_claims(doc):
     url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=120)
@@ -185,7 +181,7 @@ def get_submitted_claims(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         frappe.throw(
@@ -204,39 +200,42 @@ def get_submitted_claims(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         if len(data) == 0:
             frappe.throw(
                 f"No record found for facility: {frappe.bold(doc.company)}, claim year: {frappe.bold(doc.claim_year)} and claim month: {frappe.bold(doc.claim_month)}"
             )
-        
+
         return update_reconciliation_detail(doc, data)
 
 
 def update_reconciliation_detail(doc, records):
-	total_amount = 0
-	doc.status = "Successful"
-	doc.number_of_submitted_claims = len(records)
+    total_amount = 0
+    doc.status = "Successful"
+    doc.number_of_submitted_claims = len(records)
 
-	doc.claim_details = []
-	for record in records:
-		total_amount += flt(record["AmountClaimed"])
-		doc.append("claim_details", {
-			"foliono": record["FolioNo"],
-			"billno": record["BillNo"],
-			"datesubmitted": record["DateSubmitted"],
-			"cardno": record["CardNo"],
-			"authorizationno": record["AuthorizationNo"],
-			"amountclaimed": flt(record["AmountClaimed"]),
-			"submissionid": record["SubmissionID"],
-			"submissionno": record["SubmissionNo"],
-			"remarks": record["Remarks"],
-		})
+    doc.claim_details = []
+    for record in records:
+        total_amount += flt(record["AmountClaimed"])
+        doc.append(
+            "claim_details",
+            {
+                "foliono": record["FolioNo"],
+                "billno": record["BillNo"],
+                "datesubmitted": record["DateSubmitted"],
+                "cardno": record["CardNo"],
+                "authorizationno": record["AuthorizationNo"],
+                "amountclaimed": flt(record["AmountClaimed"]),
+                "submissionid": record["SubmissionID"],
+                "submissionno": record["SubmissionNo"],
+                "remarks": record["Remarks"],
+            },
+        )
 
-	doc.total_amount_claimed = total_amount
-	return True
+    doc.total_amount_claimed = total_amount
+    return True
 
 
 def submit_monthly_claim(doc):
@@ -262,7 +261,7 @@ def submit_monthly_claim(doc):
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
@@ -276,7 +275,7 @@ def submit_monthly_claim(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         frappe.throw(
@@ -295,7 +294,7 @@ def submit_monthly_claim(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         # TODO: update response values to NHIF Monthly Claim doc
@@ -315,7 +314,7 @@ def send_confirmation_code(ref_doctype, ref_docname):
         "CardNo": doc.cardno.strip(),
         "AuthorizationNo": doc.authorization_no,
         "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
-        "TotalAmount": doc.total_amount
+        "TotalAmount": doc.total_amount,
     }
     payload = json.dumps(payload)
 
@@ -326,7 +325,7 @@ def send_confirmation_code(ref_doctype, ref_docname):
     url = f"{settings_doc.nhif_claim_url}/api/Claims/SendConfirmationCode"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
     r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
@@ -339,7 +338,7 @@ def send_confirmation_code(ref_doctype, ref_docname):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         frappe.throw(
@@ -357,17 +356,12 @@ def send_confirmation_code(ref_doctype, ref_docname):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         # TODO: update response values to NHIF Patient Claim doc
         doc.confirmation_code_sent = 1
-        frappe.db.set_value(
-            doc.doctype,
-            doc.name,
-            "confirmation_code_sent",
-            1
-        )
+        frappe.db.set_value(doc.doctype, doc.name, "confirmation_code_sent", 1)
         doc.reload()
 
         doc.add_comment(
@@ -392,7 +386,7 @@ def get_receipt(ref_doctype, ref_docname):
     url = f"{doc.nhif_claim_url}/api/Claims/GetReceipt?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}&folioNo={doc.folio_no}"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
     r = requests.request("Get", url, headers=headers, timeout=120)
     if r.status_code != 200:
@@ -405,7 +399,7 @@ def get_receipt(ref_doctype, ref_docname):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         frappe.throw(
@@ -423,7 +417,7 @@ def get_receipt(ref_doctype, ref_docname):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         # TODO: update response values to NHIF Patient Claim doc

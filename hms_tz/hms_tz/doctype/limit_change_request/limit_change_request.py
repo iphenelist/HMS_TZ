@@ -1,14 +1,13 @@
 import frappe
-from frappe.utils import flt, nowdate, nowtime, cint, cstr, get_url_to_form
-from frappe.model.document import Document
 from erpnext.accounts.utils import get_balance_on
+from frappe.model.document import Document
+from frappe.utils import flt, get_url_to_form, nowdate, nowtime
+
+from hms_tz.nhif.api.healthcare_utils import create_therapy_plan
 from hms_tz.nhif.api.patient_encounter import (
-    create_healthcare_docs_per_encounter,
     create_delivery_note_per_encounter,
+    create_healthcare_docs_per_encounter,
     validate_totals,
-)
-from hms_tz.nhif.api.healthcare_utils import (
-    create_therapy_plan,
 )
 
 
@@ -24,9 +23,7 @@ class LimitChangeRequest(Document):
         self.validate_draft_duplicate()
         self.set_missing_values()
         if self.is_cash_inpatient and self.is_non_nhif_patient:
-            frappe.throw(
-                "You can't change Cash/Daily limit for both inpatient and non-nhif patient at the same time"
-            )
+            frappe.throw("You can't change Cash/Daily limit for both inpatient and non-nhif patient at the same time")
         if not self.is_cash_inpatient and not self.is_non_nhif_patient:
             frappe.throw(
                 f"This patient: {self.patient} is not Non NHIF Patient or Not Inpatient, Limit Change Request is for Non NHIF Patients or Admitted patients"
@@ -34,9 +31,7 @@ class LimitChangeRequest(Document):
 
     def validate_appointment_info(self):
         if self.appointment_no:
-            if "NHIF" in frappe.get_cached_value(
-                "Patient Appointment", self.appointment_no, "insurance_company"
-            ):
+            if "NHIF" in frappe.get_cached_value("Patient Appointment", self.appointment_no, "insurance_company"):
                 url = get_url_to_form("Patient Appointment", self.appointment_no)
                 frappe.throw(
                     f"This Appointment: <a href='{url}'><b>{self.appointment_no}</b></a> is for NHIF Patient, You can't change the Daily/Cash limit for this appointment"
@@ -63,22 +58,14 @@ class LimitChangeRequest(Document):
             if not flt(self.cash_limit) or flt(self.cash_limit) == 0:
                 frappe.throw("<b>Cash Limit is required</b>")
 
-            if flt(self.previous_cash_limit) and flt(self.cash_limit) <= flt(
-                self.previous_cash_limit
-            ):
-                frappe.throw(
-                    "New Cash Limit must be greater than the previous cash limit"
-                )
+            if flt(self.previous_cash_limit) and flt(self.cash_limit) <= flt(self.previous_cash_limit):
+                frappe.throw("New Cash Limit must be greater than the previous cash limit")
         if self.is_non_nhif_patient:
             if not flt(self.daily_limit) or flt(self.daily_limit) == 0:
                 frappe.throw("<b>Daily Limit is required</b>")
 
-            if flt(self.current_total_cost) and flt(self.daily_limit) <= flt(
-                self.current_total_cost
-            ):
-                frappe.throw(
-                    "New Daily Limit must be greater than the current total cost"
-                )
+            if flt(self.current_total_cost) and flt(self.daily_limit) <= flt(self.current_total_cost):
+                frappe.throw("New Daily Limit must be greater than the current total cost")
 
     def before_submit(self):
         self.validate_cash_daily_limit()
@@ -87,12 +74,13 @@ class LimitChangeRequest(Document):
 
         if self.is_cash_inpatient and self.inpatient_record:
             frappe.db.set_value(
-                "Inpatient Record", self.inpatient_record, "cash_limit", self.cash_limit
+                "Inpatient Record",
+                self.inpatient_record,
+                "cash_limit",
+                self.cash_limit,
             )
 
-            inpatient_record_doc = frappe.get_cached_doc(
-                "Inpatient Record", self.inpatient_record
-            )
+            inpatient_record_doc = frappe.get_cached_doc("Inpatient Record", self.inpatient_record)
 
             if inpatient_record_doc.cash_limit == self.cash_limit:
                 frappe.msgprint(
@@ -106,9 +94,7 @@ class LimitChangeRequest(Document):
                 "daily_limit",
                 self.daily_limit,
             )
-            frappe.msgprint(
-                f"Daily Limit of: <b>{self.daily_limit}</b> was updated for Patient <b>{self.patient}</b>"
-            )
+            frappe.msgprint(f"Daily Limit of: <b>{self.daily_limit}</b> was updated for Patient <b>{self.patient}</b>")
 
     def on_submit(self):
         if self.is_non_nhif_patient and self.appointment_no:
@@ -126,11 +112,12 @@ class LimitChangeRequest(Document):
 
     def on_cancel(self):
         if self.is_cash_inpatient and self.inpatient_record:
-            old_cash_limit = frappe.get_cached_value(
-                "Patient", {"name": self.patient}, "cash_limit"
-            )
+            old_cash_limit = frappe.get_cached_value("Patient", {"name": self.patient}, "cash_limit")
             frappe.db.set_value(
-                "Inpatient Record", self.inpatient_record, "cash_limit", old_cash_limit
+                "Inpatient Record",
+                self.inpatient_record,
+                "cash_limit",
+                old_cash_limit,
             )
 
         if self.is_non_nhif_patient and self.appointment_no:
@@ -145,7 +132,9 @@ class LimitChangeRequest(Document):
                 "healthcare_insurance_coverage_plan",
             )
             old_daily_limit = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan", coverage_plan, "daily_limit"
+                "Healthcare Insurance Coverage Plan",
+                coverage_plan,
+                "daily_limit",
             )
             frappe.db.set_value(
                 "Patient Appointment",
@@ -191,9 +180,7 @@ class LimitChangeRequest(Document):
                 self.is_non_nhif_patient = 1
                 self.insurance_company = encounters[0]["insurance_company"]
                 self.previous_daily_limit = encounters[0]["daily_limit"]
-                self.current_total_cost = (
-                    encounters[0]["current_total"] + encounters[0]["previous_total"]
-                )
+                self.current_total_cost = encounters[0]["current_total"] + encounters[0]["previous_total"]
 
     def create_encounter_items(self, encounters):
         """Create items for the uncreate items of patient encounter after submitting the LCR"""

@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
-import frappe
 
-from frappe import _
+import frappe
 from erpnext.setup.utils import insert_record
+from frappe import _
 
 
 def setup_healthcare():
@@ -747,7 +747,11 @@ def get_patient_history_config():
                     "fieldname": "procedure_prescription",
                     "fieldtype": "Table",
                 },
-                {"label": "Therapies", "fieldname": "therapies", "fieldtype": "Table"},
+                {
+                    "label": "Therapies",
+                    "fieldname": "therapies",
+                    "fieldtype": "Table",
+                },
                 {
                     "label": "Review Details",
                     "fieldname": "encounter_comment",
@@ -768,14 +772,26 @@ def get_patient_history_config():
                     "fieldname": "practitioner",
                     "fieldtype": "Link",
                 },
-                {"label": "Notes", "fieldname": "notes", "fieldtype": "Small Text"},
+                {
+                    "label": "Notes",
+                    "fieldname": "notes",
+                    "fieldtype": "Small Text",
+                },
                 {
                     "label": "Service Unit",
                     "fieldname": "service_unit",
                     "fieldtype": "Healthcare Service Unit",
                 },
-                {"label": "Start Time", "fieldname": "start_time", "fieldtype": "Time"},
-                {"label": "Sample", "fieldname": "sample", "fieldtype": "Link"},
+                {
+                    "label": "Start Time",
+                    "fieldname": "start_time",
+                    "fieldtype": "Time",
+                },
+                {
+                    "label": "Sample",
+                    "fieldname": "sample",
+                    "fieldtype": "Link",
+                },
             ],
         ),
         "Lab Test": (
@@ -801,7 +817,11 @@ def get_patient_history_config():
                     "fieldname": "employee_name",
                     "fieldtype": "Data",
                 },
-                {"label": "Sample ID", "fieldname": "sample", "fieldtype": "Link"},
+                {
+                    "label": "Sample ID",
+                    "fieldname": "sample",
+                    "fieldtype": "Link",
+                },
                 {
                     "label": "Normal Test Result",
                     "fieldname": "normal_test_items",
@@ -847,15 +867,31 @@ def get_patient_history_config():
                     "fieldname": "therapy_plan",
                     "fieldtype": "Link",
                 },
-                {"label": "Duration", "fieldname": "duration", "fieldtype": "Int"},
-                {"label": "Location", "fieldname": "location", "fieldtype": "Link"},
+                {
+                    "label": "Duration",
+                    "fieldname": "duration",
+                    "fieldtype": "Int",
+                },
+                {
+                    "label": "Location",
+                    "fieldname": "location",
+                    "fieldtype": "Link",
+                },
                 {
                     "label": "Healthcare Service Unit",
                     "fieldname": "service_unit",
                     "fieldtype": "Link",
                 },
-                {"label": "Start Time", "fieldname": "start_time", "fieldtype": "Time"},
-                {"label": "Exercises", "fieldname": "exercises", "fieldtype": "Table"},
+                {
+                    "label": "Start Time",
+                    "fieldname": "start_time",
+                    "fieldtype": "Time",
+                },
+                {
+                    "label": "Exercises",
+                    "fieldname": "exercises",
+                    "fieldtype": "Table",
+                },
                 {
                     "label": "Total Counts Targeted",
                     "fieldname": "total_counts_targeted",
@@ -886,10 +922,26 @@ def get_patient_history_config():
                     "fieldname": "respiratory_rate",
                     "fieldtype": "Data",
                 },
-                {"label": "Tongue", "fieldname": "tongue", "fieldtype": "Select"},
-                {"label": "Abdomen", "fieldname": "abdomen", "fieldtype": "Select"},
-                {"label": "Reflexes", "fieldname": "reflexes", "fieldtype": "Select"},
-                {"label": "Blood Pressure", "fieldname": "bp", "fieldtype": "Data"},
+                {
+                    "label": "Tongue",
+                    "fieldname": "tongue",
+                    "fieldtype": "Select",
+                },
+                {
+                    "label": "Abdomen",
+                    "fieldname": "abdomen",
+                    "fieldtype": "Select",
+                },
+                {
+                    "label": "Reflexes",
+                    "fieldname": "reflexes",
+                    "fieldtype": "Select",
+                },
+                {
+                    "label": "Blood Pressure",
+                    "fieldname": "bp",
+                    "fieldtype": "Data",
+                },
                 {
                     "label": "Notes",
                     "fieldname": "vital_signs_note",
@@ -916,8 +968,16 @@ def get_patient_history_config():
                     "fieldname": "practitioner",
                     "fieldtype": "Link",
                 },
-                {"label": "Start Date", "fieldname": "start_date", "fieldtype": "Date"},
-                {"label": "End Date", "fieldname": "end_date", "fieldtype": "Date"},
+                {
+                    "label": "Start Date",
+                    "fieldname": "start_date",
+                    "fieldtype": "Date",
+                },
+                {
+                    "label": "End Date",
+                    "fieldname": "end_date",
+                    "fieldtype": "Date",
+                },
                 {
                     "label": "Medication Orders",
                     "fieldname": "medication_orders",

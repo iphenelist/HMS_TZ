@@ -17,7 +17,7 @@
 
     th {
         background-color: #333 !important;
-        
+
     }
 
     tr:nth-child(even) {
@@ -27,42 +27,42 @@
     thead {
         display: table-header-group;
     }
-    
+
     @media print {
         h1 {
             font-size: 17px !important;
             color: #000000 !important;
             text-align: center !important;
         }
-        
+
         p {
             font-size: 12px !important;
             color: #111010 !important;
         }
-        
+
         th, td {
             font-size: 12px !important;
         }
-        
+
         th {
         background-color: #797676 !important;
-        
+
         }
-        
+
          th {
         background-color: #333 !important;
-        
-        } 
-        
-        tr:nth-child(even) {
-        background-color: #f2f2f2 !important;
-        } 
-        
+
+        }
+
         tr:nth-child(even) {
         background-color: #f2f2f2 !important;
         }
 
-   
+        tr:nth-child(even) {
+        background-color: #f2f2f2 !important;
+        }
+
+
 
     /* Ensure the table headers are visible on each page */
     thead {
@@ -190,7 +190,7 @@
                                     {minimumFractionDigits: 2, maximumFractionDigits: 2}) %}</td>
                                 <td style="text-align: right; ">{%= data[i][("amount")].toLocaleString(undefined,
                                     {minimumFractionDigits: 2, maximumFractionDigits: 2}) %}</td>
-                            
+
                             </tr>
                         {% } %}
                     </tbody>
@@ -246,7 +246,7 @@
                                                 {minimumFractionDigits: 2, maximumFractionDigits: 2}) %}</td>
                                             <td style="text-align: right; ">{%= exceeded_items[i][("amount")].toLocaleString(undefined,
                                                 {minimumFractionDigits: 2, maximumFractionDigits: 2}) %}</td>
-                                        
+
                                         </tr>
                                     {% } %}
                                 </tbody>
