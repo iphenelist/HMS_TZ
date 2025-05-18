@@ -1,6 +1,4 @@
 {
- "_comments": "[]",
- "_liked_by": "[]",
  "actions": [],
  "creation": "2020-12-17 03:35:48.012453",
  "doctype": "DocType",
@@ -15,25 +13,10 @@
   "column_break_7",
   "patient_encounter",
   "codification_table",
-  "folio_id",
-  "folio_disease_id",
-  "created_by",
   "item_crt_by",
   "date_created"
  ],
  "fields": [
-  {
-   "fieldname": "folio_disease_id",
-   "fieldtype": "Data",
-   "label": "Folio Disease ID",
-   "read_only": 1
-  },
-  {
-   "fieldname": "folio_id",
-   "fieldtype": "Data",
-   "label": "Folio ID",
-   "read_only": 1
-  },
   {
    "fetch_from": "medical_code.code",
    "fetch_if_empty": 1,
@@ -49,13 +32,6 @@
    "in_list_view": 1,
    "label": "Date Created",
    "permlevel": 1
-  },
-  {
-   "fieldname": "created_by",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Old Created By",
-   "read_only": 1
   },
   {
    "fieldname": "diagnosis_type",
@@ -115,7 +91,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-09-02 09:23:27.897560",
+ "modified": "2025-05-18 13:21:53.908478",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim Disease",
@@ -124,5 +100,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

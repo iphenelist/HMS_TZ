@@ -43,7 +43,6 @@
   "facility_code",
   "claim_year",
   "claim_month",
-  "folio_id",
   "folio_no",
   "serial_no",
   "item_crt_by",
@@ -295,12 +294,6 @@
    "label": "NHIF Patient Claim Item",
    "options": "NHIF Patient Claim Item",
    "permlevel": 1
-  },
-  {
-   "fieldname": "folio_id",
-   "fieldtype": "Data",
-   "label": "Folio ID",
-   "read_only": 1
   },
   {
    "fetch_from": "patient_appointment.company",
@@ -555,7 +548,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-14 18:49:35.415288",
+ "modified": "2025-05-18 13:16:43.392726",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",

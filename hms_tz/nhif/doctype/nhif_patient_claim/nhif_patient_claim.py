@@ -29,6 +29,7 @@ from PyPDF2 import PdfFileWriter
 
 from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, get_item_rate, to_base64
 from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
+from hms_tz.nhif.api.patient_encounter import finalized_encounter
 from hms_tz.nhif.nhif_api.patient_claim import submit_folio
 
 pa = DocType("Patient Appointment")
@@ -37,28 +38,28 @@ ct = DocType("Codification Table")
 
 
 class NHIFPatientClaim(Document):
-    def validate(self):
-        if self.docstatus != 0:
-            return
-
-        self.validate_appointment_info()
+    def before_save(self):
         self.patient_encounters = self.get_patient_encounters()
         if not self.patient_encounters:
             frappe.throw(_("There are no submitted encounters for this application"))
+            
         if not self.allow_changes:
-            from hms_tz.nhif.api.patient_encounter import finalized_encounter
-
             finalized_encounter(self.patient_encounters[-1])
             self.final_patient_encounter = self.get_final_patient_encounter()
             self.set_claim_values()
         else:
             self.final_patient_encounter = self.get_final_patient_encounter()
+        
         self.calculate_totals()
-        # self.set_clinical_notes()
+
         if not self.is_new():
             update_original_patient_claim(self)
 
             frappe.qb.update(pa).set(pa.nhif_patient_claim, self.name).where(pa.name == self.patient_appointment).run()
+
+
+    def validate(self):
+        self.validate_appointment_info()
 
     def on_trash(self):
         # check if claim number exist in appointment record
@@ -171,9 +172,6 @@ class NHIFPatientClaim(Document):
                 frappe.msgprint("Release Patient Card", 20, alert=True)
 
     def set_claim_values(self):
-        if not self.folio_id:
-            self.folio_id = str(uuid.uuid1())
-
         self.facility_code = frappe.get_cached_value("Company NHIF Settings", self.company, "facility_code")
         self.posting_date = nowdate()
         self.serial_no = int(self.name[-9:])
@@ -437,8 +435,6 @@ class NHIFPatientClaim(Document):
                         new_row.patient_encounter = encounter.name
                         new_row.ref_doctype = row.doctype
                         new_row.ref_docname = row.name
-                        new_row.folio_item_id = str(uuid.uuid1())
-                        new_row.folio_id = self.folio_id
                         new_row.date_created = row.modified.strftime("%Y-%m-%d")
                         new_row.item_crt_by = encounter_doc.practitioner
         else:
@@ -502,8 +498,6 @@ class NHIFPatientClaim(Document):
                 new_row.patient_encounter = admission_encounter_doc.name
                 new_row.ref_doctype = occupancy.doctype
                 new_row.ref_docname = occupancy.name
-                new_row.folio_item_id = str(uuid.uuid1())
-                new_row.folio_id = self.folio_id
                 new_row.date_created = occupancy.modified.strftime("%Y-%m-%d")
                 new_row.item_crt_by = get_fullname(occupancy.modified_by)
 
@@ -526,8 +520,6 @@ class NHIFPatientClaim(Document):
                             new_row.patient_encounter = row_item.encounter or record_doc.admission_encounter
                             new_row.ref_doctype = row_item.doctype
                             new_row.ref_docname = row_item.name
-                            new_row.folio_item_id = str(uuid.uuid1())
-                            new_row.folio_id = self.folio_id
                             new_row.date_created = row_item.modified.strftime("%Y-%m-%d")
                             new_row.item_crt_by = get_fullname(row_item.modified_by)
 
@@ -580,8 +572,6 @@ class NHIFPatientClaim(Document):
                             new_row.patient_encounter = encounter.name
                             new_row.ref_doctype = row.doctype
                             new_row.ref_docname = row.name
-                            new_row.folio_item_id = str(uuid.uuid1())
-                            new_row.folio_id = self.folio_id
                             new_row.date_created = row.modified.strftime("%Y-%m-%d")
                             new_row.item_crt_by = encounter_doc.practitioner
 
@@ -630,8 +620,6 @@ class NHIFPatientClaim(Document):
                 new_row.approval_ref_no = ""
                 new_row.ref_doctype = patient_appointment_doc.doctype
                 new_row.ref_docname = patient_appointment_doc.name
-                new_row.folio_item_id = str(uuid.uuid1())
-                new_row.folio_id = self.folio_id
                 new_row.date_created = patient_appointment_doc.modified.strftime("%Y-%m-%d")
                 new_row.item_crt_by = get_fullname(patient_appointment_doc.modified_by)
                 new_row.idx = appointment_idx
@@ -668,14 +656,11 @@ class NHIFPatientClaim(Document):
         self.total_amount = 0
         for item in self.nhif_patient_claim_item:
             item.amount_claimed = item.unit_price * item.item_quantity
-            item.folio_item_id = item.folio_item_id or str(uuid.uuid1())
             item.date_created = item.date_created or nowdate()
-            item.folio_id = item.folio_id or self.folio_id
 
             self.total_amount += item.amount_claimed
+        
         for item in self.nhif_patient_claim_disease:
-            item.folio_id = item.folio_id or self.folio_id
-            item.folio_disease_id = item.folio_disease_id or str(uuid.uuid1())
             item.date_created = item.date_created or nowdate()
 
     def set_clinical_notes(self, encounter_doc):
@@ -777,6 +762,7 @@ class NHIFPatientClaim(Document):
             folio_doc.folio_no += 1
             folio_doc.posting_date = now_datetime()
             folio_doc.save(ignore_permissions=True)
+
         frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
 
         items = []
@@ -791,6 +777,7 @@ class NHIFPatientClaim(Document):
                 "docstatus",
             ]:
                 new_row[fieldname] = None
+            
             items.append(new_row)
 
         if len(items) > 0:
