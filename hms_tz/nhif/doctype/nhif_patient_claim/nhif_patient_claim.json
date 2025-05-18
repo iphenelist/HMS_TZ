@@ -137,13 +137,15 @@
    "fieldname": "facility_code",
    "fieldtype": "Data",
    "label": "Facility Code",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "claim_year",
    "fieldtype": "Int",
    "label": "Claim Year",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient.first_name",
@@ -175,7 +177,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date Discharge",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "date_admitted",
@@ -183,7 +186,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date Admitted",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "patient_type_code",
@@ -191,7 +195,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Patient Type Code",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.appointment_date",
@@ -200,7 +205,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Attendance Date",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.authorization_number",
@@ -258,7 +264,8 @@
   },
   {
    "fieldname": "column_break_18",
-   "fieldtype": "Column Break"
+   "fieldtype": "Column Break",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_10",
@@ -316,19 +323,22 @@
    "fieldname": "claim_month",
    "fieldtype": "Int",
    "label": "Claim Month",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "folio_no",
    "fieldtype": "Int",
    "label": "Folio No",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "serial_no",
    "fieldtype": "Data",
    "label": "Serial No",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "depends_on": "eval: doc.nhif_patient_claim_item",
@@ -379,7 +389,8 @@
    "fieldname": "item_crt_by",
    "fieldtype": "Data",
    "label": "Created By",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "inpatient_record",
@@ -416,7 +427,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Practitioner Name",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.coverage_plan_name",
@@ -464,20 +476,23 @@
    "fieldname": "discharge_time",
    "fieldtype": "Time",
    "label": "Discharge Time",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "admitted_time",
    "fieldtype": "Time",
    "label": "Admitted Time",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.appointment_time",
    "fieldname": "attendance_time",
    "fieldtype": "Time",
    "label": "Attendance Time",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -552,7 +567,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 00:28:55.257122",
+ "modified": "2025-05-19 00:31:47.986463",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
