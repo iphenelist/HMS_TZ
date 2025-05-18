@@ -39,16 +39,16 @@ ct = DocType("Codification Table")
 
 class NHIFPatientClaim(Document):
     def before_save(self):
-        self.patient_encounters = self.get_patient_encounters()
-        if not self.patient_encounters:
+        patient_encounters = self.get_patient_encounters()
+        if len(patient_encounters) == 0:
             frappe.throw(_("There are no submitted encounters for this application"))
             
         if not self.allow_changes:
             finalized_encounter(self.patient_encounters[-1])
-            self.final_patient_encounter = self.get_final_patient_encounter()
+            # self.final_patient_encounter = self.get_final_patient_encounter()
             self.set_claim_values()
-        else:
-            self.final_patient_encounter = self.get_final_patient_encounter()
+        # else:
+        #     self.final_patient_encounter = self.get_final_patient_encounter()
         
         self.calculate_totals()
 
@@ -63,7 +63,7 @@ class NHIFPatientClaim(Document):
 
     def on_trash(self):
         # check if claim number exist in appointment record
-        nhif_patient_claim = frappe.get_cached_value(
+        nhif_patient_claim = frappe.db.get_value(
             "Patient Appointment",
             self.patient_appointment,
             "nhif_patient_claim",
@@ -92,23 +92,25 @@ class NHIFPatientClaim(Document):
             frappe.throw("")
 
         start_datetime = get_datetime()
-        frappe.msgprint("Submit process started: " + str(get_datetime()))
+        # frappe.msgprint("Submit process started: " + str(get_datetime()))
 
         self.validate_multiple_appointments_per_authorization_no()
 
         validate_item_status(self)
-        self.patient_encounters = self.get_patient_encounters()
+
+        # self.patient_encounters = self.get_patient_encounters()
+
         if not self.patient_signature:
             get_missing_patient_signature(self)
 
         validate_submit_date(self)
 
-        frappe.msgprint("Sending NHIF Claim: " + str(get_datetime()))
+        # frappe.msgprint("Sending NHIF Claim: " + str(get_datetime()))
         submit_folio(self)
-        frappe.msgprint("Got response from NHIF Claim: " + str(get_datetime()))
+        # frappe.msgprint("Got response from NHIF Claim: " + str(get_datetime()))
         end_datetime = get_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
-        frappe.msgprint("Total time to complete the process in seconds = " + str(time_in_seconds))
+        frappe.msgprint("Total time used to submit folio in seconds = " + str(time_in_seconds))
 
     def on_submit(self):
         track_changes_of_claim_items(self)
@@ -117,7 +119,7 @@ class NHIFPatientClaim(Document):
         """Validate if patient gets multiple appointments with same authorization number"""
 
         # Check if there are multiple claims with same authorization number
-        claim_details = frappe.get_all(
+        claim_details = frappe.db.get_all(
             "NHIF Patient Claim",
             filters={
                 "patient": self.patient,
@@ -137,6 +139,7 @@ class NHIFPatientClaim(Document):
         for claim in claim_details:
             url = get_url_to_form("NHIF Patient Claim", claim["name"])
             claim_name_list += f"<a href='{url}'><b>{claim['name']}</b> </a> , "
+
             if claim["hms_tz_claim_appointment_list"]:
                 merged_appointments += json.loads(claim["hms_tz_claim_appointment_list"])
 
@@ -146,9 +149,8 @@ class NHIFPatientClaim(Document):
                 Please merge these <b>{len(claim_details)}</b> claims to Proceed</p>")
 
         # rock: 139
-        # Check if there are multiple appointments with same authorization
-        # number
-        appointment_documents = frappe.get_all(
+        # Check if there are multiple appointments with same authorization number
+        appointment_documents = frappe.db.get_all(
             "Patient Appointment",
             filters={
                 "patient": self.patient,
@@ -259,7 +261,7 @@ class NHIFPatientClaim(Document):
 
     @frappe.whitelist()
     def get_appointments(self):
-        appointment_list = frappe.get_all(
+        appointment_list = frappe.db.get_all(
             "NHIF Patient Claim",
             filters={
                 "patient": self.patient,
@@ -297,6 +299,7 @@ class NHIFPatientClaim(Document):
                     "nhif_patient_claim",
                     self.name,
                 )
+        
         app_list = list(set(app_list))
         self.allow_changes = 0
         self.hms_tz_claim_appointment_list = json.dumps(app_list)
@@ -312,7 +315,7 @@ class NHIFPatientClaim(Document):
                 json.loads(self.hms_tz_claim_appointment_list),
             ]
 
-        patient_encounters = frappe.get_all(
+        patient_encounters = frappe.db.get_all(
             "Patient Encounter",
             filters={
                 "appointment": patient_appointment,
@@ -731,7 +734,7 @@ class NHIFPatientClaim(Document):
         self.validate_multiple_appointments_per_authorization_no("before_insert")
 
     def after_insert(self):
-        folio_counter = frappe.get_all(
+        folio_counter = frappe.db.get_all(
             "NHIF Folio Counter",
             filters={
                 "company": self.company,
@@ -899,21 +902,23 @@ def validate_hold_card_status(
 
 
 def get_item_refcode(item_code):
-    code_list = frappe.get_all(
+    code_list = frappe.db.get_all(
         "Item Customer Detail",
         filters={"parent": item_code, "customer_name": "NHIF"},
         fields=["ref_code"],
     )
     if len(code_list) == 0:
         frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+
     ref_code = code_list[0].ref_code
     if not ref_code:
         frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+    
     return ref_code
 
 
 def generate_pdf(doc):
-    file_list = frappe.get_all(
+    file_list = frappe.db.get_all(
         "File",
         filters={
             "attached_to_doctype": "NHIF Patient Claim",
@@ -928,9 +933,12 @@ def generate_pdf(doc):
 
     data_list = []
     data = doc.patient_encounters
+
     for i in data:
         data_list.append(i.name)
+
     doctype = dict({"Patient Encounter": data_list})
+
     print_format = ""
     default_print_format = frappe.db.get_cached_value(
         "Property Setter",
@@ -993,7 +1001,7 @@ def read_multi_pdf(output):
 
 
 def get_claim_pdf_file(doc):
-    file_list = frappe.get_all(
+    file_list = frappe.db.get_all(
         "File",
         filters={
             "attached_to_doctype": "NHIF Patient Claim",
@@ -1037,8 +1045,10 @@ def get_claim_pdf_file(doc):
         )
         ret.insert(ignore_permissions=True)
         ret.db_update()
+
         if not ret.name:
             frappe.throw("ret name not exist")
+            
         base64_data = to_base64(pdf)
         return base64_data
     else:
