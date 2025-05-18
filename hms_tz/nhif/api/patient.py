@@ -3,19 +3,18 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
-from frappe import _
-from erpnext import get_default_company
-import json
-import requests
-from time import sleep
-from frappe.utils import getdate, nowdate, flt, cstr
-from hms_tz.nhif.api.healthcare_utils import remove_special_characters
-from datetime import date
-from frappe.utils.background_jobs import enqueue
-from hms_tz.nhif.nhif_api.verification import get_card_details_by_card_no, get_card_details_by_national_id
 
+from datetime import date
+
+import frappe
+from erpnext import get_default_company
+from frappe import _
 from frappe.query_builder import DocType
+from frappe.utils import flt, getdate, nowdate
+from frappe.utils.background_jobs import enqueue
+
+from hms_tz.nhif.api.healthcare_utils import remove_special_characters
+from hms_tz.nhif.nhif_api.verification import get_card_details_by_card_no, get_card_details_by_national_id
 
 
 def validate(doc, method):
@@ -44,9 +43,7 @@ def validate(doc, method):
 @frappe.whitelist()
 def validate_mobile_number(doc_name, mobile=None):
     if mobile:
-        mobile_patients_list = frappe.get_all(
-            "Patient", filters={"mobile": mobile, "name": ["!=", doc_name]}
-        )
+        mobile_patients_list = frappe.get_all("Patient", filters={"mobile": mobile, "name": ["!=", doc_name]})
         if len(mobile_patients_list) > 0:
             frappe.msgprint(_("This mobile number is used by another patient"))
 
@@ -57,22 +54,24 @@ def get_nhif_patient_info(
     national_id=None,
     ref_doctype=None,
     ref_docname=None,
-    check_patient_info_from_his=False
+    check_patient_info_from_his=False,
 ):
     if not card_no and not national_id:
         frappe.msgprint(_("Please provide either Card No or National ID"))
         return
-    
+
     # TODO: need to be fixed to support multiple company
     company = get_default_company()
     if not company:
         company = frappe.defaults.get_user_default("Company")
-    
+
     if not company:
         company = frappe.get_list(
-            "HMS TZ Settings", fields=["company"], filters={"enable_nhif_api": 1}
+            "HMS TZ Settings",
+            fields=["company"],
+            filters={"enable_nhif_api": 1},
         )[0].company
-    
+
     if not company:
         frappe.throw(_("No companies found to connect to NHIF"))
 
@@ -91,7 +90,7 @@ def get_nhif_patient_info(
             card_no,
             ref_doctype,
             ref_docname=ref_docname,
-            settings_doc=settings_doc
+            settings_doc=settings_doc,
         )
         return card_details
     elif national_id:
@@ -100,7 +99,7 @@ def get_nhif_patient_info(
             national_id,
             ref_doctype,
             ref_docname=ref_docname,
-            settings_doc=settings_doc
+            settings_doc=settings_doc,
         )
         return card_details
 
@@ -135,11 +134,11 @@ def update_patient_history(doc):
 def check_national_id(national_id, is_new=None, patient=None, caller=None):
     if not national_id:
         return False
-    
+
     filters = {"national_id": national_id}
     if not is_new and patient:
         filters["name"] = ["!=", patient]
-    
+
     patients = frappe.db.get_all("Patient", filters=filters)
     if len(patients):
         if caller:
@@ -155,11 +154,11 @@ def check_national_id(national_id, is_new=None, patient=None, caller=None):
 def check_card_number(card_no, is_new=None, patient=None, caller=None):
     if not card_no:
         return False
-    
+
     filters = {"insurance_card_detail": ["like", "%" + card_no + "%"]}
     if not is_new and patient:
         filters["name"] = ["!=", patient]
-    
+
     patients = frappe.db.get_all("Patient", filters=filters)
     if len(patients):
         if caller:
@@ -176,14 +175,12 @@ def create_subscription(doc):
         "Healthcare Insurance Coverage Plan",
         filters={"nhif_scheme_id": doc.scheme_id, "is_active": 1},
         fields=["name", "insurance_company"],
-    )    
+    )
 
     plan_row = plan[0] if len(plan) == 1 else None
     if not plan_row:
         frappe.msgprint(
-            _(
-                f"Failed to find matching plan for SchemeId: {doc.scheme_id}"
-            ),
+            _(f"Failed to find matching plan for SchemeId: {doc.scheme_id}"),
             alert=True,
         )
         return
@@ -196,7 +193,6 @@ def create_subscription(doc):
     sub_doc.national_id = doc.national_id
     sub_doc.hms_tz_scheme_id = doc.scheme_id
 
-    
     verifier_entry = get_card_verifier(doc)
 
     if verifier_entry:
@@ -207,9 +203,7 @@ def create_subscription(doc):
     sub_doc.save(ignore_permissions=True)
     sub_doc.submit()
     frappe.msgprint(
-        _(
-            f"<h3>AUTO</h3> Healthcare Insurance Subscription: {sub_doc.name} is created for {plan_row.name}"
-        )
+        _(f"<h3>AUTO</h3> Healthcare Insurance Subscription: {sub_doc.name} is created for {plan_row.name}")
     )
 
 
@@ -271,33 +265,22 @@ def get_card_verifier(doc, card_no=None, national_id=None):
     card_no = card_no or doc.card_no
     national_id = national_id or doc.national_id
 
-    if 'workers' in doc.nhif_employername.lower():
-        card_type_name = 'WCF'
+    if "workers" in doc.nhif_employername.lower():
+        card_type_name = "WCF"
+    elif "zanzibar" in doc.nhif_employername.lower() and card_no:
+        card_type_name = "ZHSF"
+    elif "zanzibar" in doc.nhif_employername.lower() and not card_no and national_id:
+        card_type_name = "ID"
+    elif "zanzibar" not in doc.nhif_employername.lower() and "workers" not in doc.nhif_employername.lower() and card_no:
+        card_type_name = "NHIF"
     elif (
-        'zanzibar' in doc.nhif_employername.lower()
-        and card_no
-    ):
-        card_type_name = 'ZHSF'
-    elif (
-        'zanzibar' in doc.nhif_employername.lower()
-        and not card_no
-        and national_id
-    ):
-        card_type_name = 'ID'
-    elif (
-        'zanzibar' not in doc.nhif_employername.lower()
-        and 'workers' not in doc.nhif_employername.lower()
-        and card_no
-    ):
-        card_type_name = 'NHIF'
-    elif (
-        'zanzibar' not in doc.nhif_employername.lower()
-        and 'workers' not in doc.nhif_employername.lower()
+        "zanzibar" not in doc.nhif_employername.lower()
+        and "workers" not in doc.nhif_employername.lower()
         and card_no
         and national_id
     ):
-        card_type_name = 'ID'
-    
+        card_type_name = "ID"
+
     hcv = DocType("Healthcare Card Verifier")
     hcvd = DocType("Healthcare Card Verifier Detail")
 
@@ -305,14 +288,8 @@ def get_card_verifier(doc, card_no=None, national_id=None):
         frappe.qb.from_(hcv)
         .inner_join(hcvd)
         .on(hcv.name == hcvd.parent)
-        .select(
-            hcv.verifier_id,
-            hcvd.card_type_id,
-            hcvd.card_type_name
-        )
-        .where(
-            hcvd.card_type_name.like(f"%{card_type_name}%")
-        )
+        .select(hcv.verifier_id, hcvd.card_type_id, hcvd.card_type_name)
+        .where(hcvd.card_type_name.like(f"%{card_type_name}%"))
     ).run(as_dict=True)
 
     if len(verifiers) == 0:

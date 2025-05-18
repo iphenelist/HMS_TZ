@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import nowdate, nowtime, get_fullname, cstr, flt
+from frappe.utils import cstr, flt, get_fullname, nowdate, nowtime
 
 
 class NHIFTrackingClaimChange(Document):
@@ -26,9 +26,7 @@ def track_changes_of_claim_items(claim_doc):
 
                 elif flt(item.amount_claimed) != flt(row.amount_claimed):
                     ref_docnames_list.append(cstr(row.ref_docname))
-                    create_nhif_track_record(
-                        item, claim, row.amount_claimed, "Amount Changed"
-                    )
+                    create_nhif_track_record(item, claim, row.amount_claimed, "Amount Changed")
 
     for row in claim.original_nhif_patient_claim_item:
         if cstr(row.ref_docname) not in ref_docnames_list:
@@ -46,7 +44,10 @@ def track_changes_of_claim_items(claim_doc):
             ]:
                 handle_lrpt_prescription_changes(row, claim, ref_docnames_list)
 
-            elif row.ref_doctype in ["Inpatient Consultancy", "Inpatient Occupancy"]:
+            elif row.ref_doctype in [
+                "Inpatient Consultancy",
+                "Inpatient Occupancy",
+            ]:
                 handle_inpatient_changes(row, claim, ref_docnames_list)
 
 
@@ -90,13 +91,9 @@ def create_nhif_track_record(
 
 
 def handle_drug_prescription_changes(item, claim_doc, ref_docnames_list):
-    def handle_drug_changes(
-        item, ref_docname, is_cancelled, child_encounter, claim_row_encounter
-    ):
+    def handle_drug_changes(item, ref_docname, is_cancelled, child_encounter, claim_row_encounter):
         if not is_cancelled and not child_encounter:
-            med_change_request = get_medication_change_request_reference(
-                item.item_name, claim_row_encounter
-            )
+            med_change_request = get_medication_change_request_reference(item.item_name, claim_row_encounter)
             if med_change_request:
                 create_nhif_track_record(
                     item,
@@ -149,7 +146,7 @@ def handle_drug_prescription_changes(item, claim_doc, ref_docnames_list):
                 item.ref_docname,
                 ["is_cancelled", "parent as encounter"],
             )
-        except TypeError as e:
+        except TypeError:
             pass
 
         handle_drug_changes(
@@ -172,7 +169,7 @@ def handle_drug_prescription_changes(item, claim_doc, ref_docnames_list):
                         ref_name,
                         ["is_cancelled", "parent as encounter"],
                     )
-                except TypeError as e:
+                except TypeError:
                     pass
 
                 handle_drug_changes(
@@ -221,7 +218,9 @@ def handle_lrpt_prescription_changes(item, claim_doc, ref_docnames_list):
 
     if "," not in item.ref_docname and item.ref_docname not in ref_docnames_list:
         is_cancelled, child_encounter = frappe.get_cached_value(
-            item.ref_doctype, item.ref_docname, ["is_cancelled", "parent as encounter"]
+            item.ref_doctype,
+            item.ref_docname,
+            ["is_cancelled", "parent as encounter"],
         )
         handle_lrpt_changes(item, item.ref_docname, is_cancelled, child_encounter)
         ref_docnames_list.append(item.ref_docname)
@@ -230,7 +229,9 @@ def handle_lrpt_prescription_changes(item, claim_doc, ref_docnames_list):
         for ref_name in item.ref_docname.split(","):
             if ref_name not in ref_docnames_list:
                 is_cancelled, child_encounter = frappe.get_cached_value(
-                    item.ref_doctype, ref_name, ["is_cancelled", "parent as encounter"]
+                    item.ref_doctype,
+                    ref_name,
+                    ["is_cancelled", "parent as encounter"],
                 )
                 handle_lrpt_changes(item, ref_name, is_cancelled, child_encounter)
                 ref_docnames_list.append(ref_name)
@@ -247,23 +248,17 @@ def handle_inpatient_changes(item, claim_doc, ref_docnames_list):
                 ref_name=ref_docname,
             )
         else:
-            create_nhif_track_record(
-                item, claim_doc, item.amount_claimed, "Item Removed"
-            )
+            create_nhif_track_record(item, claim_doc, item.amount_claimed, "Item Removed")
 
     if "," not in item.ref_docname and item.ref_docname not in ref_docnames_list:
-        is_confirmed = frappe.get_cached_value(
-            item.ref_doctype, item.ref_docname, ["is_confirmed"]
-        )
+        is_confirmed = frappe.get_cached_value(item.ref_doctype, item.ref_docname, ["is_confirmed"])
         handle_beds_cons_changes(item, item.ref_docname, is_confirmed)
         ref_docnames_list.append(item.ref_docname)
 
     elif "," in item.ref_docname:
         for ref_name in item.ref_docname.split(","):
             if ref_name not in ref_docnames_list:
-                is_confirmed = frappe.get_cached_value(
-                    item.ref_doctype, ref_name, ["is_confirmed"]
-                )
+                is_confirmed = frappe.get_cached_value(item.ref_doctype, ref_name, ["is_confirmed"])
                 handle_beds_cons_changes(item, ref_name, is_confirmed)
                 ref_docnames_list.append(ref_name)
 
@@ -314,9 +309,7 @@ def reconcile_original_nhif_patient_claim_items(claim_doc):
                     if d.approval_ref_no:
                         approval_ref_no = None
                         if item.approval_ref_no:
-                            approval_ref_no = (
-                                str(item.approval_ref_no) + "," + str(d.approval_ref_no)
-                            )
+                            approval_ref_no = str(item.approval_ref_no) + "," + str(d.approval_ref_no)
                         else:
                             approval_ref_no = d.approval_ref_no
 

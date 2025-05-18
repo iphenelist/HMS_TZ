@@ -1,16 +1,15 @@
 from __future__ import unicode_literals
+
+import json
+
 import frappe
 from frappe import _
-import json
 from frappe.query_builder import DocType
-from frappe.utils import date_diff, nowdate, get_fullname
-from hms_tz.nhif.api.healthcare_utils import update_dimensions
-from hms_tz.nhif.api.medical_record import (
-    create_medical_record,
-    update_medical_record,
-    delete_medical_record,
-)
+from frappe.utils import date_diff, get_fullname, nowdate
+
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
+from hms_tz.nhif.api.healthcare_utils import update_dimensions
+from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
 
 
 def validate(doc, method):
@@ -57,9 +56,7 @@ def update_dosage_details(item):
     """Update dosage details for Cash Patient only if dosage is not set"""
 
     if item.si_detail:
-        reference_dn = frappe.get_cached_value(
-            "Sales Invoice Item", item.si_detail, "reference_dn"
-        )
+        reference_dn = frappe.get_cached_value("Sales Invoice Item", item.si_detail, "reference_dn")
         if not reference_dn:
             return
 
@@ -72,10 +69,8 @@ def update_dosage_details(item):
                 "dosage_form: " + str(drug_doc.get("dosage_form") or ""),
                 "interval: " + str(drug_doc.get("interval") or ""),
                 "interval_uom: " + str(drug_doc.get("interval_uom") or ""),
-                "medical_code: "
-                + str(drug_doc.get("medical_code") or "No medical code"),
-                "Doctor's comment: "
-                + (drug_doc.get("comment") or "Take medication as per dosage."),
+                "medical_code: " + str(drug_doc.get("medical_code") or "No medical code"),
+                "Doctor's comment: " + (drug_doc.get("comment") or "Take medication as per dosage."),
             ]
         )
 
@@ -124,13 +119,12 @@ def set_prescribed(doc):
 
 
 def check_for_medication_category(item):
-    is_category_s_medication = frappe.get_cached_value(
-        "Medication", {"item": item.item_code}, "medication_category"
-    )
+    is_category_s_medication = frappe.get_cached_value("Medication", {"item": item.item_code}, "medication_category")
 
     if is_category_s_medication == "Category S Medication":
         frappe.msgprint(
-            f"Item: <b>{item.item_code}</b> is Category S Medication", alert=True
+            f"Item: <b>{item.item_code}</b> is Category S Medication",
+            alert=True,
         )
 
 
@@ -142,15 +136,11 @@ def validate_medication_class(doc, row):
         row (dict): Delivery Note Item
     """
 
-    validate_medication_class = frappe.get_cached_value(
-        "Company", doc.company, "validate_medication_class"
-    )
+    validate_medication_class = frappe.get_cached_value("Company", doc.company, "validate_medication_class")
     if int(validate_medication_class) == 0:
         return
 
-    medication_class = frappe.get_cached_value(
-        "Medication", {"item": row.item_code}, "medication_class"
-    )
+    medication_class = frappe.get_cached_value("Medication", {"item": row.item_code}, "medication_class")
     if not medication_class:
         return
 
@@ -193,14 +183,10 @@ def validate_medication_class(doc, row):
 def set_missing_values(doc):
     if doc.form_sales_invoice:
         if not doc.hms_tz_appointment_no or not doc.healthcare_practitioner:
-            si_reference_dn = frappe.get_cached_value(
-                "Sales Invoice Item", doc.items[0].si_detail, "reference_dn"
-            )
+            si_reference_dn = frappe.get_cached_value("Sales Invoice Item", doc.items[0].si_detail, "reference_dn")
 
             if si_reference_dn:
-                parent_encounter = frappe.get_cached_value(
-                    "Drug Prescription", si_reference_dn, "parent"
-                )
+                parent_encounter = frappe.get_cached_value("Drug Prescription", si_reference_dn, "parent")
                 doc.reference_name = parent_encounter
                 doc.reference_doctype = "Patient Encounter"
                 (
@@ -217,9 +203,7 @@ def set_missing_values(doc):
         and doc.reference_name
         and doc.reference_doctype == "Patient Encounter"
     ):
-        doc.patient = frappe.get_cached_value(
-            "Patient Encounter", doc.reference_name, "patient"
-        )
+        doc.patient = frappe.get_cached_value("Patient Encounter", doc.reference_name, "patient")
 
     if not doc.hms_tz_phone_no and doc.patient:
         doc.hms_tz_phone_no = frappe.get_cached_value("Patient", doc.patient, "mobile")
@@ -235,10 +219,7 @@ def before_submit(doc, method):
     for item in doc.items:
         if item.is_restricted and not item.approval_number:
             frappe.throw(
-                _(
-                    f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number."
-                )
-            )
+                _(f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number."))
 
         # 2023-07-13
         # stop this validation for now
@@ -307,14 +288,12 @@ def update_drug_prescription(doc):
                                     "hms_tz_is_out_of_stock": 1,
                                     "is_cancelled": 1,
                                 },
-                                update_modified=False
+                                update_modified=False,
                             )
 
         else:
             if doc.reference_doctype == "Patient Encounter":
-                patient_encounter_doc = frappe.get_cached_doc(
-                    doc.reference_doctype, doc.reference_name
-                )
+                patient_encounter_doc = frappe.get_cached_doc(doc.reference_doctype, doc.reference_name)
 
                 for dni in doc.items:
                     if dni.reference_doctype == "Drug Prescription":
@@ -331,9 +310,7 @@ def update_drug_prescription(doc):
                                 item.delivery_note = doc.name
                                 if item.quantity != dni.stock_qty:
                                     item.quantity = dni.stock_qty
-                                item.delivered_quantity = (
-                                    item.quantity - item.quantity_returned
-                                )
+                                item.delivered_quantity = item.quantity - item.quantity_returned
                                 item.db_update()
 
                                 hsrp = DocType("Healthcare Service Request Payment")
@@ -361,7 +338,6 @@ def update_drug_prescription(doc):
                                 drug_item.hms_tz_is_out_of_stock = 1
                                 drug_item.is_cancelled = 1
                                 drug_item.db_update()
-
 
                                 hsrp = DocType("Healthcare Service Request Payment")
                                 (
@@ -442,9 +418,7 @@ def check_out_of_stock_for_original_item(doc):
             doc.total_qty += new_item.qty
 
     doc.hms_tz_all_items_out_of_stock = 1
-    frappe.msgprint(
-        "<h4 class='font-weight-bold bg-warning text-center'>All Items are marked as Out of Stock</h4>"
-    )
+    frappe.msgprint("<h4 class='font-weight-bold bg-warning text-center'>All Items are marked as Out of Stock</h4>")
 
 
 @frappe.whitelist()
@@ -486,7 +460,14 @@ def convert_to_instock_item(name, row):
 
 
 def get_fields_to_clear():
-    return ["name", "owner", "creation", "modified", "modified_by", "docstatus"]
+    return [
+        "name",
+        "owner",
+        "creation",
+        "modified",
+        "modified_by",
+        "docstatus",
+    ]
 
 
 def on_cancel(doc, method=None):
@@ -499,11 +480,7 @@ def delete_medical_record(doc, method=None):
 
 # SHM Rock: 205
 def check_cash_drugs_from_encounter(doc):
-    if (
-        not doc.form_sales_invoice
-        and doc.reference_name
-        and doc.reference_doctype == "Patient Encounter"
-    ):
+    if not doc.form_sales_invoice and doc.reference_name and doc.reference_doctype == "Patient Encounter":
         encounter_doc = frappe.get_cached_doc(doc.reference_doctype, doc.reference_name)
         if encounter_doc.insurance_subscription:
             cash_drugs = [

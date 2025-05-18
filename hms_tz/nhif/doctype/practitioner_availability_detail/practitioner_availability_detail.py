@@ -3,10 +3,12 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
+import datetime as dt
+import json
+
 import frappe
 from frappe.model.document import Document
-import json
-import datetime as dt
 from frappe.utils import getdate
 
 

@@ -1,5 +1,5 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
 
 def execute():
     fields = {
@@ -15,15 +15,11 @@ def execute():
                 "fetch_if_empty": 1,
             },
             {
-                "label":"Invoiced",
-                "fieldname":"hms_tz_invoiced",
-                "fieldtype":"Check",
-                "insert_after":"healthcare_practitioner",
-            }
+                "label": "Invoiced",
+                "fieldname": "hms_tz_invoiced",
+                "fieldtype": "Check",
+                "insert_after": "healthcare_practitioner",
+            },
         ]
     }
     create_custom_fields(fields, update=True)
-
-
-
-    

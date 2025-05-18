@@ -2,6 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe.utils.dashboard import cache_source
 
@@ -33,20 +34,14 @@ def get(
     status = ["Open", "Scheduled", "Closed", "Cancelled"]
     for department in data:
         filters["department"] = department.name
-        department["total_appointments"] = frappe.db.count(
-            "Patient Appointment", filters=filters
-        )
+        department["total_appointments"] = frappe.db.count("Patient Appointment", filters=filters)
 
         for entry in status:
             filters["status"] = entry
-            department[frappe.scrub(entry)] = frappe.db.count(
-                "Patient Appointment", filters=filters
-            )
+            department[frappe.scrub(entry)] = frappe.db.count("Patient Appointment", filters=filters)
         filters.pop("status")
 
-    sorted_department_map = sorted(
-        data, key=lambda i: i["total_appointments"], reverse=True
-    )
+    sorted_department_map = sorted(data, key=lambda i: i["total_appointments"], reverse=True)
 
     if len(sorted_department_map) > 10:
         sorted_department_map = sorted_department_map[:10]

@@ -2,28 +2,32 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe import _
-from frappe.query_builder import DocType
 from frappe.model.document import Document
-from frappe.utils import nowdate, get_fullname
+from frappe.query_builder import DocType
+from frappe.utils import get_fullname, nowdate
+
 
 class HospitalRevenueEntry(Document):
-	pass
+    pass
 
 
 def create_revenue_entry(doc):
     """
-	Create Hospital Revenue Entry documents
+    Create Hospital Revenue Entry documents
 
-	Args:
-		doc: Source document
-	"""
+    Args:
+            doc: Source document
+    """
     entries = []
     if doc.doctype == "Patient Appointment":
         entries = get_entry_from_appointment(doc)
     elif doc.doctype == "Delivery Note":
         entries = get_entry_from_dn(doc)
-    elif doc.doctype in ["Lab Test", "Radiology Examination", "Clinical Procedure"]:
+    elif doc.doctype in [
+        "Lab Test",
+        "Radiology Examination",
+        "Clinical Procedure",
+    ]:
         entries = get_entry_from_lrp_docs(doc)
     elif doc.doctype == "Therapy Plan":
         entries = get_entry_from_plan(doc)
@@ -73,7 +77,6 @@ def get_entry_from_appointment(doc):
         "department": doc.department,
         "healthcare_service_unit": doc.service_unit,
         "healthcare_practitioner": doc.practitioner,
-
     }
     return entry_dict
 
@@ -87,25 +90,25 @@ def get_entry_from_lrp_docs(doc):
 
     Returns:
         list: List of entry dictionaries
-	"""
+    """
     entries = []
 
     if doc.get("insurance_subscription"):
         entries = get_entry_from_insurance_lrp(doc)
     else:
         entries = get_entry_from_cash_lrp(doc)
-    
+
     return entries
 
 
 def get_entry_from_insurance_lrp(doc):
     """
     Get entry from the LRP document
-    
+
     Args:
 
         doc: Source document
-    
+
     Returns:
         List: List of entry dictionaries
     """
@@ -133,16 +136,14 @@ def get_entry_from_insurance_lrp(doc):
             hsrp.service_type,
             hsrp.sales_invoice_number,
             hsrp.payment_type,
-            hsrp.department_hsu
+            hsrp.department_hsu,
         )
-        .where(
-            (hsrp.ref_docname == doc.hms_tz_ref_childname)
-        )
+        .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
     ).run(as_dict=True)
 
     if len(hsrp_items) == 0:
         return entries
-    
+
     for row in hsrp_items:
         entry_dict = {
             "patient": doc.patient,
@@ -173,24 +174,24 @@ def get_entry_from_insurance_lrp(doc):
             "ref_docname": row.get("ref_docname"),
             "lrpmt_doctype": doc.doctype,
             "lrpmt_docname": doc.name,
-            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
             "department": doc.get("department"),
             "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.practitioner,
         }
         entries.append(entry_dict)
-        
+
     return entries
 
 
 def get_entry_from_cash_lrp(doc):
     """
     Get entry from the LRP document
-    
+
     Args:
 
         doc: Source document
-    
+
     Returns:
         List: List of entry dictionaries
     """
@@ -211,11 +212,7 @@ def get_entry_from_cash_lrp(doc):
             sii.reference_dt,
             sii.parent.as_("sales_invoice_number"),
         )
-        .where(
-            (si.docstatus == 1)
-            & (si.patient == doc.patient)
-            & (sii.reference_dn == doc.hms_tz_ref_childname)
-        )
+        .where((si.docstatus == 1) & (si.patient == doc.patient) & (sii.reference_dn == doc.hms_tz_ref_childname))
     ).run(as_dict=True)
 
     if len(si_items) == 0:
@@ -232,7 +229,7 @@ def get_entry_from_cash_lrp(doc):
     elif doc.doctype == "Clinical Procedure":
         service_type = "Clinical Procedure Template"
         service_name = doc.procedure_template
-    
+
     for row in si_items:
         entry_dict = {
             "patient": doc.patient,
@@ -257,13 +254,17 @@ def get_entry_from_cash_lrp(doc):
             "sales_invoice": row.get("sales_invoice_number"),
             "ref_doctype": row.get("reference_dt"),
             "ref_docname": doc.hms_tz_ref_childname,
-            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
             "department": doc.get("department"),
-            "healthcare_service_unit": frappe.get_cached_value(row.get("reference_dt"), doc.hms_tz_ref_childname, "department_hsu"),
+            "healthcare_service_unit": frappe.get_cached_value(
+                row.get("reference_dt"),
+                doc.hms_tz_ref_childname,
+                "department_hsu",
+            ),
             "healthcare_practitioner": doc.practitioner,
         }
         entries.append(entry_dict)
-        
+
     return entries
 
 
@@ -319,12 +320,9 @@ def build_insurance_dni_entry(doc, insurance_items):
             hsrp.service_type,
             hsrp.sales_invoice_number,
             hsrp.payment_type,
-            hsrp.department_hsu
+            hsrp.department_hsu,
         )
-        .where(
-            (hsrp.ref_doctype == "Drug Prescription")
-            & (hsrp.ref_docname.isin(insurance_items))
-        )
+        .where((hsrp.ref_doctype == "Drug Prescription") & (hsrp.ref_docname.isin(insurance_items)))
     ).run(as_dict=True)
 
     if len(hsrp_items) == 0:
@@ -361,13 +359,13 @@ def build_insurance_dni_entry(doc, insurance_items):
             "lrpmt_doctype": row.get("lrpmt_doctype"),
             "lrpmt_docname": row.get("lrpmt_docname"),
             "dn_detail": row.get("dn_detail"),
-            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
             "department": doc.get("department"),
             "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.get("healthcare_practitioner"),
         }
         entries.append(entry_dict)
-    
+
     return entries
 
 
@@ -404,13 +402,13 @@ def build_cash_dni_entry(doc):
             "lrpmt_doctype": doc.doctype,
             "lrpmt_docname": doc.name,
             "dn_detail": item.name,
-            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
             "department": doc.get("department"),
             "healthcare_service_unit": doc.get("healthcare_service_unit"),
             "healthcare_practitioner": doc.get("healthcare_practitioner"),
         }
         entries.append(entry_dict)
-    
+
     return entries
 
 
@@ -476,10 +474,7 @@ def get_entry_from_insurance_plan(doc):
             hsrp.payment_type,
             hsrp.department_hsu,
         )
-        .where(
-            (hsrp.ref_docname.isin(refs))
-            & (tpd.parent == doc.name)
-        )
+        .where((hsrp.ref_docname.isin(refs)) & (tpd.parent == doc.name))
     ).run(as_dict=True)
 
     if len(hsrp_items) == 0:
@@ -516,7 +511,7 @@ def get_entry_from_insurance_plan(doc):
             "lrpmt_doctype": doc.doctype,
             "lrpmt_docname": doc.name,
             "dn_detail": row.get("dn_detail"),
-            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
             "department": doc.get("department"),
             "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": frappe.get_cached_value(doc.ref_doctype, doc.ref_docname, "practitioner"),
@@ -560,11 +555,7 @@ def get_entry_from_cash_plan(doc):
             sii.reference_dn,
             sii.parent.as_("sales_invoice_number"),
         )
-        .where(
-            (si.docstatus == 1)
-            & (si.patient == doc.patient)
-            & (sii.reference_dn.isin(refs))
-        )
+        .where((si.docstatus == 1) & (si.patient == doc.patient) & (sii.reference_dn.isin(refs)))
     ).run(as_dict=True)
 
     if len(si_items) == 0:
@@ -597,9 +588,13 @@ def get_entry_from_cash_plan(doc):
             "lrpmt_doctype": doc.doctype,
             "lrpmt_docname": doc.name,
             "dn_detail": "",
-            "lrpmt_status": "Draft" if doc.get("docstatus") == 0 else "Submitted",
+            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
             "department": doc.get("department"),
-            "healthcare_service_unit": frappe.get_cached_value(row.get("reference_dt"), row.get("reference_dn"), "department_hsu"),
+            "healthcare_service_unit": frappe.get_cached_value(
+                row.get("reference_dt"),
+                row.get("reference_dn"),
+                "department_hsu",
+            ),
             "healthcare_practitioner": frappe.get_cached_value(doc.ref_doctype, doc.ref_docname, "practitioner"),
         }
         entries.append(entry_dict)

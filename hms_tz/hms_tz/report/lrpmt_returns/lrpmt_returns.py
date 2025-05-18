@@ -78,7 +78,7 @@ def get_columns():
 
 
 def get_data(filters):
-    conditions_item_return, conditions_medication_return = set_conditions(filters)  
+    conditions_item_return, conditions_medication_return = set_conditions(filters)
     return frappe.db.sql(
         f"""
 		SELECT
@@ -87,7 +87,7 @@ def get_data(filters):
 			ir.reference_docname,
 			ir.reference_doctype,
 			ir.item_name as item_name,
-			pa.practitioner_name, 
+			pa.practitioner_name,
 			ir.quantity as quantity_prescribed,
 			0 as quantity_to_return,
 			ir.reason,
@@ -97,13 +97,13 @@ def get_data(filters):
 		INNER JOIN
 			`tabItem Return` ir ON lr.name = ir.parent
 		INNER JOIN
-			`tabPatient Encounter` pa ON pa.name = ir.encounter_no  
+			`tabPatient Encounter` pa ON pa.name = ir.encounter_no
 		WHERE
-			lr.docstatus = 1 
-			AND {conditions_item_return}   
-		
-		UNION  
-		
+			lr.docstatus = 1
+			AND {conditions_item_return}
+
+		UNION
+
 		SELECT
 			CAST(lr.modified AS DATE) AS modified,
 			mr.encounter_no,
@@ -115,7 +115,7 @@ def get_data(filters):
 			mr.quantity_to_return,
 			mr.reason,
 			mr.drug_condition
-		
+
 		FROM
 			`tabLRPMT Returns` lr
 		INNER JOIN
@@ -123,12 +123,13 @@ def get_data(filters):
 		INNER JOIN
 			`tabPatient Encounter` pa ON pa.name = mr.encounter_no
 		WHERE
-			lr.docstatus = 1 
-			AND {conditions_medication_return}    
+			lr.docstatus = 1
+			AND {conditions_medication_return}
 		""",
         filters,
         as_dict=True,
     )
+
 
 def set_conditions(filters):
     conditions_item_return = ""
@@ -138,19 +139,19 @@ def set_conditions(filters):
         conditions_item_return += " lr.modified  BETWEEN %(from_date)s AND %(to_date)s"
         conditions_medication_return += " lr.modified  BETWEEN %(from_date)s AND %(to_date)s"
     if filters.get("practitioner_name"):
-        conditions_item_return += " AND pa.practitioner_name =  %(practitioner_name)s"  
-        conditions_medication_return += " AND pa.practitioner_name =  %(practitioner_name)s"  
+        conditions_item_return += " AND pa.practitioner_name =  %(practitioner_name)s"
+        conditions_medication_return += " AND pa.practitioner_name =  %(practitioner_name)s"
     if filters.get("reference_doctype"):
-        conditions_item_return += " AND ir.reference_doctype =  %(reference_doctype)s"    
-        conditions_medication_return += " AND %(reference_doctype)s = 'Delivery Note'"  
+        conditions_item_return += " AND ir.reference_doctype =  %(reference_doctype)s"
+        conditions_medication_return += " AND %(reference_doctype)s = 'Delivery Note'"
     if filters.get("item"):
         conditions_item_return += " AND ir.item_name =  %(item)s"
         conditions_medication_return += " AND mr.drug_name =  %(item)s"
     if filters.get("reason"):
-        conditions_item_return += " AND ir.reason =  %(reason)s"   
-        conditions_medication_return += " AND mr.reason =  %(reason)s"   
+        conditions_item_return += " AND ir.reason =  %(reason)s"
+        conditions_medication_return += " AND mr.reason =  %(reason)s"
     if filters.get("item_condition"):
         # conditions_item_return += " AND ir.item_condition =  %(item_condition)s"
         conditions_medication_return += " AND mr.drug_condition =  %(item_condition)s"
 
-    return conditions_item_return, conditions_medication_return   
+    return conditions_item_return, conditions_medication_return

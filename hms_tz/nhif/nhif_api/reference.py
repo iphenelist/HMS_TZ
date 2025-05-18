@@ -1,9 +1,10 @@
 import json
+
 import frappe
 import requests
 from frappe.utils.background_jobs import enqueue
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 @frappe.whitelist()
@@ -22,12 +23,16 @@ def enqueue_get_diseases(company):
 @frappe.whitelist()
 def get_points_of_care(company=None, caller=None):
     if not company:
-        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
         company = settings[0].company
-    
+
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
@@ -35,7 +40,7 @@ def get_points_of_care(company=None, caller=None):
     url = f"{settings_doc.nhifservice_url}/api/Reference/GetPointsOfCare"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -49,7 +54,7 @@ def get_points_of_care(company=None, caller=None):
             status_code=r.status_code,
             company=settings_doc.name,
         )
-        
+
     else:
         data = json.loads(r.text)
         add_log(
@@ -64,21 +69,25 @@ def get_points_of_care(company=None, caller=None):
 
         for poc in data:
             try:
-                if frappe.db.exists("Healthcare Points of Care", poc.get("PointOfCareName"), cache=True):
+                if frappe.db.exists(
+                    "Healthcare Points of Care",
+                    poc.get("PointOfCareName"),
+                    cache=True,
+                ):
                     has_changed = False
                     hpc_doc = frappe.get_cached_doc("Healthcare Points of Care", poc.get("PointOfCareName"))
-                    
+
                     if hpc_doc.point_of_care_id != str(poc.get("PointOfCareID")):
                         has_changed = True
                         hpc_doc.point_of_care_id = poc.get("PointOfCareID")
-                    
+
                     if hpc_doc.point_of_care_code != str(poc.get("PointOfCareCode")):
                         has_changed = True
                         hpc_doc.point_of_care_code = poc.get("PointOfCareCode")
 
                     if has_changed:
                         hpc_doc.save(ignore_permissions=True)
-                
+
                 else:
                     hpc_doc = frappe.new_doc("Healthcare Points of Care")
                     hpc_doc.point_of_care_name = poc.get("PointOfCareName")
@@ -86,25 +95,30 @@ def get_points_of_care(company=None, caller=None):
                     hpc_doc.point_of_care_code = poc.get("PointOfCareCode")
                     hpc_doc.save(ignore_permissions=True)
                     hpc_doc.reload()
-            except:
+            except Exception:
                 traceback = frappe.get_traceback()
-                frappe.log_error(
-                    title="GetPointsOfCare",
-                    message=traceback
-                )
-        
-        if company and caller == 'Front End':
-            frappe.msgprint("successfully fetched Points of Care", alert=True, indicator="green")
+                frappe.log_error(title="GetPointsOfCare", message=traceback)
+
+        if company and caller == "Front End":
+            frappe.msgprint(
+                "successfully fetched Points of Care",
+                alert=True,
+                indicator="green",
+            )
 
 
-def  get_diseases(company=None):
+def get_diseases(company=None):
     if not company:
-        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
         company = settings[0].company
-    
+
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
@@ -112,7 +126,7 @@ def  get_diseases(company=None):
     url = f"{settings_doc.nhif_claim_url}/api/Reference/GetDiseases"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=180)
@@ -143,7 +157,7 @@ def  get_diseases(company=None):
 
         if len(data) == 0:
             return
-        
+
         medical_code_standards = [row["ICDVersionCode"] for row in data if row.get("ICDVersionCode")]
         medical_code_standards = list(set(medical_code_standards))
         for code in medical_code_standards:
@@ -152,48 +166,51 @@ def  get_diseases(company=None):
                 mcs_doc.medical_code = code
                 mcs_doc.save(ignore_permissions=True)
                 mcs_doc.reload()
-        
 
         for disease in data:
             if not disease.get("ICDVersionCode") or not disease.get("DiseaseCode"):
                 continue
 
             try:
-                if frappe.db.exists("Medical Code", {
+                if frappe.db.exists(
+                    "Medical Code",
+                    {
                         "code": disease.get("DiseaseCode"),
-                        "medical_code_standard": disease.get("ICDVersionCode")
-                    }, cache=True
+                        "medical_code_standard": disease.get("ICDVersionCode"),
+                    },
+                    cache=True,
                 ):
                     update_medical_code(disease)
                 else:
                     create_medical_code(disease)
-            except:
+            except Exception:
                 traceback = frappe.get_traceback()
                 frappe.log_error(
                     title=f"Disease: {disease.get('DiseaseCode')} {disease.get('ICDVersionCode')}",
-                    message=traceback
+                    message=traceback,
                 )
 
 
 def update_medical_code(disease):
     has_changed = False
-    medical_code_id = f"{disease.get('ICDVersionCode')} {disease.get('DiseaseCode')}" 
+    medical_code_id = f"{disease.get('ICDVersionCode')} {disease.get('DiseaseCode')}"
     mc_doc = frappe.get_cached_doc("Medical Code", medical_code_id)
 
     # if mc_doc.medical_code_standard != disease.get("ICDVersionCode"):
     #     has_changed = True
     #     mc_doc.medical_code_standard = disease.get("ICDVersionCode")
-    
+
     if mc_doc.description != disease.get("DiseaseName"):
         has_changed = True
         mc_doc.description = disease.get("DiseaseName")
-    
+
     if mc_doc.is_non_specific != disease.get("IsNonSpecific"):
         has_changed = True
         mc_doc.is_non_specific = disease.get("IsNonSpecific")
-    
+
     if has_changed:
         mc_doc.save(ignore_permissions=True)
+
 
 def create_medical_code(disease):
     mc_doc = frappe.new_doc("Medical Code")

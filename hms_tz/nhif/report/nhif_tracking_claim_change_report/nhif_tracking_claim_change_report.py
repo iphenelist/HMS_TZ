@@ -7,9 +7,7 @@ from frappe import _
 
 def execute(filters=None):
     parameters = get_conditions(filters)
-    items = frappe.get_all(
-        "NHIF Tracking Claim Change", filters=parameters, fields=["*"]
-    )
+    items = frappe.get_all("NHIF Tracking Claim Change", filters=parameters, fields=["*"])
     items_removed = 0
     amount_for_items_removed = 0
     items_amount_changed = 0
@@ -33,9 +31,7 @@ def execute(filters=None):
 
         elif item.status == "Amount Changed":
             items_amount_changed += 1
-            amount_for_items_amount_changed += (
-                item.previous_amount - item.current_amount
-            )
+            amount_for_items_amount_changed += item.previous_amount - item.current_amount
 
         elif item.status == "Item Replaced":
             items_replaced += 1
@@ -51,9 +47,7 @@ def execute(filters=None):
 
         item.update(
             {
-                "posting_datetime": str(item.posting_date)
-                + " "
-                + str(item.posting_time),
+                "posting_datetime": str(item.posting_date) + " " + str(item.posting_time),
             }
         )
         data.append(item)
@@ -100,13 +94,7 @@ def get_report_summary(
     items_cancelled,
     items_unconfirmed,
 ):
-    total_amount_count = (
-        items_removed
-        + items_amount_changed
-        + items_replaced
-        + items_cancelled
-        + items_unconfirmed
-    )
+    total_amount_count = items_removed + items_amount_changed + items_replaced + items_cancelled + items_unconfirmed
 
     return [
         {
@@ -216,7 +204,12 @@ def get_columns(filters):
             "fieldtype": "Data",
             "width": 150,
         },
-        {"fieldname": "quantity", "label": "Qty", "fieldtype": "Int", "width": 40},
+        {
+            "fieldname": "quantity",
+            "label": "Qty",
+            "fieldtype": "Int",
+            "width": 40,
+        },
         {
             "fieldname": "previous_amount",
             "label": "Previous Amount",
@@ -235,7 +228,12 @@ def get_columns(filters):
             "fieldtype": "Currency",
             "width": 110,
         },
-        {"fieldname": "status", "label": "Status", "fieldtype": "Data", "width": 130},
+        {
+            "fieldname": "status",
+            "label": "Status",
+            "fieldtype": "Data",
+            "width": 130,
+        },
         {
             "fieldname": "nhif_patient_claim",
             "label": "NHIF Patient Claim",

@@ -1,7 +1,9 @@
 import json
+
 import frappe
 import requests
 from frappe.utils import get_fullname
+
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -12,7 +14,7 @@ def create_referral(doc):
 
     if doc.referral_type == "Form 2C/2E":
         return create_service_referral(doc)
-    elif doc.referral_type == "Treatment": 
+    elif doc.referral_type == "Treatment":
         return create_treatment_referral(doc)
     else:
         frappe.throw("Invalid Referral Type")
@@ -42,7 +44,7 @@ def create_treatment_referral(doc):
     url = f"{settings_doc.nhifservice_url}/api/Referrals/CreateTreatmentReferral"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
@@ -56,7 +58,7 @@ def create_treatment_referral(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
     else:
@@ -70,16 +72,16 @@ def create_treatment_referral(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         # TODO: update response values to Healthcare Referral doc
-        
+
         doc.referral_submitted_by = get_fullname(frappe.session.user)
         doc.referral_no = data.get("referralNo")
         doc.referral_status = "Success"
         doc.save(ignore_permissions=True)
-        
+
         doc.reload()
 
         return True
@@ -89,19 +91,23 @@ def create_service_referral(doc):
     diseases = []
     services = []
     for disease in doc.diagnosis:
-        diseases.append({
-            "diseaseCode": get_disease_code(disease.disease_code),
-            "status": disease.status
-        })
-    
+        diseases.append(
+            {
+                "diseaseCode": get_disease_code(disease.disease_code),
+                "status": disease.status,
+            }
+        )
+
     for service in doc.services:
-          services.append({
-            "itemCode": service.item_code,
-            "itemQuantity": service.quantity,
-            "approvalRefNo": service.approval_ref_no,
-            "notes": service.notes
-        })
-          
+        services.append(
+            {
+                "itemCode": service.item_code,
+                "itemQuantity": service.quantity,
+                "approvalRefNo": service.approval_ref_no,
+                "notes": service.notes,
+            }
+        )
+
     payload = {
         "authorizationNo": doc.authorization_no,
         "firstName": doc.first_name,
@@ -128,7 +134,7 @@ def create_service_referral(doc):
     url = f"{settings_doc.nhifservice_url}/api/Referrals/CreateServiceReferral"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
@@ -142,7 +148,7 @@ def create_service_referral(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
     else:
@@ -156,16 +162,16 @@ def create_service_referral(doc):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         # TODO: update response values to Healthcare Referral doc
-        
+
         doc.referral_submitted_by = get_fullname(frappe.session.user)
         doc.referral_no = data.get("referralNo")
         doc.referral_status = "Success"
         doc.save(ignore_permissions=True)
-        
+
         doc.reload()
 
         return True
@@ -194,7 +200,7 @@ def update_referral(ref_doctype, ref_docname):
     url = f"{settings_doc.nhifservice_url}/api/Referrals/UpdateReferral"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
@@ -208,7 +214,7 @@ def update_referral(ref_doctype, ref_docname):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
     else:
@@ -222,11 +228,11 @@ def update_referral(ref_doctype, ref_docname):
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
-            ref_docname=doc.name
+            ref_docname=doc.name,
         )
 
         # TODO: update response values to Healthcare Referral doc
-        
+
         doc.referral_updated_by = get_fullname(frappe.session.user)
         doc.save(ignore_permissions=True)
         doc.reload()
@@ -235,7 +241,7 @@ def update_referral(ref_doctype, ref_docname):
 
 
 def get_disease_code(code):
-	# Convert the ICD code of CDC to NHIF
+    # Convert the ICD code of CDC to NHIF
     disease_code = None
     if code and len(code) > 3 and "." not in code:
         disease_code = code[:3] + "." + (code[3:4] or "0")
@@ -245,5 +251,5 @@ def get_disease_code(code):
         disease_code = code[:6]
     else:
         disease_code = code[:3]
-    
+
     return disease_code

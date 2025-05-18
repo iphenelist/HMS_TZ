@@ -1,17 +1,19 @@
-import json
-import frappe
 import base64
+import json
+
+import frappe
 import requests
-from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+
 from hms_tz.nhif.api.patient_appointment import update_insurance_subscription
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 
 
 def get_visit_types():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
 
     token = settings_doc.get_nhif_token()
@@ -19,7 +21,7 @@ def get_visit_types():
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetVisitTypes"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -48,15 +50,15 @@ def get_visit_types():
                     if appointment_type_doc.required_input != visit.get("RequiredInput"):
                         has_changed = True
                         appointment_type_doc.required_input = visit.get("RequiredInput")
-                        
+
                     if appointment_type_doc.visit_type_name_alias != visit.get("Alias"):
                         has_changed = True
                         appointment_type_doc.visit_type_name_alias = visit.get("Alias")
-                        
+
                     if appointment_type_doc.requires_remarks != visit.get("RequiresRemarks"):
                         has_changed = True
                         appointment_type_doc.requires_remarks = visit.get("RequiresRemarks")
-                        
+
                     if appointment_type_doc.requires_referral_no != visit.get("RequiresReferralNo"):
                         has_changed = True
                         appointment_type_doc.requires_referral_no = visit.get("RequiresReferralNo")
@@ -68,10 +70,10 @@ def get_visit_types():
                     if appointment_type_doc.description != visit.get("Description"):
                         has_changed = True
                         appointment_type_doc.description = visit.get("Description")
-                    
+
                     if has_changed:
                         appointment_type_doc.save(ignore_permissions=True)
-                
+
                 else:
                     appointment_type_doc = frappe.new_doc("Appointment Type")
                     appointment_type_doc.appointment_type = visit.get("VisitTypeName")
@@ -79,7 +81,7 @@ def get_visit_types():
                         appointment_type_doc.source = "External Referral"
                     else:
                         appointment_type_doc.source = "Direct"
-                    
+
                     appointment_type_doc.visit_type_id = visit.get("VisitTypeID")
                     appointment_type_doc.required_input = visit.get("RequiredInput")
                     appointment_type_doc.visit_type_name_alias = visit.get("Alias")
@@ -90,12 +92,9 @@ def get_visit_types():
                     appointment_type_doc.save(ignore_permissions=True)
                     frappe.db.commit()
 
-            except:
+            except Exception:
                 traceback = frappe.get_traceback()
-                frappe.log_error(
-                    title="GetVisitTypes",
-                    message=traceback
-                )
+                frappe.log_error(title="GetVisitTypes", message=traceback)
     else:
         add_log(
             request_type="GetVisitTypes",
@@ -112,7 +111,7 @@ def get_card_verifier():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
 
     token = settings_doc.get_nhif_token()
@@ -120,7 +119,7 @@ def get_card_verifier():
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetCardVerifiers"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -138,45 +137,52 @@ def get_card_verifier():
         )
         for record in data:
             try:
-                if frappe.db.exists("Healthcare Card Verifier", str(record.get("verifierName")), cache=True):
+                if frappe.db.exists(
+                    "Healthcare Card Verifier",
+                    str(record.get("verifierName")),
+                    cache=True,
+                ):
                     has_changed = False
                     hcv_doc = frappe.get_cached_doc("Healthcare Card Verifier", record.get("verifierName"))
-                    
+
                     if hcv_doc.verifier_id != record.get("verifierID"):
                         has_changed = True
                         hcv_doc.verifier_id = record.get("verifierID")
-                    
+
                     hcv_doc.card_types = []
-                    
+
                     for row in record.get("cardTypes"):
                         has_changed = True
-                        hcv_doc.append("card_types", {
-                            "card_type_id": row.get("cardTypeID"),
-                            "card_type_name": row.get("cardTypeName")
-                        })
-                    
+                        hcv_doc.append(
+                            "card_types",
+                            {
+                                "card_type_id": row.get("cardTypeID"),
+                                "card_type_name": row.get("cardTypeName"),
+                            },
+                        )
+
                     if has_changed:
                         hcv_doc.save(ignore_permissions=True)
-                
+
                 else:
                     hcv_doc = frappe.new_doc("Healthcare Card Verifier")
                     hcv_doc.verifier_name = record.get("verifierName")
                     hcv_doc.verifier_id = record.get("verifierID")
-                    
+
                     for row in record.get("cardTypes"):
-                        hcv_doc.append("card_types", {
-                            "card_type_id": row.get("cardTypeID"),
-                            "card_type_name": row.get("cardTypeName")
-                        })
-                    
+                        hcv_doc.append(
+                            "card_types",
+                            {
+                                "card_type_id": row.get("cardTypeID"),
+                                "card_type_name": row.get("cardTypeName"),
+                            },
+                        )
+
                     hcv_doc.save(ignore_permissions=True)
                     hcv_doc.reload()
-            except:
+            except Exception:
                 traceback = frappe.get_traceback()
-                frappe.log_error(
-                    title="CardVerifiers",
-                    message=traceback
-                )
+                frappe.log_error(title="CardVerifiers", message=traceback)
     else:
         add_log(
             request_type="GetCardVerifiers",
@@ -199,7 +205,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetCardDetails?cardNo={card_no}"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
     r = requests.request("Get", url, headers=headers, timeout=60)
 
@@ -215,7 +221,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
         member_picture = get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc)
         data["MemberPicture"] = member_picture
@@ -231,15 +237,15 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
         data = json.loads(r.text)
         frappe.msgprint(
             title="NHIF API Error",
             msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('reasonPhrase')}<b>",
-            indicator="red"
+            indicator="red",
         )
-        return 'Error'
+        return "Error"
 
 
 @frappe.whitelist()
@@ -252,7 +258,7 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetardDetailsByNIN?nationalID={national_id}"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
     r = requests.request("Get", url, headers=headers, timeout=60)
 
@@ -268,7 +274,7 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=national_id
+            card_no=national_id,
         )
         member_picture = get_member_picture(company, data.get("CardNo"), ref_doctype, ref_docname, settings_doc)
         data["MemberPicture"] = member_picture
@@ -284,19 +290,19 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=national_id
+            card_no=national_id,
         )
         response = ""
         if r.text:
             data = json.loads(r.text)
-            response = data.get('message')
+            response = data.get("message")
 
         frappe.msgprint(
             title="NHIF API Error",
             msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>Response: <b>{response}<b>",
-            indicator="red"
+            indicator="red",
         )
-        return 'Error'
+        return "Error"
 
 
 @frappe.whitelist()
@@ -309,7 +315,7 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetMemberPicture?CardNo={card_no}"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
     r = requests.request("Get", url, headers=headers, timeout=60)
 
@@ -324,23 +330,23 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
 
         mime_type = None
         base64_image = r.text
         decoded_data = base64.b64decode(base64_image)
-    
-        if decoded_data.startswith(b'\xFF\xD8\xFF'):
+
+        if decoded_data.startswith(b"\xFF\xD8\xFF"):
             mime_type = "image/jpeg"  # JPEG
-        elif decoded_data.startswith(b'\x89PNG\r\n\x1a\n'):
-            mime_type = "image/png"   # PNG
-        elif decoded_data.startswith(b'GIF87a') or decoded_data.startswith(b'GIF89a'):
-            mime_type = "image/gif"   # GIF
-        elif decoded_data.startswith(b'RIFF') and decoded_data[8:12] == b'WEBP':
+        elif decoded_data.startswith(b"\x89PNG\r\n\x1a\n"):
+            mime_type = "image/png"  # PNG
+        elif decoded_data.startswith(b"GIF87a") or decoded_data.startswith(b"GIF89a"):
+            mime_type = "image/gif"  # GIF
+        elif decoded_data.startswith(b"RIFF") and decoded_data[8:12] == b"WEBP":
             mime_type = "image/webp"  # WEBP
-        elif decoded_data.startswith(b'\x42\x4D'):
-            mime_type = "image/bmp"   # BMP
+        elif decoded_data.startswith(b"\x42\x4D"):
+            mime_type = "image/bmp"  # BMP
         else:
             mime_type = "application/octet-stream"
 
@@ -357,7 +363,7 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
         return None
 
@@ -370,16 +376,16 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("Please Enable NHIF API to proceed..")
         return
-    
+
     if not card_no:
         return
-    
+
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetPatientDetails?CardNo={card_no}"
 
     token = settings_doc.get_nhif_token()
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -395,7 +401,7 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
 
         return data
@@ -410,7 +416,7 @@ def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
         return None
 
@@ -429,78 +435,77 @@ def authorize_patient(
     referral_no="",
     remarks="",
     settings_doc=None,
-    ref_doctype='Patient Appointment',
-    ref_docname=None
+    ref_doctype="Patient Appointment",
+    ref_docname=None,
 ):
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
-    
+
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("Please Enable NHIF API to proceed..")
         return
 
     if not card_no and not national_id:
-        frappe.msgprint(f"Please set Card No or National ID in Healthcare Insurance Subscription {insurance_subscription}")
+        frappe.msgprint(
+            f"Please set Card No or National ID in Healthcare Insurance Subscription {insurance_subscription}"
+        )
         return
-    
+
     fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-    image_data = base64.b64encode(fingerprint_data.encode('utf-8')).decode('utf-8')
-    
+    image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+
     visit_type_id = frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")
 
     url = ""
     payload = {}
     request_type = ""
     card_type_info = frappe.get_cached_value(
-        "Healthcare Insurance Subscription", insurance_subscription,
-        ['verifier_id', 'card_type_id', 'card_type_name'],
-        as_dict=True
+        "Healthcare Insurance Subscription",
+        insurance_subscription,
+        ["verifier_id", "card_type_id", "card_type_name"],
+        as_dict=True,
     )
-    
-    if (
-        card_type_info and (
-            not card_type_info.verifier_id or
-            card_type_info.verifier_id == 'NHIF'
-        )
-    ):
-        request_type = 'AuthorizeCard'
-        url = f"{settings_doc.nhifservice_url}/api/Verification/AuthorizeCard"
-        payload.update({
-            "cardNo": card_no,
-            "biometricMethod": biometric_method,
-            "nationalID": national_id,
-            "fpCode": fpcode,
-            "imageData": image_data,
-            "visitTypeID": visit_type_id,
-            "referralNo": referral_no,
-            "remarks": remarks
-        })
 
-    elif (
-        card_type_info and
-        card_type_info.verifier_id in ('WCF', 'ZHSF')
-    ):
-        request_type = 'VerifyCard'
+    if card_type_info and (not card_type_info.verifier_id or card_type_info.verifier_id == "NHIF"):
+        request_type = "AuthorizeCard"
+        url = f"{settings_doc.nhifservice_url}/api/Verification/AuthorizeCard"
+        payload.update(
+            {
+                "cardNo": card_no,
+                "biometricMethod": biometric_method,
+                "nationalID": national_id,
+                "fpCode": fpcode,
+                "imageData": image_data,
+                "visitTypeID": visit_type_id,
+                "referralNo": referral_no,
+                "remarks": remarks,
+            }
+        )
+
+    elif card_type_info and card_type_info.verifier_id in ("WCF", "ZHSF"):
+        request_type = "VerifyCard"
         url = f"{settings_doc.nhifservice_url}/api/Verification/VerifyCard"
-        payload.update({
-            "cardNo": card_no,
-            "verifierID": card_type_info.verifier_id,
-            "cardTypeID": card_type_info.card_type_id,
-            "biometricMethod": biometric_method,
-            "fpCode": fpcode,
-            "imageData": image_data,
-            "visitTypeID": visit_type_id,
-            "referralNo": referral_no,
-            "remarks": remarks
-        })
+        payload.update(
+            {
+                "cardNo": card_no,
+                "verifierID": card_type_info.verifier_id,
+                "cardTypeID": card_type_info.card_type_id,
+                "biometricMethod": biometric_method,
+                "fpCode": fpcode,
+                "imageData": image_data,
+                "visitTypeID": visit_type_id,
+                "referralNo": referral_no,
+                "remarks": remarks,
+            }
+        )
 
     payload = json.dumps(payload)
-    
+
     token = settings_doc.get_nhif_token()
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, headers=headers, data=payload, timeout=60)
@@ -516,12 +521,15 @@ def authorize_patient(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no or national_id
+            card_no=card_no or national_id,
         )
 
         if auth_data.get("AuthorizationStatus") != "ACCEPTED":
-            frappe.throw(title=auth_data.get("AuthorizationStatus"), msg=auth_data["Remarks"])
-        
+            frappe.throw(
+                title=auth_data.get("AuthorizationStatus"),
+                msg=auth_data["Remarks"],
+            )
+
         frappe.msgprint(auth_data["Remarks"], alert=True)
         add_scheme(auth_data.get("SchemeID"), auth_data.get("SchemeName"))
         update_insurance_subscription(insurance_subscription, auth_data)
@@ -532,7 +540,7 @@ def authorize_patient(
             company,
             settings_doc,
             ref_doctype,
-            ref_docname
+            ref_docname,
         )
 
         if auth_detail:
@@ -550,7 +558,7 @@ def authorize_patient(
             authorization_no=auth_data.get("AuthorizationNo"),
             settings_doc=settings_doc,
             ref_doctype=ref_doctype,
-            ref_docname=ref_docname
+            ref_docname=ref_docname,
         )
         if reference_data:
             auth_data.update(reference_data)
@@ -568,14 +576,14 @@ def authorize_patient(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no or national_id
+            card_no=card_no or national_id,
         )
         frappe.msgprint(
             title="NHIF API Error",
             msg=f"Failed to AuthorizePatient<br><br>Status Code: {r.status_code}<br>Response: <b>{auth_data.get('errors') or auth_data.get('message')}<b>",
-            indicator="red"
+            indicator="red",
         )
-        return 'Error'
+        return "Error"
 
 
 @frappe.whitelist()
@@ -591,26 +599,35 @@ def get_poc_reference_no(
     authorization_no=None,
     settings_doc=None,
     ref_doctype=None,
-    ref_docname=None
+    ref_docname=None,
 ):
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
-    
-    point_of_care_id = frappe.get_cached_value("Healthcare Points of Care", {'name': ['like', point_of_care]}, "point_of_care_id")
-    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, 'tz_mct_code')
 
-    appointment_info=None
+    point_of_care_id = frappe.get_cached_value(
+        "Healthcare Points of Care",
+        {"name": ["like", point_of_care]},
+        "point_of_care_id",
+    )
+    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+
+    appointment_info = None
     if appointment_id:
         appointment_info = frappe.get_cached_value(
-            "Patient Appointment", appointment_id, 
-            ["authorization_number", "coverage_plan_card_number", "national_id"],
-            as_dict=True
+            "Patient Appointment",
+            appointment_id,
+            [
+                "authorization_number",
+                "coverage_plan_card_number",
+                "national_id",
+            ],
+            as_dict=True,
         )
 
     image_data = None
     if ref_doctype != "Patient Appointment":
         fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-        image_data = base64.b64encode(fingerprint_data.encode('utf-8')).decode('utf-8')
+        image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
     else:
         image_data = fingerprint
 
@@ -620,7 +637,7 @@ def get_poc_reference_no(
         "practitionerNo": practitioner_no,
         "biometricMethod": biometric_method,
         "fpCode": fpcode,
-        "imageData": image_data
+        "imageData": image_data,
     }
 
     payload = json.dumps(payload)
@@ -630,7 +647,7 @@ def get_poc_reference_no(
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, headers=headers, data=payload, timeout=60)
@@ -646,7 +663,7 @@ def get_poc_reference_no(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
+            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id,
         )
         return data
     else:
@@ -661,7 +678,7 @@ def get_poc_reference_no(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id
+            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id,
         )
         frappe.msgprint(
             title="NHIF API Error",
@@ -676,19 +693,19 @@ def get_authorization_details(
     card_no,
     company,
     settings_doc=None,
-    ref_doctype='Patient Appointment',
-    ref_docname=None
+    ref_doctype="Patient Appointment",
+    ref_docname=None,
 ):
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
-    
+
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetAuthorizationDetails?authorizationNo={authorization_no}"
 
     token = settings_doc.get_nhif_token()
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -703,7 +720,7 @@ def get_authorization_details(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
         return {}
     else:
@@ -718,8 +735,6 @@ def get_authorization_details(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no
+            card_no=card_no,
         )
-        return {
-            "ServiceYear": data.get("ServiceYear")
-        }
+        return {"ServiceYear": data.get("ServiceYear")}

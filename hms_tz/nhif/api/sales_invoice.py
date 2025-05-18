@@ -3,15 +3,17 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
+
 from hms_tz.nhif.api.healthcare_utils import (
-    update_dimensions,
     create_individual_lab_test,
-    create_individual_radiology_examination,
     create_individual_procedure_prescription,
-    create_therapy_plan
+    create_individual_radiology_examination,
+    create_therapy_plan,
+    update_dimensions,
 )
 from hms_tz.nhif.api.sales_order import validate_stock_item
 
@@ -20,7 +22,11 @@ def validate(doc, method):
     for item in doc.items:
         if not item.is_free_item and item.amount == 0:
             frappe.throw(
-                _(f"Amount of the healthcare service <b>'{item.item_name}'</b> cannot be ZERO. Please do not select this item and request Pricing team to resolve this.")
+                _(
+                    f"Amount of the healthcare service <b>'{item.item_name}'</b> \
+                    cannot be ZERO. Please do not select this item and request \
+                    Pricing team to resolve this."
+                )
             )
 
         # do not validate stock for cash inpatient sales invoice
@@ -39,13 +45,9 @@ def validate_create_delivery_note(doc):
     if doc.enabled_auto_create_delivery_notes == 0:
         return
 
-    inpatient_record = frappe.get_cached_value(
-        "Patient", doc.patient, "inpatient_record"
-    )
+    inpatient_record = frappe.get_cached_value("Patient", doc.patient, "inpatient_record")
     if inpatient_record:
-        insurance_subscription = frappe.get_cached_value(
-            "Inpatient Record", inpatient_record, "insurance_subscription"
-        )
+        insurance_subscription = frappe.get_cached_value("Inpatient Record", inpatient_record, "insurance_subscription")
         if not insurance_subscription:
             doc.enabled_auto_create_delivery_notes = 0
 
@@ -59,18 +61,13 @@ def create_pending_healthcare_docs(doc_name):
 def before_submit(doc, method):
     if doc.is_pos and doc.outstanding_amount != 0:
         frappe.throw(
-            _(
-                "Sales invoice not paid in full.<BR><BR>Make sure that full paid amount is entered in <b>Mode of Payments table.</b>"
-            )
-        )
+            _("Sales invoice not paid in full.<BR><BR>Make sure that full paid amount is entered in <b>Mode of Payments table.</b>"))
 
     if doc.hms_tz_discount_requested == 1 and doc.hms_tz_discount_status == "Pending":
         frappe.throw(
-            _(
-                "Patient Discount Request is still pending. Please wait for approval before submitting this invoice."
-            )
+            _("Patient Discount Request is still pending. Please wait for approval before submitting this invoice.")
         )
-    
+
     # do not validate stock for cash inpatient sales invoice
     if doc.enabled_auto_create_delivery_notes == 1:
         for row in doc.items:
@@ -93,9 +90,7 @@ def on_submit(doc, method):
 def create_healthcare_docs(doc, method):
     if doc.docstatus != 1 or method not in ["on_submit", "From Front End"]:
         frappe.msgprint(
-            _(
-                f"No LRPMTs were created. Alert the IT Team!<b><br>DOCSTATUS = {doc.docstatus}<br>METHOD {method}</b>"
-            )
+            _(f"No LRPMTs were created. Alert the IT Team!<b><br>DOCSTATUS = {doc.docstatus}<br>METHOD {method}</b>")
         )
         return
 
@@ -104,7 +99,8 @@ def create_healthcare_docs(doc, method):
     if doc.get("items"):
         for item in doc.items:
             # check if item is from Service Request
-            # its service document will be created from Healthcare Service Request
+            # its service document will be created from Healthcare Service
+            # Request
             if item.service_request:
                 frappe.db.set_value(
                     "Healthcare Service Request Payment",
@@ -125,23 +121,18 @@ def create_healthcare_docs(doc, method):
                 child = frappe.get_cached_doc(item.reference_dt, item.reference_dn)
                 if child.is_cancelled == 1:
                     frappe.throw(
-                        f"Item: {frappe.bold(item.item_code)} RowNo#: {frappe.bold(item.idx)} is already cancelled,\
-                        Please confirm cancellation of this item on Patient Encounter and remove this item from sales invoice"
+                        f"Item: {frappe.bold(item.item_code)} RowNo#: {frappe.bold(item.idx)} \
+                        is already cancelled, Please confirm cancellation of this item on \
+                            Patient Encounter and remove this item from sales invoice"
                     )
 
-                patient_encounter_doc = frappe.get_cached_doc(
-                    "Patient Encounter", child.parent
-                )
+                patient_encounter_doc = frappe.get_cached_doc("Patient Encounter", child.parent)
                 if child.doctype == "Lab Prescription":
                     create_individual_lab_test(patient_encounter_doc, child)
                 elif child.doctype == "Radiology Procedure Prescription":
-                    create_individual_radiology_examination(
-                        patient_encounter_doc, child
-                    )
+                    create_individual_radiology_examination(patient_encounter_doc, child)
                 elif child.doctype == "Procedure Prescription":
-                    create_individual_procedure_prescription(
-                        patient_encounter_doc, child
-                    )
+                    create_individual_procedure_prescription(patient_encounter_doc, child)
                 child.invoiced = 1
                 child.sales_invoice_number = doc.name
                 child.save(ignore_permissions=True)
@@ -179,16 +170,13 @@ def create_healthcare_docs(doc, method):
                     hsrp.parent.as_("service_request_no"),
                 )
                 .distinct()
-                .where(
-                    hsrp.name.isin(service_request_ids)
-                )
+                .where(hsrp.name.isin(service_request_ids))
             ).run(as_dict=True)
-            
+
             if len(healthcare_service_parents) > 0:
                 for row in healthcare_service_parents:
                     hsr_doc = frappe.get_cached_doc("Healthcare Service Request", row.service_request_no)
                     hsr_doc.create_healthcare_service_docs()
-
 
     if method == "From Front End":
         frappe.db.commit()
@@ -197,17 +185,11 @@ def create_healthcare_docs(doc, method):
 def update_drug_prescription(doc):
     if doc.patient and doc.enabled_auto_create_delivery_notes:
         for item in doc.items:
-            if (
-                item.reference_dn
-                and item.reference_dt
-                and item.reference_dt == "Drug Prescription"
-            ):
-                dn_name = frappe.get_cached_value(
-                    "Delivery Note", {"form_sales_invoice": doc.name}, "name"
-                )
+            if item.reference_dn and item.reference_dt and item.reference_dt == "Drug Prescription":
+                dn_name = frappe.get_cached_value("Delivery Note", {"form_sales_invoice": doc.name}, "name")
                 if not dn_name:
                     return
-                
+
                 frappe.db.set_value(
                     "Drug Prescription",
                     item.reference_dn,
@@ -262,10 +244,7 @@ def reset_invoiced_status(doc):
                         "sales_invoice_number": "",
                     },
                 )
-                if (
-                    row.service_request and
-                    row.reference_dt != "Inpatient Occupancy"
-                ):
+                if row.service_request and row.reference_dt != "Inpatient Occupancy":
                     frappe.db.set_value(
                         "Healthcare Service Request Payment",
                         row.service_request,
@@ -285,10 +264,15 @@ def reset_invoiced_status(doc):
                     },
                 )
 
+
 @frappe.whitelist()
 def get_pos_profile(current_user):
-    pos = frappe.get_cached_value("POS Profile User", {"user": current_user},["parent"])
+    pos = frappe.get_cached_value("POS Profile User", {"user": current_user}, ["parent"])
     if pos:
-        modes = frappe.db.get_all("POS Payment Method",filters={"parent": pos},fields=["mode_of_payment"])
-        
+        modes = frappe.db.get_all(
+            "POS Payment Method",
+            filters={"parent": pos},
+            fields=["mode_of_payment"],
+        )
+
         return modes

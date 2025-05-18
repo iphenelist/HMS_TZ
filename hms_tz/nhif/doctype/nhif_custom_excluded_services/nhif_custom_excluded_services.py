@@ -3,29 +3,31 @@
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
 from frappe.model.document import Document
+from frappe.utils import now_datetime
+
 
 class NHIFCustomExcludedServices(Document):
-	def validate(self):
-		self.set_title()
-		self.set_missing_values()
-		
-	def set_title(self):
-		abbr_name = frappe.get_cached_value('Company', self.company, 'abbr')
-		self.title = _(f'{self.item} - {abbr_name}')
+    def validate(self):
+        self.set_title()
+        self.set_missing_values()
 
-	def set_missing_values(self):
-		if not self.time_stamp:
-			self.time_stamp = now_datetime()
-		self.itemcode = frappe.get_cached_value('Item Customer Detail', {'parent': self.item}, 'ref_code')
-		if not self.itemcode:
-			frappe.throw(
-				_(
-					f"refcode is not found on Item Customer Detail of Item doctype for item: {frappe.bold(self.item)}\
+    def set_title(self):
+        abbr_name = frappe.get_cached_value("Company", self.company, "abbr")
+        self.title = _(f"{self.item} - {abbr_name}")
+
+    def set_missing_values(self):
+        if not self.time_stamp:
+            self.time_stamp = now_datetime()
+        self.itemcode = frappe.get_cached_value("Item Customer Detail", {"parent": self.item}, "ref_code")
+        if not self.itemcode:
+            frappe.throw(
+                _(
+                    f"refcode is not found on Item Customer Detail of Item doctype for item: {frappe.bold(self.item)}\
 				    please set it to proceed"
-				)
+                )
             )
+
 
 @frappe.whitelist()
 def validate_item(company, item, name):

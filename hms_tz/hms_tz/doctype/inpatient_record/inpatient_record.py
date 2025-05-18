@@ -3,11 +3,14 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe, json
+
+import json
+
+import frappe
 from frappe import _
-from frappe.utils import today, now_datetime, getdate, get_datetime
-from frappe.model.document import Document
 from frappe.desk.reportview import get_match_cond
+from frappe.model.document import Document
+from frappe.utils import get_datetime, getdate, now_datetime, today
 
 
 class InpatientRecord(Document):
@@ -41,7 +44,11 @@ class InpatientRecord(Document):
                     "patient": self.patient,
                     "status": [
                         "in",
-                        ["Admitted", "Admission Scheduled", "Discharge Scheduled"],
+                        [
+                            "Admitted",
+                            "Admission Scheduled",
+                            "Discharge Scheduled",
+                        ],
                     ],
                     "name": ["!=", self.name],
                 },
@@ -53,21 +60,11 @@ class InpatientRecord(Document):
         if (getdate(self.expected_discharge) < getdate(self.scheduled_date)) or (
             getdate(self.discharge_ordered_date) < getdate(self.scheduled_date)
         ):
-            frappe.throw(
-                _(
-                    "Expected and Discharge dates cannot be less than Admission Schedule date"
-                )
-            )
+            frappe.throw(_("Expected and Discharge dates cannot be less than Admission Schedule date"))
 
         for entry in self.inpatient_occupancies:
-            if (
-                entry.check_in
-                and entry.check_out
-                and get_datetime(entry.check_in) > get_datetime(entry.check_out)
-            ):
-                frappe.throw(
-                    _(f"Row #{entry.idx}: Check Out datetime cannot be less than Check In datetime")
-                )
+            if entry.check_in and entry.check_out and get_datetime(entry.check_in) > get_datetime(entry.check_out):
+                frappe.throw(_(f"Row #{entry.idx}: Check Out datetime cannot be less than Check In datetime"))
 
     def validate_already_scheduled_or_admitted(self):
         query = """
@@ -109,11 +106,7 @@ class InpatientRecord(Document):
 @frappe.whitelist()
 def schedule_inpatient(args):
     admission_order = json.loads(args)  # admission order via Encounter
-    if (
-        not admission_order
-        or not admission_order["patient"]
-        or not admission_order["admission_encounter"]
-    ):
+    if not admission_order or not admission_order["patient"] or not admission_order["admission_encounter"]:
         frappe.throw(_("Missing required details, did not create Inpatient Record"))
 
     inpatient_record = frappe.new_doc("Inpatient Record")
@@ -134,9 +127,7 @@ def schedule_inpatient(args):
     inpatient_record.scheduled_date = today()
 
     # Set encounter detials
-    encounter = frappe.get_cached_doc(
-        "Patient Encounter", admission_order["admission_encounter"]
-    )
+    encounter = frappe.get_cached_doc("Patient Encounter", admission_order["admission_encounter"])
     if encounter and encounter.symptoms:  # Symptoms
         set_ip_child_records(inpatient_record, "chief_complaint", encounter.symptoms)
 
@@ -144,18 +135,20 @@ def schedule_inpatient(args):
         set_ip_child_records(inpatient_record, "diagnosis", encounter.diagnosis)
 
     if encounter and encounter.drug_prescription:  # Medication
-        set_ip_child_records(
-            inpatient_record, "drug_prescription", encounter.drug_prescription
-        )
+        set_ip_child_records(inpatient_record, "drug_prescription", encounter.drug_prescription)
 
     if encounter and encounter.lab_test_prescription:  # Lab Tests
         set_ip_child_records(
-            inpatient_record, "lab_test_prescription", encounter.lab_test_prescription
+            inpatient_record,
+            "lab_test_prescription",
+            encounter.lab_test_prescription,
         )
 
     if encounter and encounter.procedure_prescription:  # Procedure Prescription
         set_ip_child_records(
-            inpatient_record, "procedure_prescription", encounter.procedure_prescription
+            inpatient_record,
+            "procedure_prescription",
+            encounter.procedure_prescription,
         )
 
     if encounter and encounter.therapies:  # Therapies
@@ -171,13 +164,15 @@ def schedule_inpatient(args):
 
     if encounter and encounter.diet_recommendation:  # diet Prescription
         set_ip_child_records(
-            inpatient_record, "diet_recommendation", encounter.diet_recommendation
+            inpatient_record,
+            "diet_recommendation",
+            encounter.diet_recommendation,
         )
 
     if encounter and encounter.source:  # Source
         inpatient_record.source = encounter.source
 
-    if encounter and encounter.referring_practitioner:  #  Referring Practitioner
+    if encounter and encounter.referring_practitioner:  # Referring Practitioner
         inpatient_record.referring_practitioner = encounter.referring_practitioner
 
     inpatient_record.status = "Admission Scheduled"
@@ -187,9 +182,7 @@ def schedule_inpatient(args):
 @frappe.whitelist()
 def schedule_discharge(args):
     discharge_order = json.loads(args)
-    inpatient_record_id = frappe.get_cached_value(
-        "Patient", discharge_order["patient"], "inpatient_record"
-    )
+    inpatient_record_id = frappe.get_cached_value("Patient", discharge_order["patient"], "inpatient_record")
     if inpatient_record_id:
         inpatient_record = frappe.get_cached_doc("Inpatient Record", inpatient_record_id)
         check_out_inpatient(inpatient_record)
@@ -229,9 +222,7 @@ def check_out_inpatient(inpatient_record):
             if inpatient_occupancy.left != 1:
                 inpatient_occupancy.left = True
                 inpatient_occupancy.check_out = now_datetime()
-                hsu = frappe.get_cached_doc(
-                    "Healthcare Service Unit", inpatient_occupancy.service_unit
-                )
+                hsu = frappe.get_cached_doc("Healthcare Service Unit", inpatient_occupancy.service_unit)
                 hsu.occupancy_status = "Vacant"
                 hsu.save(ignore_permissions=True)
 
@@ -262,38 +253,30 @@ def validate_invoiced_inpatient(inpatient_record):
     if inpatient_record.inpatient_occupancies:
         service_unit_names = False
         for inpatient_occupancy in inpatient_record.inpatient_occupancies:
-            if (
-                inpatient_occupancy.invoiced != 1
-                and inpatient_occupancy.is_confirmed == 1
-            ):
+            if inpatient_occupancy.invoiced != 1 and inpatient_occupancy.is_confirmed == 1:
                 if service_unit_names:
-                    service_unit_names += f"<br>Bed: {inpatient_occupancy.service_unit}   RowNo: {inpatient_occupancy.idx}"
+                    service_unit_names += (
+                        f"<br>Bed: {inpatient_occupancy.service_unit}   RowNo: {inpatient_occupancy.idx}"
+                    )
                 else:
                     service_unit_names = f"Bed: {inpatient_occupancy.service_unit}   RowNo: {inpatient_occupancy.idx}"
         if service_unit_names:
-            pending_invoices.append(
-                f"<b>Inpatient Occupancy:</b><br> {service_unit_names}"
-            )
+            pending_invoices.append(f"<b>Inpatient Occupancy:</b><br> {service_unit_names}")
 
     if inpatient_record.inpatient_consultancy:
         consultancies = None
         for cons in inpatient_record.inpatient_consultancy:
             if cons.hms_tz_invoiced != 1 and cons.is_confirmed == 1:
                 if consultancies:
-                    consultancies += (
-                        f"<br>ConsItem: {cons.consultation_item}   RowNo: {cons.idx}"
-                    )
+                    consultancies += f"<br>ConsItem: {cons.consultation_item}   RowNo: {cons.idx}"
                 else:
-                    consultancies = (
-                        f"ConsItem: {cons.consultation_item}   RowNo: {cons.idx}"
-                    )
+                    consultancies = f"ConsItem: {cons.consultation_item}   RowNo: {cons.idx}"
         if consultancies:
-            pending_invoices.append(
-                f"<br><br><b>Inpatient Consultancy:</b>  <br>{consultancies}"
-            )
+            pending_invoices.append(f"<br><br><b>Inpatient Consultancy:</b>  <br>{consultancies}")
 
     # docs = ["Patient Appointment", "Patient Encounter", "Lab Test", "Clinical Procedure"]
-    # Changed on 2021-03-30 07:20:09 by MPCTZ to include only Patient Appointment
+    # Changed on 2021-03-30 07:20:09 by MPCTZ to include only Patient
+    # Appointment
     docs = ["Patient Appointment"]
 
     for doc in docs:
@@ -303,9 +286,7 @@ def validate_invoiced_inpatient(inpatient_record):
 
     if pending_invoices:
         frappe.throw(
-            _(
-                f"<b>Can not mark Inpatient Record Discharged, there are Unbilled Invoices:</b><br> {', '.join(pending_invoices)}"
-            ),
+            _(f"<b>Can not mark Inpatient Record Discharged, there are Unbilled Invoices:</b><br> {', '.join(pending_invoices)}"),
             title=_("Unbilled Invoices"),
         )
 
@@ -344,11 +325,12 @@ def admit_patient(inpatient_record, service_unit, check_in, expected_discharge=N
     inpatient_record.set("inpatient_occupancies", [])
     transfer_patient(inpatient_record, service_unit, check_in)
 
+    frappe.db.set_value("Patient", inpatient_record.patient, "inpatient_status", "Admitted")
     frappe.db.set_value(
-        "Patient", inpatient_record.patient, "inpatient_status", "Admitted"
-    )
-    frappe.db.set_value(
-        "Patient", inpatient_record.patient, "inpatient_record", inpatient_record.name
+        "Patient",
+        inpatient_record.patient,
+        "inpatient_record",
+        inpatient_record.name,
     )
 
 
@@ -377,16 +359,11 @@ def add_bed_charge(inpatient_record, service_unit, check_in, check_out, left):
 def patient_leave_service_unit(inpatient_record, check_out, leave_from):
     if inpatient_record.inpatient_occupancies:
         for inpatient_occupancy in inpatient_record.inpatient_occupancies:
-            if (
-                inpatient_occupancy.left != 1
-                and inpatient_occupancy.service_unit == leave_from
-            ):
+            if inpatient_occupancy.left != 1 and inpatient_occupancy.service_unit == leave_from:
                 inpatient_occupancy.left = True
                 inpatient_occupancy.check_out = check_out
 
-                hsu = frappe.get_cached_doc(
-                    "Healthcare Service Unit", inpatient_occupancy.service_unit
-                )
+                hsu = frappe.get_cached_doc("Healthcare Service Unit", inpatient_occupancy.service_unit)
                 hsu.occupancy_status = "Vacant"
                 hsu.save(ignore_permissions=True)
     inpatient_record.save(ignore_permissions=True)
@@ -457,9 +434,7 @@ def validate_discharge(inpatient_record):
         "appointment": inpatient_record.patient_appointment,
         "inpatient_record": inpatient_record.name,
     }
-    encounter_list = frappe.get_all(
-        "Patient Encounter", filters=filters, fields=["name"], pluck="name"
-    )
+    encounter_list = frappe.get_all("Patient Encounter", filters=filters, fields=["name"], pluck="name")
 
     if encounter_list:
         procedure_msg = ""
@@ -478,17 +453,16 @@ def validate_discharge(inpatient_record):
         if procedure_docs:
             for procedure in procedure_docs:
                 procedure_msg = _(
-                    procedure_msg
-                    + f"Clinical Procedure: {frappe.bold(procedure['procedure_template'])} of {frappe.bold(procedure['name'])}\
-                        was not Submitted <br>"
-                )
+                    procedure_msg +
+                    f"Clinical Procedure: {frappe.bold(procedure['procedure_template'])} of {frappe.bold(procedure['name'])}\
+                        was not Submitted <br>")
             procedure_msg += "<h4 style='background-color: LightCoral;'>\
                 please contact relevent department to Submit/Cancel draft Clinical Procedure\
                 before Scheduling Discharge</h4><br>"
 
         msg_throw = lrpmt_msg + procedure_msg
         if msg_throw:
-            frappe.throw(title="Notification", msg=msg_throw)
+            frappe.throw(title="Notification"(msg=msg_throw))
 
         lab_msg = ""
         lab_docs = frappe.get_all(
@@ -528,10 +502,9 @@ def validate_discharge(inpatient_record):
         if radiology_docs:
             for radiology in radiology_docs:
                 radiology_msg = _(
-                    radiology_msg
-                    + f"Radiology Examination: {frappe.bold(radiology['radiology_examination_template'])} of {frappe.bold(radiology['name'])}\
-                        was not Submitted <br>"
-                    )
+                    radiology_msg +
+                    f"Radiology Examination: {frappe.bold(radiology['radiology_examination_template'])} of {frappe.bold(radiology['name'])}\
+                        was not Submitted <br>")
             radiology_msg += "<br><br>"
 
         drug_msg = ""
@@ -549,10 +522,7 @@ def validate_discharge(inpatient_record):
 
         if dn_name:
             for dn in dn_name:
-                drug_msg = _(
-                    drug_msg
-                    + f"Delivery Note: #{frappe.bold(dn.name)}, was not Submitted <br>"
-                    )
+                drug_msg = _(drug_msg + f"Delivery Note: #{frappe.bold(dn.name)}, was not Submitted <br>")
             drug_msg += "<br><br>"
 
         msg = lrpmt_msg + lab_msg + radiology_msg + procedure_msg + drug_msg

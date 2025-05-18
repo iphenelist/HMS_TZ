@@ -1,7 +1,9 @@
 import json
+
 import frappe
 import requests
 from frappe.utils.background_jobs import enqueue
+
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -18,14 +20,18 @@ def enqueue_get_facilities(company):
     frappe.msgprint("Fetch Facilities via backaground job", alert=True)
 
 
-def  get_facilities(company=None):
+def get_facilities(company=None):
     if not company:
-        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
         company = settings[0].company
-    
+
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
@@ -33,7 +39,7 @@ def  get_facilities(company=None):
     url = f"{settings_doc.nhif_claim_url}/api/Facilities/GetFacilities"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=180)
@@ -75,17 +81,18 @@ def  get_facilities(company=None):
                 else:
                     create_facility(facility)
 
-            except Exception as e:
+            except Exception:
                 traceback = frappe.get_traceback()
                 frappe.log_error(
                     title=f"Facility: {facility.get('FacilityName')}",
-                    message=traceback
+                    message=traceback,
                 )
+
 
 def update_facility(facility):
     has_changed = False
     hf_doc = frappe.get_cached_doc("Healthcare Facility", facility.get("FacilityName"))
-    
+
     if hf_doc.facility_name != facility.get("FacilityName"):
         has_changed = True
         hf_doc.facility_name = facility.get("FacilityName")
@@ -109,7 +116,7 @@ def update_facility(facility):
     if hf_doc.classification != facility.get("Classification"):
         has_changed = True
         hf_doc.classification = facility.get("Classification")
-    
+
     if hf_doc.classification_id != facility.get("ClassificationID"):
         has_changed = True
         hf_doc.classification_id = facility.get("ClassificationID")
@@ -141,11 +148,11 @@ def update_facility(facility):
     if hf_doc.certification_application_date != facility.get("CertificationApplicationDate"):
         has_changed = True
         hf_doc.certification_application_date = facility.get("CertificationApplicationDate")
-    
+
     if hf_doc.status != facility.get("Status"):
         has_changed = True
         hf_doc.status = facility.get("Status")
-    
+
     if hf_doc.has_eclaims != facility.get("HasEClaims"):
         has_changed = True
         hf_doc.has_eclaims = facility.get("HasEClaims")
@@ -153,7 +160,7 @@ def update_facility(facility):
     if hf_doc.send_amount_to_msd != facility.get("SendAmountToMSD"):
         has_changed = True
         hf_doc.send_amount_to_msd = facility.get("SendAmountToMSD")
-    
+
     if hf_doc.key_contact != facility.get("KeyContact"):
         has_changed = True
         hf_doc.key_contact = facility.get("KeyContact")
@@ -161,19 +168,19 @@ def update_facility(facility):
     if hf_doc.telephone_no != facility.get("TelephoneNo"):
         has_changed = True
         hf_doc.telephone_no = facility.get("TelephoneNo")
-    
+
     if hf_doc.email_address != facility.get("EmailAddress"):
         has_changed = True
         hf_doc.email_address = facility.get("EmailAddress")
-    
+
     if hf_doc.website != facility.get("Website"):
         has_changed = True
         hf_doc.website = facility.get("Website")
-    
+
     if hf_doc.fax != facility.get("Fax"):
         has_changed = True
         hf_doc.fax = facility.get("Fax")
-    
+
     if hf_doc.longitude != facility.get("Longitude"):
         has_changed = True
         hf_doc.longitude = facility.get("Longitude")
@@ -181,10 +188,11 @@ def update_facility(facility):
     if hf_doc.latitude != facility.get("Latitude"):
         has_changed = True
         hf_doc.latitude = facility.get("Latitude")
-    
+
     if has_changed:
         hf_doc.save(ignore_permissions=True)
         hf_doc.reload()
+
 
 def create_facility(record):
     hf_doc = frappe.new_doc("Healthcare Facility")

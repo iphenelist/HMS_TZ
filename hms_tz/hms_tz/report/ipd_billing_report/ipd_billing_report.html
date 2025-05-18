@@ -148,21 +148,21 @@
                         {% var categoryData = {}; %}
                         {% var total_amount = 0; %}
                         {% var sortedCategories = []; %}
-                        
+
                         {% for(var i = 0, l = data.length; i < l; i++) { %}
                             {% var category = data[i].category; %}
                             {% var amount = data[i].amount; %}
-                            
+
                             {% if (!categoryData[category]) { %}
                                 {% categoryData[category] = [] %}
-                                {% sortedCategories.push(category); %} 
+                                {% sortedCategories.push(category); %}
                             {% } %}
-                            
+
                             {% categoryData[category].push(data[i]); %}
                             {% total_amount += amount; %}
-                            
+
                         {% } %}
-                        
+
                         {% sortedCategories.sort(function(a, b) {
                             if (a === 'Consultations/Service Charges') return -1;
                             if (b === 'Consultations/Service Charges') return 1;
@@ -170,20 +170,20 @@
                             if (b === 'Services') return 1;
                             return 0;
                         }); %}
-                        
+
                         {% var count = 1; %}
                         {% for (var i = 0; i < sortedCategories.length; i++) { %}
                             {% var category = sortedCategories[i]; %}
-                                
+
                             <tr>
                                 <td colspan="7" style="text-align: center; font-size: 15px; padding-top: 20px; padding-bottom: 25px;">
                                     <strong>{%= (category === 'Services') ? 'Bed Charges' : category %}</strong>
                                 </td>
                             </tr>
-                            
+
                             {% for (var j = 0, k = categoryData[category].length; j < k; j++) { %}
                                 {% var item = categoryData[category][j]; %}
-                                
+
                                 <tr>
                                     <td style="text-align: center;">{{ count }}</td>
                                     <td style="text-align: left;">{{ item.date }}</td>
@@ -192,13 +192,13 @@
                                     <td style="text-align: right;">{{ item.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
                                     <td style="text-align: right;">{{ item.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
                                 </tr>
-                                
+
                                 {% count = count + 1; %}
                             {% } %}
                         {% } %}
                     </tbody>
                     <tfoot>
-                        
+
                     </tfoot>
                 </table>
             </td>

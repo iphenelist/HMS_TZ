@@ -2,157 +2,154 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import now_datetime
 from frappe.model.document import Document
-from hms_tz.nhif.nhif_api.referral import create_referral
+from frappe.utils import now_datetime
+
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode
+from hms_tz.nhif.nhif_api.referral import create_referral
 
 
 class HealthcareReferral(Document):
-	def before_insert(self):
-		self.get_clinical_notes()
+    def before_insert(self):
+        self.get_clinical_notes()
 
-	def before_save(self):
-		self.posting_date = now_datetime()
-		self.patient_type_code = "IN" if frappe.get_cached_value("Patient", self.patient, "inpatient_record") else "OUT"
+    def before_save(self):
+        self.posting_date = now_datetime()
+        self.patient_type_code = "IN" if frappe.get_cached_value("Patient", self.patient, "inpatient_record") else "OUT"
 
+    def before_submit(self):
+        self.validate_required_fields()
+        self.posting_date = now_datetime()
 
-	def before_submit(self):
-		self.validate_required_fields()
-		self.posting_date = now_datetime()
+        if "NHIF" in self.insurance_company:
+            create_referral(self)
 
-		if "NHIF" in self.insurance_company:
-			create_referral(self)
+    def validate_required_fields(self):
+        """Validate required fields"""
 
+        if not self.referrer_facility_code:
+            frappe.throw("Referrer Facility Code is required")
 
-	def validate_required_fields(self):
-		"""Validate required fields"""
-		
-		if not self.referrer_facility_code:
-			frappe.throw("Referrer Facility Code is required")
-		
-		if not self.practitioner_no:
-			frappe.throw("Practitioner No is required")
-		
-		if not self.patient:
-			frappe.throw("Patient is required")
-		
-		if not self.attendance_date:
-			frappe.throw("Attendance Date is required")
-		
-		if not self.reason_for_referral:
-			frappe.throw("Reason for Referral is required")
-		
-		if len(self.diagnosis) == 0:
-			frappe.throw("Diagnosis are required")
-		
-		if self.referral_type == "Form 2C/2E" and len(self.services) == 0:
-			frappe.throw("Services are required")
+        if not self.practitioner_no:
+            frappe.throw("Practitioner No is required")
 
+        if not self.patient:
+            frappe.throw("Patient is required")
 
-	def get_clinical_notes(self):
-		"""Get clinical notes from encounter"""
-		
-		if not self.encounter:
-			return
-		
-		clinical_notes = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail")
-		self.reason_for_referral = clinical_notes.replace('"', " ")
+        if not self.attendance_date:
+            frappe.throw("Attendance Date is required")
 
+        if not self.reason_for_referral:
+            frappe.throw("Reason for Referral is required")
 
-	@frappe.whitelist()
-	def get_diagnosis(self):
-		"""Get diagnosis from encounter"""
-		
-		if not self.encounter:
-			return
-		
-		diagnosis = []
-		unique_diagnosis = []
-		encounter_doc = frappe.get_cached_doc("Patient Encounter", self.encounter)
-		for d in encounter_doc.patient_encounter_final_diagnosis:
-			diagnosis.append({
-				"status": "Final",
-				"disease_code": d.code,
-				"description": d.description
-			})
-			unique_diagnosis.append(d.code)
-		
-		for d in encounter_doc.patient_encounter_preliminary_diagnosis:
-			if d.code not in unique_diagnosis:
-				diagnosis.append({
-					"status": "Provisional",
-					"disease_code": d.code,
-					"description": d.description
-				})
-				unique_diagnosis.append(d.code)
+        if len(self.diagnosis) == 0:
+            frappe.throw("Diagnosis are required")
 
-		return reversed(diagnosis)
+        if self.referral_type == "Form 2C/2E" and len(self.services) == 0:
+            frappe.throw("Services are required")
 
+    def get_clinical_notes(self):
+        """Get clinical notes from encounter"""
 
-	@frappe.whitelist()
-	def get_services(self):
-		"""Get services from encounter"""
-		
-		if not self.encounter:
-			return
-		
-		services = []
-		childs_map = get_childs_map()
-		encounter_doc = frappe.get_cached_doc("Patient Encounter", self.encounter)
+        if not self.encounter:
+            return
 
-		for child in childs_map:
-			if len(encounter_doc.get(child["table"])) == 0:
-				continue
-			
-			for row in encounter_doc.get(child["table"]):
-				if (
-					row.is_cancelled == 1 or
-					row.is_not_available_inhouse == 1
-				):
-					continue
+        clinical_notes = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail")
+        self.reason_for_referral = clinical_notes.replace('"', " ")
 
-				if self.insurance_company and row.prescribe == 1:
-					continue
+    @frappe.whitelist()
+    def get_diagnosis(self):
+        """Get diagnosis from encounter"""
 
-				ref_code = get_item_refcode(child["doctype"], row.get(child["item"]))
-				service = {
-					"service_type": child["doctype"],
-					"service_name": row.get(child["item"]),
-					"qty": row.get("quantity") or 1,
-					"item_code": ref_code,
-				}
-				services.append(service)
-		
-		return services
+        if not self.encounter:
+            return
+
+        diagnosis = []
+        unique_diagnosis = []
+        encounter_doc = frappe.get_cached_doc("Patient Encounter", self.encounter)
+        for d in encounter_doc.patient_encounter_final_diagnosis:
+            diagnosis.append(
+                {
+                    "status": "Final",
+                    "disease_code": d.code,
+                    "description": d.description,
+                }
+            )
+            unique_diagnosis.append(d.code)
+
+        for d in encounter_doc.patient_encounter_preliminary_diagnosis:
+            if d.code not in unique_diagnosis:
+                diagnosis.append(
+                    {
+                        "status": "Provisional",
+                        "disease_code": d.code,
+                        "description": d.description,
+                    }
+                )
+                unique_diagnosis.append(d.code)
+
+        return reversed(diagnosis)
+
+    @frappe.whitelist()
+    def get_services(self):
+        """Get services from encounter"""
+
+        if not self.encounter:
+            return
+
+        services = []
+        childs_map = get_childs_map()
+        encounter_doc = frappe.get_cached_doc("Patient Encounter", self.encounter)
+
+        for child in childs_map:
+            if len(encounter_doc.get(child["table"])) == 0:
+                continue
+
+            for row in encounter_doc.get(child["table"]):
+                if row.is_cancelled == 1 or row.is_not_available_inhouse == 1:
+                    continue
+
+                if self.insurance_company and row.prescribe == 1:
+                    continue
+
+                ref_code = get_item_refcode(child["doctype"], row.get(child["item"]))
+                service = {
+                    "service_type": child["doctype"],
+                    "service_name": row.get(child["item"]),
+                    "qty": row.get("quantity") or 1,
+                    "item_code": ref_code,
+                }
+                services.append(service)
+
+        return services
 
 
 def get_childs_map():
-	childs_map = [
-		{
-			"table": "lab_test_prescription",
-			"doctype": "Lab Test Template",
-			"item": "lab_test_code",
-		},
-		{
-			"table": "radiology_procedure_prescription",
-			"doctype": "Radiology Examination Template",
-			"item": "radiology_examination_template",
-		},
-		{
-			"table": "procedure_prescription",
-			"doctype": "Clinical Procedure Template",
-			"item": "procedure",
-		},
-		{
-			"table": "drug_prescription",
-			"doctype": "Medication",
-			"item": "drug_code",
-		},
-		{
-			"table": "therapies",
-			"doctype": "Therapy Type",
-			"item": "therapy_type",
-		},
-	]
-	return childs_map
+    childs_map = [
+        {
+            "table": "lab_test_prescription",
+            "doctype": "Lab Test Template",
+            "item": "lab_test_code",
+        },
+        {
+            "table": "radiology_procedure_prescription",
+            "doctype": "Radiology Examination Template",
+            "item": "radiology_examination_template",
+        },
+        {
+            "table": "procedure_prescription",
+            "doctype": "Clinical Procedure Template",
+            "item": "procedure",
+        },
+        {
+            "table": "drug_prescription",
+            "doctype": "Medication",
+            "item": "drug_code",
+        },
+        {
+            "table": "therapies",
+            "doctype": "Therapy Type",
+            "item": "therapy_type",
+        },
+    ]
+    return childs_map

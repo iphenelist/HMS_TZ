@@ -7,7 +7,6 @@ from frappe.query_builder import DocType
 from frappe.query_builder.functions import Count
 
 
-
 def execute(filters=None):
     if not filters:
         return
@@ -20,7 +19,11 @@ def execute(filters=None):
 
     data = sorted(
         records,
-        key=lambda x: (x["appointment_date"], x["patient"], x["authorization_number"]),
+        key=lambda x: (
+            x["appointment_date"],
+            x["patient"],
+            x["authorization_number"],
+        ),
     )
 
     return columns, data
@@ -34,7 +37,11 @@ def get_columns():
             "fieldtype": "Date",
         },
         {"fieldname": "patient", "label": _("Patient"), "fieldtype": "Data"},
-        {"fieldname": "patient_name", "label": _("Patient Name"), "fieldtype": "Data"},
+        {
+            "fieldname": "patient_name",
+            "label": _("Patient Name"),
+            "fieldtype": "Data",
+        },
         {
             "fieldname": "appointment_no",
             "label": _("AppointmentNo"),
@@ -50,7 +57,11 @@ def get_columns():
             "label": _("Appointment Status"),
             "fieldtype": "Data",
         },
-        {"fieldname": "encounter", "label": _("Last Encounter"), "fieldtype": "Data"},
+        {
+            "fieldname": "encounter",
+            "label": _("Last Encounter"),
+            "fieldtype": "Data",
+        },
         {
             "fieldname": "encounter_status",
             "label": _("Status of Last Encounter"),
@@ -126,9 +137,7 @@ def get_appointment_data(filters):
         .orderby(pa.appointment_date)
     )
     if filters.patient_type == "In-patient":
-        q = q.inner_join(ip).on(
-            (pa.name == ip.patient_appointment) & (ip.insurance_company.like("NHIF"))
-        )
+        q = q.inner_join(ip).on((pa.name == ip.patient_appointment) & (ip.insurance_company.like("NHIF")))
         q = q.select(
             ip.name.as_("inpatient_record"),
             ip.status.as_("inpatient_status"),
@@ -144,14 +153,10 @@ def get_appointment_data(filters):
             )
             .orderby(ip.scheduled_date)
         ).run(as_dict=True)
-        q = q.where(
-            (~pa.name.isin([d.patient_appointment for d in inpatient_appointmens]))
-        )
+        q = q.where((~pa.name.isin([d.patient_appointment for d in inpatient_appointmens])))
 
     if not filters.patient_type:
-        q = q.left_join(ip).on(
-            (pa.name == ip.patient_appointment) & (ip.insurance_company.like("NHIF"))
-        )
+        q = q.left_join(ip).on((pa.name == ip.patient_appointment) & (ip.insurance_company.like("NHIF")))
         q = q.select(
             ip.name.as_("inpatient_record"),
             ip.status.as_("inpatient_status"),
@@ -207,11 +212,7 @@ def get_encounter_data(filter, appointment_nos):
             pe.appointment,
             pe.name.as_("encounter"),
         )
-        .where(
-            (pe.appointment.isin(appointment_nos))
-            & (pe.company == filter.company)
-            & (pe.duplicated == 0)
-        )
+        .where((pe.appointment.isin(appointment_nos)) & (pe.company == filter.company) & (pe.duplicated == 0))
         .orderby(pe.encounter_date)
     )
     encounter_data = q.run(as_dict=True)
@@ -259,10 +260,7 @@ def get_data(filters):
     encounter_details = []
     for appointment in appointment_list:
         for encounter in patient_encounter_data:
-            if (
-                appointment.patient == encounter.patient
-                and appointment.appointment_no == encounter.appointment
-            ):
+            if appointment.patient == encounter.patient and appointment.appointment_no == encounter.appointment:
                 status = None
                 if encounter.docstatus == 0:
                     status = "Draft"

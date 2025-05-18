@@ -1,21 +1,15 @@
 # Copyright (c) 2021, Aakvatech and contributors
 # For license information, please see license.txt
 
-import json
-import frappe
 import itertools
-from frappe import bold, _
+import json
+
+import frappe
+from frappe import bold
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
-from frappe.utils import (
-    nowdate,
-    nowtime,
-    flt,
-    cint,
-    unique,
-    get_fullname,
-    get_url_to_form,
-)
+from frappe.utils import cint, flt, get_fullname, nowdate, nowtime, unique
+
 from hms_tz.nhif.api.healthcare_utils import validate_nhif_patient_claim_status
 from hms_tz.nhif.api.patient_encounter import validate_totals
 
@@ -26,18 +20,14 @@ class LRPMTReturns(Document):
         combine_therapy_info(self.therapy_items)
 
     def before_insert(self):
-        validate_nhif_patient_claim_status(
-            "LRPMT Return", self.company, self.appointment
-        )
+        validate_nhif_patient_claim_status("LRPMT Return", self.company, self.appointment)
         self.validate_duplicates()
 
     def before_submit(self):
         if not self.approved_by:
             self.approved_by = get_fullname()
 
-        validate_nhif_patient_claim_status(
-            "LRPMT Return", self.company, self.appointment
-        )
+        validate_nhif_patient_claim_status("LRPMT Return", self.company, self.appointment)
 
         self.validate_reason()
         self.validate_drug_row()
@@ -93,20 +83,14 @@ class LRPMTReturns(Document):
                 msg += msg_print + "<br>"
 
             if msg:
-                frappe.throw(
-                    title="Notification", msg=msg, exc="Frappe.ValidationError"
-                )
+                frappe.throw(title="Notification"(msg=msg).with_traceback(exc="Frappe.ValidationError"))
 
     def validate_duplicates(self):
         dt = frappe.qb.DocType("LRPMT Returns")
         lrpmts = (
             frappe.qb.from_(dt)
             .select(dt.name.as_("lrpmt_docname"))
-            .where(
-                (dt.docstatus == 0)
-                & (dt.name != self.name)
-                & (dt.appointment == self.appointment)
-            )
+            .where((dt.docstatus == 0) & (dt.name != self.name) & (dt.appointment == self.appointment))
         ).run(as_dict=True)
         if len(lrpmts) > 0:
             frappe.throw(
@@ -145,10 +129,7 @@ class LRPMTReturns(Document):
                     doc.save(ignore_permissions=True)
                     doc.reload()
 
-                    if (
-                        doc.workflow_state == "Not Serviced"
-                        or doc.workflow_state == "Submitted but Not Serviced"
-                    ):
+                    if doc.workflow_state == "Not Serviced" or doc.workflow_state == "Submitted but Not Serviced":
                         frappe.db.set_value(
                             prescription_lrp[item.reference_doctype],
                             item.child_name,
@@ -159,8 +140,7 @@ class LRPMTReturns(Document):
                     frappe.log_error(frappe.get_traceback(), str(self.doctype))
                     frappe.throw(
                         f"There was an error while cancelling the Item: {bold(item.item_name)} of ReferenceDoctype: {bold(item.reference_doctype)},\
-                             ReferenceName: {bold(item.reference_docname)},<br> Check error log for review"
-                    )
+                             ReferenceName: {bold(item.reference_docname)},<br> Check error log for review")
 
     def cancel_therapy_doc(self):
         if len(self.therapy_items) == 0:
@@ -178,9 +158,7 @@ class LRPMTReturns(Document):
                 or 0
             )
             is_cancelled = 0
-            total_sessions_cancelled = item.get("sessions_to_cancel") + item.get(
-                "sessions_cancelled"
-            )
+            total_sessions_cancelled = item.get("sessions_to_cancel") + item.get("sessions_cancelled")
             delivered_quantity = total_sessions_prescribed - total_sessions_cancelled
             if total_sessions_prescribed <= total_sessions_cancelled:
                 is_cancelled = 1
@@ -223,9 +201,7 @@ class LRPMTReturns(Document):
         unique_draft_delivery_notes = get_unique_delivery_notes(self, "Draft")
         if unique_draft_delivery_notes:
             for draft_delivery_note in unique_draft_delivery_notes:
-                update_drug_description_for_draft_delivery_note(
-                    self, draft_delivery_note
-                )
+                update_drug_description_for_draft_delivery_note(self, draft_delivery_note)
 
         unique_submitted_delivery_notes = get_unique_delivery_notes(self, "Submitted")
         if unique_submitted_delivery_notes:
@@ -258,9 +234,7 @@ class LRPMTReturns(Document):
             "docstatus": 1,
         }
 
-        returned_delivery_note_nos = frappe.get_all(
-            "Delivery Note", filters=conditions, fields=["name"], pluck="name"
-        )
+        returned_delivery_note_nos = frappe.get_all("Delivery Note", filters=conditions, fields=["name"], pluck="name")
 
         if returned_delivery_note_nos:
             for dn in returned_delivery_note_nos:
@@ -275,9 +249,7 @@ class LRPMTReturns(Document):
                                     "drug_name": item.item_code,
                                     "quantity_prescribed": dd_n.quantity_prescribed,
                                     "quantity_returned": item.qty - dd_n.qty_returned,
-                                    "quantity_serviced": flt(
-                                        dd_n.quantity_prescribed + item.qty - dd_n.qty_returned
-                                    ),
+                                    "quantity_serviced": flt(dd_n.quantity_prescribed + item.qty - dd_n.qty_returned),
                                     "delivery_note_no": dn,
                                     "dn_detail": item.name,
                                     "warehouse": item.warehouse,
@@ -289,7 +261,7 @@ class LRPMTReturns(Document):
             self.reload()
 
         return self.name
-    
+
     def update_totals(self):
         encounters = frappe.db.get_all(
             "Patient Encounter",
@@ -301,7 +273,7 @@ class LRPMTReturns(Document):
             lrp_rows = [item for item in self.lrpt_items if item.encounter_no != encounters[0].name]
             therapy_rows = [item for item in self.therapy_items if item.encounter_no != encounters[0].name]
             drug_rows = [item for item in self.drug_items if item.encounter_no != encounters[0].name]
-            
+
             ref_docs = [
                 {"Lab Test": "Lab Prescription"},
                 {"Radiology Examination": "Radiology Procedure Prescription"},
@@ -312,11 +284,25 @@ class LRPMTReturns(Document):
                 if d.reference_doctype:
                     for refd in ref_docs:
                         if refd.get(d.reference_doctype):
-                            cost_amount += frappe.get_cached_value(refd[d.reference_doctype], d.child_name, "amount") or 0
-            
+                            cost_amount += (
+                                frappe.get_cached_value(
+                                    refd[d.reference_doctype],
+                                    d.child_name,
+                                    "amount",
+                                )
+                                or 0
+                            )
+
             for row in therapy_rows:
-                cost_amount += frappe.get_cached_value("Therapy Plan Detail", row.encounter_child_table_id, "amount") or 0
-            
+                cost_amount += (
+                    frappe.get_cached_value(
+                        "Therapy Plan Detail",
+                        row.encounter_child_table_id,
+                        "amount",
+                    )
+                    or 0
+                )
+
             for item in drug_rows:
                 amount = frappe.get_cached_value("Drug Prescription", item.child_name, "amount")
                 cost_amount += (amount * (item.quantity_prescribed - item.quantity_to_return)) or 0
@@ -328,8 +314,6 @@ class LRPMTReturns(Document):
 
             encounter_doc.db_update_all()
             encounter_doc.reload()
-
-
 
 
 def combine_therapy_info(therapy_items):
@@ -380,18 +364,14 @@ def update_therapy_plan(
     plan_doc = frappe.get_cached_doc("Therapy Plan", row.get("therapy_plan"))
     try:
         for d in plan_doc.therapy_plan_details:
-            if d.name == row.get("plan_child_table_id") and d.therapy_type == row.get(
-                "therapy_type"
-            ):
+            if d.name == row.get("plan_child_table_id") and d.therapy_type == row.get("therapy_type"):
                 d.sessions_cancelled += row.get("sessions_to_cancel")
                 d.no_of_sessions -= row.get("sessions_to_cancel")
                 if session_docstatus == 1:
                     d.sessions_completed -= 1
 
         plan_doc.save(ignore_permissions=True)
-        plan_doc.add_comment(
-            text=f"LRPMT Returns: <a href='{self.get_url()}'>{bold(self.name)}</a> is submitted"
-        )
+        plan_doc.add_comment(text=f"LRPMT Returns: <a href='{self.get_url()}'>{bold(self.name)}</a> is submitted")
 
         frappe.db.set_value(
             "Therapy Plan Detail",
@@ -457,17 +437,14 @@ def update_therapy_session(
 
 def update_drug_prescription_for_uncreated_delivery_note(self):
     for item in self.drug_items:
-        if item.child_name and not (
-            item.dn_detail and item.delivery_note_no and item.status
-        ):
+        if item.child_name and not (item.dn_detail and item.delivery_note_no and item.status):
             frappe.db.set_value(
                 "Drug Prescription",
                 item.child_name,
                 {
                     "is_cancelled": 1,
                     "quantity_returned": item.quantity_to_return + item.qty_returned,
-                    "delivered_quantity": item.quantity_prescribed
-                    - (item.quantity_to_return + item.qty_returned),
+                    "delivered_quantity": item.quantity_prescribed - (item.quantity_to_return + item.qty_returned),
                 },
             )
 
@@ -487,8 +464,7 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
                         item.child_name,
                         {
                             "is_cancelled": 1,
-                            "quantity_returned": item.quantity_to_return
-                            + item.qty_returned,
+                            "quantity_returned": item.quantity_to_return + item.qty_returned,
                             "delivered_quantity": item.quantity_prescribed
                             - (item.quantity_to_return + item.qty_returned),
                         },
@@ -500,9 +476,7 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
             str(f"Apply workflow error for Delivery Note {bold(delivey_note)}"),
         )
         frappe.throw(
-            str(
-                f"Apply workflow error, for delivery note: {bold(delivey_note)}, check error log for more details"
-            )
+            str(f"Apply workflow error, for delivery note: {bold(delivey_note)}, check error log for more details")
         )
 
     frappe.db.commit()
@@ -518,8 +492,7 @@ def update_drug_prescription_for_submitted_delivery_note(item):
         item.child_name,
         {
             "quantity_returned": item.quantity_to_return + item.qty_returned,
-            "delivered_quantity": item.quantity_prescribed
-            - (item.quantity_to_return + item.qty_returned),
+            "delivered_quantity": item.quantity_prescribed - (item.quantity_to_return + item.qty_returned),
             "is_cancelled": item_cancelled,
         },
     )
@@ -574,10 +547,8 @@ def return_drug_quantity_to_stock(self, source_doc):
                             "warehouse": dni.warehouse,
                             "target_warehouse": dni.target_warehouse or "",
                             "dn_detail": dni.name,
-                            "healthcare_service_unit": dni.healthcare_service_unit
-                            or "",
-                            "healthcare_practitioner": dni.healthcare_practitioner
-                            or "",
+                            "healthcare_service_unit": dni.healthcare_service_unit or "",
+                            "healthcare_practitioner": dni.healthcare_practitioner or "",
                             "department": dni.department,
                             "cost_center": dni.cost_center,
                             "reference_doctype": dni.reference_doctype,
@@ -594,18 +565,13 @@ def transition_workflow_states(source_doc, target_doc):
     try:
         if target_doc.workflow_state != "Is Return":
             apply_workflow(target_doc, "Return")
-        if (
-            target_doc.workflow_state == "Is Return"
-            and source_doc.workflow_state != "Return Issued"
-        ):
+        if target_doc.workflow_state == "Is Return" and source_doc.workflow_state != "Return Issued":
             try:
                 apply_workflow(source_doc, "Issue Returns")
             except Exception:
                 frappe.log_error(
                     frappe.get_traceback(),
-                    str(
-                        f"Apply workflow error for Delivery Note {bold(source_doc.name)}"
-                    ),
+                    str(f"Apply workflow error for Delivery Note {bold(source_doc.name)}"),
                 )
     except Exception:
         frappe.log_error(
@@ -613,9 +579,7 @@ def transition_workflow_states(source_doc, target_doc):
             str(f"Apply workflow error for Delivery Note {bold(target_doc.name)}"),
         )
         frappe.throw(
-            str(
-                f"Apply workflow error, for delivery note: {bold(target_doc.name)}, check error log for more details"
-            )
+            str(f"Apply workflow error, for delivery note: {bold(target_doc.name)}, check error log for more details")
         )
 
 
@@ -646,7 +610,10 @@ def get_lrp_item_list(patient, appointment, company):
                 lab_status = "Submitted"
                 if not item.lab_test:
                     name = get_refdoc(
-                        "Lab Prescription", item.name, item.lab_test_code, item.parent
+                        "Lab Prescription",
+                        item.name,
+                        item.lab_test_code,
+                        item.parent,
                     )
                     if name:
                         lab_status = "Draft"
@@ -695,7 +662,10 @@ def get_lrp_item_list(patient, appointment, company):
                 procedure_status = "Submitted"
                 if not item.clinical_procedure:
                     name = get_refdoc(
-                        "Procedure Prescription", item.name, item.procedure, item.parent
+                        "Procedure Prescription",
+                        item.name,
+                        item.procedure,
+                        item.parent,
                     )
                     if name:
                         procedure_status = "Draft"
@@ -721,7 +691,13 @@ def get_lrp_map():
     child_map = [
         {
             "doctype": "Lab Prescription",
-            "fields": ["name", "lab_test_code", "lab_test_name", "lab_test", "parent"],
+            "fields": [
+                "name",
+                "lab_test_code",
+                "lab_test_name",
+                "lab_test",
+                "parent",
+            ],
         },
         {
             "doctype": "Radiology Procedure Prescription",
@@ -749,7 +725,11 @@ def get_lrp_map():
 
 def get_refdoc(doctype, childname, template, encounter):
     ref_docs = [
-        {"ref_d": "Lab Test", "table": "Lab Prescription", "field": "template"},
+        {
+            "ref_d": "Lab Test",
+            "table": "Lab Prescription",
+            "field": "template",
+        },
         {
             "ref_d": "Radiology Examination",
             "table": "Radiology Procedure Prescription",
@@ -805,11 +785,7 @@ def set_missing_values(doc):
             page_length=1,
         )
         if record:
-            if (
-                record[0]["name"]
-                and record[0]["status"]
-                and record[0]["admitted_datetime"]
-            ):
+            if record[0]["name"] and record[0]["status"] and record[0]["admitted_datetime"]:
                 doc.inpatient_record = record[0]["name"]
                 doc.status = record[0]["status"]
                 doc.admitted_datetime = record[0]["admitted_datetime"]
@@ -1030,9 +1006,7 @@ def get_drugs(patient, appointment, company):
     for drug in drugs:
         drug.update(
             {
-                "drug_code": frappe.get_cached_value(
-                    "Medication", drug.drug_code, "item"
-                ),
+                "drug_code": frappe.get_cached_value("Medication", drug.drug_code, "item"),
             }
         )
 
@@ -1092,7 +1066,10 @@ def get_therapies(patient, appointment, company):
         if item.therapy_type:
             therapy_plan = frappe.get_cached_value(
                 "Therapy Plan",
-                {"ref_doctype": "Patient Encounter", "ref_docname": item.parent},
+                {
+                    "ref_doctype": "Patient Encounter",
+                    "ref_docname": item.parent,
+                },
                 "name",
             )
 
@@ -1109,7 +1086,8 @@ def get_therapies(patient, appointment, company):
             )
 
             if not plan_child_table_id:
-                # find plan_child_table_id when hms_tz_ref_childname does not have value, (for old therapies)
+                # find plan_child_table_id when hms_tz_ref_childname does not
+                # have value, (for old therapies)
                 child_table_ids = frappe.db.get_all(
                     "Therapy Plan Detail",
                     {
@@ -1162,9 +1140,11 @@ def get_therapies(patient, appointment, company):
 
             else:
                 if item.no_of_sessions > len(sessions_info):
-                    record.update({
-                        "sessions": item.no_of_sessions - len(sessions_info),
-                    })
+                    record.update(
+                        {
+                            "sessions": item.no_of_sessions - len(sessions_info),
+                        }
+                    )
                     therapies.append(record)
 
                 for session in sessions_info:
@@ -1174,9 +1154,7 @@ def get_therapies(patient, appointment, company):
                             "sessions": 1,
                             "sessions_cancelled": 0,
                             "therapy_session": session.name,
-                            "status": (
-                                "Draft" if session.docstatus == 0 else "Submitted"
-                            ),
+                            "status": ("Draft" if session.docstatus == 0 else "Submitted"),
                         }
                     )
 

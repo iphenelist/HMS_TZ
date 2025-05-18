@@ -1,12 +1,13 @@
 # Copyright (c) 2022, Aakvatech and contributors
 # For license information, please see license.txt
 
-from concurrent.futures import thread
+
 import frappe
-from frappe import _
-from frappe.utils import cint, flt
 from erpnext.accounts.utils import get_balance_on
-from frappe.query_builder import DocType, functions as fn
+from frappe import _
+from frappe.query_builder import DocType
+from frappe.query_builder import functions as fn
+from frappe.utils import flt
 from pypika.terms import ValueWrapper  # Case, Criterion, , Not
 
 
@@ -28,9 +29,7 @@ def execute(filters=None):
             "status",
         ],
     )
-    appointment_date = frappe.get_cached_value(
-        "Patient Appointment", filters.patient_appointment, "appointment_date"
-    )
+    appointment_date = frappe.get_cached_value("Patient Appointment", filters.patient_appointment, "appointment_date")
 
     if details[0]["docstatus"] == 0 and details[0]["status"] != "Closed":
         frappe.throw(frappe.bold("This Appointment is not Closed..!!"))
@@ -39,17 +38,21 @@ def execute(filters=None):
         admitted_discharge_date = frappe.get_cached_value(
             "Inpatient Record",
             {"patient_appointment": filters.patient_appointment},
-            ["admitted_datetime as admitted_date", "discharge_date", "scheduled_date"],
+            [
+                "admitted_datetime as admitted_date",
+                "discharge_date",
+                "scheduled_date",
+            ],
             as_dict=True,
         )
-        
+
         _date = ""  # Initialize _date with an empty string
         if admitted_discharge_date:
             if admitted_discharge_date.admitted_date:
                 _date = admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
             else:
                 _date = admitted_discharge_date.scheduled_date
-        
+
         if not filters.get("patient_type"):
             appointments_data = get_appointment_consultancy(filters)
             if appointments_data:
@@ -77,8 +80,7 @@ def execute(filters=None):
                 frappe.throw(
                     f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
                     Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
-                    Please change your filters and try again..!!"
-                )
+                    Please change your filters and try again..!!")
 
             total_amount = 0
             for n in range(0, len(data)):
@@ -99,11 +101,7 @@ def execute(filters=None):
                 "authorization_number": "",
                 "coverage_plan_card_number": "",
                 "date_admitted": _date,
-                "date_discharge": (
-                    admitted_discharge_date.discharge_date
-                    if admitted_discharge_date
-                    else ""
-                ),
+                "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
                 "appointment_date": appointment_date,
             }
 
@@ -114,9 +112,7 @@ def execute(filters=None):
             exceeded_items = get_daily_limit_exceeded_items(filters)
             if len(exceeded_items) > 0:
                 last_row["limit_exceeded_items"] = exceeded_items
-                last_row["total_limit_exceeded_amount"] = sum(
-                    [d.amount for d in exceeded_items]
-                )
+                last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
             data.append(last_row)
 
             return columns, data
@@ -140,8 +136,7 @@ def execute(filters=None):
                 frappe.throw(
                     f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
                     Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
-                    Please change your filters and try again..!!"
-                )
+                    Please change your filters and try again..!!")
 
             total_amount = 0
             for n in range(0, len(data)):
@@ -162,11 +157,7 @@ def execute(filters=None):
                 "authorization_number": "",
                 "coverage_plan_card_number": "",
                 "date_admitted": _date,
-                "date_discharge": (
-                    admitted_discharge_date.discharge_date
-                    if admitted_discharge_date
-                    else ""
-                ),
+                "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
                 "appointment_date": appointment_date,
             }
 
@@ -177,9 +168,7 @@ def execute(filters=None):
             exceeded_items = get_daily_limit_exceeded_items(filters)
             if len(exceeded_items) > 0:
                 last_row["limit_exceeded_items"] = exceeded_items
-                last_row["total_limit_exceeded_amount"] = sum(
-                    [d.amount for d in exceeded_items]
-                )
+                last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
 
             data.append(last_row)
 
@@ -207,8 +196,7 @@ def execute(filters=None):
                 frappe.throw(
                     f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
                     Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
-                    Please change your filters and try again..!!"
-                )
+                    Please change your filters and try again..!!")
 
             total_amount = 0
             for n in range(0, len(data)):
@@ -229,11 +217,7 @@ def execute(filters=None):
                 "authorization_number": "",
                 "coverage_plan_card_number": "",
                 "date_admitted": _date,
-                "date_discharge": (
-                    admitted_discharge_date.discharge_date
-                    if admitted_discharge_date
-                    else ""
-                ),
+                "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
                 "appointment_date": appointment_date,
             }
 
@@ -296,11 +280,7 @@ def get_exceeded_lab_items(encounters):
             lab.amount.as_("rate"),
             lab.amount.as_("amount"),
         )
-        .where(
-            (lab.prescribe == 0)
-            & (lab.hms_tz_is_limit_exceeded == 1)
-            & (lab.parent.isin(encounters))
-        )
+        .where((lab.prescribe == 0) & (lab.hms_tz_is_limit_exceeded == 1) & (lab.parent.isin(encounters)))
     ).run(as_dict=True)
     return lab_items
 
@@ -320,11 +300,7 @@ def get_exceeded_radiology_items(encounters):
             rad.amount.as_("rate"),
             rad.amount.as_("amount"),
         )
-        .where(
-            (rad.prescribe == 0)
-            & (rad.hms_tz_is_limit_exceeded == 1)
-            & (rad.parent.isin(encounters))
-        )
+        .where((rad.prescribe == 0) & (rad.hms_tz_is_limit_exceeded == 1) & (rad.parent.isin(encounters)))
     ).run(as_dict=True)
     return rad_items
 
@@ -344,11 +320,7 @@ def get_exceeded_procedure_items(encounters):
             proc.amount.as_("rate"),
             proc.amount.as_("amount"),
         )
-        .where(
-            (proc.prescribe == 0)
-            & (proc.hms_tz_is_limit_exceeded == 1)
-            & (proc.parent.isin(encounters))
-        )
+        .where((proc.prescribe == 0) & (proc.hms_tz_is_limit_exceeded == 1) & (proc.parent.isin(encounters)))
     ).run(as_dict=True)
     return proc_items
 
@@ -368,11 +340,7 @@ def get_exceeded_drug_items(encounters):
             drug.amount.as_("rate"),
             ((drug.quantity - drug.quantity_returned) * drug.amount).as_("amount"),
         )
-        .where(
-            (drug.prescribe == 0)
-            & (drug.hms_tz_is_limit_exceeded == 1)
-            & (drug.parent.isin(encounters))
-        )
+        .where((drug.prescribe == 0) & (drug.hms_tz_is_limit_exceeded == 1) & (drug.parent.isin(encounters)))
     ).run(as_dict=True)
     return drug_items
 
@@ -390,15 +358,9 @@ def get_exceeded_therapy_items(encounters):
             therapy.therapy_type.as_("description"),
             (therapy.no_of_sessions - therapy.sessions_cancelled).as_("quantity"),
             therapy.amount.as_("rate"),
-            (
-                (therapy.no_of_sessions - therapy.sessions_cancelled) * therapy.amount
-            ).as_("amount"),
+            ((therapy.no_of_sessions - therapy.sessions_cancelled) * therapy.amount).as_("amount"),
         )
-        .where(
-            (therapy.prescribe == 0)
-            & (therapy.hms_tz_is_limit_exceeded == 1)
-            & (therapy.parent.isin(encounters))
-        )
+        .where((therapy.prescribe == 0) & (therapy.hms_tz_is_limit_exceeded == 1) & (therapy.parent.isin(encounters)))
     ).run(as_dict=True)
     return therapy_items
 
@@ -407,7 +369,11 @@ def get_columns(filters):
     columns = [
         {"fieldname": "date", "fieldtype": "date", "label": _("Date")},
         {"fieldname": "category", "fieldtype": "Data", "label": _("Category")},
-        {"fieldname": "description", "fieldtype": "Data", "label": _("Description")},
+        {
+            "fieldname": "description",
+            "fieldtype": "Data",
+            "label": _("Description"),
+        },
         {"fieldname": "quantity", "fieldtype": "Data", "label": _("Quantity")},
         {"fieldname": "rate", "fieldtype": "Currency", "label": _("Rate")},
         {"fieldname": "amount", "fieldtype": "Currency", "label": _("Amount")},
@@ -932,13 +898,9 @@ def get_insurance_lrpmt_transaction(filters):
 
 def get_report_summary(filters, total_amount):
     customer = frappe.get_cached_value("Patient", filters.get("patient"), "customer")
-    company = frappe.get_cached_value(
-        "Patient Appointment", filters.get("patient_appointment"), "company"
-    )
+    company = frappe.get_cached_value("Patient Appointment", filters.get("patient_appointment"), "company")
 
-    deposit_balance = -1 * get_balance_on(
-        party_type="Customer", party=customer, company=company
-    )
+    deposit_balance = -1 * get_balance_on(party_type="Customer", party=customer, company=company)
 
     current_balance = flt(flt(deposit_balance) - flt(total_amount))
 

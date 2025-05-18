@@ -1,16 +1,16 @@
 import json
+from time import sleep
+
 import frappe
 import requests
-from time import sleep
-from pypika.terms import ValueWrapper
-from frappe.query_builder import DocType
 from frappe.model.naming import make_autoname
+from frappe.query_builder import DocType
+from frappe.utils import cint, flt, now_datetime, nowdate
 from frappe.utils.background_jobs import enqueue
-from frappe.utils import now_datetime, nowdate,flt, cint
+from pypika.terms import ValueWrapper
+
+from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import (
-    get_custom_excluded_services,
-)
 
 
 @frappe.whitelist()
@@ -41,9 +41,7 @@ def enqueue_get_nhif_copayment_items(company):
 
 @frappe.whitelist()
 def process_nhif_records(company):
-    facility_code = frappe.get_cached_value(
-        "HMS TZ Settings", company, "facility_code"
-    )
+    facility_code = frappe.get_cached_value("HMS TZ Settings", company, "facility_code")
     enqueue(
         method=process_nhif_prices,
         queue="long",
@@ -85,7 +83,7 @@ def get_price_package(company):
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetPricePackage?facilityCode={settings_doc.facility_code}"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -114,20 +112,15 @@ def get_price_package(company):
             ref_doctype="NHIF Price Package",
         )
 
-        sync_price_package(
-            company,
-            settings_doc.facility_code,
-            packages,
-            log_name
-        )
+        sync_price_package(company, settings_doc.facility_code, packages, log_name)
 
 
-def sync_price_package(company,facility_code, packages, log_name):
+def sync_price_package(company, facility_code, packages, log_name):
     if len(packages) == 0:
         return
 
     delete_price_package(company)
-    
+
     sleep(30)
     create_price_package(company, facility_code, packages, log_name)
 
@@ -176,7 +169,7 @@ def create_price_package(company, facility_code, packages, log_name):
 
     data = []
     for row in packages:
-        npp_name = make_autoname(key='hash')
+        npp_name = make_autoname(key="hash")
 
         data.append(
             (
@@ -209,7 +202,7 @@ def create_price_package(company, facility_code, packages, log_name):
         "NHIF Price Package",
         fields=fields,
         values=data,
-        ignore_duplicates=True
+        ignore_duplicates=True,
     )
     frappe.db.commit()
     return True
@@ -230,14 +223,14 @@ def set_package_diff(company):
     )
     if len(logs) < 2:
         return
-    
+
     new_price_packages = []
     changed_price_packages = []
     deleted_price_packages = []
 
     current_package = json.loads(logs[0]["response_data"])
     previous_package = json.loads(logs[1]["response_data"])
-    
+
     current_items = {(item["ItemCode"], item["SchemeID"]): item for item in current_package}
     previous_items = {(item["ItemCode"], item["SchemeID"]): item for item in previous_package}
 
@@ -250,7 +243,10 @@ def set_package_diff(company):
             previous_item = previous_items[key]
             if current_item != previous_item:
                 fields_changed = {
-                    field: {"current": current_item[field], "previous": previous_item[field]}
+                    field: {
+                        "current": current_item[field],
+                        "previous": previous_item[field],
+                    }
                     for field in current_item
                     if field in previous_item and current_item[field] != previous_item[field]
                 }
@@ -261,11 +257,7 @@ def set_package_diff(company):
 
                 changed_price_packages.append(new_row)
 
-    if (
-        len(changed_price_packages) > 0
-        or len(new_price_packages) > 0
-        or len(deleted_price_packages) > 0
-    ):
+    if len(changed_price_packages) > 0 or len(new_price_packages) > 0 or len(deleted_price_packages) > 0:
         service_map = get_insurance_items(for_prices=True)
 
         doc = frappe.new_doc("NHIF Update")
@@ -294,7 +286,7 @@ def add_price_packages_records(doc, rec, type, service_map):
         if service_map.get(e.get("ItemCode")):
             price_row.service_type = service_map.get(e.get("ItemCode")).get("service_type")
             price_row.service_name = service_map.get(e.get("ItemCode")).get("service_name")
-        
+
         price_row.itemcode = e.get("ItemCode")
         price_row.itemname = e.get("ItemName")
         price_row.itemtypeid = e.get("ItemTypeID")
@@ -331,10 +323,8 @@ def process_nhif_prices(company, facility_code, item_code=None):
 
             # set price list to a coverage plan
             plan_name = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan", {
-                    "nhif_scheme_id": scheme,
-                    "company": company
-                },
+                "Healthcare Insurance Coverage Plan",
+                {"nhif_scheme_id": scheme, "company": company},
                 "name",
             )
             if plan_name:
@@ -344,15 +334,17 @@ def process_nhif_prices(company, facility_code, item_code=None):
                     "price_list",
                     price_list_name,
                 )
-                out = frappe.get_doc({
-                    "doctype": "Comment",
-                    "comment_type": "Comment",
-                    "comment_email": frappe.session.user,
-                    "comment_by": frappe.session.user,
-                    "content": f"Created Price List {price_list_name} for {scheme}",
-                    "reference_doctype": "Healthcare Insurance Coverage Plan",
-                    "reference_name": plan_name,
-                }).insert(ignore_permissions=True)
+                out = frappe.get_doc(
+                    {
+                        "doctype": "Comment",
+                        "comment_type": "Comment",
+                        "comment_email": frappe.session.user,
+                        "comment_by": frappe.session.user,
+                        "content": f"Created Price List {price_list_name} for {scheme}",
+                        "reference_doctype": "Healthcare Insurance Coverage Plan",
+                        "reference_name": plan_name,
+                    }
+                ).insert(ignore_permissions=True)
 
     service_map = get_insurance_items(for_prices=True)
 
@@ -367,8 +359,12 @@ def process_nhif_prices(company, facility_code, item_code=None):
                 if item.get("service_type") == "Consulation Charges":
                     erp_item = item.get("service_name")
                 else:
-                    erp_item = frappe.get_cached_value(item.get("service_type"), item.get("service_name"), "item")
-                
+                    erp_item = frappe.get_cached_value(
+                        item.get("service_type"),
+                        item.get("service_name"),
+                        "item",
+                    )
+
                 if not erp_item:
                     continue
 
@@ -385,11 +381,9 @@ def process_nhif_prices(company, facility_code, item_code=None):
                 if len(item_price_list) > 0:
                     for price in item_price_list:
                         if flt(price.price_list_rate) != flt(package.unitprice):
-                            # delete Item Price if no package.unitprice or it is 0
-                            if (
-                                not flt(package.unitprice)
-                                or flt(package.unitprice) == 0
-                            ):
+                            # delete Item Price if no package.unitprice or it
+                            # is 0
+                            if not flt(package.unitprice) or flt(package.unitprice) == 0:
                                 frappe.delete_doc("Item Price", price.name)
                                 print(f"Deleted the item {item.get('service_name')}")
                             else:
@@ -419,7 +413,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
 
 
 def process_insurance_coverages(company, facility_code, coverage_plan=None):
-    print(f"Gettign Insurance Coverage Items")
+    print("Getting Insurance Coverage Items")
     hsic_data = []
     plans_for_deletion = []
     fields = [
@@ -454,7 +448,7 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
     }
     if coverage_plan:
         filters["name"] = {coverage_plan}
-    
+
     coverage_plan_list = frappe.db.get_all(
         "Healthcare Insurance Coverage Plan",
         fields=["name", "nhif_scheme_id"],
@@ -467,56 +461,53 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
         for package in price_package_map.values():
             if plan.nhif_scheme_id != package.schemeid:
                 continue
-            
+
             print(f"Processing Item {package.get('itemname')} for {plan}")
 
             user_excluded_scheme = get_custom_excluded_services(company, package.get("itemcode"))
-            
+
             # check if the scheme id is in the excluded products
-            # scheme ids must listed on custom excluded services separated by comma
-            if (
-                user_excluded_scheme
-                and plan.nhif_scheme_id
-                and plan.nhif_scheme_id in user_excluded_scheme
-            ):
+            # scheme ids must listed on custom excluded services separated by
+            # comma
+            if user_excluded_scheme and plan.nhif_scheme_id and plan.nhif_scheme_id in user_excluded_scheme:
                 continue
-            
+
             if not service_map.get(package.get("itemcode")):
                 continue
 
-            hsic_name = make_autoname(key='hash')
+            hsic_name = make_autoname(key="hash")
 
             row = (
-                    hsic_name,
-                    now_datetime(),
-                    frappe.session.user,
-                    now_datetime(),
-                    frappe.session.user,
-                    service_map.get(package.get("itemcode")).get("service_type"),
-                    service_map.get(package.get("itemcode")).get("service_name"),
-                    1,
-                    plan.name,
-                    company,
-                    cint(package.get("hascopayment")),
-                    cint(package.get("isrestricted")),
-                    package.get("dosage"),
-                    package.get("strength"),
-                    package.get("maximumquantity"),
-                    package.get("maximumquantityoutpatient"),
-                    package.get("maximumquantityinpatient"),
-                    1,
-                    nowdate(),
-                    "2099-12-31",
-                )
-            
+                hsic_name,
+                now_datetime(),
+                frappe.session.user,
+                now_datetime(),
+                frappe.session.user,
+                service_map.get(package.get("itemcode")).get("service_type"),
+                service_map.get(package.get("itemcode")).get("service_name"),
+                1,
+                plan.name,
+                company,
+                cint(package.get("hascopayment")),
+                cint(package.get("isrestricted")),
+                package.get("dosage"),
+                package.get("strength"),
+                package.get("maximumquantity"),
+                package.get("maximumquantityoutpatient"),
+                package.get("maximumquantityinpatient"),
+                1,
+                nowdate(),
+                "2099-12-31",
+            )
+
             if not has_data and row:
                 has_data = True
-            
+
             hsic_data.append(row)
 
         if has_data:
             plans_for_deletion.append(plan.name)
-    
+
     delete_hsic_data(plans_for_deletion)
 
     sleep(30)
@@ -524,7 +515,7 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
         "Healthcare Service Insurance Coverage",
         fields=fields,
         values=hsic_data,
-        ignore_duplicates=True
+        ignore_duplicates=True,
     )
     frappe.db.commit()
     return True
@@ -533,11 +524,9 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
 def delete_hsic_data(coverage_plans):
     if len(coverage_plans) == 0:
         return
-    
+
     hsic = DocType("Healthcare Service Insurance Coverage")
-    frappe.qb.from_(hsic).delete().where(
-        hsic.healthcare_insurance_coverage_plan.isin(coverage_plans)
-    ).run()
+    frappe.qb.from_(hsic).delete().where(hsic.healthcare_insurance_coverage_plan.isin(coverage_plans)).run()
 
 
 def get_price_package_map(company, facility_code, for_prices=False):
@@ -571,8 +560,12 @@ def get_price_package_map(company, facility_code, for_prices=False):
         if price_package["schemeid"] not in schemes:
             schemes.append(price_package["schemeid"])
 
-        price_package_map[price_package["facilitycode"], price_package["schemeid"], price_package["itemcode"]] = price_package
-    
+        price_package_map[
+            price_package["facilitycode"],
+            price_package["schemeid"],
+            price_package["itemcode"],
+        ] = price_package
+
     if for_prices:
         return schemes, price_package_map
 
@@ -596,12 +589,7 @@ def get_insurance_items(for_prices=False):
 
     if for_prices:
         practitioner_services = (
-            frappe.qb.from_(hp)
-            .select(
-                hp.op_consulting_charge_item,
-                hp.inpatient_visit_charge_item
-            )
-            .distinct()
+            frappe.qb.from_(hp).select(hp.op_consulting_charge_item, hp.inpatient_visit_charge_item).distinct()
         ).run(as_dict=True)
 
         for row in practitioner_services:
@@ -628,7 +616,7 @@ def get_insurance_items(for_prices=False):
             for field in row:
                 if row[field]:
                     consultation_items.append(row[field])
-    
+
         services += (
             frappe.qb.from_(icd)
             .inner_join(it)
@@ -640,10 +628,7 @@ def get_insurance_items(for_prices=False):
             )
             .where(
                 (icd.customer_name == "NHIF")
-                & (
-                    (icd.ref_code.isnotnull()) & 
-                    (icd.ref_code != "")
-                )
+                & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
                 & (it.name.isin(consultation_items))
             )
         ).run(as_dict=True)
@@ -657,13 +642,7 @@ def get_insurance_items(for_prices=False):
             ltt.name.as_("service_name"),
             ValueWrapper("Lab Test Template").as_("service_type"),
         )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
-            )
-        )
+        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
     ).run(as_dict=True)
 
     services += (
@@ -675,13 +654,7 @@ def get_insurance_items(for_prices=False):
             ret.name.as_("service_name"),
             ValueWrapper("Radiology Examination Template").as_("service_type"),
         )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
-            )
-        )
+        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
     ).run(as_dict=True)
 
     services += (
@@ -693,13 +666,7 @@ def get_insurance_items(for_prices=False):
             cpt.name.as_("service_name"),
             ValueWrapper("Clinical Procedure Template").as_("service_type"),
         )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
-            )
-        )
+        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
     ).run(as_dict=True)
 
     services += (
@@ -711,13 +678,7 @@ def get_insurance_items(for_prices=False):
             med.name.as_("service_name"),
             ValueWrapper("Medication").as_("service_type"),
         )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
-            )
-        )
+        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
     ).run(as_dict=True)
 
     services += (
@@ -729,13 +690,7 @@ def get_insurance_items(for_prices=False):
             tt.name.as_("service_name"),
             ValueWrapper("Therapy Type").as_("service_type"),
         )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
-            )
-        )
+        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
     ).run(as_dict=True)
 
     services += (
@@ -747,19 +702,13 @@ def get_insurance_items(for_prices=False):
             hsut.name.as_("service_name"),
             ValueWrapper("Healthcare Service Unit Type").as_("service_type"),
         )
-        .where(
-            (icd.customer_name == "NHIF")
-            & (
-                (icd.ref_code.isnotnull()) & 
-                (icd.ref_code != "")
-            )
-        )
+        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
     ).run(as_dict=True)
 
     service_map = {}
     for service in services:
         service_map[service["ref_code"]] = service
-    
+
     return service_map
 
 
@@ -770,7 +719,7 @@ def get_nhif_copayment_items(company):
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetCoPaymentSchedule"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=180)
@@ -805,7 +754,7 @@ def get_nhif_copayment_items(company):
 def sync_copayment_items(data):
     if len(data) == 0:
         return
-    
+
     ncs = DocType("NHIF Co-Payment Item")
     frappe.qb.from_(ncs).delete().run()
 
@@ -823,13 +772,13 @@ def sync_copayment_items(data):
         "scheduleitemid",
         "schemeid",
         "yearno",
-        "percentcovered"
+        "percentcovered",
     ]
 
     service_map = get_insurance_items(for_prices=True)
 
     for row in data:
-        ncs_name = make_autoname(key='hash')
+        ncs_name = make_autoname(key="hash")
         service_type = ""
         service_name = ""
         if service_map.get(row.get("ItemCode")):
@@ -849,29 +798,33 @@ def sync_copayment_items(data):
                 row.get("ScheduleItemID"),
                 row.get("SchemeID"),
                 row.get("YearNo"),
-                row.get("PercentCovered")
+                row.get("PercentCovered"),
             )
         )
-    
+
     frappe.db.bulk_insert(
         "NHIF Co-Payment Item",
         fields=fields,
         values=values,
-        ignore_duplicates=True
+        ignore_duplicates=True,
     )
     frappe.db.commit()
     return True
 
 
 @frappe.whitelist()
-def  get_nhif_schemes(company=None, caller=None):
+def get_nhif_schemes(company=None, caller=None):
     if not company:
-        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
         company = settings[0].company
-    
+
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
@@ -879,7 +832,7 @@ def  get_nhif_schemes(company=None, caller=None):
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetBenefitSchemes"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -910,7 +863,7 @@ def  get_nhif_schemes(company=None, caller=None):
 
         if len(data) == 0:
             return
-        
+
         for row in data:
             scheme_id = frappe.get_cached_value("NHIF Scheme", {"scheme_id": row["SchemeID"]}, "name")
             if scheme_id:
@@ -920,50 +873,48 @@ def  get_nhif_schemes(company=None, caller=None):
                 if doc.scheme_name != row["SchemeName"]:
                     doc.scheme_name = row["SchemeName"]
                     has_changed = True
-                
+
                 if has_changed:
                     doc.save(ignore_permissions=True)
-                
+
             else:
                 doc = frappe.new_doc("NHIF Scheme")
                 doc.scheme_id = row["SchemeID"]
                 doc.scheme_name = row["SchemeName"]
 
                 doc.save(ignore_permissions=True)
-        
-        if company and caller=='Front End':
-            frappe.msgprint("successfully fetched NHIF Schemes", alert=True, indicator="green")
+
+        if company and caller == "Front End":
+            frappe.msgprint(
+                "successfully fetched NHIF Schemes",
+                alert=True,
+                indicator="green",
+            )
 
 
 @frappe.whitelist()
-def  get_nhif_products(company=None, caller=None):
+def get_nhif_products(company=None, caller=None):
     companies = []
 
     if company:
         companies = [company]
-    
+
     if len(companies) == 0:
         companies = frappe.db.get_all(
             "HMS TZ Settings",
             filters={"enable_nhif_api": 1},
             fields=["company"],
-            pluck="company"
+            pluck="company",
         )
-    
+
     if len(companies) == 0:
         return
-    
-    product_dict =  {
-        "status": False
-    }
+
+    product_dict = {"status": False}
     for company in companies:
         get_nhif_product_per_company(company, product_dict)
-    
-    if (
-        company and
-        caller == 'Front End' and 
-        product_dict["status"]
-    ):
+
+    if company and caller == "Front End" and product_dict["status"]:
         frappe.msgprint("successfully fetched NHIF Products", alert=True, indicator="green")
 
 
@@ -974,7 +925,7 @@ def get_nhif_product_per_company(company, product_dict):
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetProducts"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -1005,62 +956,66 @@ def get_nhif_product_per_company(company, product_dict):
 
         if len(data) == 0:
             return
-        
+
         abbr = frappe.get_cached_value("Company", company, "abbr")
 
         for row in data:
             try:
                 add_nhif_product(row, company, abbr)
-                
+
                 if not product_dict["status"]:
                     product_dict["status"] = True
-                
-            except Exception as e:
+
+            except Exception:
                 frappe.log_error(
-                    title='NHIF Product Creation Error',
-                    message=frappe.get_traceback()
+                    title="NHIF Product Creation Error",
+                    message=frappe.get_traceback(),
                 )
 
 
 def add_nhif_product(row, company, abbr):
     product_id = str(row["ProductCode"]) + "-" + str(abbr)
 
-    nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": company, "nhif_product_code": row["ProductCode"]}, "name")
+    nhif_product_pr_key = frappe.get_cached_value(
+        "NHIF Product",
+        {"company": company, "nhif_product_code": row["ProductCode"]},
+        "name",
+    )
     if not nhif_product_pr_key:
-        nhif_product_pr_key = frappe.get_cached_value("NHIF Product", {"company": "", "nhif_product_code": row["ProductCode"]})
+        nhif_product_pr_key = frappe.get_cached_value(
+            "NHIF Product",
+            {"company": "", "nhif_product_code": row["ProductCode"]},
+        )
 
     if nhif_product_pr_key:
-        if (
-            row["ProductName"] and
-            row["ProductName"] != "null"
-        ):
+        if row["ProductName"] and row["ProductName"] != "null":
             has_changed = False
             doc = frappe.get_cached_doc("NHIF Product", nhif_product_pr_key)
 
             if doc.product_id != product_id:
                 doc.product_id = product_id
                 has_changed = True
-            
+
             if doc.product_name != row["ProductName"]:
                 doc.product_name = row["ProductName"]
                 has_changed = True
-            
+
             if doc.schemeid != row["SchemeID"]:
                 doc.schemeid = row["SchemeID"]
                 has_changed = True
-            
+
             if doc.productdescription != row["ProductDescription"]:
                 doc.productdescription = row["ProductDescription"]
                 has_changed = True
-            
+
             if doc.highestorderwithoutreferral != row["HighestOrderWithoutReferral"]:
                 doc.highestorderwithoutreferral = row["HighestOrderWithoutReferral"]
                 has_changed = True
-            
+
             if doc.maximumadmissiondays != row["MaximumAdmissionDays"]:
                 doc.maximumadmissiondays = row["MaximumAdmissionDays"]
                 has_changed = True
-            
+
             if doc.requiresnationalid != row["RequiresNationalID"]:
                 doc.requiresnationalid = row["RequiresNationalID"]
                 has_changed = True
@@ -1072,8 +1027,11 @@ def add_nhif_product(row, company, abbr):
             doc.company = company
 
             plan = frappe.db.get_all(
-                "Healthcare Insurance Coverage Plan", 
-                filters={"nhif_scheme_id": row["SchemeID"], "company": company}
+                "Healthcare Insurance Coverage Plan",
+                filters={
+                    "nhif_scheme_id": row["SchemeID"],
+                    "company": company,
+                },
             )
             if len(plan) == 1:
                 if doc.healthcare_insurance_coverage_plan != plan[0].name:
@@ -1084,20 +1042,20 @@ def add_nhif_product(row, company, abbr):
                 doc.healthcare_insurance_coverage_plan = ""
                 doc.add_comment(
                     "Comment",
-                    f"Failed to find matching plan for SchemeId: {row['SchemeID']}"
+                    f"Failed to find matching plan for SchemeId: {row['SchemeID']}",
                 )
 
             if has_changed:
                 doc.save(ignore_permissions=True)
     else:
-        doc = frappe.new_doc('NHIF Product')
+        doc = frappe.new_doc("NHIF Product")
         doc.product_id = product_id
         doc.company = company
 
         doc.nhif_product_code = row["ProductCode"]
         if row["ProductName"] and row["ProductName"] != "null":
             doc.product_name = row["ProductName"]
-        
+
         doc.schemeid = row["SchemeID"]
         doc.productdescription = row["ProductDescription"]
         doc.highestorderwithoutreferral = row["HighestOrderWithoutReferral"]
@@ -1105,26 +1063,30 @@ def add_nhif_product(row, company, abbr):
         doc.requiresnationalid = row["RequiresNationalID"]
         doc.usespolicy = row["UsesPolicy"]
         plan = frappe.db.get_all(
-            "Healthcare Insurance Coverage Plan", 
-            filters={"nhif_scheme_id": row["SchemeID"], "company": company}
+            "Healthcare Insurance Coverage Plan",
+            filters={"nhif_scheme_id": row["SchemeID"], "company": company},
         )
         if len(plan) == 1:
             doc.healthcare_insurance_coverage_plan = plan[0].name
         else:
             doc.healthcare_insurance_coverage_plan = ""
-        
+
         doc.save(ignore_permissions=True)
 
 
 @frappe.whitelist()
-def  get_item_types(company=None, caller=None):
+def get_item_types(company=None, caller=None):
     if not company:
-        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
         company = settings[0].company
-    
+
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
@@ -1132,7 +1094,7 @@ def  get_item_types(company=None, caller=None):
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetItemTypes"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -1168,10 +1130,10 @@ def  get_item_types(company=None, caller=None):
                 if doc.display_item != item["DisplayItem"]:
                     doc.display_item = item["DisplayItem"]
                     has_changed = True
-                
+
                 if has_changed:
                     doc.save(ignore_permissions=True)
-                
+
             else:
                 doc = frappe.new_doc("NHIF Item Type")
                 doc.item_type_id = item["ItemTypeID"]
@@ -1182,8 +1144,12 @@ def  get_item_types(company=None, caller=None):
 
                 doc.save(ignore_permissions=True)
 
-        if company and caller=='Front End':
-            frappe.msgprint("successfully fetched Item Types", alert=True, indicator="green")
+        if company and caller == "Front End":
+            frappe.msgprint(
+                "successfully fetched Item Types",
+                alert=True,
+                indicator="green",
+            )
 
     else:
         add_log(
@@ -1198,14 +1164,18 @@ def  get_item_types(company=None, caller=None):
         )
 
 
-def  get_nhif_items(company=None):
+def get_nhif_items(company=None):
     if not company:
-        settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
         company = settings[0].company
-    
+
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
@@ -1213,7 +1183,7 @@ def  get_nhif_items(company=None):
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetItems"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
@@ -1244,7 +1214,7 @@ def  get_nhif_items(company=None):
 
         if len(data) == 0:
             return
-        
+
         ni = DocType("NHIF Item")
         frappe.qb.from_(ni).delete().run()
 
@@ -1278,9 +1248,8 @@ def  get_nhif_items(company=None):
             "practitionerqualifications",
         ]
 
-
         for row in data:
-            ni_name = make_autoname(key='hash')
+            ni_name = make_autoname(key="hash")
 
             values.append(
                 (
@@ -1311,11 +1280,6 @@ def  get_nhif_items(company=None):
                 )
             )
 
-        frappe.db.bulk_insert(
-            "NHIF Item",
-            fields=fields,
-            values=values,
-            ignore_duplicates=True
-        )
+        frappe.db.bulk_insert("NHIF Item", fields=fields, values=values, ignore_duplicates=True)
         frappe.db.commit()
         return True

@@ -3,10 +3,11 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
-from frappe.model.document import Document
 from frappe.contacts.address_and_contact import load_address_and_contact
+from frappe.model.document import Document
 
 
 class HealthcareInsuranceCompany(Document):
@@ -20,7 +21,8 @@ class HealthcareInsuranceCompany(Document):
 
 def create_customer(doc):
     customer_group = frappe.db.exists(
-        "Customer Group", {"customer_group_name": "Healthcare Insurance Company"}
+        "Customer Group",
+        {"customer_group_name": "Healthcare Insurance Company"},
     )
     if not customer_group:
         customer_group = (
@@ -37,9 +39,7 @@ def create_customer(doc):
     territory = frappe.get_cached_value("Selling Settings", None, "territory")
     if not (territory):
         territory = "Rest Of The World"
-        frappe.msgprint(
-            _("Please set default  territory in Selling Settings"), alert=True
-        )
+        frappe.msgprint(_("Please set default  territory in Selling Settings"), alert=True)
     customer = frappe.new_doc("Customer")
     customer.customer_name = doc.insurance_company_name
     customer.customer_group = customer_group
@@ -48,11 +48,12 @@ def create_customer(doc):
     if doc.approved_claim_receivable_account:
         accounts = []
         accounts.append(
-            {"account": doc.approved_claim_receivable_account, "company": doc.company}
+            {
+                "account": doc.approved_claim_receivable_account,
+                "company": doc.company,
+            }
         )
         customer.set("accounts", accounts)
     customer.save(ignore_permissions=True)
-    frappe.db.set_value(
-        "Healthcare Insurance Company", doc.name, "customer", customer.name
-    )
+    frappe.db.set_value("Healthcare Insurance Company", doc.name, "customer", customer.name)
     frappe.msgprint(_(f"Customer {customer.name} is created."), alert=True)

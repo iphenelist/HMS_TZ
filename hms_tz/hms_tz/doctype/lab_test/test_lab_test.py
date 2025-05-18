@@ -2,17 +2,18 @@
 # Copyright (c) 2015, ESS LLP and Contributors
 # See license.txt
 from __future__ import unicode_literals
+
 import unittest
+
 import frappe
 from frappe.utils import getdate, nowtime
-from hms_tz.hms_tz.doctype.patient_appointment.test_patient_appointment import (
-    create_patient,
-)
-from hms_tz.hms_tz.doctype.lab_test.lab_test import create_multiple
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
-    get_receivable_account,
     get_income_account,
+    get_receivable_account,
 )
+
+from hms_tz.hms_tz.doctype.lab_test.lab_test import create_multiple
+from hms_tz.hms_tz.doctype.patient_appointment.test_patient_appointment import create_patient
 from hms_tz.hms_tz.doctype.patient_medical_record.test_patient_medical_record import (
     create_lab_test_template as create_blood_test_template,
 )
@@ -24,7 +25,9 @@ class TestLabTest(unittest.TestCase):
         self.assertTrue(frappe.db.exists("Item", lab_template.item))
         self.assertEqual(
             frappe.get_cached_value(
-                "Item Price", {"item_code": lab_template.item}, "price_list_rate"
+                "Item Price",
+                {"item_code": lab_template.item},
+                "price_list_rate",
             ),
             lab_template.lab_test_rate,
         )
@@ -64,9 +67,7 @@ class TestLabTest(unittest.TestCase):
         lab_test.save()
 
         # check sample collection created
-        self.assertTrue(
-            frappe.db.exists("Sample Collection", {"sample": lab_template.sample})
-        )
+        self.assertTrue(frappe.db.exists("Sample Collection", {"sample": lab_template.sample}))
 
         frappe.db.set_value(
             "Healthcare Settings",
@@ -131,9 +132,7 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
 
 
 def create_medical_department():
-    medical_department = frappe.db.exists(
-        "Medical Department", "_Test Medical Department"
-    )
+    medical_department = frappe.db.exists("Medical Department", "_Test Medical Department")
     if not medical_department:
         medical_department = frappe.new_doc("Medical Department")
         medical_department.department = "_Test Medical Department"
@@ -219,7 +218,10 @@ def create_patient_encounter():
     for entry in tests:
         patient_encounter.append(
             "lab_test_prescription",
-            {"lab_test_code": entry.item, "lab_test_name": entry.lab_test_name},
+            {
+                "lab_test_code": entry.item,
+                "lab_test_name": entry.lab_test_name,
+            },
         )
 
     patient_encounter.submit()
@@ -227,9 +229,7 @@ def create_patient_encounter():
 
 
 def create_practitioner():
-    practitioner = frappe.db.exists(
-        "Healthcare Practitioner", "_Test Healthcare Practitioner"
-    )
+    practitioner = frappe.db.exists("Healthcare Practitioner", "_Test Healthcare Practitioner")
 
     if not practitioner:
         practitioner = frappe.new_doc("Healthcare Practitioner")

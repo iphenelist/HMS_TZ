@@ -3,15 +3,13 @@
 # See license.txt
 from __future__ import unicode_literals
 
-import frappe
 import unittest
+
+import frappe
 from frappe.utils import now_datetime, today
 from frappe.utils.make_random import get_random
-from hms_tz.hms_tz.doctype.inpatient_record.inpatient_record import (
-    admit_patient,
-    discharge_patient,
-    schedule_discharge,
-)
+
+from hms_tz.hms_tz.doctype.inpatient_record.inpatient_record import admit_patient, discharge_patient, schedule_discharge
 
 
 class TestInpatientRecord(unittest.TestCase):
@@ -23,7 +21,8 @@ class TestInpatientRecord(unittest.TestCase):
         ip_record.expected_length_of_stay = 0
         ip_record.save(ignore_permissions=True)
         self.assertEqual(
-            ip_record.name, frappe.get_cached_value("Patient", patient, "inpatient_record")
+            ip_record.name,
+            frappe.get_cached_value("Patient", patient, "inpatient_record"),
         )
         self.assertEqual(
             ip_record.status,
@@ -34,22 +33,19 @@ class TestInpatientRecord(unittest.TestCase):
         service_unit = get_healthcare_service_unit()
         admit_patient(ip_record, service_unit, now_datetime())
         self.assertEqual(
-            "Admitted", frappe.get_cached_value("Patient", patient, "inpatient_status")
+            "Admitted",
+            frappe.get_cached_value("Patient", patient, "inpatient_status"),
         )
         self.assertEqual(
             "Occupied",
-            frappe.get_cached_value(
-                "Healthcare Service Unit", service_unit, "occupancy_status"
-            ),
+            frappe.get_cached_value("Healthcare Service Unit", service_unit, "occupancy_status"),
         )
 
         # Discharge
         schedule_discharge(frappe.as_json({"patient": patient}))
         self.assertEqual(
             "Vacant",
-            frappe.get_cached_value(
-                "Healthcare Service Unit", service_unit, "occupancy_status"
-            ),
+            frappe.get_cached_value("Healthcare Service Unit", service_unit, "occupancy_status"),
         )
 
         ip_record1 = frappe.get_cached_doc("Inpatient Record", ip_record.name)
@@ -60,10 +56,12 @@ class TestInpatientRecord(unittest.TestCase):
         discharge_patient(ip_record1)
 
         self.assertEqual(
-            None, frappe.get_cached_value("Patient", patient, "inpatient_record")
+            None,
+            frappe.get_cached_value("Patient", patient, "inpatient_record"),
         )
         self.assertEqual(
-            None, frappe.get_cached_value("Patient", patient, "inpatient_status")
+            None,
+            frappe.get_cached_value("Patient", patient, "inpatient_status"),
         )
 
     def test_validate_overlap_admission(self):
@@ -108,9 +106,7 @@ def create_inpatient(patient):
 
 
 def get_healthcare_service_unit():
-    service_unit = get_random(
-        "Healthcare Service Unit", filters={"inpatient_occupancy": 1}
-    )
+    service_unit = get_random("Healthcare Service Unit", filters={"inpatient_occupancy": 1})
     if not service_unit:
         service_unit = frappe.new_doc("Healthcare Service Unit")
         service_unit.healthcare_service_unit_name = "Test Service Unit Ip Occupancy"
@@ -127,9 +123,7 @@ def get_healthcare_service_unit():
         )
         if not service_unit_parent_name:
             parent_service_unit = frappe.new_doc("Healthcare Service Unit")
-            parent_service_unit.healthcare_service_unit_name = (
-                "All Healthcare Service Units"
-            )
+            parent_service_unit.healthcare_service_unit_name = "All Healthcare Service Units"
             parent_service_unit.is_group = 1
             parent_service_unit.save(ignore_permissions=True)
             service_unit.parent_healthcare_service_unit = parent_service_unit.name
@@ -141,9 +135,7 @@ def get_healthcare_service_unit():
 
 
 def get_service_unit_type():
-    service_unit_type = get_random(
-        "Healthcare Service Unit Type", filters={"inpatient_occupancy": 1}
-    )
+    service_unit_type = get_random("Healthcare Service Unit Type", filters={"inpatient_occupancy": 1})
 
     if not service_unit_type:
         service_unit_type = frappe.new_doc("Healthcare Service Unit Type")

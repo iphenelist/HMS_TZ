@@ -1,8 +1,9 @@
 # Copyright (c) 2021, Aakvatech and Contributors
 # License: GNU General Public License v3. See license.txt
 
+
 import frappe
-import time
+
 from hms_tz.nhif.api.patient_appointment import get_insurance_amount
 
 appointment_list = frappe.db.sql(
@@ -16,7 +17,5 @@ for appointment in appointment_list:
         appointment.company,
         appointment.insurance_company,
     )
-    frappe.db.sql(
-        f"UPDATE `tabPatient Appointment` SET paid_amount = {paid_amount} WHERE name = '{appointment.name}'"
-    )
+    frappe.db.sql(f"UPDATE `tabPatient Appointment` SET paid_amount = {paid_amount} WHERE name = '{appointment.name}'")
 frappe.db.commit()

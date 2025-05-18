@@ -3,14 +3,16 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
-from frappe.utils import get_url_to_form, get_url
-from frappe import _
-from frappe.utils.password import get_decrypted_password
+
 import json
-import requests
 from time import sleep
-from frappe.utils import now, add_to_date, now_datetime, cstr
+
+import frappe
+import requests
+from frappe import _
+from frappe.utils import add_to_date, now, now_datetime
+from frappe.utils.password import get_decrypted_password
+
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -62,10 +64,7 @@ def make_token_request(doc, url, headers, payload, fields):
 
 def get_nhifservice_token(company):
     setting_doc = frappe.get_cached_doc("Company NHIF Settings", company)
-    if (
-        setting_doc.nhifservice_expiry
-        and setting_doc.nhifservice_expiry > now_datetime()
-    ):
+    if setting_doc.nhifservice_expiry and setting_doc.nhifservice_expiry > now_datetime():
         return setting_doc.nhifservice_token
 
     username = setting_doc.username
@@ -89,10 +88,7 @@ def get_nhifservice_token(company):
 
 def get_claimsservice_token(company):
     setting_doc = frappe.get_cached_doc("Company NHIF Settings", company)
-    if (
-        setting_doc.claimsserver_expiry
-        and setting_doc.claimsserver_expiry > now_datetime()
-    ):
+    if setting_doc.claimsserver_expiry and setting_doc.claimsserver_expiry > now_datetime():
         return setting_doc.claimsserver_token
 
     username = setting_doc.username
@@ -118,10 +114,7 @@ def get_formservice_token(company):
     if not company_nhif_doc.enable:
         frappe.throw(_(f"Company {company} not enabled for NHIF Integration"))
 
-    if (
-        company_nhif_doc.nhifform_expiry
-        and company_nhif_doc.nhifform_expiry > now_datetime()
-    ):
+    if company_nhif_doc.nhifform_expiry and company_nhif_doc.nhifform_expiry > now_datetime():
         return company_nhif_doc.nhifform_token
 
     username = company_nhif_doc.username
@@ -169,7 +162,6 @@ def get_nhif_url(setting_doc, caller, tkn_category=None):
             elif tkn_category == "formposting":
                 extra_params = None
                 url = str(setting_doc.nhifform_url) + "/formposting/Token"
-
 
         return url, extra_params
 

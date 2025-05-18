@@ -1,89 +1,99 @@
 /*
 (c) ESS 2015-16
 */
-frappe.listview_settings['Patient Encounter'] = {
-	filters: [["docstatus", "!=", "2"], ["duplicated", "==", "0"]],
+frappe.listview_settings["Patient Encounter"] = {
+  filters: [
+    ["docstatus", "!=", "2"],
+    ["duplicated", "==", "0"],
+  ],
 
-	onload: function (listview) {
-		listview.page.fields_dict['admission_service_unit_type'].get_query = function () {
-			return {
-				filters: {
-					inpatient_occupancy: 1
-				}
-			};
-		};
-        nhif_btns(listview);
-
-	}
+  onload: function (listview) {
+    listview.page.fields_dict["admission_service_unit_type"].get_query =
+      function () {
+        return {
+          filters: {
+            inpatient_occupancy: 1,
+          },
+        };
+      };
+    nhif_btns(listview);
+  },
 };
 
 var nhif_btns = (listview) => {
-    if (!frappe.user.has_role("Healthcare Practitioner")) {
-        return;
-    }
-    
-    frappe.call({
-        method: 'hms_tz.nhif.api.healthcare_practitioner.get_nhif_practitioner_login_status',
-        args: {},
-        callback: (r) => {
-            if (r.message) {
-                logout_from_nhif(listview);
-            } else {
-                login_to_nhif(listview);
-            }
-        }
-    });
-}
+  if (!frappe.user.has_role("Healthcare Practitioner")) {
+    return;
+  }
+
+  frappe.call({
+    method:
+      "hms_tz.nhif.api.healthcare_practitioner.get_nhif_practitioner_login_status",
+    args: {},
+    callback: (r) => {
+      if (r.message) {
+        logout_from_nhif(listview);
+      } else {
+        login_to_nhif(listview);
+      }
+    },
+  });
+};
 
 var login_to_nhif = (listview) => {
-    listview.page.add_inner_button(__("Login To NHIF"), async () => {
-        let fingerprint = await new dpFingerprint({ label: 'Login To NHIF' });
-        if (!fingerprint) {
-            frappe.msgprint(__('Fingerprint capture failed. Please try again.'));
-            return;
-        }
-        
-        frappe.call({
-            method: 'hms_tz.nhif.nhif_api.attendance.login_practitioner',
-            args: {
-                'fingerprint': fingerprint.Data,
-                'fpcode': fingerprint.fpCode,
-            },
-            async: true,
-            freeze: true,
-            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            callback: function (data) {
-                if (data.message && data.message !== 'Error') {
-                    frappe.utils.play_sound("submit");
-                } else {
-                    frappe.utils.play_sound("error");
-                }
-            },
-            onerror: function (data) {
-                frappe.utils.play_sound("error");
-            }
-        });
-    }).removeClass("btn-default").addClass("btn-primary btn-sm");
-}
+  listview.page
+    .add_inner_button(__("Login To NHIF"), async () => {
+      let fingerprint = await new dpFingerprint({ label: "Login To NHIF" });
+      if (!fingerprint) {
+        frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+        return;
+      }
+
+      frappe.call({
+        method: "hms_tz.nhif.nhif_api.attendance.login_practitioner",
+        args: {
+          fingerprint: fingerprint.Data,
+          fpcode: fingerprint.fpCode,
+        },
+        async: true,
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: function (data) {
+          if (data.message && data.message !== "Error") {
+            frappe.utils.play_sound("submit");
+          } else {
+            frappe.utils.play_sound("error");
+          }
+        },
+        onerror: function (data) {
+          frappe.utils.play_sound("error");
+        },
+      });
+    })
+    .removeClass("btn-default")
+    .addClass("btn-primary btn-sm");
+};
 
 var logout_from_nhif = (listview) => {
-    listview.page.add_inner_button(__("Logout From NHIF"), async () => {
-        frappe.call({
-            method: 'hms_tz.nhif.nhif_api.attendance.logout_practitioner',
-            args: {},
-            async: true,
-            freeze: true,
-            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            callback: function (data) {
-                if (data.message && data.message !== 'Error') {
-                    frappe.utils.play_sound("submit");
-                } else {
-                    frappe.utils.play_sound("error");
-                }
-            },
-            onerror: function (data) {
-                frappe.utils.play_sound("error");
-            }
-        });
-    }).removeClass("btn-default").addClass("btn-primary btn-sm");
-}
+  listview.page
+    .add_inner_button(__("Logout From NHIF"), async () => {
+      frappe.call({
+        method: "hms_tz.nhif.nhif_api.attendance.logout_practitioner",
+        args: {},
+        async: true,
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: function (data) {
+          if (data.message && data.message !== "Error") {
+            frappe.utils.play_sound("submit");
+          } else {
+            frappe.utils.play_sound("error");
+          }
+        },
+        onerror: function (data) {
+          frappe.utils.play_sound("error");
+        },
+      });
+    })
+    .removeClass("btn-default")
+    .addClass("btn-primary btn-sm");
+};

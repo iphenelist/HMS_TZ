@@ -3,10 +3,11 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, nowdate
 from frappe.model.document import Document
+from frappe.utils import getdate, nowdate
 
 
 class HealthcareInsuranceContract(Document):
@@ -22,6 +23,4 @@ class HealthcareInsuranceContract(Document):
                 },
             )
             if contract and contract != self.name:
-                frappe.throw(
-                    _(f"There exist an active contract with this insurance company {contract}")
-                )
+                frappe.throw(_(f"There exist an active contract with this insurance company {contract}"))

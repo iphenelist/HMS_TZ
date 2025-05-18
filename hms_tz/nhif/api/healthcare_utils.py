@@ -3,26 +3,17 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
+import base64
+import json
+import re
+from datetime import timedelta
+
 import frappe
 from frappe import _
-import datetime
-import requests
-from frappe.utils import (
-    nowdate,
-    nowtime,
-    now_datetime,
-    add_to_date,
-    get_url_to_form,
-    add_days,
-    create_batch,
-)
-from datetime import timedelta
-import base64
-import re
-import json
 from frappe.query_builder import DocType
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-from hms_tz.nhif.api.token import get_nhifservice_token
+from frappe.utils import add_days, add_to_date, create_batch, get_url_to_form, now_datetime, nowdate, nowtime
+
 
 def get_childs_map():
     childs_map = {
@@ -73,10 +64,8 @@ def get_healthcare_services_to_invoice(
     else:
         if not encounter:
             return services_to_invoice
-        
-        reference_encounter = frappe.get_cached_value(
-            "Patient Encounter", encounter, "reference_encounter"
-        )
+
+        reference_encounter = frappe.get_cached_value("Patient Encounter", encounter, "reference_encounter")
 
         encounter_dict = frappe.db.get_all(
             "Patient Encounter",
@@ -104,10 +93,10 @@ def get_healthcare_services_to_invoice(
 
             for row in table:
                 if (
-                    row.get("invoiced") or
-                    row.get("is_cancelled") or
-                    not row.get("prescribe") or
-                    row.get("is_not_available_inhouse")
+                    row.get("invoiced")
+                    or row.get("is_cancelled")
+                    or not row.get("prescribe")
+                    or row.get("is_not_available_inhouse")
                 ):
                     continue
 
@@ -119,14 +108,10 @@ def get_healthcare_services_to_invoice(
 
                 qty = 1
                 if value.get("doctype") == "Therapy Plan Detail":
-                    qty = (row.get("no_of_sessions") or 0) - (
-                        row.get("sessions_cancelled") or 0
-                    )
+                    qty = (row.get("no_of_sessions") or 0) - (row.get("sessions_cancelled") or 0)
 
                 if value.get("doctype") == "Drug Prescription":
-                    qty = (row.get("quantity") or 0) - (
-                        row.get("quantity_returned") or 0
-                    )
+                    qty = (row.get("quantity") or 0) - (row.get("quantity_returned") or 0)
 
                 new_row = {}
                 new_row["reference_type"] = row.doctype
@@ -144,7 +129,8 @@ def get_healthcare_services_to_invoice(
     hsrp = DocType("Healthcare Service Request Payment")
     hsr_services = (
         frappe.qb.from_(hsr)
-        .inner_join(hsrp).on(hsr.name == hsrp.parent)
+        .inner_join(hsrp)
+        .on(hsr.name == hsrp.parent)
         .select(
             hsrp.service_name,
             hsrp.service_type,
@@ -152,7 +138,7 @@ def get_healthcare_services_to_invoice(
             hsrp.ref_doctype,
             hsrp.qty,
             hsrp.amount,
-            hsrp.name.as_("service_request")
+            hsrp.name.as_("service_request"),
         )
         .where(
             (hsr.docstatus == 1)
@@ -178,7 +164,7 @@ def get_healthcare_services_to_invoice(
             new_row["service_request"] = row.service_request
 
             services_to_invoice.append(new_row)
-    
+
     # Get services from Inpatient Record
     if inpatient_record:
         inpatient_doc = frappe.get_cached_doc("Inpatient Record", inpatient_record)
@@ -187,11 +173,11 @@ def get_healthcare_services_to_invoice(
                 continue
 
             service_unit_type = frappe.get_cached_value(
-                "Healthcare Service Unit", row.service_unit, "service_unit_type"
+                "Healthcare Service Unit",
+                row.service_unit,
+                "service_unit_type",
             )
-            item_code = frappe.get_cached_value(
-                "Healthcare Service Unit Type", service_unit_type, "item_code"
-            )
+            item_code = frappe.get_cached_value("Healthcare Service Unit Type", service_unit_type, "item_code")
 
             new_row = {}
             new_row["reference_type"] = row.doctype
@@ -216,7 +202,7 @@ def get_healthcare_services_to_invoice(
             new_row["service_request"] = ""
 
             services_to_invoice.append(new_row)
-    
+
     return services_to_invoice
 
 
@@ -244,7 +230,7 @@ def get_item_rate(
     company,
     insurance_subscription,
     insurance_company=None,
-    for_service_request=False
+    for_service_request=False,
 ):
     price_list = None
     price_list_rate = None
@@ -270,18 +256,11 @@ def get_item_rate(
             else:
                 price_list_rate = None
         elif not price_list:
-            frappe.throw(
-                _(
-                    f"Default price list for {hic_plan} NOT FOUND!<br>Please set Price List in {hic_plan} plan"
-                )
-            )
+            frappe.throw(_(f"Default price list for {hic_plan} NOT FOUND!<br>Please set Price List in {hic_plan} plan"))
         if not price_list_rate:
             if price_list and not secondary_price_list:
                 frappe.throw(
-                    _(
-                        f"Item Price for {item_code} not found in Default Price List and Secondary price list for {hic_plan} not set!<br>Please set Item rate in {price_list} or set a Secondary Price List in {hic_plan} plan"
-                    )
-                )
+                    _(f"Item Price for {item_code} not found in Default Price List and Secondary price list for {hic_plan} not set!<br>Please set Item rate in {price_list} or set a Secondary Price List in {hic_plan} plan"))
             price_list_rate = get_item_price(item_code, secondary_price_list, company)
             if price_list_rate and price_list_rate != 0:
                 if for_service_request:
@@ -293,14 +272,13 @@ def get_item_rate(
 
     if not price_list_rate and insurance_company:
         price_list = frappe.get_cached_value(
-            "Healthcare Insurance Company", insurance_company, "default_price_list"
+            "Healthcare Insurance Company",
+            insurance_company,
+            "default_price_list",
         )
     if not price_list:
         frappe.throw(
-            _(
-                f"Default price list for {hic_plan} NOT FOUND!<br>Please set Price List in {insurance_company} insurance company"
-            )
-        )
+            _(f"Default price list for {hic_plan} NOT FOUND!<br>Please set Price List in {insurance_company} insurance company"))
     else:
         price_list_rate = get_item_price(item_code, price_list, company)
     if price_list_rate and price_list_rate != 0:
@@ -309,9 +287,7 @@ def get_item_rate(
         else:
             return price_list_rate
     else:
-        frappe.throw(
-            _(f"Please set Price List for item: {item_code} in price list {price_list}")
-        )
+        frappe.throw(_(f"Please set Price List for item: {item_code} in price list {price_list}"))
 
 
 @frappe.whitelist()
@@ -337,9 +313,7 @@ def get_default_price_list(patient):
     if not price_list:
         customer = frappe.get_cached_value("Patient", patient, "customer")
         if customer:
-            price_list = frappe.get_cached_value(
-                "Customer", customer, "default_price_list"
-            )
+            price_list = frappe.get_cached_value("Customer", customer, "default_price_list")
     if not price_list:
         customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
         frappe.get_cached_value("Customer Group", customer_group, "default_price_list")
@@ -360,11 +334,7 @@ def get_discount_percent(insurance_company):
         ["hms_tz_has_price_discount", "hms_tz_price_discount"],
     )
     if has_price_discount and discount == 0:
-        frappe.throw(
-            _(
-                f"Please set discount(%) for this insurance company: {frappe.bold(insurance_company)}"
-            )
-        )
+        frappe.throw(_(f"Please set discount(%) for this insurance company: {frappe.bold(insurance_company)}"))
 
     if has_price_discount and discount > 0:
         discount_percent = discount
@@ -386,9 +356,7 @@ def get_app_branch(app):
     import subprocess
 
     try:
-        branch = subprocess.check_output(
-            f"cd ../apps/{app} && git rev-parse --abbrev-ref HEAD", shell=True
-        )
+        branch = subprocess.check_output(f"cd ../apps/{app} && git rev-parse --abbrev-ref HEAD", shell=True)
         branch = branch.decode("utf-8")
         branch = branch.strip()
         return branch
@@ -399,10 +367,12 @@ def get_app_branch(app):
 def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
     if not patient_encounter_doc.appointment:
         return
-    # purposely put this below to skip the delivery note process 2021-04-07 14:36:07
+    # purposely put this below to skip the delivery note process 2021-04-07
+    # 14:36:07
     if patient_encounter_doc.appointment:
         return
-    # purposely put this above to skip the delivery note process 2021-04-07 14:36:04
+    # purposely put this above to skip the delivery note process 2021-04-07
+    # 14:36:04
     insurance_subscription, insurance_company = frappe.get_cached_value(
         "Patient Appointment",
         patient_encounter_doc.appointment,
@@ -410,17 +380,13 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
     )
     if not insurance_subscription:
         return
-    warehouse = get_warehouse_from_service_unit(
-        patient_encounter_doc.healthcare_service_unit
-    )
+    warehouse = get_warehouse_from_service_unit(patient_encounter_doc.healthcare_service_unit)
     items = []
     item = get_item_form_LRPT(LRPT_doc)
     item_code = item.get("item_code")
     if not item_code:
         return
-    is_stock, item_name = frappe.get_cached_value(
-        "Item", item_code, ["is_stock_item", "item_name"]
-    )
+    is_stock, item_name = frappe.get_cached_value("Item", item_code, ["is_stock_item", "item_name"])
     if is_stock:
         return
     item_row = frappe.new_doc("Delivery Note Item")
@@ -450,12 +416,8 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
             posting_time=nowtime(),
             set_warehouse=warehouse,
             company=patient_encounter_doc.company,
-            customer=frappe.get_cached_value(
-                "Healthcare Insurance Company", insurance_company, "customer"
-            ),
-            currency=frappe.get_cached_value(
-                "Company", patient_encounter_doc.company, "default_currency"
-            ),
+            customer=frappe.get_cached_value("Healthcare Insurance Company", insurance_company, "customer"),
+            currency=frappe.get_cached_value("Company", patient_encounter_doc.company, "default_currency"),
             items=items,
             reference_doctype=LRPT_doc.doctype,
             reference_name=LRPT_doc.name,
@@ -475,15 +437,9 @@ def create_delivery_note_from_LRPT(LRPT_doc, patient_encounter_doc):
 
 
 def get_warehouse_from_service_unit(healthcare_service_unit):
-    warehouse = frappe.get_cached_value(
-        "Healthcare Service Unit", healthcare_service_unit, "warehouse"
-    )
+    warehouse = frappe.get_cached_value("Healthcare Service Unit", healthcare_service_unit, "warehouse")
     if not warehouse:
-        frappe.throw(
-            _(
-                f"Warehouse is missing in Healthcare Service Unit {healthcare_service_unit}"
-            )
-        )
+        frappe.throw(_(f"Warehouse is missing in Healthcare Service Unit {healthcare_service_unit}"))
     return warehouse
 
 
@@ -492,9 +448,7 @@ def get_item_form_LRPT(LRPT_doc):
     comapny_option = get_template_company_option(LRPT_doc.template, LRPT_doc.company)
     item.healthcare_service_unit = comapny_option.service_unit
     if LRPT_doc.doctype == "Lab Test":
-        item.item_code = frappe.get_cached_value(
-            "Lab Test Template", LRPT_doc.template, "item"
-        )
+        item.item_code = frappe.get_cached_value("Lab Test Template", LRPT_doc.template, "item")
         item.qty = 1
     elif LRPT_doc.doctype == "Radiology Examination":
         item.item_code = frappe.get_cached_value(
@@ -524,11 +478,7 @@ def update_dimensions(doc):
         elif refd and refn:
             item.healthcare_practitioner = get_healthcare_practitioner(item)
 
-        if (
-            doc.healthcare_service_unit
-            and not item.healthcare_service_unit
-            and not refn
-        ):
+        if doc.healthcare_service_unit and not item.healthcare_service_unit and not refn:
             item.healthcare_service_unit = doc.healthcare_service_unit
 
         if refd and refn:
@@ -562,9 +512,7 @@ def get_healthcare_practitioner(item):
 
     for ref_doc in ref_docs:
         if refd == ref_doc.get("reference_doc"):
-            parent, parenttype = frappe.get_cached_value(
-                ref_doc.get("reference_doc"), refn, ["parent", "parenttype"]
-            )
+            parent, parenttype = frappe.get_cached_value(ref_doc.get("reference_doc"), refn, ["parent", "parenttype"])
             if parent and parenttype == "Patient Encounter":
                 return frappe.get_cached_value("Patient Encounter", parent, "practitioner")
 
@@ -573,9 +521,7 @@ def get_healthcare_practitioner(item):
     elif refd == "Patient Appointment":
         return frappe.get_cached_value("Patient Appointment", refn, "practitioner")
     elif refd == "Inpatient Consultancy":
-        return frappe.get_cached_value(
-            "Inpatient Consultancy", refn, "healthcare_practitioner"
-        )
+        return frappe.get_cached_value("Inpatient Consultancy", refn, "healthcare_practitioner")
     elif refd == "Healthcare Service Order":
         encounter = frappe.get_cached_value("Healthcare Service Order", refn, "order_group")
         if encounter:
@@ -596,9 +542,7 @@ def get_healthcare_service_unit(item):
 
     for ref_doc in ref_docs:
         if refd == ref_doc.get("reference_doc"):
-            return frappe.get_cached_value(
-                ref_doc.get("reference_doc"), refn, "department_hsu"
-            )
+            return frappe.get_cached_value(ref_doc.get("reference_doc"), refn, "department_hsu")
 
     if refd == "Patient Encounter":
         return frappe.get_cached_value("Patient Encounter", refn, "healthcare_service_unit")
@@ -628,7 +572,13 @@ def get_healthcare_service_unit(item):
         order_doctype, order, order_group, billing_item, company = frappe.get_cached_value(
             refd,
             refn,
-            ["order_doctype", "order", "order_group", "billing_item", "company"],
+            [
+                "order_doctype",
+                "order",
+                "order_group",
+                "billing_item",
+                "company",
+            ],
         )
         if order_doctype in [
             "Lab Test Template",
@@ -665,20 +615,12 @@ def get_restricted_LRPT(doc):
     elif doc.doctype == "Therapy Plan":
         template = doc.therapy_plan_template
     else:
-        frappe.msgprint(
-            _(
-                "Unknown Doctype "
-                + doc.doctype
-                + " found in get_restricted_LRPT. Setup may be missing."
-            )
-        )
+        frappe.msgprint(_("Unknown Doctype " + doc.doctype + " found in get_restricted_LRPT. Setup may be missing."))
     is_restricted = 0
     if not template:
         return is_restricted
     if doc.ref_doctype and doc.ref_docname and doc.ref_doctype == "Patient Encounter":
-        insurance_subscription = frappe.get_cached_value(
-            "Patient Encounter", doc.ref_docname, "insurance_subscription"
-        )
+        insurance_subscription = frappe.get_cached_value("Patient Encounter", doc.ref_docname, "insurance_subscription")
         if insurance_subscription:
             healthcare_insurance_coverage_plan = frappe.get_cached_value(
                 "Healthcare Insurance Subscription",
@@ -720,9 +662,7 @@ def set_healthcare_services(doc, checked_values):
         if checked_item["rate"]:
             item_line.rate = checked_item["rate"]
         else:
-            item_line.rate = get_item_price(
-                checked_item["item"], doc.selling_price_list, doc.company
-            )
+            item_line.rate = get_item_price(checked_item["item"], doc.selling_price_list, doc.company)
         item_line.amount = float(item_line.rate) * float(item_line.qty)
 
         if checked_item["dt"]:
@@ -737,7 +677,10 @@ def set_healthcare_services(doc, checked_values):
         if checked_item["service_request"]:
             item_line.service_request = checked_item["service_request"]
 
-        if checked_item["dt"] not in ["Inpatient Occupancy", "Inpatient Consultancy"]:
+        if checked_item["dt"] not in [
+            "Inpatient Occupancy",
+            "Inpatient Consultancy",
+        ]:
             parent_encounter = frappe.get_cached_value(
                 checked_item["dt"],
                 checked_item["dn"],
@@ -768,9 +711,7 @@ def set_healthcare_services(doc, checked_values):
                 item_line.healthcare_service_unit = comapny_option.service_unit
 
         if item_line.healthcare_service_unit:
-            item_line.warehouse = get_warehouse_from_service_unit(
-                item_line.healthcare_service_unit
-            )
+            item_line.warehouse = get_warehouse_from_service_unit(item_line.healthcare_service_unit)
 
     doc.set_missing_values(for_validate=True)
     doc.save()
@@ -801,7 +742,7 @@ def inpatient_billing(encounter_doc, method):
             "table_field": "procedure_prescription",
             "item_field": "procedure",
             "doctype": "Clinical Procedure Template",
-        }
+        },
     ]
     for child_table_field in child_tables_list:
         if encounter_doc.get(child_table_field.get("table_field")):
@@ -814,30 +755,19 @@ def inpatient_billing(encounter_doc, method):
                 )
                 if is_disabled == 1:
                     frappe.throw(
-                        _(
-                            f"{child_table_field.get('doctype')}: <b>{child.get(child_table_field.get('item_field'))}</b> selected at Row#: {child.idx} is <b>disabled</b>. Please select an enabled item."
-                        )
-                    )
+                        _(f"{child_table_field.get('doctype')}: <b>{child.get(child_table_field.get('item_field'))}</b> selected at Row#: {child.idx} is <b>disabled</b>. Please select an enabled item."))
 
-                if (
-                    child.is_cancelled
-                    or child.is_not_available_inhouse
-                    or child.hms_tz_is_limit_exceeded
-                ):
+                if child.is_cancelled or child.is_not_available_inhouse or child.hms_tz_is_limit_exceeded:
                     continue
 
                 if child.doctype == "Lab Prescription":
                     create_individual_lab_test(encounter_doc, child)
 
                 elif child.doctype == "Radiology Procedure Prescription":
-                    create_individual_radiology_examination(
-                        encounter_doc, child
-                    )
+                    create_individual_radiology_examination(encounter_doc, child)
 
                 elif child.doctype == "Procedure Prescription":
-                    create_individual_procedure_prescription(
-                        encounter_doc, child
-                    )
+                    create_individual_procedure_prescription(encounter_doc, child)
 
     create_therapy_plan(enc_doc=encounter_doc)
     create_delivery_note(encounter_doc, method)
@@ -861,29 +791,21 @@ def create_healthcare_docs(reference_encounter, encounter_list=[], method="event
 
     if method == "from_button":
         frappe.msgprint(
-            _(
-                f"The {len(encounter_list)} patient encounters were processed for creating pending healthcare docs."
-            )
+            _(f"The {len(encounter_list)} patient encounters were processed for creating pending healthcare docs.")
         )
 
 
 def create_lrp_docs(encounter_doc):
     if encounter_doc.docstatus != 1:
         frappe.msgprint(
-            _(
-                "Cannot process Patient Encounter that is not submitted! Please submit"
-                " and try again."
-            ),
+            _("Cannot process Patient Encounter that is not submitted! Please submit" " and try again."),
             alert=True,
         )
         return
 
     if not encounter_doc.appointment:
         frappe.msgprint(
-            _(
-                "Patient Encounter does not have patient appointment number! Request"
-                " for support with this message."
-            ),
+            _("Patient Encounter does not have patient appointment number! Request" " for support with this message."),
             alert=True,
         )
         return
@@ -908,11 +830,7 @@ def create_lrp_docs(encounter_doc):
                 if encounter_doc.insurance_subscription and child.prescribe == 1:
                     continue
 
-                if (
-                    child.is_cancelled
-                    or child.is_not_available_inhouse
-                    or child.hms_tz_is_limit_exceeded
-                ):
+                if child.is_cancelled or child.is_not_available_inhouse or child.hms_tz_is_limit_exceeded:
                     continue
 
                 if child.doctype == "Lab Prescription":
@@ -926,10 +844,7 @@ def create_lrp_docs(encounter_doc):
 
 
 def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
-    if (
-        encounter_child.lab_test_created == 1 or
-        encounter_child.is_not_available_inhouse
-    ):
+    if encounter_child.lab_test_created == 1 or encounter_child.is_not_available_inhouse:
         return
 
     insurance_subscription = ""
@@ -977,17 +892,13 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
     doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
-        (encounter_child.medical_code or "No ICD Code")
-        + " : "
-        + (encounter_child.lab_test_comment or "No Comment")
+        (encounter_child.medical_code or "No ICD Code") + " : " + (encounter_child.lab_test_comment or "No Comment")
     )
 
     doc.save(ignore_permissions=True)
     if doc.get("name"):
         frappe.msgprint(
-            _(
-                f"Lab Test: <b>{doc.name}</b> for <b>{encounter_child.lab_test_code}</b> created successfully."
-            )
+            _(f"Lab Test: <b>{doc.name}</b> for <b>{encounter_child.lab_test_code}</b> created successfully.")
         )
 
         encounter_child.lab_test_created = 1
@@ -1008,10 +919,7 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
 
 
 def create_individual_radiology_examination(source_doc, encounter_child, hsr_child):
-    if (
-        encounter_child.radiology_examination_created == 1 or
-        encounter_child.is_not_available_inhouse
-    ):
+    if encounter_child.radiology_examination_created == 1 or encounter_child.is_not_available_inhouse:
         return
 
     insurance_subscription = ""
@@ -1072,10 +980,7 @@ def create_individual_radiology_examination(source_doc, encounter_child, hsr_chi
     doc.save(ignore_permissions=True)
     if doc.get("name"):
         frappe.msgprint(
-            _(
-                f"Radiology Examination: <b>{doc.name}</b> for <b>{encounter_child.radiology_examination_template}</b> created successfully."
-            )
-        )
+            _(f"Radiology Examination: <b>{doc.name}</b> for <b>{encounter_child.radiology_examination_template}</b> created successfully."))
 
         encounter_child.radiology_examination_created = 1
         encounter_child.delivered_quantity = 1
@@ -1095,10 +1000,7 @@ def create_individual_radiology_examination(source_doc, encounter_child, hsr_chi
 
 
 def create_individual_procedure_prescription(source_doc, encounter_child, hsr_child=None):
-    if (
-        encounter_child.procedure_created == 1 or
-        encounter_child.is_not_available_inhouse
-    ):
+    if encounter_child.procedure_created == 1 or encounter_child.is_not_available_inhouse:
         return
 
     insurance_subscription = ""
@@ -1140,7 +1042,9 @@ def create_individual_procedure_prescription(source_doc, encounter_child, hsr_ch
     doc.patient_sex = patient_sex
     doc.patient_age = source_doc.patient_age
     doc.medical_department = frappe.get_cached_value(
-        "Clinical Procedure Template", encounter_child.procedure, "medical_department"
+        "Clinical Procedure Template",
+        encounter_child.procedure,
+        "medical_department",
     )
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
@@ -1186,9 +1090,7 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
     if len(invoice_therapy_dict) > 0:
         # These invoice_therapy_dict comes from sales invoice items
         for row in invoice_therapy_dict:
-            therapy_child = frappe.get_cached_doc(
-                "Therapy Plan Detail", row.reference_dn
-            )
+            therapy_child = frappe.get_cached_doc("Therapy Plan Detail", row.reference_dn)
             if therapy_child.is_cancelled == 1:
                 frappe.throw(
                     f"Item: {frappe.bold(therapy_child.therapy_type)} RowNo#: {frappe.bold(row.idx)} is already cancelled,\
@@ -1218,14 +1120,11 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
     elif len(enc_doc.therapies) > 0:
         if enc_doc.docstatus != 1:
             frappe.msgprint(
-                _(
-                    "Cannot process Patient Encounter that is not submitted! Please submit"
-                    " and try again."
-                ),
+                _("Cannot process Patient Encounter that is not submitted! Please submit" " and try again."),
                 alert=True,
             )
             return
-        
+
         if not enc_doc.appointment:
             frappe.msgprint(
                 _(
@@ -1257,15 +1156,10 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
             if not enc_doc.insurance_subscription and row.prescribe == 0:
                 continue
 
-            is_disabled = frappe.get_cached_value(
-                "Therapy Type", row.therapy_type, "disabled"
-            )
+            is_disabled = frappe.get_cached_value("Therapy Type", row.therapy_type, "disabled")
             if is_disabled == 1:
                 frappe.throw(
-                    _(
-                        f"Therapy Type: <b>{row.therapy_type}</b> selected at Row#: {row.idx} is <b>disabled</b>. Please select an enabled item."
-                    )
-                )
+                    _(f"Therapy Type: <b>{row.therapy_type}</b> selected at Row#: {row.idx} is <b>disabled</b>. Please select an enabled item."))
 
             therapies.append(row)
 
@@ -1307,7 +1201,7 @@ def create_plan(patient_encounter_docs, therapies, therapy_map={}):
                         "is_restricted": entry.is_restricted or 0,
                         "hms_tz_ref_childname": entry.name,
                         "no_of_sessions": entry.no_of_sessions - entry.sessions_cancelled,
-                        "department_hsu": entry.department_hsu
+                        "department_hsu": entry.department_hsu,
                     },
                 )
         if item_counts == 0:
@@ -1315,7 +1209,7 @@ def create_plan(patient_encounter_docs, therapies, therapy_map={}):
 
         if hsr_child and hsr_child.payment_type == "Insurance":
             # consider insurance details from HSR
-            doc.hms_tz_insurance_coverage_plan  = hsr_child.payor_plan
+            doc.hms_tz_insurance_coverage_plan = hsr_child.payor_plan
             doc.insurance_company = hsr_child.insurance_company
         else:
             doc.hms_tz_insurance_coverage_plan = encounter_doc.insurance_coverage_plan
@@ -1326,15 +1220,14 @@ def create_plan(patient_encounter_docs, therapies, therapy_map={}):
             # April 09, 2024
             # stopping updating therapy plan on encounter,
             # since single encounter may have multiple therapy plans,
-            # this may happen when insurance patient pay cash for some therapies and insurance for other therapies
+            # this may happen when insurance patient pay cash for some
+            # therapies and insurance for other therapies
 
             # encounter_doc.db_set("therapy_plan", doc.name)
             for entry in therapies:
                 if entry.parent == encounter_doc.name:
                     entry.therapy_plan_created = 1
-                    entry.delivered_quantity = (
-                        entry.no_of_sessions - entry.sessions_cancelled
-                    )
+                    entry.delivered_quantity = entry.no_of_sessions - entry.sessions_cancelled
                     entry.db_update()
 
                     if therapy_map:
@@ -1347,7 +1240,10 @@ def create_plan(patient_encounter_docs, therapies, therapy_map={}):
                                 .set(hsrp.lrpmt_doctype, doc.doctype)
                                 .set(hsrp.lrpmt_docname, doc.name)
                                 .set(hsrp.lrpmt_status, "Draft")
-                                .where((hsrp.ref_docname == therapy_child.ref_docname) & (hsrp.request_id == therapy_child.request_id))
+                                .where(
+                                    (hsrp.ref_docname == therapy_child.ref_docname)
+                                    & (hsrp.request_id == therapy_child.request_id)
+                                )
                             ).run()
 
             frappe.msgprint(
@@ -1384,10 +1280,7 @@ def create_delivery_note(encounter_doc, method):
         item_code = frappe.get_cached_value("Medication", line.drug_code, "item")
         if not item_code:
             frappe.throw(
-                _(
-                    f"The Item Code for {line.drug_code} is not found!<br>Please request administrator to set item code in {line.drug_code}."
-                )
-            )
+                _(f"The Item Code for {line.drug_code} is not found!<br>Please request administrator to set item code in {line.drug_code}."))
 
         is_stock = frappe.get_cached_value("Item", item_code, "is_stock_item")
         if not is_stock:
@@ -1399,10 +1292,7 @@ def create_delivery_note(encounter_doc, method):
 
     # apply discount if it is available on Heathcare Insurance Company
     discount_percent = 0
-    if (
-        encounter_doc.insurance_company
-        and "NHIF" not in encounter_doc.insurance_company
-    ):
+    if encounter_doc.insurance_company and "NHIF" not in encounter_doc.insurance_company:
         discount_percent = get_discount_percent(encounter_doc.insurance_company)
 
     # Process list of warehouses
@@ -1428,14 +1318,9 @@ def create_delivery_note(encounter_doc, method):
             item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
             if not item_code:
                 frappe.throw(
-                    _(
-                        f"The Item Code for {row.drug_code} is not found!<br>Please request administrator to set item code in {row.drug_code}."
-                    )
-                )
+                    _(f"The Item Code for {row.drug_code} is not found!<br>Please request administrator to set item code in {row.drug_code}."))
 
-            is_stock, item_name = frappe.get_cached_value(
-                "Item", item_code, ["is_stock_item", "item_name"]
-            )
+            is_stock, item_name = frappe.get_cached_value("Item", item_code, ["is_stock_item", "item_name"])
             if not is_stock:
                 continue
 
@@ -1469,10 +1354,8 @@ def create_delivery_note(encounter_doc, method):
                     "dosage_form: " + str(row.get("dosage_form") or ""),
                     "interval: " + str(row.get("interval") or ""),
                     "interval_uom: " + str(row.get("interval_uom") or ""),
-                    "medical_code: "
-                    + str(row.get("medical_code") or "No medical code"),
-                    "Doctor's comment: "
-                    + (row.get("comment") or "Take medication as per dosage."),
+                    "medical_code: " + str(row.get("medical_code") or "No medical code"),
+                    "Doctor's comment: " + (row.get("comment") or "Take medication as per dosage."),
                 ]
             )
             items.append(item)
@@ -1488,14 +1371,9 @@ def create_delivery_note(encounter_doc, method):
         if (
             not encounter_doc.insurance_subscription
             and encounter_doc.inpatient_record
-            or (
-                encounter_doc.mode_of_payment
-                and encounter_doc.healthcare_package_order
-            )
+            or (encounter_doc.mode_of_payment and encounter_doc.healthcare_package_order)
         ):
-            encounter_customer = frappe.get_cached_value(
-                "Patient", encounter_doc.patient, "customer"
-            )
+            encounter_customer = frappe.get_cached_value("Patient", encounter_doc.patient, "customer")
             insurance_coverage_plan = ""
 
         elif not encounter_customer:
@@ -1519,9 +1397,7 @@ def create_delivery_note(encounter_doc, method):
                 set_warehouse=element,
                 company=encounter_doc.company,
                 customer=encounter_customer,
-                currency=frappe.get_cached_value(
-                    "Company", encounter_doc.company, "default_currency"
-                ),
+                currency=frappe.get_cached_value("Company", encounter_doc.company, "default_currency"),
                 items=items,
                 coverage_plan_name=insurance_coverage_plan,
                 reference_doctype=encounter_doc.doctype,
@@ -1545,17 +1421,16 @@ def create_delivery_note(encounter_doc, method):
                     if d.name == item.reference_name:
                         frappe.db.set_value(
                             "Drug Prescription",
-                            item.reference_name, {
+                            item.reference_name,
+                            {
                                 "dn_detail": item.name,
                                 "delivery_note": doc.name,
                                 "drug_prescription_created": 1,
                             },
-                            update_modified=False
+                            update_modified=False,
                         )
 
-            frappe.msgprint(
-                _(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully.")
-            )
+            frappe.msgprint(_(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully."))
 
 
 @frappe.whitelist()
@@ -1576,10 +1451,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
     warehouses_map = {}
 
     for row in medications:
-        if (
-            row.lrpmt_doc_created == 1 or 
-            row.is_cancelled == 1
-        ):
+        if row.lrpmt_doc_created == 1 or row.is_cancelled == 1:
             continue
 
         item_code = frappe.get_cached_value("Medication", row.service_name, "item")
@@ -1599,7 +1471,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
                         to set item code in {row.service_name}."
                 ),
             )
-        
+
         row.item_code = item_code
 
         healthcare_service_unit = frappe.get_cached_value(row.ref_doctype, row.ref_docname, "healthcare_service_unit")
@@ -1675,13 +1547,13 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
             customer = frappe.get_cached_value(
                 "Healthcare Insurance Company",
                 encounter_doc.insurance_company,
-                "customer"
+                "customer",
             )
             insurance_coverage_plan = encounter_doc.insurance_coverage_plan
             authorization_number = frappe.get_cached_value(
                 "Patient Appointment",
                 encounter_doc.appointment,
-                "authorization_number"
+                "authorization_number",
             )
         else:
             customer = frappe.get_cached_value("Patient", encounter_doc.patient, "customer")
@@ -1694,9 +1566,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
                 set_warehouse=warehouse,
                 company=encounter_doc.company,
                 customer=customer,
-                currency=frappe.get_cached_value(
-                    "Company", encounter_doc.company, "default_currency"
-                ),
+                currency=frappe.get_cached_value("Company", encounter_doc.company, "default_currency"),
                 items=items,
                 healthcare_service_unit=encounter_doc.healthcare_service_unit,
                 healthcare_practitioner=encounter_doc.practitioner,
@@ -1737,11 +1607,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
                     .where(dp.name == item.reference_name)
                 ).run()
 
-            frappe.msgprint(
-                _(
-                    f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully."
-                )
-            )
+            frappe.msgprint(_(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully."))
 
 
 def msgThrow(msg, method="throw", alert=True):
@@ -1766,7 +1632,7 @@ def get_approval_number_from_LRPMT(ref_doctype=None, ref_docname=None):
 
 
 def set_uninvoiced_so_closed():
-    from erpnext.selling.doctype.sales_order.sales_order import update_status
+    pass
 
     uninvoiced_so_list = frappe.get_list(
         "Sales Order",
@@ -1795,29 +1661,25 @@ def validate_hsu_healthcare_template(doc):
     companys = [i.name for i in companys]
     for company in companys:
         row = next(
-            (d for d in doc.company_options if d.get("company") == company), None
+            (d for d in doc.company_options if d.get("company") == company),
+            None,
         )
         if not row:
-            frappe.msgprint(
-                _(f"Please set Healthcare Service Unit for company {company}")
-            )
+            frappe.msgprint(_(f"Please set Healthcare Service Unit for company {company}"))
 
 
 @frappe.whitelist()
 def get_template_company_option(template=None, company=None, method=None):
-    exist = frappe.db.exists(
-        "Healthcare Company Option", {"company": company, "parent": template}
-    )
+    exist = frappe.db.exists("Healthcare Company Option", {"company": company, "parent": template})
     if exist:
         doc = frappe.get_cached_doc(
-            "Healthcare Company Option", {"company": company, "parent": template}
+            "Healthcare Company Option",
+            {"company": company, "parent": template},
         )
         return doc
     else:
         msgThrow(
-            _(
-                f"No company option found for template: {frappe.bold(template)} and company: {frappe.bold(company)}"
-            ),
+            _(f"No company option found for template: {frappe.bold(template)} and company: {frappe.bold(company)}"),
             method=method,
         )
 
@@ -1850,7 +1712,8 @@ def delete_or_cancel_draft_document():
 
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(), str("Error in cancelling draft appointment")
+                frappe.get_traceback(),
+                str("Error in cancelling draft appointment"),
             )
 
     vital_docs = frappe.db.sql(
@@ -1868,7 +1731,8 @@ def delete_or_cancel_draft_document():
 
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(), str("Error in deleting draft vital signs")
+                frappe.get_traceback(),
+                str("Error in deleting draft vital signs"),
             )
         frappe.db.commit()
 
@@ -1885,9 +1749,7 @@ def delete_or_cancel_draft_document():
     for delivery_note in delivery_documents:
         delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note.name)
         try:
-            return_quatity_or_cancel_delivery_note_via_lrpmt_returns(
-                delivery_note_doc, "Backend"
-            )
+            return_quatity_or_cancel_delivery_note_via_lrpmt_returns(delivery_note_doc, "Backend")
 
         except Exception:
             frappe.log_error(
@@ -1954,9 +1816,7 @@ def return_quatity_or_cancel_delivery_note_via_lrpmt_returns(source_doc, method)
         else:
             target_doc.submit()
             url = get_url_to_form(target_doc.doctype, target_doc.name)
-            frappe.msgprint(
-                f"LRPMT Returns: <a href='{url}'>{frappe.bold(target_doc.name)}</a> is submitted"
-            )
+            frappe.msgprint(f"LRPMT Returns: <a href='{url}'>{frappe.bold(target_doc.name)}</a> is submitted")
 
             return True
 
@@ -2001,14 +1861,10 @@ def create_invoiced_items_if_not_created():
 
                 try:
                     child = frappe.get_cached_doc(item.reference_dt, item.reference_dn)
-                    patient_encounter_doc = frappe.get_cached_doc(
-                        "Patient Encounter", child.parent
-                    )
+                    patient_encounter_doc = frappe.get_cached_doc("Patient Encounter", child.parent)
 
                     if child.doctype == "Lab Prescription":
-                        ltt_doc = frappe.get_cached_doc(
-                            "Lab Test Template", child.lab_test_code
-                        )
+                        ltt_doc = frappe.get_cached_doc("Lab Test Template", child.lab_test_code)
 
                         lab_doc = frappe.get_doc(
                             {
@@ -2074,9 +1930,7 @@ def create_invoiced_items_if_not_created():
                                 or "No Comment",
                             }
                         )
-                        radiology_doc.insert(
-                            ignore_permissions=True, ignore_mandatory=True
-                        )
+                        radiology_doc.insert(ignore_permissions=True, ignore_mandatory=True)
                         if radiology_doc.name:
                             child.radiology_examination_created = 1
                             child.invoiced = 1
@@ -2111,9 +1965,7 @@ def create_invoiced_items_if_not_created():
                                 or "No Comment",
                             }
                         )
-                        procedure_doc.insert(
-                            ignore_permissions=True, ignore_mandatory=True
-                        )
+                        procedure_doc.insert(ignore_permissions=True, ignore_mandatory=True)
                         if procedure_doc.name:
                             child.procedure_created = 1
                             child.invoiced = 1
@@ -2193,7 +2045,7 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
             doc.reload()
             if doc.docstatus == 1:
                 success_count += 1
-        except:
+        except BaseException:
             failed_count += 1
 
     description = f"CLAIM'S AUTO SUBMISSION SUMMARY\n\n\ncompany: {setting_obj.company}\n\nTotal Claims Prepared for auto submit: {len(patient_claims)}\
@@ -2223,7 +2075,9 @@ def auto_finalize_patient_encounters():
                 if (
                     encounter.inpatient_record
                     and frappe.get_cached_value(
-                        "Inpatient Record", encounter.inpatient_record, "status"
+                        "Inpatient Record",
+                        encounter.inpatient_record,
+                        "status",
                     )
                     != "Discharged"
                 ):
@@ -2260,7 +2114,7 @@ def auto_finalize_patient_encounters():
                                 },
                             )
 
-            except Exception as e:
+            except Exception:
                 frappe.log_error(
                     frappe.get_traceback(),
                     f"Error in finalizing encounter: {encounter.name}",
@@ -2289,16 +2143,14 @@ def auto_finalize_patient_encounters():
             },
             ["name", "reference_encounter", "inpatient_record"],
             order_by="modified desc",
-            limit=100
+            limit=100,
         )
         for encounter_batch in create_batch(encounters, 100):
             finalize_encounter(encounter_batch)
             frappe.db.commit()
 
 
-def validate_nhif_patient_claim_status(
-    doctype_name, company, appointment, insurance_company=None, caller=None
-):
+def validate_nhif_patient_claim_status(doctype_name, company, appointment, insurance_company=None, caller=None):
     """Stop Change/Cancel/Return of LRPMT Items After Claim Submission
 
     This is to ensure same LRPMT items on patient encounter and on NHIF patient claim,
@@ -2324,9 +2176,7 @@ def validate_nhif_patient_claim_status(
         )
     if insurance_company and "NHIF" in insurance_company:
         if not claim_no:
-            claim_no = frappe.get_cached_value(
-                "Patient Appointment", appointment, "nhif_patient_claim"
-            )
+            claim_no = frappe.get_cached_value("Patient Appointment", appointment, "nhif_patient_claim")
 
         claim_status = frappe.get_cached_value("NHIF Patient Claim", claim_no, "docstatus")
         if claim_status == 1:
@@ -2434,7 +2284,6 @@ def auto_create_nhif_patient_claims():
 
         return discharged_appointments
 
-
     def create_claims(appointment_ids):
         for appointment in appointment_ids:
             try:
@@ -2443,7 +2292,7 @@ def auto_create_nhif_patient_claims():
                 doc.save(ignore_permissions=True)
                 doc.reload()
 
-            except Exception as e:
+            except Exception:
                 frappe.log_error(
                     frappe.get_traceback(),
                     f"Error in creating NHIF Patient Claim for appointment: {appointment}",
@@ -2454,6 +2303,8 @@ def auto_create_nhif_patient_claims():
     appointment_names = get_appointments(before_1_day)
     ongoing_inpatients = get_ongoiong_inpatients()
     discharged_appointments = get_discharged_inpatients(before_1_day)
-    appointment_ids = list(set(list(set(appointment_names) - set(ongoing_inpatients)) + list(set(discharged_appointments))))
+    appointment_ids = list(
+        set(list(set(appointment_names) - set(ongoing_inpatients)) + list(set(discharged_appointments)))
+    )
 
     create_claims(appointment_ids)

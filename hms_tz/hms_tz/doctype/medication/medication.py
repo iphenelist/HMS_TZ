@@ -3,7 +3,10 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe, json
+
+import json
+
+import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.rename_doc import rename_doc
@@ -16,7 +19,7 @@ class Medication(Document):
     def after_insert(self):
         try:
             create_item_from_medication(self)
-        except Exception as e:
+        except Exception:
             frappe.log_error(frappe.get_traceback(), "Medication Item Creation Error")
 
     def on_update(self):

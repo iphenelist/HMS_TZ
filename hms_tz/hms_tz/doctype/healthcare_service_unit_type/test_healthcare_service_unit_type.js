@@ -3,21 +3,21 @@
 // and remove above this line
 
 QUnit.test("test: Healthcare Service Unit Type", function (assert) {
-	let done = assert.async();
+  let done = assert.async();
 
-	// number of asserts
-	assert.expect(1);
+  // number of asserts
+  assert.expect(1);
 
-	frappe.run_serially([
-		// insert a new Healthcare Service Unit Type
-		() => frappe.tests.make('Healthcare Service Unit Type', [
-			// values to be set
-			{key: 'value'}
-		]),
-		() => {
-			assert.equal(cur_frm.doc.key, 'value');
-		},
-		() => done()
-	]);
-
+  frappe.run_serially([
+    // insert a new Healthcare Service Unit Type
+    () =>
+      frappe.tests.make("Healthcare Service Unit Type", [
+        // values to be set
+        { key: "value" },
+      ]),
+    () => {
+      assert.equal(cur_frm.doc.key, "value");
+    },
+    () => done(),
+  ]);
 });

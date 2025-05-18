@@ -33,11 +33,8 @@ def before_submit(doc, method):
     validate_not_serviced(doc)
 
     if doc.is_restricted and not doc.approval_number:
-        frappe.throw(
-            _(
-                f"Approval number is required for <b>{doc.therapy_type}</b>. Please set the Approval Number."
-            )
-        )
+        frappe.throw(_(f"Approval number is required for <b>{doc.therapy_type}</b>. Please set the Approval Number."))
+
 
 def on_submit(doc, method):
     update_therapy_detail(doc)

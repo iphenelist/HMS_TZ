@@ -3,9 +3,9 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
-from frappe.utils.background_jobs import enqueue
 
 
 def after_save(doc, method):
@@ -17,9 +17,7 @@ def after_save(doc, method):
 
 def set_missing_values(doc, method):
     if doc.order_reference_doctype and doc.order_reference_name:
-        prescribe = frappe.get_cached_value(
-            doc.order_reference_doctype, doc.order_reference_name, "prescribe"
-        )
+        prescribe = frappe.get_cached_value(doc.order_reference_doctype, doc.order_reference_name, "prescribe")
         if not prescribe:
             if doc.insurance_subscription:
                 doc.invoiced = 1
@@ -52,10 +50,7 @@ def clear_insurance_details(service_order):
         "radiology_procedure_prescription": "radiology_examination_created",
         # "therapies": "",
     }
-    if (
-        service_order_doc.order_reference_doctype
-        and service_order_doc.order_reference_name
-    ):
+    if service_order_doc.order_reference_doctype and service_order_doc.order_reference_name:
         child_row_doc = frappe.get_cached_doc(
             service_order_doc.order_reference_doctype,
             service_order_doc.order_reference_name,
@@ -70,7 +65,10 @@ def clear_insurance_details(service_order):
     frappe.db.commit()
 
     frappe.msgprint(
-        _(f"Healthcare Insurance Claim {frappe.bold(insurance_claim)} deleted successfully."),
+        _(
+            f"Healthcare Insurance Claim {frappe.bold(insurance_claim)}\
+                deleted successfully."
+        ),
         alert=True,
     )
     return True

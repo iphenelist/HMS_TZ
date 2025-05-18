@@ -1,5 +1,5 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
 
 def execute():
     fields = {
@@ -59,7 +59,7 @@ def execute():
                 "fieldtype": "Button",
                 "insert_after": "therapy_plan",
                 "depends_on": "eval: doc.docstatus == 0",
-            }
+            },
         ],
     }
 

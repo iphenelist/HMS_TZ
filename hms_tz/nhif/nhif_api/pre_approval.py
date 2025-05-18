@@ -1,20 +1,20 @@
 import json
+
 import frappe
 import requests
 from frappe.utils import add_days
-from hms_tz.nhif.nhif_api.referral import get_disease_code
+
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_childs_map, get_item_refcode
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
-    get_item_refcode, get_childs_map
-)
+from hms_tz.nhif.nhif_api.referral import get_disease_code
 
 
 @frappe.whitelist()
 def get_service_preapproval(
-    ref_doctype, 
+    ref_doctype,
     ref_docname,
     authorization_no=None,
-    settings_doc=None, 
+    settings_doc=None,
 ):
     encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
@@ -24,22 +24,20 @@ def get_service_preapproval(
         return False
 
     first_name, last_name, dob = frappe.get_cached_value(
-        "Patient",
-        encounter_doc.patient,
-        ["first_name", "last_name", "dob"]
+        "Patient", encounter_doc.patient, ["first_name", "last_name", "dob"]
     )
     mct_code, mobile = frappe.get_cached_value(
         "Healthcare Practitioner",
         encounter_doc.practitioner,
-        ["tz_mct_code", "mobile_phone"]
+        ["tz_mct_code", "mobile_phone"],
     )
     if not authorization_no:
         authorization_no = frappe.get_cached_value(
-            "Patient Appointment", 
+            "Patient Appointment",
             encounter_doc.appointment,
-            "authorization_number"
+            "authorization_number",
         )
-    
+
     payload = {
         "authorizationNo": authorization_no,
         "firstName": first_name,
@@ -52,7 +50,7 @@ def get_service_preapproval(
         "practitionersRemarks": "",
         "telephoneNo": mobile,
         "diseases": diseases,
-        "requestedServices": services
+        "requestedServices": services,
     }
     payload = json.dumps(payload)
 
@@ -64,7 +62,7 @@ def get_service_preapproval(
     token = settings_doc.get_nhif_token()
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
@@ -83,7 +81,7 @@ def get_service_preapproval(
         frappe.throw(
             title="NHIF API Error",
             msg=f"Pre-approval failed<br><br>Status Code: {r.status_code}<br>Response: <b>{r.text}<b>",
-            indicator="red"
+            indicator="red",
         )
     else:
         data = json.loads(r.text)
@@ -102,7 +100,7 @@ def get_service_preapproval(
         rejected_count = 0
         msg = "Pre-Approval request were rejected for the following services:<hr>\
             <table class='table table-condensed table-bordered'><tr><th>Service Type</th><th>Service</th><th>Status</th><th>Reason</th></tr>"
-    
+
         for child in get_childs_map():
             for row in encounter_doc.get(child.get("table")):
                 ref_code = service_map.get((row.doctype, row.name, row.get(child.get("item"))))
@@ -127,7 +125,7 @@ def get_service_preapproval(
                                 <td style='color: red'>{d.get('status')}</td>\
                                 <td>{d.get('rejectionDetails')}</td>\
                             </tr>"
-                        
+
         encounter_doc.has_preapproval = 1
         encounter_doc.db_update()
         encounter_doc.db_update_all()
@@ -135,20 +133,24 @@ def get_service_preapproval(
 
         encounter_doc.add_comment(
             comment_type="Comment",
-            text=f"Pre-approval request sent successful!<br>RequestID: <b>{data.get('requestID')}</b><br>"
+            text=f"Pre-approval request sent successful!<br>RequestID: <b>{data.get('requestID')}</b><br>",
         )
         if rejected_count > 0:
             msg += "</table>"
             frappe.msgprint(msg, title="Pre-Approval Status", indicator="red")
         else:
-            frappe.msgprint("<b>Pre-Approval request were successful for all services</b>", title="Pre-Approval Status", indicator="green")
+            frappe.msgprint(
+                "<b>Pre-Approval request were successful for all services</b>",
+                title="Pre-Approval Status",
+                indicator="green",
+            )
 
         return True
 
 
 @frappe.whitelist()
 def cancel_preapproval(
-    ref_doctype, 
+    ref_doctype,
     ref_docname,
     preapproval_no,
     remarks,
@@ -162,13 +164,13 @@ def cancel_preapproval(
 
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
-    
+
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={preapproval_no}&remarks={remarks}"
 
     token = settings_doc.get_nhif_token()
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
     }
 
     r = requests.request("Post", url, headers=headers, timeout=60)
@@ -210,10 +212,10 @@ def cancel_preapproval(
                     has_preapproval = False
                     row.db_update()
                     row.reload()
-                
+
                 elif row.preapproval_no and not has_preapproval:
                     has_preapproval = True
-                    
+
         encounter_doc.reload()
         encounter_doc.has_preapproval = has_preapproval
         encounter_doc.db_update()
@@ -227,11 +229,10 @@ def cancel_preapproval(
 
         encounter_doc.add_comment(
             comment_type="Comment",
-            text=f"Pre-approval request canceled successfully!<br>Pre-Approval No: <b>{preapproval_no}</b><br>NHIF RequestID(s): {request_ids}"
+            text=f"Pre-approval request canceled successfully!<br>Pre-Approval No: <b>{preapproval_no}</b><br>NHIF RequestID(s): {request_ids}",
         )
 
         return True
-
 
 
 def get_preliminary_diseases(doc):
@@ -246,12 +247,9 @@ def get_preliminary_diseases(doc):
             disease_code = row.code
         else:
             disease_code = row.code[:3]
-        
-        diseases.append({
-            "diseaseCode": disease_code,
-            "status": ""
-        })
-    
+
+        diseases.append({"diseaseCode": disease_code, "status": ""})
+
     return diseases
 
 
@@ -269,7 +267,7 @@ def get_encounter_services(doc, preapproval_no=None):
                 services.append(row.get(child.get("item")))
 
                 continue
-            
+
             if (
                 row.get("prescribe")
                 or row.get("is_not_available_inhouse")
@@ -280,27 +278,29 @@ def get_encounter_services(doc, preapproval_no=None):
                 continue
 
             ref_code = get_item_refcode(child.get("doctype"), row.get(child.get("item")))
-            services.append({
-                "itemCode": ref_code,
-                "usage": "",
-                "effectiveDate": str(doc.encounter_date),
-                "endDate":str(add_days(doc.encounter_date, 1)),
-                "quantityRequested": row.get("quantity") or 1,
-                "remarks": ""
-            })
-            
+            services.append(
+                {
+                    "itemCode": ref_code,
+                    "usage": "",
+                    "effectiveDate": str(doc.encounter_date),
+                    "endDate": str(add_days(doc.encounter_date, 1)),
+                    "quantityRequested": row.get("quantity") or 1,
+                    "remarks": "",
+                }
+            )
+
             service_map[row.get("doctype"), row.get("name"), row.get(child.get("item"))] = ref_code
-            
+
             medical_code = row.get("medical_code") or ""
-            disease_row = {
-                "diseaseCode":  get_disease_code(medical_code[6:])
-            }
-            if child.get("table") in ["lab_test_prescription", "radiology_procedure_prescription"]:
+            disease_row = {"diseaseCode": get_disease_code(medical_code[6:])}
+            if child.get("table") in [
+                "lab_test_prescription",
+                "radiology_procedure_prescription",
+            ]:
                 disease_row["status"] = "Preliminary"
             else:
                 disease_row["status"] = "Final"
-            
+
             diseases.append(disease_row)
 
     return services, service_map, diseases
-

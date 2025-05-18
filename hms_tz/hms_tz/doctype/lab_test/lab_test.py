@@ -3,10 +3,11 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, cstr, get_link_to_form
+from frappe.utils import cstr, get_link_to_form, getdate
 
 
 class LabTest(Document):
@@ -29,7 +30,8 @@ class LabTest(Document):
     def on_update(self):
         if self.sensitivity_test_items:
             sensitivity = sorted(
-                self.sensitivity_test_items, key=lambda x: x.antibiotic_sensitivity
+                self.sensitivity_test_items,
+                key=lambda x: x.antibiotic_sensitivity,
             )
             for i, item in enumerate(sensitivity):
                 item.idx = i + 1
@@ -37,12 +39,8 @@ class LabTest(Document):
 
     def after_insert(self):
         if self.prescription:
-            frappe.db.set_value(
-                "Lab Prescription", self.prescription, "lab_test_created", 1
-            )
-            frappe.db.set_value(
-                "Lab Prescription", self.prescription, "lab_test", self.name
-            )
+            frappe.db.set_value("Lab Prescription", self.prescription, "lab_test_created", 1)
+            frappe.db.set_value("Lab Prescription", self.prescription, "lab_test", self.name)
             if frappe.get_cached_value("Lab Prescription", self.prescription, "invoiced"):
                 self.invoiced = True
         if not self.lab_test_name and self.template:
@@ -58,10 +56,8 @@ class LabTest(Document):
         for item in self.normal_test_items:
             if item.result_value and item.secondary_uom and item.conversion_factor:
                 try:
-                    item.secondary_uom_result = float(item.result_value) * float(
-                        item.conversion_factor
-                    )
-                except:
+                    item.secondary_uom_result = float(item.result_value) * float(item.conversion_factor)
+                except BaseException:
                     item.secondary_uom_result = ""
                     frappe.msgprint(
                         _(f"Row #{item.idx}: Result for Secondary UOM not calculated"),
@@ -71,11 +67,7 @@ class LabTest(Document):
     def validate_result_values(self):
         if self.normal_test_items:
             for item in self.normal_test_items:
-                if (
-                    not item.result_value
-                    and not item.allow_blank
-                    and item.require_result_value
-                ):
+                if not item.result_value and not item.allow_blank and item.require_result_value:
                     frappe.throw(
                         _(f"Row #{item.idx}: Please enter the result value for {frappe.bold(item.lab_test_name)}"),
                         title=_("Mandatory Results"),
@@ -83,11 +75,7 @@ class LabTest(Document):
 
         if self.descriptive_test_items:
             for item in self.descriptive_test_items:
-                if (
-                    not item.result_value
-                    and not item.allow_blank
-                    and item.require_result_value
-                ):
+                if not item.result_value and not item.allow_blank and item.require_result_value:
                     frappe.throw(
                         _(f"Row #{item.idx}: Please enter the result value for {frappe.bold(item.lab_test_particulars)}"),
                         title=_("Mandatory Results"),
@@ -113,9 +101,7 @@ def create_test_from_template(lab_test):
 @frappe.whitelist()
 def update_status(status, name):
     if name and status:
-        frappe.db.set_value(
-            "Lab Test", name, {"status": status, "approved_date": getdate()}
-        )
+        frappe.db.set_value("Lab Test", name, {"status": status, "approved_date": getdate()})
 
 
 @frappe.whitelist()
@@ -159,9 +145,7 @@ def create_lab_test_from_encounter(encounter):
                         encounter.company,
                     )
                     lab_test.save(ignore_permissions=True)
-                    frappe.db.set_value(
-                        "Lab Prescription", item.name, "lab_test_created", 1
-                    )
+                    frappe.db.set_value("Lab Prescription", item.name, "lab_test_created", 1)
                     if not lab_test_created:
                         lab_test_created = lab_test.name
                     else:
@@ -177,9 +161,7 @@ def create_lab_test_from_invoice(sales_invoice):
         for item in invoice.items:
             lab_test_created = 0
             if item.reference_dt == "Lab Prescription":
-                lab_test_created = frappe.get_cached_value(
-                    "Lab Prescription", item.reference_dn, "lab_test_created"
-                )
+                lab_test_created = frappe.get_cached_value("Lab Prescription", item.reference_dn, "lab_test_created")
             elif item.reference_dt == "Lab Test":
                 lab_test_created = 1
             if lab_test_created != 1:
@@ -197,7 +179,10 @@ def create_lab_test_from_invoice(sales_invoice):
                     lab_test.save(ignore_permissions=True)
                     if item.reference_dt != "Lab Prescription":
                         frappe.db.set_value(
-                            "Sales Invoice Item", item.name, "reference_dt", "Lab Test"
+                            "Sales Invoice Item",
+                            item.name,
+                            "reference_dt",
+                            "Lab Test",
                         )
                         frappe.db.set_value(
                             "Sales Invoice Item",
@@ -296,15 +281,9 @@ def create_sample_doc(template, patient, invoice, company=None):
             sample_collection = frappe.get_cached_doc("Sample Collection", sample_exists[0][0])
             quantity = int(sample_collection.sample_qty) + int(template.sample_qty)
             if template.sample_details:
-                sample_details = (
-                    sample_collection.sample_details + "\n-\n" + _("Test: ")
-                )
-                sample_details += (
-                    template.get("lab_test_name") or template.get("template")
-                ) + "\n"
-                sample_details += (
-                    _("Collection Details: ") + "\n\t" + template.sample_details
-                )
+                sample_details = sample_collection.sample_details + "\n-\n" + _("Test: ")
+                sample_details += (template.get("lab_test_name") or template.get("template")) + "\n"
+                sample_details += _("Collection Details: ") + "\n\t" + template.sample_details
                 frappe.db.set_value(
                     "Sample Collection",
                     sample_collection.name,
@@ -313,7 +292,10 @@ def create_sample_doc(template, patient, invoice, company=None):
                 )
 
             frappe.db.set_value(
-                "Sample Collection", sample_collection.name, "sample_qty", quantity
+                "Sample Collection",
+                sample_collection.name,
+                "sample_qty",
+                quantity,
             )
 
         else:
@@ -344,17 +326,11 @@ def create_sample_doc(template, patient, invoice, company=None):
 
 
 def create_sample_collection(lab_test, template, patient, invoice):
-    if frappe.get_cached_value(
-        "Healthcare Settings", None, "create_sample_collection_for_lab_test"
-    ):
-        sample_collection = create_sample_doc(
-            template, patient, invoice, lab_test.company
-        )
+    if frappe.get_cached_value("Healthcare Settings", None, "create_sample_collection_for_lab_test"):
+        sample_collection = create_sample_doc(template, patient, invoice, lab_test.company)
         if sample_collection:
             lab_test.sample = sample_collection.name
-            sample_collection_doc = get_link_to_form(
-                "Sample Collection", sample_collection.name
-            )
+            sample_collection_doc = get_link_to_form("Sample Collection", sample_collection.name)
             frappe.msgprint(
                 _(f"Sample Collection {sample_collection_doc} has been created"),
                 title=_("Sample Collection"),
@@ -378,9 +354,7 @@ def load_result_format(lab_test, template, prescription, invoice):
         for lab_test_group in template.lab_test_groups:
             # Template_in_group = None
             if lab_test_group.lab_test_template:
-                template_in_group = frappe.get_cached_doc(
-                    "Lab Test Template", lab_test_group.lab_test_template
-                )
+                template_in_group = frappe.get_cached_doc("Lab Test Template", lab_test_group.lab_test_template)
                 if template_in_group:
                     if template_in_group.lab_test_template_type == "Single":
                         create_normals(template_in_group, lab_test)
@@ -395,9 +369,7 @@ def load_result_format(lab_test, template, prescription, invoice):
 
                     elif template_in_group.lab_test_template_type == "Descriptive":
                         descriptive_heading = lab_test.append("descriptive_test_items")
-                        descriptive_heading.lab_test_name = (
-                            template_in_group.lab_test_name
-                        )
+                        descriptive_heading.lab_test_name = template_in_group.lab_test_name
                         descriptive_heading.require_result_value = 0
                         descriptive_heading.allow_blank = 1
                         descriptive_heading.template = template_in_group.name
@@ -435,9 +407,7 @@ def insert_lab_test_to_medical_record(doc):
     table_row = False
     subject = cstr(doc.lab_test_name)
     if doc.practitioner:
-        subject += (
-            frappe.bold(_("Healthcare Practitioner: ")) + doc.practitioner + "<br>"
-        )
+        subject += frappe.bold(_("Healthcare Practitioner: ")) + doc.practitioner + "<br>"
     if doc.normal_test_items:
         item = doc.normal_test_items[0]
         comment = ""
@@ -493,8 +463,11 @@ def delete_lab_test_from_medical_record(self):
 
     if medical_record_id and medical_record_id[0][0]:
         frappe.delete_doc(
-            "Patient Medical Record", medical_record_id[0][0], ignore_permissions=True
+            "Patient Medical Record",
+            medical_record_id[0][0],
+            ignore_permissions=True,
         )
+
 
 @frappe.whitelist()
 def get_lab_test_prescribed(patient):
@@ -525,12 +498,8 @@ def make_insurance_claim(doc):
     if doc.insurance_subscription:
         from hms_tz.hms_tz.utils import create_insurance_claim
 
-        (billing_item,) = frappe.get_cached_value(
-            "Lab Test Template", doc.template, ["item"]
-        )
-        insurance_claim, claim_status = create_insurance_claim(
-            doc, "Lab Test Template", doc.template, 1, billing_item
-        )
+        (billing_item,) = frappe.get_cached_value("Lab Test Template", doc.template, ["item"])
+        insurance_claim, claim_status = create_insurance_claim(doc, "Lab Test Template", doc.template, 1, billing_item)
         if insurance_claim:
             frappe.set_value(doc.doctype, doc.name, "insurance_claim", insurance_claim)
             frappe.set_value(doc.doctype, doc.name, "claim_status", claim_status)

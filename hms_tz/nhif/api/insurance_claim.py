@@ -3,10 +3,12 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
-from hms_tz.nhif.api.patient_appointment import get_item_price
+
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
+from hms_tz.nhif.api.patient_appointment import get_item_price
 
 
 def set_patient_encounter(doc, method):
@@ -24,9 +26,7 @@ def set_price(doc, method):
     price_list = None
     price_list_rate = None
     if doc.reference_dt == "Healthcare Service Order":
-        company, hso_prescribed = frappe.get_cached_value(
-            doc.reference_dt, doc.reference_dn, ["company", "prescribed"]
-        )
+        company, hso_prescribed = frappe.get_cached_value(doc.reference_dt, doc.reference_dn, ["company", "prescribed"])
         if hso_prescribed:
             return
     elif doc.reference_dt in [
@@ -55,6 +55,4 @@ def set_price(doc, method):
                 doc.price_list_rate = price_list_rate
                 return
             if price_list_rate == 0:
-                frappe.throw(
-                    _(f"Please set Price List for item: {doc.service_item}")
-                )
+                frappe.throw(_(f"Please set Price List for item: {doc.service_item}"))

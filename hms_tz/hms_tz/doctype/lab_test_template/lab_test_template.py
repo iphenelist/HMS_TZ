@@ -3,10 +3,13 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe, json
+
+import json
+
+import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.model.rename_doc import rename_doc
-from frappe import _
 
 
 class LabTestTemplate(Document):
@@ -14,9 +17,10 @@ class LabTestTemplate(Document):
         if not self.item:
             try:
                 create_item_from_template(self)
-            except Exception as e:
+            except Exception:
                 frappe.log_error(
-                    frappe.get_traceback(), "Lab Test Template Item Creation Error"
+                    frappe.get_traceback(),
+                    "Lab Test Template Item Creation Error",
                 )
 
     def validate(self):
@@ -34,12 +38,13 @@ class LabTestTemplate(Document):
             if not item_price:
                 if self.lab_test_rate and self.lab_test_rate > 0.0:
                     price_list_name = frappe.get_cached_value("Price List", {"selling": 1})
-                    make_item_price(
-                        self.lab_test_code, price_list_name, self.lab_test_rate
-                    )
+                    make_item_price(self.lab_test_code, price_list_name, self.lab_test_rate)
             else:
                 frappe.db.set_value(
-                    "Item Price", item_price, "price_list_rate", self.lab_test_rate
+                    "Item Price",
+                    item_price,
+                    "price_list_rate",
+                    self.lab_test_rate,
                 )
 
             self.db_set("change_in_item", 0)
@@ -82,42 +87,26 @@ class LabTestTemplate(Document):
             item.save(ignore_permissions=True)
 
     def item_price_exists(self):
-        item_price = frappe.db.exists(
-            {"doctype": "Item Price", "item_code": self.lab_test_code}
-        )
+        item_price = frappe.db.exists({"doctype": "Item Price", "item_code": self.lab_test_code})
         if item_price:
             return item_price[0][0]
         return False
 
     def validate_conversion_factor(self):
-        if (
-            self.lab_test_template_type == "Single"
-            and self.secondary_uom
-            and not self.conversion_factor
-        ):
+        if self.lab_test_template_type == "Single" and self.secondary_uom and not self.conversion_factor:
             frappe.throw(_("Conversion Factor is mandatory"))
         if self.lab_test_template_type == "Compound":
             for item in self.normal_test_templates:
                 if item.secondary_uom and not item.conversion_factor:
-                    frappe.throw(
-                        _(f"Row #{item.idx}: Conversion Factor is mandatory")
-                    )
+                    frappe.throw(_(f"Row #{item.idx}: Conversion Factor is mandatory"))
         if self.lab_test_template_type == "Grouped":
             for group in self.lab_test_groups:
-                if (
-                    group.template_or_new_line == "Add New Line"
-                    and group.secondary_uom
-                    and not group.conversion_factor
-                ):
-                    frappe.throw(
-                        _(f"Row #{group.idx}: Conversion Factor is mandatory")
-                    )
+                if group.template_or_new_line == "Add New Line" and group.secondary_uom and not group.conversion_factor:
+                    frappe.throw(_(f"Row #{group.idx}: Conversion Factor is mandatory"))
 
 
 def create_item_from_template(doc):
-    uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value(
-        "Stock Settings", "stock_uom"
-    )
+    uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value("Stock Settings", "stock_uom")
     # Insert item
     item = frappe.get_doc(
         {
@@ -133,7 +122,7 @@ def create_item_from_template(doc):
             "include_item_in_manufacturing": 0,
             "show_in_website": 0,
             "is_pro_applicable": 0,
-            "disabled": 0 if doc.is_billable and not doc.disabled else doc.disabled,
+            "disabled": (0 if doc.is_billable and not doc.disabled else doc.disabled),
             "stock_uom": uom,
         }
     ).insert(ignore_permissions=True, ignore_mandatory=True)
@@ -170,13 +159,12 @@ def change_test_code_from_template(lab_test_code, doc):
         frappe.throw(_(f"Lab Test Item {lab_test_code} already exist"))
     else:
         rename_doc("Item", doc.name, lab_test_code, ignore_permissions=True)
-        frappe.db.set_value(
-            "Lab Test Template", doc.name, "lab_test_code", lab_test_code
-        )
-        frappe.db.set_value(
-            "Lab Test Template", doc.name, "lab_test_name", lab_test_code
-        )
+        frappe.db.set_value("Lab Test Template", doc.name, "lab_test_code", lab_test_code)
+        frappe.db.set_value("Lab Test Template", doc.name, "lab_test_name", lab_test_code)
         rename_doc(
-            "Lab Test Template", doc.name, lab_test_code, ignore_permissions=True
+            "Lab Test Template",
+            doc.name,
+            lab_test_code,
+            ignore_permissions=True,
         )
     return lab_test_code

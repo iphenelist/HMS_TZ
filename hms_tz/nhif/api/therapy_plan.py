@@ -1,4 +1,3 @@
-import frappe
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 
 
@@ -35,9 +34,7 @@ def set_status(doc):
     elif doc.total_sessions_completed < doc.total_sessions:
         doc.status = "In Progress"
 
-    elif doc.total_sessions != 0 and (
-        doc.total_sessions_completed == doc.total_sessions
-    ):
+    elif doc.total_sessions != 0 and (doc.total_sessions_completed == doc.total_sessions):
         doc.status = "Completed"
 
 

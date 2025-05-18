@@ -2,10 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
-from numpy.core.fromnumeric import size
-import pandas as pd
 import numpy as np
-from frappe import msgprint, _
+import pandas as pd
+from frappe import _, msgprint
 
 
 def execute(filters=None):
@@ -14,11 +13,7 @@ def execute(filters=None):
 
     occupancy_details = get_service_unit_details(filters)
     if not occupancy_details:
-        msgprint(
-            frappe.bold(
-                "No Service Unit Record For the Filters You Set, Please Set Different Filters..!!"
-            )
-        )
+        msgprint(frappe.bold("No Service Unit Record For the Filters You Set, Please Set Different Filters..!!"))
     else:
         occupancy_colnames = [key for key in occupancy_details[0].keys()]
         df = pd.DataFrame.from_records(occupancy_details, columns=occupancy_colnames)

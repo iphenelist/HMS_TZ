@@ -1,10 +1,9 @@
 import json
+
 import frappe
-from frappe.utils import cstr
 from frappe import _
-from healthcare.healthcare.page.patient_history.patient_history import (
-    get_patient_history_doctypes,
-)
+from frappe.utils import cstr
+from healthcare.healthcare.page.patient_history.patient_history import get_patient_history_doctypes
 
 
 def create_medical_record(doc, method=None):
@@ -33,14 +32,15 @@ def update_medical_record(doc, method=None):
     if not medical_record_required:
         return
 
-    medical_record_id = frappe.db.exists(
-        "Patient Medical Record", {"reference_name": doc.name}
-    )
+    medical_record_id = frappe.db.exists("Patient Medical Record", {"reference_name": doc.name})
 
     if medical_record_id:
         subject = set_subject_field(doc)
         frappe.db.set_value(
-            "Patient Medical Record", medical_record_id[0][0], "subject", subject
+            "Patient Medical Record",
+            medical_record_id[0][0],
+            "subject",
+            subject,
         )
     else:
         create_medical_record(doc)
@@ -66,26 +66,13 @@ def set_subject_field(doc):
     for entry in patient_history_fields:
         fieldname = entry.get("fieldname")
         if entry.get("fieldtype") == "Table" and doc.get(fieldname):
-            formatted_value = get_formatted_value_for_table_field(
-                doc.get(fieldname), meta.get_field(fieldname)
-            )
-            subject += (
-                frappe.bold(_(entry.get("label")) + ":")
-                + "<br>"
-                + cstr(formatted_value)
-                + "<br>"
-            )
+            formatted_value = get_formatted_value_for_table_field(doc.get(fieldname), meta.get_field(fieldname))
+            subject += frappe.bold(_(entry.get("label")) + ":") + "<br>" + cstr(formatted_value) + "<br>"
 
         else:
             if doc.get(fieldname):
-                formatted_value = format_value(
-                    doc.get(fieldname), meta.get_field(fieldname), doc
-                )
-                subject += (
-                    frappe.bold(_(entry.get("label")) + ":")
-                    + cstr(formatted_value)
-                    + "<br>"
-                )
+                formatted_value = format_value(doc.get(fieldname), meta.get_field(fieldname), doc)
+                subject += frappe.bold(_(entry.get("label")) + ":") + cstr(formatted_value) + "<br>"
 
     return subject
 
@@ -115,9 +102,7 @@ def get_patient_history_fields(doc):
     dt = get_patient_history_config_dt(doc.doctype)
     if doc.doctype == "Delivery Note":
         dt = "Patient History Custom Document Type"
-    patient_history_fields = frappe.get_cached_value(
-        dt, {"document_type": doc.doctype}, "selected_fields"
-    )
+    patient_history_fields = frappe.get_cached_value(dt, {"document_type": doc.doctype}, "selected_fields")
 
     if patient_history_fields:
         return json.loads(patient_history_fields)
@@ -147,12 +132,7 @@ def get_formatted_value_for_table_field(items, df):
         create_head = False
         table_row += "</tr>"
 
-    html += (
-        "<table class='table table-condensed table-bordered'>"
-        + table_head
-        + table_row
-        + "</table>"
-    )
+    html += "<table class='table table-condensed table-bordered'>" + table_head + table_row + "</table>"
 
     return html
 
@@ -165,11 +145,13 @@ def set_practitioner(doc):
     if doc.reference_doctype and doc.reference_name:
         meta = frappe.get_meta(doc.reference_doctype)
 
-        for field in ["practitioner", "healthcare_practitioner", "referring_practitioner"]:
+        for field in [
+            "practitioner",
+            "healthcare_practitioner",
+            "referring_practitioner",
+        ]:
             if meta.get_field(field):
-                practitioner = frappe.get_cached_value(
-                    doc.reference_doctype, doc.reference_name, field
-                )
+                practitioner = frappe.get_cached_value(doc.reference_doctype, doc.reference_name, field)
                 if practitioner:
                     doc.practitioner = practitioner
                     break

@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe.model.document import Document
 
@@ -12,9 +13,7 @@ class HealthcareInsurancePaymentRequest(Document):
 
 
 @frappe.whitelist()
-def get_claim_item(
-    insurance_company, from_date=False, to_date=False, posting_date_type=""
-):
+def get_claim_item(insurance_company, from_date=False, to_date=False, posting_date_type=""):
     query = f"""
 		select
 			name, patient, healthcare_service_type, service_template, sales_invoice, discount, coverage, coverage_amount

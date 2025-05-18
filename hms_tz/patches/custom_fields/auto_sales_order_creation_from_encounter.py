@@ -1,6 +1,5 @@
 import frappe
 import frappe.query_builder
-from frappe.model.utils.rename_field import rename_field
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 

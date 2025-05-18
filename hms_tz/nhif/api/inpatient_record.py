@@ -3,25 +3,26 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
+import json
+
 import frappe
-from frappe import _
-from frappe.utils import nowdate, nowtime, get_url_to_form
-from hms_tz.nhif.api.patient_encounter import (
-    validate_patient_balance_vs_patient_costs,
-)
-from erpnext.accounts.party import get_party_account
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
+from erpnext.accounts.party import get_party_account
+from frappe import _
+from frappe.utils import get_url_to_form, nowdate
+
 from hms_tz.nhif.api.healthcare_utils import (
-    get_item_rate,
-    get_item_price,
-    get_mop_amount,
+    create_healthcare_docs,
     get_discount_percent,
     get_healthcare_service_order_to_invoice,
+    get_item_price,
+    get_item_rate,
+    get_mop_amount,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
-    create_healthcare_docs,
 )
-import json
+from hms_tz.nhif.api.patient_encounter import validate_patient_balance_vs_patient_costs
 
 
 def before_insert(doc, method):
@@ -40,7 +41,9 @@ def before_save(doc, method):
     last_row = doc.inpatient_occupancies[len(doc.inpatient_occupancies) - 1]
     if last_row.service_unit:
         service_unit_type = frappe.get_cached_value(
-            "Healthcare Service Unit", last_row.service_unit, "service_unit_type"
+            "Healthcare Service Unit",
+            last_row.service_unit,
+            "service_unit_type",
         )
         if doc.admission_service_unit_type != service_unit_type:
             doc.admission_service_unit_type = service_unit_type
@@ -69,8 +72,7 @@ def validate_inpatient_occupancies(doc):
             valid = False
         if not valid:
             frappe.msgprint(
-                _(f"In Inpatient Occupancy line '{old_row.idx}' has been invoiced. It should not be modified or deleted")
-            )
+                _(f"In Inpatient Occupancy line '{old_row.idx}' has been invoiced. It should not be modified or deleted"))
 
 
 def daily_update_inpatient_occupancies():
@@ -121,35 +123,40 @@ def set_beds_price(self):
         if bed.amount == 0:
             if self.insurance_subscription:
                 service_unit_type = frappe.get_cached_value(
-                    "Healthcare Service Unit", bed.service_unit, "service_unit_type"
+                    "Healthcare Service Unit",
+                    bed.service_unit,
+                    "service_unit_type",
                 )
                 item_code = frappe.get_cached_value(
-                    "Healthcare Service Unit Type", service_unit_type, "item_code"
+                    "Healthcare Service Unit Type",
+                    service_unit_type,
+                    "item_code",
                 )
-                item_price = get_item_rate(
-                    item_code, self.company, self.insurance_subscription
-                )
+                item_price = get_item_rate(item_code, self.company, self.insurance_subscription)
                 bed.amount = item_price - (item_price * (discount_percent / 100))
                 if discount_percent > 0:
                     bed.hms_tz_is_discount_applied = 1
                 payment_type = "Insurance"
             else:
                 mode_of_payment = frappe.get_cached_value(
-                    "Patient Encounter", self.admission_encounter, "mode_of_payment"
+                    "Patient Encounter",
+                    self.admission_encounter,
+                    "mode_of_payment",
                 )
                 service_unit_type = frappe.get_cached_value(
-                    "Healthcare Service Unit", bed.service_unit, "service_unit_type"
+                    "Healthcare Service Unit",
+                    bed.service_unit,
+                    "service_unit_type",
                 )
                 item_code = frappe.get_cached_value(
-                    "Healthcare Service Unit Type", service_unit_type, "item_code"
+                    "Healthcare Service Unit Type",
+                    service_unit_type,
+                    "item_code",
                 )
-                bed.amount = get_mop_amount(
-                    item_code, mode_of_payment, self.company, self.patient
-                )
+                bed.amount = get_mop_amount(item_code, mode_of_payment, self.company, self.patient)
                 payment_type = mode_of_payment
             frappe.msgprint(
-                _(f"{payment_type} Bed prices set for {item_code} as of {str(bed.check_in)} for amount {str(bed.amount)}")
-            )
+                _(f"{payment_type} Bed prices set for {item_code} as of {str(bed.check_in)} for amount {str(bed.amount)}"))
 
 
 def after_insert(doc, method):
@@ -173,25 +180,15 @@ def make_deposit(
 
     if frappe.get_cached_value("Mode of Payment", mode_of_payment, "type") != "Cash":
         if not reference_number:
-            frappe.throw(
-                _(
-                    "The reference number is required, since the mode of payment is not cash"
-                )
-            )
+            frappe.throw(_("The reference number is required, since the mode of payment is not cash"))
         if not reference_date:
-            frappe.throw(
-                _(
-                    "The reference date is required, since the mode of payment is not cash"
-                )
-            )
+            frappe.throw(_("The reference date is required, since the mode of payment is not cash"))
 
     inpatient_record_doc = frappe.get_cached_doc("Inpatient Record", inpatient_record)
     if inpatient_record_doc.insurance_subscription:
         frappe.throw(_("You cannot make deposit for insurance patient"))
 
-    customer = frappe.get_cached_value(
-        "Patient", inpatient_record_doc.patient, "customer"
-    )
+    customer = frappe.get_cached_value("Patient", inpatient_record_doc.patient, "customer")
 
     try:
         payment = frappe.new_doc("Payment Entry")
@@ -201,12 +198,8 @@ def make_deposit(
         payment.party = customer
         payment.company = inpatient_record_doc.company
         payment.mode_of_payment = str(mode_of_payment)
-        payment.paid_from = get_party_account(
-            "Customer", customer, inpatient_record_doc.company
-        )
-        payment.paid_to = get_bank_cash_account(
-            mode_of_payment, inpatient_record_doc.company
-        )["account"]
+        payment.paid_from = get_party_account("Customer", customer, inpatient_record_doc.company)
+        payment.paid_to = get_bank_cash_account(mode_of_payment, inpatient_record_doc.company)["account"]
         payment.paid_amount = float(deposit_amount)
         payment.received_amount = float(deposit_amount)
         payment.source_exchange_rate = 1
@@ -243,10 +236,7 @@ def create_sales_invoice(args):
     )
     if len(patient_encounter_list) == 0:
         frappe.msgprint(
-            _(
-                f"No Patient Encounters found for this Inpatient Record: <b>{args.inpatient_record}</b> and Patient Appointment: <b>{args.appointment_no}</b>"
-            )
-        )
+            _(f"No Patient Encounters found for this Inpatient Record: <b>{args.inpatient_record}</b> and Patient Appointment: <b>{args.appointment_no}</b>"))
         return False
 
     services = get_healthcare_service_order_to_invoice(
@@ -256,22 +246,15 @@ def create_sales_invoice(args):
     )
     if len(services) == 0:
         frappe.msgprint(
-            _(
-                f"No Healthcare Services found for this Inpatient Record: <b>{args.inpatient_record}</b> and Patient Appointment: <b>{args.appointment_no}</b>"
-            )
-        )
+            _(f"No Healthcare Services found for this Inpatient Record: <b>{args.inpatient_record}</b> and Patient Appointment: <b>{args.appointment_no}</b>"))
         return False
 
     invoice_doc = frappe.new_doc("Sales Invoice")
     invoice_doc.patient = args.patient
     invoice_doc.customer = frappe.get_cached_value("Patient", args.patient, "customer")
     invoice_doc.company = args.company
-    mode_of_payment = frappe.get_cached_value(
-        "Patient Encounter", patient_encounter_list[0].name, "mode_of_payment"
-    )
-    price_list = frappe.get_cached_value(
-        "Mode of Payment", mode_of_payment, "price_list"
-    )
+    mode_of_payment = frappe.get_cached_value("Patient Encounter", patient_encounter_list[0].name, "mode_of_payment")
+    price_list = frappe.get_cached_value("Mode of Payment", mode_of_payment, "price_list")
 
     for service in services:
         item = invoice_doc.append("items", {})
@@ -287,9 +270,7 @@ def create_sales_invoice(args):
                 service.get("reference_name"),
                 "healthcare_service_unit",
             )
-            item.warehouse = get_warehouse_from_service_unit(
-                item.healthcare_service_unit
-            )
+            item.warehouse = get_warehouse_from_service_unit(item.healthcare_service_unit)
 
     invoice_doc.enabled_auto_create_delivery_notes = 0
     invoice_doc.is_pos = 0
@@ -341,7 +322,9 @@ def validate_similary_authozation_number(doc):
 
     if insurance_company and "NHIF" in insurance_company:
         auth_no = frappe.get_cached_value(
-            "Patient Appointment", doc.patient_appointment, "authorization_number"
+            "Patient Appointment",
+            doc.patient_appointment,
+            "authorization_number",
         )
         claims = frappe.get_all(
             "NHIF Patient Claim",
@@ -359,9 +342,7 @@ def validate_similary_authozation_number(doc):
 
             if is_submitted:
                 claim_url = get_url_to_form("NHIF Patient Claim", submitted_claim)
-                app_url = get_url_to_form(
-                    "Patient Appointment", doc.patient_appointment
-                )
+                app_url = get_url_to_form("Patient Appointment", doc.patient_appointment)
                 msg = f"""<div style="  text-align: justify; border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin: 10px;">
                         NHIF Patient Claim: <a href='{claim_url}'><b>{submitted_claim}</b></a> for this AuthorizationNo: <b>{auth_no}</b> and Appointment: <a href='{app_url}'><b>{doc.patient_appointment}</b></a> is already submitted.<br><br>
                         <i>Please <strong>do not Admit this patient</strong>, Let patient ask for a new AuthorizationNo from NHIF.</i>
@@ -379,10 +360,6 @@ def get_last_encounter(patient, inpatient_record):
     encounters = (
         frappe.qb.from_(pe)
         .select(pe.name)
-        .where(
-            (pe.patient == patient)
-            & (pe.inpatient_record == inpatient_record)
-            & (pe.duplicated == 0)
-        )
+        .where((pe.patient == patient) & (pe.inpatient_record == inpatient_record) & (pe.duplicated == 0))
     ).run(as_dict=True)
     return encounters[0].name if len(encounters) > 0 else None

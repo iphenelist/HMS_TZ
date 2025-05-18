@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -33,13 +34,9 @@ class RadiologyExamination(Document):
         set_title_field(self)
         ref_company = False
         if self.inpatient_record:
-            ref_company = frappe.get_cached_value(
-                "Inpatient Record", self.inpatient_record, "company"
-            )
+            ref_company = frappe.get_cached_value("Inpatient Record", self.inpatient_record, "company")
         elif self.service_unit:
-            ref_company = frappe.get_cached_value(
-                "Healthcare Service Unit", self.service_unit, "company"
-            )
+            ref_company = frappe.get_cached_value("Healthcare Service Unit", self.service_unit, "company")
         if ref_company:
             self.company = ref_company
 
@@ -84,9 +81,7 @@ def get_radiology_procedure_prescribed(patient, encounter_practitioner=False):
 		ORDER BY
 			ct.creation desc"""
 
-    return frappe.db.sql(
-        query
-    )
+    return frappe.db.sql(query)
 
 
 @frappe.whitelist()
@@ -95,12 +90,8 @@ def create_radiology_examination(appointment):
     radiology_examination = frappe.new_doc("Radiology Examination")
     radiology_examination.appointment = appointment.name
     radiology_examination.patient = appointment.patient
-    radiology_examination.radiology_examination_template = (
-        appointment.radiology_examination_template
-    )
-    radiology_examination.radiology_procedure_prescription = (
-        appointment.radiology_procedure_prescription
-    )
+    radiology_examination.radiology_examination_template = appointment.radiology_examination_template
+    radiology_examination.radiology_procedure_prescription = appointment.radiology_procedure_prescription
     radiology_examination.practitioner = appointment.practitioner
     radiology_examination.invoiced = appointment.invoiced
     radiology_examination.medical_department = appointment.department
@@ -113,9 +104,7 @@ def create_radiology_examination(appointment):
     radiology_examination.modality = appointment.modality
     radiology_examination.source = appointment.source
     if appointment.referring_practitioner:
-        radiology_examination.referring_practitioner = (
-            appointment.referring_practitioner
-        )
+        radiology_examination.referring_practitioner = appointment.referring_practitioner
     return radiology_examination.as_dict()
 
 

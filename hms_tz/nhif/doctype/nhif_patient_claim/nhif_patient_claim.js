@@ -1,127 +1,140 @@
 // Copyright (c) 2020, Aakvatech and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('NHIF Patient Claim', {
-	setup: function (frm) {
-		frm.set_query("patient_appointment", function () {
-			return {
-				"filters": {
-					"nhif_patient_claim": ["in", ["", "None"]],
-					"insurance_company": ["like", "NHIF%"],
-					"insurance_subscription": ["not in", ["", "None"]]
-				}
-			};
-		});
-	},
+frappe.ui.form.on("NHIF Patient Claim", {
+  setup: function (frm) {
+    frm.set_query("patient_appointment", function () {
+      return {
+        filters: {
+          nhif_patient_claim: ["in", ["", "None"]],
+          insurance_company: ["like", "NHIF%"],
+          insurance_subscription: ["not in", ["", "None"]],
+        },
+      };
+    });
+  },
 
-	refresh(frm) {
-		$("[data-action='delete_all_rows']").hide();
-		
-		if (frm.doc.docstatus === 0 && frm.doc.authorization_no) {
-			frm.add_custom_button(__("Re-concile Repeated Items"), () => {
-				frappe.call({
-					method: "hms_tz.nhif.doctype.nhif_patient_claim.nhif_patient_claim.reconcile_repeated_items",
-					args: {
-						"claim_no": frm.doc.name
-					},
-					freeze: true,
-					freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-				}).then(r => {
-					if (r.message) {
-						frm.refresh();
-					}
-				})
-			});
+  refresh(frm) {
+    $("[data-action='delete_all_rows']").hide();
 
-			frm.add_custom_button(__("Merge Claims"), function () {
-				const original_practitioner_name = frm.doc.practitioner_name ;
-				frm.dirty()
-				frm.call('get_appointments', {
-					self: frm.doc,
-					freeze: true,
-                	freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-				}).then(r => {
-					frm.doc.practitioner_name = original_practitioner_name;
-					frm.save();
-					frm.refresh();
-				});
-			});
-		}
-	},
+    if (frm.doc.docstatus === 0 && frm.doc.authorization_no) {
+      frm.add_custom_button(__("Re-concile Repeated Items"), () => {
+        frappe
+          .call({
+            method:
+              "hms_tz.nhif.doctype.nhif_patient_claim.nhif_patient_claim.reconcile_repeated_items",
+            args: {
+              claim_no: frm.doc.name,
+            },
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+          })
+          .then((r) => {
+            if (r.message) {
+              frm.refresh();
+            }
+          });
+      });
 
-	onload: function (frm) {
-		$("[data-action='delete_all_rows']").hide();
-		if (frm.doc.patient && frm.doc.patient_appointment) {
-			frappe.db.get_list('LRPMT Returns', {
-				fields:['name'],
-				filters:{
-					'patient': frm.doc.patient, 
-					'appointment': frm.doc.patient_appointment,
-					'docstatus': 1
-				}
-			}).then(data => {
-				if (data.length > 0) {
-					let msg_lrpmt = ``
-					data.forEach(element => {
-						msg_lrpmt += `${__(element.name)} ,`
-					});
+      frm.add_custom_button(__("Merge Claims"), function () {
+        const original_practitioner_name = frm.doc.practitioner_name;
+        frm.dirty();
+        frm
+          .call("get_appointments", {
+            self: frm.doc,
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+          })
+          .then((r) => {
+            frm.doc.practitioner_name = original_practitioner_name;
+            frm.save();
+            frm.refresh();
+          });
+      });
+    }
+  },
 
-					frappe.msgprint({
-						title: __('Notification'),
-						indicator: 'orange',
-						message: __(`
-							<p class='text-left'>This Patient: <b>${__(frm.doc.patient)}</b> of appointment No: <b>${__(frm.doc.patient_appointment)}</b>
-							having some item(s) cancelled or some quantity of item(s) returned to stock, by <b>${__(msg_lrpmt)}</b>,
+  onload: function (frm) {
+    $("[data-action='delete_all_rows']").hide();
+    if (frm.doc.patient && frm.doc.patient_appointment) {
+      frappe.db
+        .get_list("LRPMT Returns", {
+          fields: ["name"],
+          filters: {
+            patient: frm.doc.patient,
+            appointment: frm.doc.patient_appointment,
+            docstatus: 1,
+          },
+        })
+        .then((data) => {
+          if (data.length > 0) {
+            let msg_lrpmt = ``;
+            data.forEach((element) => {
+              msg_lrpmt += `${__(element.name)} ,`;
+            });
+
+            frappe.msgprint({
+              title: __("Notification"),
+              indicator: "orange",
+              message: __(`
+							<p class='text-left'>This Patient: <b>${__(
+                frm.doc.patient
+              )}</b> of appointment No: <b>${__(
+                frm.doc.patient_appointment
+              )}</b>
+							having some item(s) cancelled or some quantity of item(s) returned to stock, by <b>${__(
+                msg_lrpmt
+              )}</b>,
 							inorder for items and their quantities to be reflected on this claim</p>
 							<p class='text-center' style='background-color: #FFA500; font-size: 14px;'>
 							<strong><em><i>Tick allow changes, then Untick allow changes and Save again</i></em></strong></p>
-							`
-						)
-					});
-				}
-			});
-		};
-	},
+							`),
+            });
+          }
+        });
+    }
+  },
 
-	is_ready_for_auto_submission: (frm) => {
-		if (frm.doc.is_ready_for_auto_submission == 1) {
-			frm.set_value("reviewed_by", frappe.user.full_name());
-		} else {
-			frm.set_value("reviewed_by", "");
-		}
-	},
+  is_ready_for_auto_submission: (frm) => {
+    if (frm.doc.is_ready_for_auto_submission == 1) {
+      frm.set_value("reviewed_by", frappe.user.full_name());
+    } else {
+      frm.set_value("reviewed_by", "");
+    }
+  },
 
-	send_confirmation_code: (frm) => {
-		frappe.call({
-			method: "hms_tz.nhif.nhif_api.patient_claim.send_confirmation_code",
-			args: {
-				ref_doctype: frm.doc.doctype,
-				ref_docname: frm.doc.name,
-			},
-			freeze: true,
-			freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-		}).then(r => {
-			if (r.message) {
-				frm.reload_doc();
-			}
-		});
-	},
+  send_confirmation_code: (frm) => {
+    frappe
+      .call({
+        method: "hms_tz.nhif.nhif_api.patient_claim.send_confirmation_code",
+        args: {
+          ref_doctype: frm.doc.doctype,
+          ref_docname: frm.doc.name,
+        },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      })
+      .then((r) => {
+        if (r.message) {
+          frm.reload_doc();
+        }
+      });
+  },
 
-	get_receipt: (frm) => {
-		frappe.call({
-			method: "hms_tz.nhif.nhif_api.patient_claim.get_receipt",
-			args: {
-				ref_doctype: frm.doc.doctype,
-				ref_docname: frm.doc.name,
-			},
-			freeze: true,
-			freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-			callback: function (r) {
-				if (r.message) {
-					frm.reload_doc();
-				}
-			}
-		});
-	},
-
+  get_receipt: (frm) => {
+    frappe.call({
+      method: "hms_tz.nhif.nhif_api.patient_claim.get_receipt",
+      args: {
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
+      },
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      callback: function (r) {
+        if (r.message) {
+          frm.reload_doc();
+        }
+      },
+    });
+  },
 });

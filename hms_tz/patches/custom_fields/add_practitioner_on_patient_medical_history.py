@@ -1,7 +1,9 @@
 import frappe
-from frappe.utils import create_batch
-from hms_tz.nhif.api.medical_record import set_practitioner
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.utils import create_batch
+
+from hms_tz.nhif.api.medical_record import set_practitioner
+
 
 def execute():
     fields = {
@@ -28,7 +30,7 @@ def update_practitioner_to_old_records():
         "Patient Medical Record",
         filters={"practitioner": ""},
         order_by="creation desc",
-        limit=1000
+        limit=1000,
     )
 
     for records in create_batch(medical_records, 100):

@@ -3,29 +3,24 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
+import json
+
 import frappe
 from frappe import _
-from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import (
-    get_appointment_item,
-)
-from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
-    get_receivable_account,
-)
-import json
-from csf_tz import console
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import date_diff, getdate, nowdate, cint
+from frappe.utils import cint, date_diff, getdate, nowdate
+from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_receivable_account
+
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
-from hms_tz.nhif.api.healthcare_utils import get_item_rate, get_mop_amount, get_discount_percent
+from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import get_appointment_item
+from hms_tz.nhif.api.healthcare_utils import get_discount_percent, get_item_rate, get_mop_amount
 
 
 def before_insert(doc, method):
     if doc.inpatient_record:
         frappe.throw(
-            _(
-                "You cannot create an appointment for a patient already admitted.<br>First <b>discharge the patient</b> and then create the appointment."
-            )
-        )
+            _("You cannot create an appointment for a patient already admitted.<br>First <b>discharge the patient</b> and then create the appointment."))
 
     patient_doc = frappe.get_cached_doc("Patient", doc.patient)
     if not patient_doc.customer:
@@ -44,9 +39,7 @@ def get_insurance_amount(
     if cint(has_no_consultation_charges) == 1:
         return 0, 0
 
-    item_price = get_item_rate(
-        billing_item, company, insurance_subscription, insurance_company
-    )
+    item_price = get_item_rate(billing_item, company, insurance_subscription, insurance_company)
 
     discount_percent = 0
     if insurance_company and "NHIF" not in insurance_company:
@@ -69,7 +62,7 @@ def get_cash_amount(
 ):
     if cint(has_no_consultation_charges) == 1:
         return 0
-    
+
     return get_mop_amount(billing_item, mop, company, patient)
 
 
@@ -86,7 +79,8 @@ def invoice_appointment(name):
                 appointment_doc.has_no_consultation_charges,
             )
         else:
-            # TODO to be removed since on creating sales invoice we don't need insurance amount
+            # TODO to be removed since on creating sales invoice we don't need
+            # insurance amount
             appointment_doc.paid_amount, discount_percent = get_insurance_amount(
                 appointment_doc.insurance_subscription,
                 appointment_doc.billing_item,
@@ -100,9 +94,7 @@ def invoice_appointment(name):
         appointment_doc.save()
         appointment_doc.reload()
     set_follow_up(appointment_doc, "invoice_appointment")
-    automate_invoicing = frappe.db.get_single_value(
-        "Healthcare Settings", "automate_appointment_invoicing"
-    )
+    automate_invoicing = frappe.db.get_single_value("Healthcare Settings", "automate_appointment_invoicing")
 
     if (
         not automate_invoicing
@@ -114,9 +106,7 @@ def invoice_appointment(name):
     ):
         sales_invoice = frappe.new_doc("Sales Invoice")
         sales_invoice.patient = appointment_doc.patient
-        sales_invoice.customer = frappe.get_cached_value(
-            "Patient", appointment_doc.patient, "customer"
-        )
+        sales_invoice.customer = frappe.get_cached_value("Patient", appointment_doc.patient, "customer")
         sales_invoice.appointment = appointment_doc.name
         sales_invoice.due_date = getdate()
         sales_invoice.company = appointment_doc.company
@@ -129,7 +119,8 @@ def invoice_appointment(name):
         item.rate = appointment_doc.paid_amount
         item.amount = appointment_doc.paid_amount
 
-        # Add payments if payment details are supplied else proceed to create invoice as Unpaid
+        # Add payments if payment details are supplied else proceed to create
+        # invoice as Unpaid
         if appointment_doc.mode_of_payment and appointment_doc.paid_amount:
             sales_invoice.is_pos = 1
             payment = sales_invoice.append("payments", {})
@@ -175,14 +166,8 @@ def get_consulting_charge_item(
         as_dict=True,
     )
 
-    field_name = (
-        "inpatient_visit_charge_item"
-        if inpatient_record
-        else "op_consulting_charge_item"
-    )
-    cons_item = frappe.get_cached_value(
-        "Healthcare Practitioner", practitioner, field_name
-    )
+    field_name = "inpatient_visit_charge_item" if inpatient_record else "op_consulting_charge_item"
+    cons_item = frappe.get_cached_value("Healthcare Practitioner", practitioner, field_name)
 
     charge_item = cons_item
 
@@ -193,15 +178,22 @@ def get_consulting_charge_item(
             insurance_subscription,
             "healthcare_insurance_coverage_plan",
         )
-        scheme_id = frappe.get_cached_value(
-            "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
-        )
+        scheme_id = frappe.get_cached_value("Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id")
 
     if insurance_company and "NHIF" in insurance_company and scheme_id:
-        if (
-            appointment_type == "Follow up Visit" and
-            cint(scheme_id) in [1001, 1003, 1005, 1006, 1007, 1008, 3001, 4001, 5001, 6001, 8001]
-        ):
+        if appointment_type == "Follow up Visit" and cint(scheme_id) in [
+            1001,
+            1003,
+            1005,
+            1006,
+            1007,
+            1008,
+            3001,
+            4001,
+            5001,
+            6001,
+            8001,
+        ]:
             if "Assistant Medical Officer" in cons_item:
                 charge_item = app_type_details.get("assistant_md_followup_item")
             elif "General Practitioner" in cons_item:
@@ -214,7 +206,8 @@ def get_consulting_charge_item(
         elif (
             cint(apply_fasttrack_charge) == 1
             and cint(scheme_id) in [3001, 4001, 5001, 6001, 8001]
-            and appointment_type in [
+            and appointment_type
+            in [
                 "Outpatient Visit",
                 "Normal Visit",
                 "Emergency",
@@ -242,14 +235,9 @@ def create_vital(appointment):
 
 
 def make_vital(appointment_doc, method):
-    if (
-        appointment_doc.insurance_subscription
-        and not appointment_doc.authorization_number
-    ):
+    if appointment_doc.insurance_subscription and not appointment_doc.authorization_number:
         frappe.msgprint(
-            _(
-                "Authorization number not set to proceed to create vitals for this appointment. Please get the authorization number first and then try again."
-            ),
+            _("Authorization number not set to proceed to create vitals for this appointment. Please get the authorization number first and then try again."),
             alert=True,
         )
         return
@@ -272,10 +260,7 @@ def make_vital(appointment_doc, method):
 
     if (not appointment_doc.ref_vital_signs) and (
         appointment_doc.invoiced
-        or (
-            appointment_doc.insurance_subscription
-            and appointment_doc.authorization_number
-        )
+        or (appointment_doc.insurance_subscription and appointment_doc.authorization_number)
         or method == "patient_appointment"
     ):
         vital_doc = frappe.get_doc(
@@ -298,10 +283,7 @@ def make_encounter(doc, method):
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
             return
-        if (
-            frappe.get_cached_value("Patient Appointment", doc.appointment, "status")
-            == "Cancelled"
-        ):
+        if frappe.get_cached_value("Patient Appointment", doc.appointment, "status") == "Cancelled":
             frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
     elif doc.doctype == "Patient Appointment":
@@ -361,9 +343,7 @@ def make_encounter(doc, method):
 
 
 def update_insurance_subscription(insurance_subscription, data):
-    subscription_doc = frappe.get_cached_doc(
-        "Healthcare Insurance Subscription", insurance_subscription
-    )
+    subscription_doc = frappe.get_cached_doc("Healthcare Insurance Subscription", insurance_subscription)
 
     if subscription_doc.hms_tz_scheme_id == data["SchemeID"]:
         return data
@@ -399,9 +379,7 @@ def send_vfd(invoice_name):
         from vfd_tz.vfd_tz.api.sales_invoice import enqueue_posting_vfd_invoice
 
         enqueue_posting_vfd_invoice(invoice_name)
-        pos_profile_name = frappe.get_cached_value(
-            "Sales Invoice", invoice_name, "pos_profile"
-        )
+        pos_profile_name = frappe.get_cached_value("Sales Invoice", invoice_name, "pos_profile")
         pos_profile = frappe.get_cached_doc("POS Profile", pos_profile_name)
         msg = {"enqueue": True, "pos_rofile": pos_profile}
         return msg
@@ -412,7 +390,7 @@ def get_previous_appointment(patient, filters=None):
     the_filters = {"patient": patient, "follow_up": 0}
     if filters:
         # when the function is called from frontend
-        if type(filters) == str:
+        if isinstance(filters, str):
             filters = json.loads(filters)
         the_filters.update(filters)
     appointments = frappe.get_all(
@@ -429,7 +407,7 @@ def set_follow_up(appointment_doc, method):
     filters = {
         "name": ["!=", appointment_doc.name],
         "department": appointment_doc.department,
-        "status": ["in", ["Open", "Closed"]]
+        "status": ["in", ["Open", "Closed"]],
     }
     if appointment_doc.insurance_subscription:
         filters["insurance_subscription"] = appointment_doc.insurance_subscription
@@ -441,11 +419,7 @@ def set_follow_up(appointment_doc, method):
     if appointment and appointment_doc.appointment_date:
         diff = date_diff(appointment_doc.appointment_date, appointment.appointment_date)
         if appointment_doc.mode_of_payment:
-            valid_days = cint(
-                frappe.get_cached_value(
-                    "Healthcare Settings", "Healthcare Settings", "valid_days"
-                )
-            )
+            valid_days = cint(frappe.get_cached_value("Healthcare Settings", "Healthcare Settings", "valid_days"))
         else:
             valid_days = cint(
                 frappe.get_cached_value(
@@ -473,9 +447,7 @@ def set_follow_up(appointment_doc, method):
             appointment_doc.invoiced = 1
             appointment_doc.paid_amount = 0
             frappe.msgprint(
-                _(
-                    "Previous appointment found valid for free follow-up.<br>Skipping invoice for this appointment!"
-                ),
+                _("Previous appointment found valid for free follow-up.<br>Skipping invoice for this appointment!"),
                 alert=True,
             )
         else:
@@ -497,20 +469,17 @@ def make_next_doc(doc, method, from_hook=True):
         )
         if not is_active:
             frappe.throw(
-                _(
-                    "The Insurance Subscription is NOT ACTIVE. Please select the correct Insurance Subscription."
-                )
+                _("The Insurance Subscription is NOT ACTIVE. Please select the correct Insurance Subscription.")
             )
 
         if doc.patient != his_patient:
             frappe.throw(
-                _(
-                    "Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."
-                )
-            )
+                _("Insurance Subscription belongs to another patient. Please select the correct Insurance Subscription."))
         if "NHIF" not in doc.insurance_company and not doc.daily_limit:
             doc.daily_limit = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan", coverage_plan, "daily_limit"
+                "Healthcare Insurance Coverage Plan",
+                coverage_plan,
+                "daily_limit",
             )
 
     if not doc.billing_item and doc.authorization_number:
@@ -524,15 +493,11 @@ def make_next_doc(doc, method, from_hook=True):
         )
         if not doc.billing_item:
             frappe.throw(
-                _(
-                    f"Billing item was not set from {doc.practitioner} for appointment type {doc.appointment_type}."
-                )
+                _(f"Billing item was not set from {doc.practitioner} for appointment type {doc.appointment_type}.")
             )
         else:
             frappe.msgprint(
-                _(
-                    f"Billing item was set from {doc.practitioner} for appointment type {doc.appointment_type}."
-                )
+                _(f"Billing item was set from {doc.practitioner} for appointment type {doc.appointment_type}.")
             )
     if from_hook:
         validate_has_no_consultation(doc, method)
@@ -550,9 +515,7 @@ def make_next_doc(doc, method, from_hook=True):
     if doc.mode_of_payment and not doc.invoiced:
         return
 
-    if frappe.get_cached_value(
-        "Healthcare Practitioner", doc.practitioner, "bypass_vitals"
-    ):
+    if frappe.get_cached_value("Healthcare Practitioner", doc.practitioner, "bypass_vitals"):
         make_encounter(doc, method)
     else:
         make_vital(doc, method)
@@ -562,10 +525,7 @@ def make_next_doc(doc, method, from_hook=True):
 def validate_insurance_company(insurance_company: str) -> str:
     if frappe.get_cached_value("Healthcare Insurance Company", insurance_company, "disabled"):
         frappe.msgprint(
-            _(
-                f"<b>Insurance Company: <strong>{insurance_company}</strong> is disabled, Please choose different insurance subscription</b>"
-            )
-        )
+            _(f"<b>Insurance Company: <strong>{insurance_company}</strong> is disabled, Please choose different insurance subscription</b>"))
         return True
     return False
 
@@ -577,13 +537,13 @@ def validate_insurance_subscription(doc):
 
     if (
         frappe.get_cached_value(
-            "Healthcare Insurance Subscription", doc.insurance_subscription, "docstatus"
+            "Healthcare Insurance Subscription",
+            doc.insurance_subscription,
+            "docstatus",
         )
         == 0
     ):
-        url = frappe.utils.get_link_to_form(
-            "Healthcare Insurance Subscription", doc.insurance_subscription
-        )
+        url = frappe.utils.get_link_to_form("Healthcare Insurance Subscription", doc.insurance_subscription)
         frappe.throw(
             _(
                 f"Insurance Subscription: <strong>{doc.insurance_subscription}</strong> is on Draft<br>\
@@ -595,9 +555,7 @@ def validate_insurance_subscription(doc):
 def calculate_patient_age(patient):
     dob = frappe.get_cached_value("Patient", patient, "dob")
     if not dob:
-        frappe.msgprint(
-            "<h4 style='background-color: LightCoral'>Please update date of birth for this patient</h4>"
-        )
+        frappe.msgprint("<h4 style='background-color: LightCoral'>Please update date of birth for this patient</h4>")
         return None
     diff = date_diff(nowdate(), dob)
     years = diff // 365
@@ -653,7 +611,9 @@ def validate_has_no_consultation(doc, method):
                 "healthcare_insurance_coverage_plan",
             )
             scheme_id = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id"
+                "Healthcare Insurance Coverage Plan",
+                plan_name,
+                "nhif_scheme_id",
             )
 
         if not (
@@ -661,7 +621,20 @@ def validate_has_no_consultation(doc, method):
             and "NHIF" in doc.insurance_company
             and doc.appointment_type == "Follow up Visit"
             and scheme_id
-            and cint(scheme_id) in [1001, 1003, 1005, 1006, 1007, 1008, 3001, 4001, 5001, 6001, 8001]
+            and cint(scheme_id)
+            in [
+                1001,
+                1003,
+                1005,
+                1006,
+                1007,
+                1008,
+                3001,
+                4001,
+                5001,
+                6001,
+                8001,
+            ]
         ):
             if doc.mode_of_payment:
                 doc.has_no_consultation_charges = frappe.get_cached_value(
@@ -683,8 +656,6 @@ def validate_has_no_consultation(doc, method):
                     doc.invoiced = 1
 
                 frappe.msgprint(
-                    _(
-                        f"This appointment type: <b>{doc.appointment_type}</b> has no consultation charges."
-                    ),
+                    _(f"This appointment type: <b>{doc.appointment_type}</b> has no consultation charges."),
                     alert=True,
                 )

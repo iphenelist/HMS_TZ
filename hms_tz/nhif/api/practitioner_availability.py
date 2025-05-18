@@ -3,16 +3,9 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
-from frappe.model.document import Document
-from frappe.utils import (
-    getdate,
-    get_time,
-    add_days,
-    add_months,
-    add_years,
-    time_diff_in_seconds,
-)
+
+from frappe.utils import add_days, add_months, add_years, getdate, time_diff_in_seconds
+
 from hms_tz.nhif.doctype.practitioner_availability_detail.practitioner_availability_detail import (
     create_practitioner_availability_detail,
     delelte_all_related_practitioner_availability_detail,
@@ -51,9 +44,7 @@ def validate(doc, method):
             while check_dates(current_date, end_date):
                 weekday = get_weekday(current_date)
                 if doc.get(weekday):
-                    detail_doc = create_practitioner_availability_detail(
-                        doc, current_date
-                    )
+                    detail_doc = create_practitioner_availability_detail(doc, current_date)
                     detail_doc.insert(ignore_permissions=True)
                 current_date = add_days(current_date, 1)
 

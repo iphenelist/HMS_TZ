@@ -3,7 +3,5 @@
 /* eslint-disable */
 
 frappe.query_reports["Item Price by Price List"] = {
-	"filters": [
-
-	]
+  filters: [],
 };

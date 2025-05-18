@@ -2,8 +2,8 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import nowdate, nowtime, get_fullname, get_url_to_form, flt
 from frappe.model.document import Document
+from frappe.utils import flt, get_fullname, get_url_to_form, nowdate, nowtime
 
 
 class PatientDiscountRequest(Document):
@@ -52,16 +52,12 @@ class PatientDiscountRequest(Document):
             if self.sales_invoice and self.patient != frappe.get_cached_value(
                 "Sales Invoice", self.sales_invoice, "patient"
             ):
-                frappe.throw(
-                    f"This sales invoice: {self.sales_invoice} is not for this patient: {self.patient}"
-                )
+                frappe.throw(f"This sales invoice: {self.sales_invoice} is not for this patient: {self.patient}")
 
             if self.inpatient_record and self.patient != frappe.get_cached_value(
                 "Inpatient Record", self.inpatient_record, "patient"
             ):
-                frappe.throw(
-                    f"This inpatient record: {self.inpatient_record} is not for this patient: {self.patient}"
-                )
+                frappe.throw(f"This inpatient record: {self.inpatient_record} is not for this patient: {self.patient}")
 
     def get_insurance_details(self):
         if self.appointment:
@@ -80,9 +76,7 @@ class PatientDiscountRequest(Document):
             )
 
             if not self.insurance_subscription:
-                frappe.throw(
-                    f"This appointment: {self.appointment} does not have an insurance subscription"
-                )
+                frappe.throw(f"This appointment: {self.appointment} does not have an insurance subscription")
 
             if "NHIF" in self.insurance_company:
                 frappe.throw(
@@ -92,41 +86,27 @@ class PatientDiscountRequest(Document):
 
     def set_discount_amount(self):
         if self.apply_discount_on == "Grand Total" and self.sales_invoice:
-            self.total_actual_amount = frappe.get_cached_value(
-                "Sales Invoice", self.sales_invoice, "grand_total"
-            )
+            self.total_actual_amount = frappe.get_cached_value("Sales Invoice", self.sales_invoice, "grand_total")
             discount_amount = 0
             if self.discount_percent:
-                discount_amount = self.total_actual_amount * (
-                    self.discount_percent / 100
-                )
+                discount_amount = self.total_actual_amount * (self.discount_percent / 100)
             elif self.discount_amount:
                 discount_amount = self.discount_amount
-            self.total_amount_after_discount = (
-                self.total_actual_amount - discount_amount
-            )
+            self.total_amount_after_discount = self.total_actual_amount - discount_amount
             self.total_discounted_amount = discount_amount
 
         elif self.apply_discount_on == "Net Total" and self.sales_invoice:
-            self.total_actual_amount = frappe.get_cached_value(
-                "Sales Invoice", self.sales_invoice, "net_total"
-            )
+            self.total_actual_amount = frappe.get_cached_value("Sales Invoice", self.sales_invoice, "net_total")
             discount_amount = 0
             if self.discount_percent:
-                discount_amount = self.total_actual_amount * (
-                    self.discount_percent / 100
-                )
+                discount_amount = self.total_actual_amount * (self.discount_percent / 100)
             elif self.discount_amount:
                 discount_amount = self.discount_amount
-            self.total_amount_after_discount = (
-                self.total_actual_amount - discount_amount
-            )
+            self.total_amount_after_discount = self.total_actual_amount - discount_amount
             self.total_discounted_amount = discount_amount
 
         elif (
-            self.apply_discount_on in ["Single Items", "Group of Items"]
-            and self.sales_invoice
-            and len(self.items) > 0
+            self.apply_discount_on in ["Single Items", "Group of Items"] and self.sales_invoice and len(self.items) > 0
         ):
             self.total_discounted_amount = 0
             self.total_actual_amount = 0
@@ -143,12 +123,8 @@ class PatientDiscountRequest(Document):
 
             if self.apply_discount_on in ["Grand Total", "Net Total"]:
                 si_doc.apply_discount_on = self.apply_discount_on
-                si_doc.additional_discount_percentage = (
-                    self.discount_percent if self.discount_percent else 0
-                )
-                si_doc.discount_amount = (
-                    self.discount_amount if self.discount_amount else 0
-                )
+                si_doc.additional_discount_percentage = self.discount_percent if self.discount_percent else 0
+                si_doc.discount_amount = self.discount_amount if self.discount_amount else 0
 
             elif self.apply_discount_on in ["Single Items", "Group of Items"]:
                 si_doc.apply_discount_on = ""
@@ -187,7 +163,8 @@ class PatientDiscountRequest(Document):
 					Please refer to Patient Discount Request: <a href='{url}'><b>{self.name}</b></a> for more details.",
             )
             frappe.msgprint(
-                f"Discount applied on Sales Invoice: {self.sales_invoice}", alert=True
+                f"Discount applied on Sales Invoice: {self.sales_invoice}",
+                alert=True,
             )
 
     def apply_insurance_discount(self):
@@ -200,9 +177,7 @@ class PatientDiscountRequest(Document):
                 job_name="apply_insurance_discount",
                 kwargs={"self": self},
             )
-            frappe.msgprint(
-                f"Equeued applying discount for Non NHIF Insurance", alert=True
-            )
+            frappe.msgprint(f"Equeued applying discount for Non NHIF Insurance", alert=True)
 
 
 @frappe.whitelist()
@@ -244,12 +219,7 @@ def get_items(invoice_no, reference_dt=None, reset_options=None):
                 }
             )
 
-        elif (
-            not item.reference_dt
-            and item.sales_order
-            and reference_dt
-            and reference_dt == "Drug Prescription"
-        ):
+        elif not item.reference_dt and item.sales_order and reference_dt and reference_dt == "Drug Prescription":
             item_codes.append(item.item_code)
             items.append(
                 {
@@ -262,11 +232,7 @@ def get_items(invoice_no, reference_dt=None, reset_options=None):
                 }
             )
 
-        elif (
-            not item.reference_dt
-            and not item.sales_order
-            and reference_dt == "Other Items"
-        ):
+        elif not item.reference_dt and not item.sales_order and reference_dt == "Other Items":
             item_codes.append(item.item_code)
             items.append(
                 {
@@ -314,9 +280,7 @@ def equeue_apply_insurance_discount(kwargs):
         discount_amount = 0
         appointment_doc = frappe.get_cached_doc("Patient Appointment", self.appointment)
         if self.discount_percent:
-            discount_amount = appointment_doc.paid_amount * (
-                self.discount_percent / 100
-            )
+            discount_amount = appointment_doc.paid_amount * (self.discount_percent / 100)
         elif self.discount_amount:
             discount_amount = self.discount_amount
 
@@ -355,10 +319,7 @@ def equeue_apply_insurance_discount(kwargs):
                 "drug_prescription",
                 "therapy_plan_detail",
             ]:
-                if (
-                    table_field_to_apply_discount_on
-                    and table_field != table_field_to_apply_discount_on
-                ):
+                if table_field_to_apply_discount_on and table_field != table_field_to_apply_discount_on:
                     continue
 
                 if not encounter_doc.get(table_field):

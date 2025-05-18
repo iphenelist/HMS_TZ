@@ -1,13 +1,19 @@
-import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 
 def execute():
-    doctypes = ["Lab Test", "Radiology Examination", "Clinical Procedure", "Delivery Note Item", "Original Delivery Note Item"]
+    doctypes = [
+        "Lab Test",
+        "Radiology Examination",
+        "Clinical Procedure",
+        "Delivery Note Item",
+        "Original Delivery Note Item",
+    ]
 
     for doctype in doctypes:
         fields = get_custom_fields(doctype)
         create_custom_fields(fields, update=True)
+
 
 def get_custom_fields(doctype):
     fields = {

@@ -1,7 +1,7 @@
 import frappe
-from frappe import _, get_cached_value
-from frappe.utils import flt, nowdate, getdate
 from erpnext.accounts.utils import get_balance_on
+from frappe import _
+from frappe.utils import flt
 
 
 def execute(filters=None):
@@ -21,7 +21,12 @@ def execute(filters=None):
 
 def get_summarized_columns():
     columns = [
-        {"fieldname": "date", "fieldtype": "date", "label": _("Date"), "width": 120},
+        {
+            "fieldname": "date",
+            "fieldtype": "date",
+            "label": _("Date"),
+            "width": 120,
+        },
         {
             "fieldname": "service_unit",
             "fieldtype": "Data",
@@ -84,7 +89,12 @@ def get_summarized_columns():
 # itemized col report
 def get_columns():
     columns = [
-        {"fieldname": "date", "fieldtype": "date", "label": _("Date"), "width": 140},
+        {
+            "fieldname": "date",
+            "fieldtype": "date",
+            "label": _("Date"),
+            "width": 140,
+        },
         {
             "fieldname": "category",
             "fieldtype": "Data",
@@ -130,8 +140,7 @@ def get_summarized_data(args):
         frappe.msgprint(
             f"No Record found for the Fitlters:  Patient: {frappe.bold(args.patient)}, Appointment: {frappe.bold(args.appointment_no)},\
 			Patient Type: {frappe.bold(args.patient_type)} From Date: {frappe.bold(args.from_date)} and To Date: {frappe.bold(args.to_date)}\
-			you specified..., Please change your filters and try again..!!"
-        )
+			you specified..., Please change your filters and try again..!!")
         return [], []
 
     for record in transactions:
@@ -186,22 +195,14 @@ def get_summarized_data(args):
             {
                 "date": single_transaction_date,
                 "service_unit": single_transaction["service_unit"] or service_unit,
-                "total_bed_charges": flt(single_transaction["bed_charges"])
-                + mult_bed_charges,
-                "total_cons_charges": flt(single_transaction["cons_charges"])
-                + mult_cons_charges,
-                "total_lab_amount": flt(single_transaction["lab_amount"])
-                + mult_lab_amount,
-                "total_radiology_amount": flt(single_transaction["radiology_amount"])
-                + mult_radiology_amount,
-                "total_procedure_amount": flt(single_transaction["procedure_amount"])
-                + mult_procedure_amount,
-                "total_drug_amount": flt(single_transaction["drug_amount"])
-                + mult_drug_amount,
-                "total_therapy_amount": flt(single_transaction["therapy_amount"])
-                + mult_therapy_amount,
-                "total_amount": flt(single_transaction["total_amount"])
-                + mult_total_amount,
+                "total_bed_charges": flt(single_transaction["bed_charges"]) + mult_bed_charges,
+                "total_cons_charges": flt(single_transaction["cons_charges"]) + mult_cons_charges,
+                "total_lab_amount": flt(single_transaction["lab_amount"]) + mult_lab_amount,
+                "total_radiology_amount": flt(single_transaction["radiology_amount"]) + mult_radiology_amount,
+                "total_procedure_amount": flt(single_transaction["procedure_amount"]) + mult_procedure_amount,
+                "total_drug_amount": flt(single_transaction["drug_amount"]) + mult_drug_amount,
+                "total_therapy_amount": flt(single_transaction["therapy_amount"]) + mult_therapy_amount,
+                "total_amount": flt(single_transaction["total_amount"]) + mult_total_amount,
             }
         )
 
@@ -262,7 +263,7 @@ def get_transaction_data(args):
 		AND lrpmt.is_cancelled = 0
 		AND lrpmt.invoiced = 0
 		group by pe.encounter_date
-		
+
 		union all
 
 		select 0 as lab_amount, 0 as radiology_amount, 0 as procedure_amount,
@@ -303,7 +304,7 @@ def get_transaction_data(args):
 		union all
 
 		select 0 as lab_amount, 0 as radiology_amount, 0 as procedure_amount, 0 as drug_amount,
-			0 as therapy_amount, date(ipd.check_in) AS date, ipd.service_unit as service_unit, 
+			0 as therapy_amount, date(ipd.check_in) AS date, ipd.service_unit as service_unit,
 			sum(ipd.amount) as bed_charges, 0 as cons_charges
         from `tabInpatient Occupancy` ipd
         where ipd.is_confirmed = 1
@@ -314,7 +315,7 @@ def get_transaction_data(args):
 		union all
 
 		select 0 as lab_amount, 0 as radiology_amount, 0 as procedure_amount, 0 as drug_amount,
-			0 as therapy_amount, date(ipd.date) AS date, "" as service_unit, 
+			0 as therapy_amount, date(ipd.date) AS date, "" as service_unit,
 			0 as bed_charges, sum(ipd.rate) as cons_charges
 		from `tabInpatient Consultancy` ipd
 		where ipd.is_confirmed = 1
@@ -331,13 +332,9 @@ def get_transaction_data(args):
 
 def get_report_summary(args, summary_data, is_summary=False):
     customer = frappe.get_cached_value("Patient", {"name": args.patient}, ["customer"])
-    cash_limit = frappe.get_cached_value(
-        "Inpatient Record", args.inpatient_record, "cash_limit"
-    )
+    cash_limit = frappe.get_cached_value("Inpatient Record", args.inpatient_record, "cash_limit")
 
-    deposit_balance = get_balance_on(
-        party_type="Customer", party=customer, company=args.company
-    )
+    deposit_balance = get_balance_on(party_type="Customer", party=customer, company=args.company)
     sorted_data = sorted(summary_data, key=lambda x: x["date"])
 
     total_amount_used = 0
@@ -467,8 +464,7 @@ def get_data(args):
         frappe.msgprint(
             f"No Record found for the args Patient: {frappe.bold(args.patient)}, Appointment: {frappe.bold(args.appointment_no)},\
 			Patient Type: {frappe.bold(args.patient_type)} From Date: {frappe.bold(args.from_date)} and To Date: {frappe.bold(args.to_date)}\
-            you specified..., Please change your filters and try again..!!"
-        )
+            you specified..., Please change your filters and try again..!!")
         return [], []
 
     return get_report_summary(args, data, is_summary=False)
