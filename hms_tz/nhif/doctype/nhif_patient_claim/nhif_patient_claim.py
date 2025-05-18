@@ -233,12 +233,12 @@ class NHIFPatientClaim(Document):
         )
         self.set_practitioner_values(encounter_list)
         self.set_inpatient_values(encounter_list)
-
-        # if not self.allow_changes:
-        #     self.set_patient_claim_disease()
-        #     self.set_patient_claim_item(self.inpatient_record)
+        self.set_patient_claim_disease(encounter_list)
+        # self.set_patient_claim_item(self.inpatient_record)
 
     def set_practitioner_values(self, encounter_list):
+        self.practitioners = []
+
         practitioners = list(set([d.practitioner for d in encounter_list if d.practitioner]))
 
         practitioner_details = frappe.db.get_all(
@@ -313,28 +313,45 @@ class NHIFPatientClaim(Document):
             self.claim_year = int(self.attendance_date.strftime("%Y"))
             self.claim_month = int(self.attendance_date.strftime("%m"))
 
-    def set_patient_claim_disease(self):
+    def set_patient_claim_disease(self, encounter_list):
         self.nhif_patient_claim_disease = []
-        preliminary_query_string = """
-            SELECT ct.name, ct.parent, ct.code, ct.medical_code, ct.description, ct.modified_by, ct.modified, pe.practitioner
-            FROM `tabCodification Table` ct
-            INNER JOIN `tabPatient Encounter` pe ON pe.name = ct.parent
-            WHERE ct.parentfield = "patient_encounter_preliminary_diagnosis"
-            AND ct.parenttype = "Patient Encounter"
-            AND ct.parent in ({})
-            GROUP BY ct.medical_code
-            """.format(
-            ", ".join(frappe.db.escape(encounters.name) for encounters in self.patient_encounters)
-        )
+        encounter_ids = [d.name for d in encounter_list]
+        
+        diagnosis_list = (
+            frappe.qb.from_(ct)
+            .inner_join(pe)
+            .on(pe.name == ct.parent)
+            .select(
+                ct.name,
+                ct.parent,
+                ct.code,
+                ct.medical_code,
+                ct.description,
+                ct.modified_by,
+                ct.modified,
+                ct.parentfield,
+                pe.practitioner,
+            )
+            .where(
+                (ct.parenttype == "Patient Encounter")
+                & (ct.parent.isin(encounter_ids))
+            )
+            .groupby(ct.medical_code, ct.parentfield)
+            .orderby(ct.parentfield, order=frappe.qb.desc)
+        ).run(as_dict=True)
 
-        preliminary_diagnosis_list = frappe.db.sql(preliminary_query_string, as_dict=True)
-        for row in preliminary_diagnosis_list:
+        for row in diagnosis_list:
             new_row = self.append("nhif_patient_claim_disease", {})
-            new_row.diagnosis_type = "Provisional Diagnosis"
-            new_row.status = "Provisional"
+            if row.parentfield == "patient_encounter_preliminary_diagnosis":
+                new_row.diagnosis_type = "Provisional Diagnosis"
+                new_row.status = "Provisional"
+            elif row.parentfield == "patient_encounter_final_diagnosis":
+                new_row.diagnosis_type = "Final Diagnosis"
+                new_row.status = "Final"
             new_row.patient_encounter = row.parent
             new_row.codification_table = row.name
             new_row.medical_code = row.medical_code
+
             # Convert the ICD code of CDC to NHIF
             if row.code and len(row.code) > 3 and "." not in row.code:
                 new_row.disease_code = row.code[:3] + "." + (row.code[3:4] or "0")
@@ -342,37 +359,7 @@ class NHIFPatientClaim(Document):
                 new_row.disease_code = row.code
             else:
                 new_row.disease_code = row.code[:3]
-            new_row.description = row.description[0:139]
-            new_row.item_crt_by = row.practitioner
-            new_row.date_created = row.modified.strftime("%Y-%m-%d")
 
-        final_query_string = """
-            SELECT ct.name, ct.parent, ct.code, ct.medical_code, ct.description, ct.modified_by, ct.modified, pe.practitioner
-            FROM `tabCodification Table` ct
-            INNER JOIN `tabPatient Encounter` pe ON pe.name = ct.parent
-            WHERE ct.parentfield = "patient_encounter_final_diagnosis"
-            AND ct.parenttype = "Patient Encounter"
-            AND ct.parent in ({})
-            GROUP BY ct.medical_code
-            """.format(
-            ", ".join(frappe.db.escape(encounters.name) for encounters in self.patient_encounters)
-        )
-
-        final_diagnosis_list = frappe.db.sql(final_query_string, as_dict=True)
-        for row in final_diagnosis_list:
-            new_row = self.append("nhif_patient_claim_disease", {})
-            new_row.diagnosis_type = "Final Diagnosis"
-            new_row.status = "Final"
-            new_row.patient_encounter = row.parent
-            new_row.codification_table = row.name
-            new_row.medical_code = row.medical_code
-            # Convert the ICD code of CDC to NHIF
-            if row.code and len(row.code) > 3 and "." not in row.code:
-                new_row.disease_code = row.code[:3] + "." + (row.code[3:4] or "0")
-            elif row.code and len(row.code) <= 5 and "." in row.code:
-                new_row.disease_code = row.code
-            else:
-                new_row.disease_code = row.code[:3]
             new_row.description = row.description[0:139]
             new_row.item_crt_by = row.practitioner
             new_row.date_created = row.modified.strftime("%Y-%m-%d")
