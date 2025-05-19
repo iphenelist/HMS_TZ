@@ -28,6 +28,17 @@ def submit_folio(doc):
     try:
         r = requests.request("Post", url, data=payload, headers=headers, timeout=300)
         if r.status_code != 200:
+            add_log(
+                request_type="SubmitFolio",
+                request_url=url,
+                request_header=headers,
+                request_body=payload,
+                response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???"),
+                status_code=(r.status_code if str(r) else "NO STATUS CODE"),
+                company=settings_doc.name,
+                ref_doctype=doc.doctype,
+                ref_docname=doc.name,
+            )
             if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
                 frappe.msgprint(
                     f"This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
@@ -106,7 +117,7 @@ def get_payload(doc):
         "AuthorizationNo": doc.authorization_no,
         "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
         "PatientTypeCode": doc.patient_type_code,
-        "AttendingPractitioners": [mct_code for mct_code in doc.practitioner_no.split(",")],
+        "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
         "LateSubmissionReason": doc.delayreason,
         "AmountClaimed": doc.total_amount,
         "ConfirmationCode": doc.confirmation_code or "",
@@ -377,7 +388,7 @@ def get_receipt(ref_doctype, ref_docname):
     Get receipt from NHIF
     """
 
-    doc = frappe.get_dget_cached_dococ(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
