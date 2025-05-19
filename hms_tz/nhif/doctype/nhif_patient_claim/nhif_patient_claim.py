@@ -35,6 +35,7 @@ from hms_tz.nhif.nhif_api.patient_claim import submit_folio
 pa = DocType("Patient Appointment")
 pe = DocType("Patient Encounter")
 ct = DocType("Codification Table")
+hsr = DocType("Healthcare Service Request")
 
 
 class NHIFPatientClaim(Document):
@@ -118,9 +119,10 @@ class NHIFPatientClaim(Document):
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
-            final_encounter = [row.name for row in encounter_list if row.encounter_type == "Final"]
+            final_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
             if len(final_encounter) == 0:
-                finalized_encounter(encounter_list[-1])
+                last_encounter = encounter_list[-1].encounter
+                finalized_encounter(last_encounter)
 
             self.set_claim_values(encounter_list)
 
@@ -187,31 +189,31 @@ class NHIFPatientClaim(Document):
         track_changes_of_claim_items(self)
 
     def get_patient_encounters(self):
-        # rock 173
-        appointment = None
+        appointments = []
         if self.hms_tz_claim_appointment_list:
-            appointment = [
-                "in",
-                json.loads(self.hms_tz_claim_appointment_list),
-            ]
+            appointments = [json.loads(self.hms_tz_claim_appointment_list)]
         else:
-            appointment = self.patient_appointment
+            appointments = [self.patient_appointment]
 
-        patient_encounters = frappe.db.get_all(
-            "Patient Encounter",
-            filters={
-                "appointment": appointment,
-                "docstatus": 1,
-                # "duplicated": 0,
-                # "encounter_type": "Final",
-            },
-            fields=["name", "encounter_date", "practitioner", "inpatient_record", "encounter_type"],
-            order_by="`creation` ASC",
-            # order_by="`modified` desc",
-            # limit_page_length=1,
+        patient_encounters = (
+            frappe.qb.from_(pe)
+            .inner_join(hsr)
+            .on(hsr.appointment == pe.appointment)
+            .select(
+                pe.practitioner,
+                pe.encounter_date,
+                pe.encounter_type,
+                pe.inpatient_record,
+                pe.name.as_("encounter"),
+                hsr.name.as_("service_request")
+            )
+            .where(
+                (pe.docstatus == 1)
+                & (hsr.docstatus == 1)
+                & (pe.appointment.isin(appointments))
+            )
+            .orderby(pe.creation)
         )
-        # if len(patient_encounters) == 0:
-        #     frappe.throw(_("There no Final Patient Encounter for this Appointment"))
         
         if len(patient_encounters) == 0:
             frappe.throw(_("There are no submitted encounters for this application"))
@@ -313,7 +315,7 @@ class NHIFPatientClaim(Document):
 
     def set_patient_claim_disease(self, encounter_list):
         self.nhif_patient_claim_disease = []
-        encounter_ids = [d.name for d in encounter_list]
+        encounter_ids = [d.encounter for d in encounter_list if d.encounter]
         
         diagnosis_list = (
             frappe.qb.from_(ct)
@@ -362,12 +364,7 @@ class NHIFPatientClaim(Document):
             new_row.item_crt_by = row.practitioner
             new_row.date_created = row.modified.strftime("%Y-%m-%d")
 
-    def set_patient_claim_item(
-            self,
-            encounter_list,
-            inpatient_record=None
-        ):
-        
+    def set_patient_claim_item(self, encounter_list, inpatient_record=None):
         self.clinical_notes = ""
         childs_map = get_child_map()
         self.nhif_patient_claim_item = []
