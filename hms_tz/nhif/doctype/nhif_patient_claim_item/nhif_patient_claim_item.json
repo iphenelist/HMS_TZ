@@ -59,7 +59,7 @@
   },
   {
    "fieldname": "date_created",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "label": "Date Created",
    "read_only": 1
   },
@@ -170,7 +170,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-18 13:21:19.290144",
+ "modified": "2025-05-19 16:20:07.474192",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim Item",

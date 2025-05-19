@@ -28,7 +28,7 @@
   },
   {
    "fieldname": "date_created",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "in_list_view": 1,
    "label": "Date Created",
    "permlevel": 1
@@ -91,7 +91,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-18 13:21:53.908478",
+ "modified": "2025-05-19 16:19:18.320218",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim Disease",
