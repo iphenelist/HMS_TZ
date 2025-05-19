@@ -100,6 +100,7 @@ def submit_folio(doc):
 
 
 def get_payload(doc):
+    attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
     payload = {
         "FacilityCode": doc.facility_code,
         "ClaimYear": doc.claim_year,
@@ -115,7 +116,7 @@ def get_payload(doc):
         "BillNo": doc.name,
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
-        "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
+        "AttendanceDate": attendance_datetime.isoformat(),
         "PatientTypeCode": doc.patient_type_code,
         "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
         "LateSubmissionReason": doc.delayreason,
@@ -125,12 +126,15 @@ def get_payload(doc):
         "FolioItems": items,
         "DateCreated": str(doc.posting_date),
         "CreatedBy": doc.item_crt_by,
-        "LastModified": str(doc.modified),
+        "LastModified": doc.modified.isoformat(),
         "LastModifiedBy": get_fullname(doc.modified_by),
     }
     if doc.patient_type_code == "IN":
-        payload["DateAdmitted"] = str(doc.date_admitted) + " " + str(doc.admitted_time)
-        payload["DateDischarged"] = str(doc.date_discharge) + " " + str(doc.discharge_time)
+        admission_datetime = get_datetime(f"{doc.date_admitted} {doc.admitted_time}")
+        discharge_datetime = get_datetime(f"{doc.date_discharge} {doc.discharge_time}")
+        
+        payload["DateAdmitted"] = admission_datetime.isoformat()
+        payload["DateDischarged"] = discharge_datetime.isoformat()
 
     items = []
     diseases = []
@@ -140,8 +144,8 @@ def get_payload(doc):
             "Status": disease.status,
             "Remarks": None,
             "CreatedBy": disease.item_crt_by,
-            "DateCreated": str(disease.date_created),
-            "LastModified": str(disease.date_created),
+            "DateCreated": disease.date_created.isoformat(),
+            "LastModified": disease.date_created.isoformat(),
             "LastModifiedBy": disease.item_crt_by,
         }
         diseases.append(disease_dict)
@@ -156,10 +160,10 @@ def get_payload(doc):
             "AmountClaimed": item.amount_claimed,
             "ApprovalRefNo": item.approval_ref_no or None,
             "CreatedBy": item.item_crt_by,
-            "DateCreated": str(item.date_created),
+            "DateCreated": item.date_created.isoformat(),
             "LastModifiedBy": item.item_crt_by,
-            "LastModified": str(item.date_created),
-            "OtherDetails": None,
+            "LastModified": item.date_created.isoformat(),
+            "OtherDetails": "",
         }
         items.append(item_dict)
 
