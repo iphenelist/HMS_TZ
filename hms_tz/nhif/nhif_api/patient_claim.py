@@ -42,14 +42,12 @@ def submit_folio(doc):
             if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
                 frappe.msgprint(
                     f"This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
-                    + str(now_datetime())
                 )
             elif (
                 str(r) and r.status_code == 406 and f"Folio Number {doc.folio_no} has already been submited." in r.text
             ):
                 frappe.msgprint(
                     f"This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
-                    + str(now_datetime())
                 )
             else:
                 frappe.msgprint(
@@ -70,10 +68,16 @@ def submit_folio(doc):
                 ref_doctype=doc.doctype,
                 ref_docname=doc.name,
             )
-            frappe.msgprint(str(r.text))
-            frappe.msgprint("The claim has been sent successfully", alert=True)
 
-            # TODO: update response values to Healthcare Referral doc
+            doc.submission_id = data.get("SubmissionID")
+            doc.submission_no = data.get("SubmissionNo")
+            doc.date_submitted = get_datetime(data.get("DateSubmitted"))
+            doc.submission_channel = data.get("SubmissionChannel")
+            doc.submission_remarks = data.get("Remarks")
+            doc.hashcode = data.get("HashCode")
+
+            frappe.msgprint(str(data.get("Remarks")))
+            frappe.msgprint("The claim has been sent successfully", alert=True)
 
     except Exception:
         add_log(
@@ -95,7 +99,6 @@ def submit_folio(doc):
 
         frappe.throw(
             "This folio was NOT submitted due to the error above!. Please retry after resolving the problem. "
-            + str(now_datetime())
         )
 
 
