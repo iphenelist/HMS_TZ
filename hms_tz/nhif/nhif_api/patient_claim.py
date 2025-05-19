@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import flt, get_fullname, now_datetime
+from frappe.utils import flt, get_fullname, now_datetime, get_datetime
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -320,11 +320,12 @@ def send_confirmation_code(ref_doctype, ref_docname):
 
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
+    attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
     payload = {
         "FacilityCode": doc.facility_code,
         "CardNo": doc.cardno.strip(),
         "AuthorizationNo": doc.authorization_no,
-        "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
+        "AttendanceDate": attendance_datetime.isoformat(),
         "TotalAmount": doc.total_amount,
     }
     payload = json.dumps(payload)
@@ -370,14 +371,12 @@ def send_confirmation_code(ref_doctype, ref_docname):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to NHIF Patient Claim doc
-        doc.confirmation_code_sent = 1
         frappe.db.set_value(doc.doctype, doc.name, "confirmation_code_sent", 1)
         doc.reload()
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"Confirmation code sent successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
+            text=f"Confirmation code sent successfully!<br><br><b>Message from NHIF:</b><br>{data.get('Message')}",
         )
         return True
 
