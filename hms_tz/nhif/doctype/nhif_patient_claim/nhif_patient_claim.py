@@ -362,7 +362,7 @@ class NHIFPatientClaim(Document):
 
             new_row.description = row.description[0:139]
             new_row.item_crt_by = row.practitioner
-            new_row.date_created = row.modified.strftime("%Y-%m-%d")
+            new_row.date_created = row.modified
 
     def set_patient_claim_item(self, encounter_list):
         self.clinical_notes = ""
@@ -437,7 +437,7 @@ class NHIFPatientClaim(Document):
         new_row.status = get_LRPMT_status(hsr_row)
         new_row.ref_doctype = hsr_row.ref_doctype
         new_row.ref_docname = hsr_row.ref_docname
-        new_row.date_created = hsr_row.creation.strftime("%Y-%m-%d")
+        new_row.date_created = hsr_row.creation
         new_row.patient_encounter = d.encounter
         new_row.item_crt_by = d.practitioner
         new_row.approval_ref_no = get_approval_number_from_LRPMT(
@@ -486,7 +486,7 @@ class NHIFPatientClaim(Document):
         new_row.patient_encounter = admission_encounter
         new_row.ref_doctype = occupancy.doctype
         new_row.ref_docname = occupancy.name
-        new_row.date_created = occupancy.modified.strftime("%Y-%m-%d")
+        new_row.date_created = occupancy.modified
         new_row.item_crt_by = get_fullname(occupancy.modified_by)
 
     def add_consultancy_claim_item(self, consultancy, checkin_date):
@@ -501,7 +501,7 @@ class NHIFPatientClaim(Document):
             new_row.patient_encounter = consultancy.encounter
             new_row.ref_doctype = consultancy.doctype
             new_row.ref_docname = consultancy.name
-            new_row.date_created = consultancy.modified.strftime("%Y-%m-%d")
+            new_row.date_created = consultancy.modified
             new_row.item_crt_by = get_fullname(consultancy.modified_by)
 
     def add_appointment_claim_item(self):
@@ -544,7 +544,7 @@ class NHIFPatientClaim(Document):
                 new_row.approval_ref_no = ""
                 new_row.ref_doctype = appointment_doc.doctype
                 new_row.ref_docname = appointment_doc.name
-                new_row.date_created = appointment_doc.modified.strftime("%Y-%m-%d")
+                new_row.date_created = appointment_doc.modified
                 new_row.item_crt_by = get_fullname(appointment_doc.modified_by)
                 new_row.idx = appointment_idx
                 appointment_idx += 1
