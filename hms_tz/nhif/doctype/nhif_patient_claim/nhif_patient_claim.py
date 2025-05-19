@@ -585,7 +585,7 @@ class NHIFPatientClaim(Document):
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
                 
-                self.clinical_notes += f"Service Name: {row.radiology_procedure_name} {serv_info} <br>"
+                self.clinical_notes += f"Radiology Name: <b>{row.radiology_procedure_name}</b> {serv_info} <br>"
                 radiology_report = self.get_radiology_results(row)
                 if radiology_report:
                     self.clinical_notes += radiology_report
@@ -598,12 +598,10 @@ class NHIFPatientClaim(Document):
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
 
-                if row.clinical_procedure:
-                    notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
-
-                    serv_info += f", Procedure Notes: {notes}"
-
-                self.clinical_notes += f"Procedure: {row.procedure_name} {serv_info}<br>"
+                self.clinical_notes += f"Procedure: <b>{row.procedure_name}</b> {serv_info}<br>"
+                procedure_notes = self.get_procedure_notes(row)
+                if procedure_notes:
+                    self.clinical_notes += procedure_notes
 
         #Medications
         if len(encounter_doc.get("drug_prescription")) > 0:
@@ -622,7 +620,7 @@ class NHIFPatientClaim(Document):
                 if row.dosage_form:
                     med_info += f", Dosage Form: {row.dosage_form}"
 
-                self.clinical_notes += f"Drug: {row.drug_code} {med_info} <br>"
+                self.clinical_notes += f"Drug: <b>{row.drug_code}</b> {med_info} <br>"
 
         #Therapies
         if len(encounter_doc.get("therapies")) > 0:
@@ -631,7 +629,7 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
-                self.clinical_notes += f"Therapy: {row.therapy_type} {serv_info} <br>"
+                self.clinical_notes += f"Therapy: <b>{row.therapy_type}</b> {serv_info} <br>"
 
         # self.clinical_notes = self.clinical_notes.replace('"', " ")
 
@@ -841,6 +839,20 @@ class NHIFPatientClaim(Document):
             result += f"<div align='center'><i><u><b>Radiology Report</b></u></i></div>"
             result += f"<table border='1' cellpadding='5' cellspacing='0' width='90%' align='center'>"
             result += f"<tr><td>{radiology_report}</td></tr>"
+            result += f"</table><br>"
+
+        return result
+    
+    def get_procedure_notes(self, row):
+        if not row.clinical_procedure:
+            return
+        
+        notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
+        result = ""
+        if notes:
+            result += f"<div align='center'><i><u><b>Procedure Notes</b></u></i></div>"
+            result += f"<table border='1' cellpadding='5' cellspacing='0' width='90%' align='center'>"
+            result += f"<tr><td>{notes}</td></tr>"
             result += f"</table><br>"
 
         return result
