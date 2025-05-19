@@ -167,7 +167,6 @@ class NHIFPatientClaim(Document):
             frappe.throw("")
 
         start_datetime = get_datetime()
-        # frappe.msgprint("Submit process started: " + str(get_datetime()))
 
         self.validate_multiple_appointments_per_authorization_no()
 
@@ -178,9 +177,8 @@ class NHIFPatientClaim(Document):
 
         validate_submit_date(self)
 
-        # frappe.msgprint("Sending NHIF Claim: " + str(get_datetime()))
         submit_folio(self)
-        # frappe.msgprint("Got response from NHIF Claim: " + str(get_datetime()))
+        
         end_datetime = get_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
         frappe.msgprint("Total time used to submit folio in seconds = " + str(time_in_seconds))

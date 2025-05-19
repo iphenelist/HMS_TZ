@@ -139,6 +139,28 @@ def get_payload(doc):
         }
         items.append(item_dict)
 
+    Signatures = [{
+        "Signatory": "Patient",
+        "SignatoryID": doc.cardno.strip(),
+        "SignatureData": doc.patient_signature,
+        "DateCreated": str(doc.posting_date),
+        "CreatedBy": doc.item_crt_by,
+        "LastModified": get_datetime(doc.modified).isoformat(),
+        "LastModifiedBy": get_fullname(doc.modified_by),
+    }]
+
+    for d in doc.practitioners:
+        if d.mct_code:
+            Signatures.append({
+                "Signatory": "MCT",
+                "SignatoryID": d.mct_code,
+                "SignatureData": frappe.get_cached_value("Healthcare Practitioner", d.practitioner, "doctors_signature"),
+                "DateCreated": str(doc.posting_date),
+                "CreatedBy": doc.item_crt_by,
+                "LastModified": get_datetime(doc.modified).isoformat(),
+                "LastModifiedBy": get_fullname(doc.modified_by),
+            })
+
     payload = {
         "FacilityCode": doc.facility_code,
         "ClaimYear": doc.claim_year,
@@ -162,6 +184,7 @@ def get_payload(doc):
         "ConfirmationCode": doc.confirmation_code or "",
         "FolioDiseases": diseases,
         "FolioItems": items,
+        "Signatures": Signatures,
         "DateCreated": str(doc.posting_date),
         "CreatedBy": doc.item_crt_by,
         "LastModified": get_datetime(doc.modified).isoformat(),
