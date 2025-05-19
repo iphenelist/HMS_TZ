@@ -584,7 +584,11 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
+                
                 self.clinical_notes += f"Service Name: {row.radiology_procedure_name} {serv_info} <br>"
+                radiology_report = self.get_radiology_results(row)
+                if radiology_report:
+                    self.clinical_notes += radiology_report
 
         #Clinical Procedures
         if len(encounter_doc.get("procedure_prescription")) > 0:
@@ -822,6 +826,24 @@ class NHIFPatientClaim(Document):
                 result += '</table><br>'
 
             return result
+
+    def get_radiology_results(self, row):
+        if not row.radiology_examination:
+            return
+
+        radiology_report = frappe.get_cached_value(
+            "Radiology Examination",
+            row.radiology_examination,
+            "radiology_report_details"
+        )
+        result = ""
+        if radiology_report:
+            result += f"<div align='center'><i><u><b>Radiology Report</b></u></i></div>"
+            result += f"<table border='1' cellpadding='5' cellspacing='0' width='90%' align='center'>"
+            result += f"<tr><td>{radiology_report}</td></tr>"
+            result += f"</table><br>"
+
+        return result
 
 
 def get_missing_patient_signature(self):
