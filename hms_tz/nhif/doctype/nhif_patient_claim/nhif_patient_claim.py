@@ -637,12 +637,7 @@ class NHIFPatientClaim(Document):
         self.total_amount = 0
         for item in self.nhif_patient_claim_item:
             item.amount_claimed = item.unit_price * item.item_quantity
-            item.date_created = item.date_created or nowdate()
-
             self.total_amount += item.amount_claimed
-
-        for item in self.nhif_patient_claim_disease:
-            item.date_created = item.date_created or nowdate()
 
     @frappe.whitelist()
     def get_appointments(self):
