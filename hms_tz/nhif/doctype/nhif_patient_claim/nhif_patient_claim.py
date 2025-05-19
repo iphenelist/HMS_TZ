@@ -55,7 +55,7 @@ class NHIFPatientClaim(Document):
 
         self.validate_appointment_info()
         self.validate_multiple_appointments_per_authorization_no("before_insert")
-    
+
     def after_insert(self):
         folio_counter = frappe.db.get_all(
             "NHIF Folio Counter",
@@ -103,7 +103,7 @@ class NHIFPatientClaim(Document):
                 "docstatus",
             ]:
                 new_row[fieldname] = None
-            
+
             items.append(new_row)
 
         if len(items) > 0:
@@ -132,8 +132,6 @@ class NHIFPatientClaim(Document):
             update_original_patient_claim(self)
 
             frappe.qb.update(pa).set(pa.nhif_patient_claim, self.name).where(pa.name == self.patient_appointment).run()
-        
-        self.reload()
 
     def validate(self):
         self.validate_appointment_info()
@@ -216,10 +214,10 @@ class NHIFPatientClaim(Document):
             )
             .orderby(pe.creation)
         ).run(as_dict=True)
-        
+
         if len(patient_encounters) == 0:
             frappe.throw(_("There are no submitted encounters for this application"))
-        
+
         return patient_encounters
 
     def set_claim_values(self, encounter_list):
@@ -264,7 +262,7 @@ class NHIFPatientClaim(Document):
     def set_inpatient_values(self, encounter_list):
         inpatient_record = list(set([h.inpatient_record for h in encounter_list if h.inpatient_record]))
         self.inpatient_record = inpatient_record[0] if inpatient_record else None
-        
+
         # Reset values for every validate
         self.patient_type_code = "OUT"
         self.date_admitted = None
@@ -307,7 +305,7 @@ class NHIFPatientClaim(Document):
                 # the time a claim is created will be treated as discharge time
                 # because there is no field of discharge time on Inpatient Record
                 self.discharge_time = nowtime()
-        
+
         if self.date_discharge:
             self.claim_year = int(self.date_discharge.strftime("%Y"))
             self.claim_month = int(self.date_discharge.strftime("%m"))
@@ -318,7 +316,7 @@ class NHIFPatientClaim(Document):
     def set_patient_claim_disease(self, encounter_list):
         self.nhif_patient_claim_disease = []
         encounter_ids = [d.encounter for d in encounter_list if d.encounter]
-        
+
         diagnosis_list = (
             frappe.qb.from_(ct)
             .inner_join(pe)
@@ -409,7 +407,7 @@ class NHIFPatientClaim(Document):
                 for d in encounter_list:
                     if str(d.encounter_date) != checkin_date:
                         continue
-                    
+
                     # allow clinical notes to be added to the claim even if the
                     # service is not chargeable and encounters will be ignored
                     self.set_clinical_notes(d.encounter)
@@ -447,7 +445,7 @@ class NHIFPatientClaim(Document):
             hsr_row.lrpmt_docname,
             hsr_row.dn_detail
         )
-    
+
     def add_occupancy_claim_item(self, occupancy, admission_encounter):
         service_unit_type = frappe.get_cached_value(
             "Healthcare Service Unit",
@@ -490,7 +488,7 @@ class NHIFPatientClaim(Document):
         new_row.ref_docname = occupancy.name
         new_row.date_created = occupancy.modified.strftime("%Y-%m-%d")
         new_row.item_crt_by = get_fullname(occupancy.modified_by)
-    
+
     def add_consultancy_claim_item(self, consultancy, checkin_date):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
             new_row = self.append("nhif_patient_claim_item", {})
@@ -525,7 +523,7 @@ class NHIFPatientClaim(Document):
         for row in sorted_claim_items:
             row.idx = idx
             idx += 1
-        
+
         self.nhif_patient_claim_item = sorted_claim_items
 
         appointment_idx = 1
@@ -560,7 +558,7 @@ class NHIFPatientClaim(Document):
             self.clinical_notes = " ".join([patient_name, gender, date_of_birth, years]) + "<br>"
 
         encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
-        
+
         department = frappe.get_cached_value("Healthcare Practitioner", encounter_doc.practitioner, "department")
         self.clinical_notes += f"<br>PractitionerName: <i>{encounter_doc.practitioner_name},</i> Speciality: <i>{department},\
             </i> DateofService: <i>{encounter_doc.encounter_date} {encounter_doc.encounter_time}</i> <br>"
@@ -573,8 +571,12 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info  += f", Medical Code: {row.medical_code}"
-                self.clinical_notes += f"Lab Test Name: {row.lab_test_name} {serv_info} <br>"
-        
+
+                self.clinical_notes += f"Lab Test Name: <b>{row.lab_test_name}</b> {serv_info} <br>"
+                result = self.get_lab_results(row)
+                if result:
+                    self.clinical_notes += result
+
         #Radiology
         if len(encounter_doc.get("radiology_procedure_prescription")) > 0:
             self.clinical_notes += "<br>Radiology: <br>"
@@ -583,7 +585,7 @@ class NHIFPatientClaim(Document):
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
                 self.clinical_notes += f"Service Name: {row.radiology_procedure_name} {serv_info} <br>"
-        
+
         #Clinical Procedures
         if len(encounter_doc.get("procedure_prescription")) > 0:
             self.clinical_notes += "<br>Procedure(s): <br>"
@@ -591,14 +593,14 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
-                
+
                 if row.clinical_procedure:
                     notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
-                    
+
                     serv_info += f", Procedure Notes: {notes}"
-                
+
                 self.clinical_notes += f"Procedure: {row.procedure_name} {serv_info}<br>"
-        
+
         #Medications
         if len(encounter_doc.get("drug_prescription")) > 0:
             self.clinical_notes += "<br>Medication(s): <br>"
@@ -617,7 +619,7 @@ class NHIFPatientClaim(Document):
                     med_info += f", Dosage Form: {row.dosage_form}"
 
                 self.clinical_notes += f"Drug: {row.drug_code} {med_info} <br>"
-        
+
         #Therapies
         if len(encounter_doc.get("therapies")) > 0:
             self.clinical_notes += "<br>Therapies: <br>"
@@ -626,8 +628,8 @@ class NHIFPatientClaim(Document):
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
                 self.clinical_notes += f"Therapy: {row.therapy_type} {serv_info} <br>"
-        
-        self.clinical_notes = self.clinical_notes.replace('"', " ")
+
+        # self.clinical_notes = self.clinical_notes.replace('"', " ")
 
     def calculate_totals(self):
         self.total_amount = 0
@@ -636,7 +638,7 @@ class NHIFPatientClaim(Document):
             item.date_created = item.date_created or nowdate()
 
             self.total_amount += item.amount_claimed
-        
+
         for item in self.nhif_patient_claim_disease:
             item.date_created = item.date_created or nowdate()
 
@@ -680,7 +682,7 @@ class NHIFPatientClaim(Document):
                     "nhif_patient_claim",
                     self.name,
                 )
-        
+
         app_list = list(set(app_list))
         self.allow_changes = 0
         self.hms_tz_claim_appointment_list = json.dumps(app_list)
@@ -765,6 +767,61 @@ class NHIFPatientClaim(Document):
         else:
             if caller:
                 frappe.msgprint("Release Patient Card", 20, alert=True)
+
+    def get_lab_results(self, row):
+            if not row.lab_test:
+                return
+
+            lab_test_doc = frappe.get_cached_doc("Lab Test", row.lab_test)
+            if lab_test_doc.workflow_state == "Lab Test Requested":
+                return
+
+            result = ""
+
+            if lab_test_doc.normal_test_items:
+                result += '<div align="center"><i><u><b>Normal Test Results</b></u></i></div>'
+                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+                result += '<tr bgcolor="#CCCCCC"><th>Test Name</th><th>Result</th><th>UOM</th></tr>'
+
+                for item in lab_test_doc.normal_test_items:
+                    result += f'<tr><td>{item.lab_test_name}</td>'
+                    result += f'<td>{item.result_value}</td>'
+                    result += f'<td>{item.lab_test_uom or ""}</td></tr>'
+
+                result += '</table><br>'
+
+            # Descriptive test items table
+            if lab_test_doc.descriptive_test_items:
+                result += '<div align="center"><i><u><b>Descriptive Test Results</b></u></i></div>'
+                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+                result += '<tr bgcolor="#CCCCCC"><th>Test Particulars</th><th>Result</th></tr>'
+
+                for item in lab_test_doc.descriptive_test_items:
+                    result += f'<tr><td>{item.lab_test_particulars}</td>'
+                    result += f'<td>{item.result_value}</td></tr>'
+
+                result += '</table><br>'
+
+            # Sensitivity test items table
+            if lab_test_doc.sensitivity_test_items:
+                result += '<div align="center"><i><u><b>Sensitivity Test Results</b></u></i></div>'
+                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+                result += '<tr bgcolor="#CCCCCC"><th>Antibiotic</th><th>Sensitivity</th></tr>'
+
+                for item in lab_test_doc.sensitivity_test_items:
+                    result += f'<tr><td>{item.antibiotic}</td>'
+                    result += f'<td>{item.antibiotic_sensitivity}</td></tr>'
+
+                result += '</table><br>'
+
+            # Custom result
+            if lab_test_doc.custom_result:
+                result += '<div align="center"><i><u><b>Custom Result</b></u></i></div>'
+                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+                result += f'<tr><td>{lab_test_doc.custom_result}</td></tr>'
+                result += '</table><br>'
+
+            return result
 
 
 def get_missing_patient_signature(self):
@@ -865,7 +922,7 @@ def get_item_refcode(item_code):
     ref_code = code_list[0].ref_code
     if not ref_code:
         frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
-    
+
     return ref_code
 
 
@@ -1000,7 +1057,7 @@ def get_claim_pdf_file(doc):
 
         if not ret.name:
             frappe.throw("ret name not exist")
-            
+
         base64_data = to_base64(pdf)
         return base64_data
     else:
@@ -1068,7 +1125,7 @@ def get_LRPMT_status(row):
         )
         if lab_workflow_state and lab_workflow_state != "Lab Test Requested":
             status = "Submitted"
-    
+
     if not status:
         status = "Draft"
 
