@@ -866,7 +866,7 @@ def validate_submit_date(self):
     import calendar
 
     submit_claim_month, submit_claim_year = frappe.get_cached_value(
-        "Company NHIF Settings",
+        "HMS TZ Settings",
         self.company,
         ["submit_claim_month", "submit_claim_year"],
     )
