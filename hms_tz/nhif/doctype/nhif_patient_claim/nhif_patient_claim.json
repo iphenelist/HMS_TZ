@@ -75,9 +75,17 @@
   "original_section_break",
   "original_nhif_patient_claim_item",
   "section_break_zffby",
-  "hms_tz_claim_appointment_list",
+  "submission_id",
+  "hashcode",
   "naming_series",
-  "amended_from"
+  "column_break_u4tk9",
+  "submission_no",
+  "submission_channel",
+  "amended_from",
+  "column_break_q7pz8",
+  "date_submitted",
+  "submission_remarks",
+  "hms_tz_claim_appointment_list"
  ],
  "fields": [
   {
@@ -106,7 +114,8 @@
    "options": "NPC-.#########",
    "print_hide": 1,
    "report_hide": 1,
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.patient",
@@ -420,7 +429,8 @@
    "fieldname": "hms_tz_claim_appointment_list",
    "fieldtype": "Data",
    "hidden": 1,
-   "label": "Claim Appointment List"
+   "label": "Claim Appointment List",
+   "search_index": 1
   },
   {
    "fieldname": "delayreason",
@@ -552,8 +562,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_zffby",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Submission Details"
   },
   {
    "fieldname": "column_break_pr0fp",
@@ -583,12 +595,61 @@
    "fieldtype": "Table",
    "label": "Practitioner(s)",
    "options": "NHIF Patient Claim Practitioner"
+  },
+  {
+   "fieldname": "submission_id",
+   "fieldtype": "Data",
+   "label": "Submission ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "hashcode",
+   "fieldtype": "Data",
+   "label": "HashCode",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_u4tk9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_no",
+   "fieldtype": "Data",
+   "label": "Submission No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "submission_channel",
+   "fieldtype": "Data",
+   "label": "Submission Channel",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_q7pz8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_submitted",
+   "fieldtype": "Datetime",
+   "label": "Date Submitted",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "submission_remarks",
+   "fieldtype": "Small Text",
+   "label": "Submission Remarks",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 11:23:30.963570",
+ "modified": "2025-05-19 18:03:08.847209",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
