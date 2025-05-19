@@ -95,6 +95,12 @@ frappe.ui.form.on("NHIF Patient Claim", {
     }
   },
 
+  after_save: (frm) => {
+    if (!frm.doc.allow_changes) {
+      frm.reload_doc();
+    }
+  },
+
   is_ready_for_auto_submission: (frm) => {
     if (frm.doc.is_ready_for_auto_submission == 1) {
       frm.set_value("reviewed_by", frappe.user.full_name());
