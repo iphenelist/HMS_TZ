@@ -100,7 +100,42 @@ def submit_folio(doc):
 
 
 def get_payload(doc):
+    items = []
+    diseases = []
     attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
+
+    for disease in doc.nhif_patient_claim_disease:
+        created_date = get_datetime(disease.date_created)
+
+        disease_dict = {
+            "DiseaseCode": disease.disease_code,
+            "Status": disease.status,
+            "Remarks": None,
+            "CreatedBy": disease.item_crt_by,
+            "DateCreated": created_date.isoformat(),
+            "LastModified": created_date.isoformat(),
+            "LastModifiedBy": disease.item_crt_by,
+        }
+        diseases.append(disease_dict)
+
+    for item in doc.nhif_patient_claim_item:
+        created_date = get_datetime(item.date_created)
+        item_dict = {
+            "ItemCode": item.item_code,
+            "ItemName": item.item_name,
+            "ItemTypeID": frappe.get_cached_value("NHIF Item", {"itemcode": item.item_code}, "item_type_id"),
+            "ItemQuantity": item.item_quantity,
+            "UnitPrice": item.unit_price,
+            "AmountClaimed": item.amount_claimed,
+            "ApprovalRefNo": item.approval_ref_no or None,
+            "CreatedBy": item.item_crt_by,
+            "DateCreated": created_date.isoformat(),
+            "LastModifiedBy": item.item_crt_by,
+            "LastModified": created_date.isoformat(),
+            "OtherDetails": "",
+        }
+        items.append(item_dict)
+
     payload = {
         "FacilityCode": doc.facility_code,
         "ClaimYear": doc.claim_year,
@@ -126,46 +161,15 @@ def get_payload(doc):
         "FolioItems": items,
         "DateCreated": str(doc.posting_date),
         "CreatedBy": doc.item_crt_by,
-        "LastModified": doc.modified.isoformat(),
+        "LastModified": get_datetime(doc.modified).isoformat(),
         "LastModifiedBy": get_fullname(doc.modified_by),
     }
     if doc.patient_type_code == "IN":
         admission_datetime = get_datetime(f"{doc.date_admitted} {doc.admitted_time}")
         discharge_datetime = get_datetime(f"{doc.date_discharge} {doc.discharge_time}")
-        
+
         payload["DateAdmitted"] = admission_datetime.isoformat()
         payload["DateDischarged"] = discharge_datetime.isoformat()
-
-    items = []
-    diseases = []
-    for disease in doc.nhif_patient_claim_disease:
-        disease_dict = {
-            "DiseaseCode": disease.disease_code,
-            "Status": disease.status,
-            "Remarks": None,
-            "CreatedBy": disease.item_crt_by,
-            "DateCreated": disease.date_created.isoformat(),
-            "LastModified": disease.date_created.isoformat(),
-            "LastModifiedBy": disease.item_crt_by,
-        }
-        diseases.append(disease_dict)
-
-    for item in doc.nhif_patient_claim_item:
-        item_dict = {
-            "ItemCode": item.item_code,
-            "ItemName": item.item_name,
-            "ItemTypeID": None,  # TODO: add item type id functionality
-            "ItemQuantity": item.item_quantity,
-            "UnitPrice": item.unit_price,
-            "AmountClaimed": item.amount_claimed,
-            "ApprovalRefNo": item.approval_ref_no or None,
-            "CreatedBy": item.item_crt_by,
-            "DateCreated": item.date_created.isoformat(),
-            "LastModifiedBy": item.item_crt_by,
-            "LastModified": item.date_created.isoformat(),
-            "OtherDetails": "",
-        }
-        items.append(item_dict)
 
     payload = json.dumps(payload)
 
