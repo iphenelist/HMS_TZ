@@ -39,26 +39,26 @@
   "confirmation_code",
   "column_break_7xkjq",
   "get_receipt",
+  "receipt_no",
   "section_break_8",
   "facility_code",
   "claim_year",
   "claim_month",
-  "folio_id",
   "folio_no",
   "serial_no",
-  "item_crt_by",
   "column_break_znuxw",
   "practitioner_name",
   "practitioner_no",
-  "date_discharge",
-  "discharge_time",
-  "date_admitted",
-  "admitted_time",
+  "patient_file_no",
   "patient_type_code",
-  "column_break_18",
   "attendance_date",
   "attendance_time",
-  "patient_file_no",
+  "item_crt_by",
+  "column_break_18",
+  "date_admitted",
+  "admitted_time",
+  "date_discharge",
+  "discharge_time",
   "delayreason",
   "patient_file_section",
   "patient_file",
@@ -67,6 +67,8 @@
   "section_break_40",
   "clinical_notes_section",
   "clinical_notes",
+  "attending_practitioner_section",
+  "practitioners",
   "section_break_28",
   "nhif_patient_claim_disease",
   "section_break_30",
@@ -74,9 +76,17 @@
   "original_section_break",
   "original_nhif_patient_claim_item",
   "section_break_zffby",
-  "hms_tz_claim_appointment_list",
+  "submission_id",
+  "hashcode",
   "naming_series",
-  "amended_from"
+  "column_break_u4tk9",
+  "submission_no",
+  "submission_channel",
+  "amended_from",
+  "column_break_q7pz8",
+  "date_submitted",
+  "submission_remarks",
+  "hms_tz_claim_appointment_list"
  ],
  "fields": [
   {
@@ -105,7 +115,8 @@
    "options": "NPC-.#########",
    "print_hide": 1,
    "report_hide": 1,
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.patient",
@@ -125,11 +136,13 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "CardNo",
+   "read_only": 1,
    "reqd": 1,
    "search_index": 1
   },
   {
    "collapsible": 1,
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "section_break_8",
    "fieldtype": "Section Break",
    "label": "Folio Info"
@@ -138,13 +151,15 @@
    "fieldname": "facility_code",
    "fieldtype": "Data",
    "label": "Facility Code",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "claim_year",
    "fieldtype": "Int",
    "label": "Claim Year",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient.first_name",
@@ -165,8 +180,6 @@
   {
    "fieldname": "practitioner_no",
    "fieldtype": "Small Text",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Practitioner No",
    "read_only": 1
   },
@@ -176,7 +189,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date Discharge",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "date_admitted",
@@ -184,7 +198,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date Admitted",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "patient_type_code",
@@ -192,7 +207,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Patient Type Code",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.appointment_date",
@@ -201,7 +217,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Attendance Date",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.authorization_number",
@@ -217,6 +234,7 @@
   {
    "fieldname": "patient_file",
    "fieldtype": "Markdown Editor",
+   "hidden": 1,
    "label": "Patient File",
    "no_copy": 1,
    "print_hide": 1,
@@ -225,7 +243,7 @@
   },
   {
    "fieldname": "patient_file_no",
-   "fieldtype": "Small Text",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Patient File No",
@@ -258,7 +276,8 @@
   },
   {
    "fieldname": "column_break_18",
-   "fieldtype": "Column Break"
+   "fieldtype": "Column Break",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_10",
@@ -275,10 +294,12 @@
    "search_index": 1
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "section_break_28",
    "fieldtype": "Section Break"
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "nhif_patient_claim_disease",
    "fieldtype": "Table",
    "label": "NHIF Patient Claim Disease",
@@ -286,6 +307,7 @@
    "permlevel": 1
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "section_break_30",
    "fieldtype": "Section Break"
   },
@@ -295,12 +317,6 @@
    "label": "NHIF Patient Claim Item",
    "options": "NHIF Patient Claim Item",
    "permlevel": 1
-  },
-  {
-   "fieldname": "folio_id",
-   "fieldtype": "Data",
-   "label": "Folio ID",
-   "read_only": 1
   },
   {
    "fetch_from": "patient_appointment.company",
@@ -322,19 +338,22 @@
    "fieldname": "claim_month",
    "fieldtype": "Int",
    "label": "Claim Month",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "folio_no",
    "fieldtype": "Int",
    "label": "Folio No",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "serial_no",
    "fieldtype": "Data",
    "label": "Serial No",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "depends_on": "eval: doc.nhif_patient_claim_item",
@@ -346,12 +365,14 @@
    "collapsible": 1,
    "fieldname": "patient_file_section",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Patient File",
    "print_hide": 1,
    "report_hide": 1
   },
   {
    "default": "0",
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "allow_changes",
    "fieldtype": "Check",
    "label": "Allow Changes",
@@ -370,11 +391,13 @@
    "collapsible": 1,
    "fieldname": "claim_file_section",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Claim File"
   },
   {
    "fieldname": "claim_file",
    "fieldtype": "Markdown Editor",
+   "hidden": 1,
    "label": "Claim File",
    "read_only": 1
   },
@@ -382,7 +405,8 @@
    "fieldname": "item_crt_by",
    "fieldtype": "Data",
    "label": "Created By",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "inpatient_record",
@@ -406,7 +430,8 @@
    "fieldname": "hms_tz_claim_appointment_list",
    "fieldtype": "Data",
    "hidden": 1,
-   "label": "Claim Appointment List"
+   "label": "Claim Appointment List",
+   "search_index": 1
   },
   {
    "fieldname": "delayreason",
@@ -416,10 +441,9 @@
   {
    "fieldname": "practitioner_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Practitioner Name",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.coverage_plan_name",
@@ -427,6 +451,7 @@
    "fieldname": "coverage_plan_name",
    "fieldtype": "Data",
    "label": "Coverage Plan Name",
+   "read_only": 1,
    "search_index": 1
   },
   {
@@ -459,6 +484,7 @@
   },
   {
    "collapsible": 1,
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "original_section_break",
    "fieldtype": "Section Break",
    "label": "Original NHIF Patient Claim Item"
@@ -467,23 +493,27 @@
    "fieldname": "discharge_time",
    "fieldtype": "Time",
    "label": "Discharge Time",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "admitted_time",
    "fieldtype": "Time",
    "label": "Admitted Time",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_appointment.appointment_time",
    "fieldname": "attendance_time",
    "fieldtype": "Time",
    "label": "Attendance Time",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "clinical_notes_section",
    "fieldtype": "Section Break",
    "label": "Clinical Notes"
@@ -501,6 +531,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval: !doc.__islocal && !doc.confirmation_code",
    "fieldname": "send_confirmation_code",
    "fieldtype": "Button",
    "label": "Send Confirmation Code"
@@ -518,7 +549,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval: doc.docstatus == 1",
+   "depends_on": "eval: doc.docstatus == 1 && !doc.receipt_no",
    "fieldname": "get_receipt",
    "fieldtype": "Button",
    "label": "Get Receipt"
@@ -532,8 +563,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_zffby",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Submission Details"
   },
   {
    "fieldname": "column_break_pr0fp",
@@ -550,12 +583,82 @@
   {
    "fieldname": "column_break_znuxw",
    "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "attending_practitioner_section",
+   "fieldtype": "Section Break",
+   "label": "Attending Practitioner"
+  },
+  {
+   "fieldname": "practitioners",
+   "fieldtype": "Table",
+   "label": "Practitioner(s)",
+   "options": "NHIF Patient Claim Practitioner"
+  },
+  {
+   "fieldname": "submission_id",
+   "fieldtype": "Data",
+   "label": "Submission ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "hashcode",
+   "fieldtype": "Data",
+   "label": "HashCode",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_u4tk9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_no",
+   "fieldtype": "Data",
+   "label": "Submission No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "submission_channel",
+   "fieldtype": "Data",
+   "label": "Submission Channel",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_q7pz8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_submitted",
+   "fieldtype": "Datetime",
+   "label": "Date Submitted",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "submission_remarks",
+   "fieldtype": "Small Text",
+   "label": "Submission Remarks",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "receipt_no",
+   "fieldtype": "Data",
+   "label": "Receipt No",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-14 18:49:35.415288",
+ "modified": "2025-05-20 07:24:27.657862",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",

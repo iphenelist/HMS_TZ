@@ -1624,7 +1624,10 @@ def msgPrint(msg, method="throw", alert=False):
         frappe.msgprint(msg, alert=alert)
 
 
-def get_approval_number_from_LRPMT(ref_doctype=None, ref_docname=None):
+def get_approval_number_from_LRPMT(ref_doctype=None, ref_docname=None, dn_detail=None):
+    if dn_detail:
+        return frappe.get_cached_value("Delivery Note Item", dn_detail, "approval_number")
+
     if not ref_doctype or not ref_docname:
         return None
 

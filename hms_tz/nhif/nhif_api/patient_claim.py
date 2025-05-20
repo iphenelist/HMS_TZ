@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import flt, get_fullname, now_datetime
+from frappe.utils import flt, get_fullname, now_datetime, get_datetime
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -28,21 +28,30 @@ def submit_folio(doc):
     try:
         r = requests.request("Post", url, data=payload, headers=headers, timeout=300)
         if r.status_code != 200:
+            add_log(
+                request_type="SubmitFolio",
+                request_url=url,
+                request_header=headers,
+                request_body=payload,
+                response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???"),
+                status_code=(r.status_code if str(r) else "NO STATUS CODE"),
+                company=settings_doc.name,
+                ref_doctype=doc.doctype,
+                ref_docname=doc.name,
+            )
             if str(r) and r.status_code == 500 and "A claim with Similar" in r.text:
                 frappe.msgprint(
                     f"This folio was NOT sent. However, since the folio is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
-                    + str(now_datetime())
                 )
             elif (
                 str(r) and r.status_code == 406 and f"Folio Number {doc.folio_no} has already been submited." in r.text
             ):
                 frappe.msgprint(
                     f"This folio was NOT sent. However, since it is already existing at NHIF, it has been submitted!<br><b>Message from NHIF:</b><br><br>{r.text}"
-                    + str(now_datetime())
                 )
             else:
                 frappe.msgprint(
-                    f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}"
+                    f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}"
                 )
                 frappe.throw(str(r.text) if r.text else str(r))
 
@@ -59,10 +68,16 @@ def submit_folio(doc):
                 ref_doctype=doc.doctype,
                 ref_docname=doc.name,
             )
-            frappe.msgprint(str(r.text))
-            frappe.msgprint("The claim has been sent successfully", alert=True)
 
-            # TODO: update response values to Healthcare Referral doc
+            doc.submission_id = data.get("SubmissionID")
+            doc.submission_no = data.get("SubmissionNo")
+            doc.date_submitted = get_datetime(data.get("DateSubmitted"))
+            doc.submission_channel = data.get("SubmissionChannel")
+            doc.submission_remarks = data.get("Remarks")
+            doc.hashcode = data.get("HashCode")
+
+            frappe.msgprint(str(data.get("Remarks")))
+            frappe.msgprint("The claim has been sent successfully", alert=True)
 
     except Exception:
         add_log(
@@ -84,11 +99,68 @@ def submit_folio(doc):
 
         frappe.throw(
             "This folio was NOT submitted due to the error above!. Please retry after resolving the problem. "
-            + str(now_datetime())
         )
 
 
 def get_payload(doc):
+    items = []
+    diseases = []
+    attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
+
+    for disease in doc.nhif_patient_claim_disease:
+        created_date = get_datetime(disease.date_created)
+
+        disease_dict = {
+            "DiseaseCode": disease.disease_code,
+            "Status": disease.status,
+            "Remarks": None,
+            "CreatedBy": disease.item_crt_by,
+            "DateCreated": created_date.isoformat(),
+            "LastModified": created_date.isoformat(),
+            "LastModifiedBy": disease.item_crt_by,
+        }
+        diseases.append(disease_dict)
+
+    for item in doc.nhif_patient_claim_item:
+        created_date = get_datetime(item.date_created)
+        item_dict = {
+            "ItemCode": item.item_code,
+            "ItemName": item.item_name,
+            "ItemTypeID": frappe.get_cached_value("NHIF Item", {"itemcode": item.item_code}, "itemtypeid"),
+            "ItemQuantity": item.item_quantity,
+            "UnitPrice": item.unit_price,
+            "AmountClaimed": item.amount_claimed,
+            "ApprovalRefNo": item.approval_ref_no or None,
+            "CreatedBy": item.item_crt_by,
+            "DateCreated": created_date.isoformat(),
+            "LastModifiedBy": item.item_crt_by,
+            "LastModified": created_date.isoformat(),
+            "OtherDetails": "",
+        }
+        items.append(item_dict)
+
+    Signatures = [{
+        "Signatory": "Patient",
+        "SignatoryID": doc.cardno.strip(),
+        "SignatureData": doc.patient_signature,
+        "DateCreated": str(doc.posting_date),
+        "CreatedBy": doc.item_crt_by,
+        "LastModified": get_datetime(doc.modified).isoformat(),
+        "LastModifiedBy": get_fullname(doc.modified_by),
+    }]
+
+    for d in doc.practitioners:
+        if d.mct_code:
+            Signatures.append({
+                "Signatory": "MCT",
+                "SignatoryID": d.mct_code,
+                "SignatureData": frappe.get_cached_value("Healthcare Practitioner", d.practitioner, "doctors_signature"),
+                "DateCreated": str(doc.posting_date),
+                "CreatedBy": doc.item_crt_by,
+                "LastModified": get_datetime(doc.modified).isoformat(),
+                "LastModifiedBy": get_fullname(doc.modified_by),
+            })
+
     payload = {
         "FacilityCode": doc.facility_code,
         "ClaimYear": doc.claim_year,
@@ -104,53 +176,26 @@ def get_payload(doc):
         "BillNo": doc.name,
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
-        "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
+        "AttendanceDate": attendance_datetime.isoformat(),
         "PatientTypeCode": doc.patient_type_code,
-        "AttendingPractitioners": [mct_code for mct_code in doc.practitioner_no.split(",")],
+        "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
         "LateSubmissionReason": doc.delayreason,
         "AmountClaimed": doc.total_amount,
         "ConfirmationCode": doc.confirmation_code or "",
         "FolioDiseases": diseases,
         "FolioItems": items,
+        "Signatures": Signatures,
         "DateCreated": str(doc.posting_date),
         "CreatedBy": doc.item_crt_by,
-        "LastModified": str(doc.modified),
+        "LastModified": get_datetime(doc.modified).isoformat(),
         "LastModifiedBy": get_fullname(doc.modified_by),
     }
     if doc.patient_type_code == "IN":
-        payload["DateAdmitted"] = str(doc.date_admitted) + " " + str(doc.admitted_time)
-        payload["DateDischarged"] = str(doc.date_discharge) + " " + str(doc.discharge_time)
+        admission_datetime = get_datetime(f"{doc.date_admitted} {doc.admitted_time}")
+        discharge_datetime = get_datetime(f"{doc.date_discharge} {doc.discharge_time}")
 
-    items = []
-    diseases = []
-    for disease in doc.nhif_patient_claim_disease:
-        disease_dict = {
-            "DiseaseCode": disease.disease_code,
-            "Status": disease.status,
-            "Remarks": None,
-            "CreatedBy": disease.item_crt_by,
-            "DateCreated": str(disease.date_created),
-            "LastModified": str(disease.date_created),
-            "LastModifiedBy": disease.item_crt_by,
-        }
-        diseases.append(disease_dict)
-
-    for item in doc.nhif_patient_claim_item:
-        item_dict = {
-            "ItemCode": item.item_code,
-            "ItemName": item.item_name,
-            "ItemTypeID": None,  # TODO: add item type id functionality
-            "ItemQuantity": item.item_quantity,
-            "UnitPrice": item.unit_price,
-            "AmountClaimed": item.amount_claimed,
-            "ApprovalRefNo": item.approval_ref_no or None,
-            "CreatedBy": item.item_crt_by,
-            "DateCreated": str(item.date_created),
-            "LastModifiedBy": item.item_crt_by,
-            "LastModified": str(item.date_created),
-            "OtherDetails": None,
-        }
-        items.append(item_dict)
+        payload["DateAdmitted"] = admission_datetime.isoformat()
+        payload["DateDischarged"] = discharge_datetime.isoformat()
 
     payload = json.dumps(payload)
 
@@ -164,7 +209,7 @@ def get_submitted_claims(doc):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={settings_doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -185,8 +230,8 @@ def get_submitted_claims(doc):
         )
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
 
     else:
@@ -246,7 +291,7 @@ def submit_monthly_claim(doc):
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
     payload = {
-        "FacilityCode": doc.facility_code,
+        "FacilityCode": settings_doc.facility_code,
         "ClaimYear": doc.claim_year,
         "ClaimMonth": doc.claim_month,
         "FoliosSubmitted": doc.folio_submitted,
@@ -279,8 +324,8 @@ def submit_monthly_claim(doc):
         )
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
 
     else:
@@ -297,8 +342,12 @@ def submit_monthly_claim(doc):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to NHIF Monthly Claim doc
         doc.status = "Successful"
+        doc.acknowledgement_no = data.get("AcknowledgementNo")
+        doc.date_submitted = get_datetime(data.get("DateSubmitted"))
+
+        return True
+
 
 
 @frappe.whitelist()
@@ -309,11 +358,12 @@ def send_confirmation_code(ref_doctype, ref_docname):
 
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
+    attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
     payload = {
         "FacilityCode": doc.facility_code,
         "CardNo": doc.cardno.strip(),
         "AuthorizationNo": doc.authorization_no,
-        "AttendanceDate": f"{doc.attendance_date} {doc.attendance_time}",
+        "AttendanceDate": attendance_datetime.isoformat(),
         "TotalAmount": doc.total_amount,
     }
     payload = json.dumps(payload)
@@ -342,8 +392,8 @@ def send_confirmation_code(ref_doctype, ref_docname):
         )
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
     else:
         data = json.loads(r.text)
@@ -359,14 +409,12 @@ def send_confirmation_code(ref_doctype, ref_docname):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to NHIF Patient Claim doc
-        doc.confirmation_code_sent = 1
         frappe.db.set_value(doc.doctype, doc.name, "confirmation_code_sent", 1)
         doc.reload()
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"Confirmation code sent successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
+            text=f"Confirmation code sent successfully!<br><br><b>Message from NHIF:</b><br>{data.get('Message')}",
         )
         return True
 
@@ -377,13 +425,13 @@ def get_receipt(ref_doctype, ref_docname):
     Get receipt from NHIF
     """
 
-    doc = frappe.get_dget_cached_dococ(ref_doctype, ref_docname)
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{doc.nhif_claim_url}/api/Claims/GetReceipt?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}&folioNo={doc.folio_no}"
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetReceipt?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}&folioNo={doc.folio_no}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -401,10 +449,15 @@ def get_receipt(ref_doctype, ref_docname):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to retrieve receipt!<br><br><b>Message from NHIF:</b><br>{r.text}",
+        )
+        frappe.db.commit()
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
     else:
         data = json.loads(r.text)
@@ -420,10 +473,12 @@ def get_receipt(ref_doctype, ref_docname):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to NHIF Patient Claim doc
+        doc.receipt_no = data.get("ReceiptNo")
+        doc.save(ignore_permissions=True)
+        doc.reload()
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"Receipt retrieved successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
+            text=f"Receipt retrieved successfully!<br><br><b>Message from NHIF:</b><br>{data.get('Message')}",
         )
         return True

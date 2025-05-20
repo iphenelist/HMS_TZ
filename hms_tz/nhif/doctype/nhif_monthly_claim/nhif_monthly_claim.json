@@ -16,10 +16,12 @@
   "status",
   "posting_date",
   "section_break_6iv4p",
-  "submission_remarks",
-  "column_break_1ivck",
   "folio_submitted",
   "total_amount_claimed",
+  "column_break_1ivck",
+  "acknowledgement_no",
+  "date_submitted",
+  "column_break_fq5ae",
   "submitted_by",
   "section_break_gvner",
   "amended_from"
@@ -87,11 +89,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "submission_remarks",
-   "fieldtype": "Small Text",
-   "label": "Submission Remarks"
-  },
-  {
    "fieldname": "column_break_1ivck",
    "fieldtype": "Column Break"
   },
@@ -133,12 +130,30 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "acknowledgement_no",
+   "fieldtype": "Data",
+   "label": "Acknowledgement No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "date_submitted",
+   "fieldtype": "Datetime",
+   "label": "Date Submitted",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_fq5ae",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-14 13:33:18.676017",
+ "modified": "2025-05-20 10:43:04.334220",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Monthly Claim",
