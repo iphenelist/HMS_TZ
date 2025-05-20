@@ -117,7 +117,7 @@ def create_service_referral(doc):
         services.append(
             {
                 "itemCode": service.item_code,
-                "itemQuantity": service.quantity,
+                "itemQuantity": service.qty,
                 "approvalRefNo": service.approval_ref_no,
                 "notes": service.notes,
             }
@@ -128,11 +128,11 @@ def create_service_referral(doc):
         "firstName": doc.first_name,
         "lastName": doc.last_name,
         "gender": doc.gender,
-        "dateOfBirth": doc.dob,
+        "dateOfBirth": str(doc.dob),
         "telephoneNo": doc.mobile_no,
         "patientFileNo": doc.patient,
         "practitionerNo": doc.practitioner_no,
-        "attendanceDate": doc.attendance_date,
+        "attendanceDate": str(doc.attendance_date),
         "patientTypeCode": doc.patient_type_code,
         "facilityCode": doc.referrer_facility_code,
         "createdBy": get_fullname(frappe.session.user),
@@ -154,6 +154,7 @@ def create_service_referral(doc):
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text)
         add_log(
             request_type="CreateServiceReferral",
             request_url=url,
@@ -165,7 +166,14 @@ def create_service_referral(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
-        frappe.throw(str(r.text))
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to create service referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+        )
+        frappe.db.commit()
+        doc.reload()
+        frappe.throw(str(data.get("reasonPhrase")))
 
     else:
         data = json.loads(r.text)
@@ -181,12 +189,16 @@ def create_service_referral(doc):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to Healthcare Referral doc
-
         doc.referral_submitted_by = get_fullname(frappe.session.user)
-        doc.referral_no = data.get("referralNo")
+        doc.referral_no = data.get("ReferralNo")
+        doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
         doc.save(ignore_permissions=True)
+        
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Service Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
+        )
 
         doc.reload()
 
