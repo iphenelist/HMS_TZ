@@ -39,6 +39,7 @@
   "confirmation_code",
   "column_break_7xkjq",
   "get_receipt",
+  "receipt_no",
   "section_break_8",
   "facility_code",
   "claim_year",
@@ -530,7 +531,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval: !doc.__islocal",
+   "depends_on": "eval: !doc.__islocal && !doc.confirmation_code",
    "fieldname": "send_confirmation_code",
    "fieldtype": "Button",
    "label": "Send Confirmation Code"
@@ -548,7 +549,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval: doc.docstatus == 1",
+   "depends_on": "eval: doc.docstatus == 1 && !doc.receipt_no",
    "fieldname": "get_receipt",
    "fieldtype": "Button",
    "label": "Get Receipt"
@@ -644,12 +645,20 @@
    "fieldtype": "Small Text",
    "label": "Submission Remarks",
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "receipt_no",
+   "fieldtype": "Data",
+   "label": "Receipt No",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 18:03:08.847209",
+ "modified": "2025-05-20 07:24:27.657862",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",

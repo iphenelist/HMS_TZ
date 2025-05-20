@@ -427,7 +427,7 @@ def get_receipt(ref_doctype, ref_docname):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{doc.nhif_claim_url}/api/Claims/GetReceipt?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}&folioNo={doc.folio_no}"
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetReceipt?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}&folioNo={doc.folio_no}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -445,6 +445,11 @@ def get_receipt(ref_doctype, ref_docname):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to retrieve receipt!<br><br><b>Message from NHIF:</b><br>{r.text}",
+        )
+        frappe.db.commit()
 
         frappe.throw(
             f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
@@ -464,10 +469,12 @@ def get_receipt(ref_doctype, ref_docname):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to NHIF Patient Claim doc
+        doc.receipt_no = data.get("ReceiptNo")
+        doc.save(ignore_permissions=True)
+        doc.reload()
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"Receipt retrieved successfully!<br><b>Message from NHIF:</b><br><br>{r.text}",
+            text=f"Receipt retrieved successfully!<br><b>Message from NHIF:</b><br><br>{data.get('Message')}",
         )
         return True
