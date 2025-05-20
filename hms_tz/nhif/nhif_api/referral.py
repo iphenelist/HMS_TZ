@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import get_fullname
+from frappe.utils import get_fullname, get_datetime
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -26,7 +26,7 @@ def create_treatment_referral(doc):
         "authorizationNo": doc.authorization_no,
         "fullName": doc.patient_name,
         "gender": doc.gender,
-        "referralDate": doc.referral_date.isoformat(),
+        "referralDate": get_datetime(doc.referral_date).isoformat(),
         "practitionerNo": doc.practitioner_no,
         "practitionersRemarks": doc.reason_for_referral,
         "fromFacilityCode": doc.source_facility_code,
@@ -88,7 +88,7 @@ def create_treatment_referral(doc):
             comment_type="Comment",
             text=f"Treatment Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
         )
-        
+
         doc.reload()
 
         return True

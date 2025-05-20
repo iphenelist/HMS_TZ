@@ -11,6 +11,7 @@
   "column_break_nbbzj",
   "referral_type",
   "column_break_okjqc",
+  "posting_date",
   "update_referral",
   "section_break_urkrb",
   "appointment",
@@ -21,10 +22,9 @@
   "cardno_column_break",
   "card_no",
   "national_id",
-  "dob",
   "authorization_no",
   "column_break_h5k6s",
-  "posting_date",
+  "dob",
   "attendance_date",
   "patient_type_code",
   "column_break_qasna",
@@ -53,12 +53,12 @@
   "services",
   "referral_section_break",
   "referral_no",
+  "column_break_mqi0e",
   "referral_id",
+  "naming_series",
   "column_break_ddz0d",
   "referral_submitted_by",
   "referral_updated_by",
-  "series_column_break",
-  "naming_series",
   "amended_from"
  ],
  "fields": [
@@ -433,10 +433,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "series_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "cardno_column_break",
    "fieldtype": "Column Break"
   },
@@ -446,12 +442,16 @@
    "label": "Referral ID",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_mqi0e",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-20 12:04:35.485581",
+ "modified": "2025-05-20 12:15:53.993282",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",
