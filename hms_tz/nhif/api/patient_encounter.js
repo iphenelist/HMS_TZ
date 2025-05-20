@@ -474,6 +474,8 @@ frappe.ui.form.on("Patient Encounter", {
         ref_encounter: frm.doc.reference_encounter,
         cur_encounter: frm.doc.name,
       },
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
       callback: function (data) {
         frm.reload_doc();
       },
@@ -864,6 +866,8 @@ var add_btn_final = (frm) => {
                 ref_encounter: frm.doc.reference_encounter,
                 cur_encounter: frm.doc.name,
               },
+              freeze: true,
+              freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
               callback: function (data) {
                 frm.reload_doc();
               },
