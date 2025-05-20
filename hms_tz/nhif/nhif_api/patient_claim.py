@@ -126,7 +126,7 @@ def get_payload(doc):
         item_dict = {
             "ItemCode": item.item_code,
             "ItemName": item.item_name,
-            "ItemTypeID": frappe.get_cached_value("NHIF Item", {"itemcode": item.item_code}, "item_type_id"),
+            "ItemTypeID": frappe.get_cached_value("NHIF Item", {"itemcode": item.item_code}, "itemtypeid"),
             "ItemQuantity": item.item_quantity,
             "UnitPrice": item.unit_price,
             "AmountClaimed": item.amount_claimed,
