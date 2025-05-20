@@ -2,13 +2,13 @@ import json
 
 import frappe
 import requests
-from frappe.query_builder import DocType
-from frappe.utils import date_diff, get_fullname, get_url_to_form, now_datetime, nowdate
 from pypika.terms import Not
-
+from frappe.query_builder import DocType
+from hms_tz.nhif.nhif_api.referral import get_disease_code
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.api.inpatient_record import get_last_encounter
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from frappe.utils import date_diff, get_fullname, get_url_to_form, now_datetime, nowdate, get_datetime
 
 
 @frappe.whitelist()
@@ -432,20 +432,33 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
     room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
 
     bed_charge = get_item_rate(item_code, inpatient_doc.company, inpatient_doc.insurance_subscription)
+
+    admission_encounter_doc = frappe.get_cached_doc("Patient Encounter", inpatient_doc.admission_encounter)
+    
+    diagnosis_at_admission = []
+    for row in admission_encounter_doc.patient_encounter_final_diagnosis:
+        disease_code = get_disease_code(row.code)
+        diagnosis_at_admission.append(disease_code)
+    
+    if len(diagnosis_at_admission) == 0:
+        for row in admission_encounter_doc.patient_encounter_preliminary_diagnosis:
+            disease_code = get_disease_code(row.code)
+            diagnosis_at_admission.append(disease_code)
+
     payload = {
         "authorizationNo": authorization_no,
         "fullName": inpatient_doc.patient_name,
         "gender": inpatient_doc.gender,
-        "dateOfBirth": inpatient_doc.dob,
+        "dateOfBirth": str(inpatient_doc.dob),
         "admissionTypeID": admission_type_id,
         "wardTypeID": ward_type_id,
         "roomTypeID": room_type_id,
         "chargesPerDay": bed_charge,
         "practitionerNo": mct_code,
-        "diagnosisAtAdmission": inpatient_doc.diagnosis_at_admission,
+        "diagnosisAtAdmission": ", ".join(diagnosis_at_admission),
         "practitionersRemarks": inpatient_doc.admission_instruction or "",
-        "dateAdmitted": date_admitted,
-        "createdBy": get_fullname(inpatient_doc.owner),
+        "dateAdmitted": get_datetime(date_admitted).isoformat(),
+        "createdBy": admission_encounter_doc.practitioner,
     }
 
     payload = json.dumps(payload)
