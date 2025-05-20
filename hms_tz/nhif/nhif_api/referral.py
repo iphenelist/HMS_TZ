@@ -68,7 +68,6 @@ def create_treatment_referral(doc):
             text=f"Failed to create treatment referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
         )
         frappe.db.commit()
-        doc.reload()
 
         frappe.throw(str(data.get("reasonPhrase")))
 
@@ -90,14 +89,11 @@ def create_treatment_referral(doc):
         doc.referral_no = data.get("ReferralNo")
         doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
-        doc.save(ignore_permissions=True)
 
         doc.add_comment(
             comment_type="Comment",
             text=f"Treatment Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
         )
-
-        doc.reload()
 
         return True
 
@@ -172,7 +168,6 @@ def create_service_referral(doc):
             text=f"Failed to create service referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
         )
         frappe.db.commit()
-        doc.reload()
         frappe.throw(str(data.get("reasonPhrase")))
 
     else:
@@ -190,17 +185,14 @@ def create_service_referral(doc):
         )
 
         doc.referral_submitted_by = get_fullname(frappe.session.user)
-        doc.referral_no = data.get("ReferralNo")
+        doc.referral_no = data.get("ReferralNo") or data.get("ReferrralNo")
         doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
-        doc.save(ignore_permissions=True)
         
         doc.add_comment(
             comment_type="Comment",
             text=f"Service Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
         )
-
-        doc.reload()
 
         return True
 
