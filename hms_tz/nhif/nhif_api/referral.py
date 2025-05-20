@@ -26,12 +26,14 @@ def create_treatment_referral(doc):
         "authorizationNo": doc.authorization_no,
         "fullName": doc.patient_name,
         "gender": doc.gender,
-        "referralDate": doc.referral_date,
+        "referralDate": doc.referral_date.isoformat(),
         "practitionerNo": doc.practitioner_no,
         "practitionersRemarks": doc.reason_for_referral,
         "fromFacilityCode": doc.source_facility_code,
         "toFacilityCode": doc.referrer_facility_code,
-        "diagnosis": doc.referring_diagnosis,
+        "diagnosis": ", ".join(
+            [d.disease_code for d in doc.diagnosis]
+        ),
         "createdBy": get_fullname(frappe.session.user),
     }
 
@@ -76,13 +78,17 @@ def create_treatment_referral(doc):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to Healthcare Referral doc
-
         doc.referral_submitted_by = get_fullname(frappe.session.user)
-        doc.referral_no = data.get("referralNo")
+        doc.referral_no = data.get("ReferralNo")
+        doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
         doc.save(ignore_permissions=True)
 
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Treatment Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
+        )
+        
         doc.reload()
 
         return True
