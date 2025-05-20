@@ -865,35 +865,6 @@ def validate_totals(doc, method, show_alert=True):
 
 
 @frappe.whitelist()
-def finalized_encounter(cur_encounter, ref_encounter=None):
-    patient, cur_inpatient_record = frappe.get_cached_value(
-        "Patient Encounter", cur_encounter, ["patient", "inpatient_record"]
-    )
-    inpatient_status, inpatient_record = frappe.get_cached_value(
-        "Patient", patient, ["inpatient_status", "inpatient_record"]
-    )
-    if inpatient_status and cur_inpatient_record == inpatient_record:
-        frappe.throw(
-            _(
-                f"The patient {patient} has inpatient status <strong>{inpatient_status}</strong>.\
-                Please process the discharge before proceeding to finalize the encounter."
-            )
-        )
-
-    frappe.db.set_value("Patient Encounter", cur_encounter, "encounter_type", "Final")
-    if not ref_encounter:
-        frappe.db.set_value("Patient Encounter", cur_encounter, "finalized", 1)
-        return
-
-    encounters_list = frappe.get_all(
-        "Patient Encounter",
-        filters={"docstatus": 1, "reference_encounter": ref_encounter},
-    )
-    for element in encounters_list:
-        frappe.db.set_value("Patient Encounter", element.name, "finalized", 1)
-
-
-@frappe.whitelist()
 def create_sales_invoice(encounter, encounter_category, encounter_mode_of_payment):
     encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
     encounter_category = frappe.get_cached_doc("Encounter Category", encounter_category)
@@ -1005,6 +976,37 @@ def before_submit(doc, method):
 
 
 @frappe.whitelist()
+def finalized_encounter(cur_encounter, ref_encounter=None):
+    patient, cur_inpatient_record = frappe.get_cached_value(
+        "Patient Encounter", cur_encounter, ["patient", "inpatient_record"]
+    )
+    inpatient_status, inpatient_record = frappe.get_cached_value(
+        "Patient", patient, ["inpatient_status", "inpatient_record"]
+    )
+    if inpatient_status and cur_inpatient_record == inpatient_record:
+        frappe.throw(
+            _(
+                f"The patient {patient} has inpatient status <strong>{inpatient_status}</strong>.\
+                Please process the discharge before proceeding to finalize the encounter."
+            )
+        )
+
+    frappe.db.set_value("Patient Encounter", cur_encounter, "encounter_type", "Final")
+    if not ref_encounter:
+        frappe.db.set_value("Patient Encounter", cur_encounter, "finalized", 1)
+        return
+
+    encounters_list = frappe.get_all(
+        "Patient Encounter",
+        filters={"docstatus": 1, "reference_encounter": ref_encounter},
+    )
+    for element in encounters_list:
+        frappe.db.set_value("Patient Encounter", element.name, "finalized", 1)
+    
+    return True
+
+
+@frappe.whitelist()
 def undo_finalized_encounter(cur_encounter, ref_encounter=None):
     frappe.set_value("Patient Encounter", cur_encounter, "encounter_type", "Ongoing")
     if not ref_encounter:
@@ -1017,6 +1019,8 @@ def undo_finalized_encounter(cur_encounter, ref_encounter=None):
     )
     for element in encounters_list:
         frappe.set_value("Patient Encounter", element.name, "finalized", 0)
+    
+    return True
 
 
 def set_amounts(doc):
