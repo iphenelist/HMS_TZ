@@ -324,7 +324,7 @@ def validate_similary_authozation_number(doc):
             doc.patient_appointment,
             "authorization_number",
         )
-        claims = frappe.get_all(
+        claims = frappe.db.get_all(
             "NHIF Patient Claim",
             filters={"patient": doc.patient, "authorization_no": auth_no},
             fields=["name", "docstatus"],
