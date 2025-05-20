@@ -5,8 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
-from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode
 from hms_tz.nhif.nhif_api.referral import create_referral
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode, get_childs_map
 
 
 class HealthcareReferral(Document):
@@ -122,34 +122,3 @@ class HealthcareReferral(Document):
                 services.append(service)
 
         return services
-
-
-def get_childs_map():
-    childs_map = [
-        {
-            "table": "lab_test_prescription",
-            "doctype": "Lab Test Template",
-            "item": "lab_test_code",
-        },
-        {
-            "table": "radiology_procedure_prescription",
-            "doctype": "Radiology Examination Template",
-            "item": "radiology_examination_template",
-        },
-        {
-            "table": "procedure_prescription",
-            "doctype": "Clinical Procedure Template",
-            "item": "procedure",
-        },
-        {
-            "table": "drug_prescription",
-            "doctype": "Medication",
-            "item": "drug_code",
-        },
-        {
-            "table": "therapies",
-            "doctype": "Therapy Type",
-            "item": "therapy_type",
-        },
-    ]
-    return childs_map
