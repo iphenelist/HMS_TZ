@@ -302,6 +302,8 @@ let nhif_admit_patient = (
       ref_doctype: frm.doc.doctype,
       ref_docname: frm.doc.name,
     },
+    freeze: true,
+    freeze_message: __("Sending Data to NHIF"),
     callback: (r) => {
       if (r.message) {
         let data = r.message;
