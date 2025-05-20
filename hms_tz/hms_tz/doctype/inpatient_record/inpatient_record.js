@@ -307,7 +307,7 @@ let nhif_admit_patient = (
         let data = r.message;
 
         frm.reload_doc();
-        non_nhif_admit_patient(
+        admit_patient(
           frm,
           service_unit,
           check_in,
