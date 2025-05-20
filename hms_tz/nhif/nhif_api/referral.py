@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import get_fullname
+from frappe.utils import get_fullname, get_datetime
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -26,12 +26,14 @@ def create_treatment_referral(doc):
         "authorizationNo": doc.authorization_no,
         "fullName": doc.patient_name,
         "gender": doc.gender,
-        "referralDate": doc.referral_date,
+        "referralDate": get_datetime(doc.referral_date).isoformat(),
         "practitionerNo": doc.practitioner_no,
         "practitionersRemarks": doc.reason_for_referral,
         "fromFacilityCode": doc.source_facility_code,
         "toFacilityCode": doc.referrer_facility_code,
-        "diagnosis": doc.referring_diagnosis,
+        "diagnosis": ", ".join(
+            [d.disease_code for d in doc.diagnosis]
+        ),
         "createdBy": get_fullname(frappe.session.user),
     }
 
@@ -47,8 +49,9 @@ def create_treatment_referral(doc):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text)
         add_log(
             request_type="CreateTreatmentReferral",
             request_url=url,
@@ -60,6 +63,13 @@ def create_treatment_referral(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to create treatment referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+        )
+        frappe.db.commit()
+
+        frappe.throw(str(data.get("reasonPhrase")))
 
     else:
         data = json.loads(r.text)
@@ -75,14 +85,15 @@ def create_treatment_referral(doc):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to Healthcare Referral doc
-
         doc.referral_submitted_by = get_fullname(frappe.session.user)
-        doc.referral_no = data.get("referralNo")
+        doc.referral_no = data.get("ReferralNo")
+        doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
-        doc.save(ignore_permissions=True)
 
-        doc.reload()
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Treatment Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
+        )
 
         return True
 
@@ -102,7 +113,7 @@ def create_service_referral(doc):
         services.append(
             {
                 "itemCode": service.item_code,
-                "itemQuantity": service.quantity,
+                "itemQuantity": service.qty,
                 "approvalRefNo": service.approval_ref_no,
                 "notes": service.notes,
             }
@@ -113,11 +124,11 @@ def create_service_referral(doc):
         "firstName": doc.first_name,
         "lastName": doc.last_name,
         "gender": doc.gender,
-        "dateOfBirth": doc.dob,
+        "dateOfBirth": str(doc.dob),
         "telephoneNo": doc.mobile_no,
         "patientFileNo": doc.patient,
         "practitionerNo": doc.practitioner_no,
-        "attendanceDate": doc.attendance_date,
+        "attendanceDate": str(doc.attendance_date),
         "patientTypeCode": doc.patient_type_code,
         "facilityCode": doc.referrer_facility_code,
         "createdBy": get_fullname(frappe.session.user),
@@ -137,8 +148,9 @@ def create_service_referral(doc):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text)
         add_log(
             request_type="CreateServiceReferral",
             request_url=url,
@@ -150,6 +162,13 @@ def create_service_referral(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to create service referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+        )
+        frappe.db.commit()
+        frappe.throw(str(data.get("reasonPhrase")))
 
     else:
         data = json.loads(r.text)
@@ -165,18 +184,20 @@ def create_service_referral(doc):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to Healthcare Referral doc
-
         doc.referral_submitted_by = get_fullname(frappe.session.user)
-        doc.referral_no = data.get("referralNo")
+        doc.referral_no = data.get("ReferralNo") or data.get("ReferrralNo")
+        doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
-        doc.save(ignore_permissions=True)
-
-        doc.reload()
+        
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Service Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
+        )
 
         return True
 
 
+@frappe.whitelist()
 def update_referral(ref_doctype, ref_docname):
     """
     Update referral.
@@ -203,19 +224,26 @@ def update_referral(ref_doctype, ref_docname):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text)
         add_log(
             request_type="UpdateReferral",
             request_url=url,
             request_header=headers,
             request_body=payload,
-            response_data=r.text,
+            response_data=data,
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to update referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+        )
+        doc.reload()
+        frappe.msgprint(str(data.get("reasonPhrase")))
 
     else:
         data = json.loads(r.text)
@@ -239,6 +267,55 @@ def update_referral(ref_doctype, ref_docname):
 
         return True
 
+
+def acknowledge_referral(company, referral_no):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Referrals/AcknowledgeServiceReferral?referralNo={referral_no}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=120)
+    if r.status_code != 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="AcknowledgeServiceReferral",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name
+        )
+        frappe.throw(str(data.get("reasonPhrase")))
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="AcknowledgeServiceReferral",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+        )
+        create_healthcare_referral(data)
+
+
+def create_healthcare_referral(data):
+    referral_doc = frappe.new_doc("Healthcare Referral")
+    referral_doc.referral_no = data.get("ReferralNo")
+    referral_doc.referral_id = data.get("ReferralID")
+    referral_doc.referral_status = "Success"
+    referral_doc.save(ignore_permissions=True)
+    referral_doc.reload()
+    return True
+    
 
 def get_disease_code(code):
     # Convert the ICD code of CDC to NHIF

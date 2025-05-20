@@ -5,8 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
-from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode
 from hms_tz.nhif.nhif_api.referral import create_referral
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode, get_childs_map
 
 
 class HealthcareReferral(Document):
@@ -119,37 +119,19 @@ class HealthcareReferral(Document):
                     "qty": row.get("quantity") or 1,
                     "item_code": ref_code,
                 }
+
+                if child["lrpmt_doctype"] != "Therapy Session":
+                    if row.get(child["lrpmt_docname"]):
+                        service["approval_ref_no"] = frappe.get_cached_value(
+                            child["lrpmt_doctype"], row.get(child["lrpmt_docname"]), "approval_number"
+                        )
+                else:
+                    service["approval_ref_no"] = frappe.get_cached_value(
+                        "Therapy Session",
+                        {"hms_tz_ref_childname": row.name},
+                        "approval_number",
+                    )
+
                 services.append(service)
 
         return services
-
-
-def get_childs_map():
-    childs_map = [
-        {
-            "table": "lab_test_prescription",
-            "doctype": "Lab Test Template",
-            "item": "lab_test_code",
-        },
-        {
-            "table": "radiology_procedure_prescription",
-            "doctype": "Radiology Examination Template",
-            "item": "radiology_examination_template",
-        },
-        {
-            "table": "procedure_prescription",
-            "doctype": "Clinical Procedure Template",
-            "item": "procedure",
-        },
-        {
-            "table": "drug_prescription",
-            "doctype": "Medication",
-            "item": "drug_code",
-        },
-        {
-            "table": "therapies",
-            "doctype": "Therapy Type",
-            "item": "therapy_type",
-        },
-    ]
-    return childs_map

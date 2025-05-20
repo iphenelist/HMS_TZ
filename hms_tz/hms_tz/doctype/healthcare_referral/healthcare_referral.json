@@ -11,6 +11,7 @@
   "column_break_nbbzj",
   "referral_type",
   "column_break_okjqc",
+  "posting_date",
   "update_referral",
   "section_break_urkrb",
   "appointment",
@@ -21,10 +22,9 @@
   "cardno_column_break",
   "card_no",
   "national_id",
-  "dob",
   "authorization_no",
   "column_break_h5k6s",
-  "posting_date",
+  "dob",
   "attendance_date",
   "patient_type_code",
   "column_break_qasna",
@@ -53,12 +53,12 @@
   "services",
   "referral_section_break",
   "referral_no",
-  "referralid",
+  "column_break_mqi0e",
+  "referral_id",
+  "naming_series",
   "column_break_ddz0d",
   "referral_submitted_by",
   "referral_updated_by",
-  "series_column_break",
-  "naming_series",
   "amended_from"
  ],
  "fields": [
@@ -170,6 +170,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Healthcare Practitioner",
+   "mandatory_depends_on": "eval: doc.referral_type != \"AcknowledgeServiceReferral\"",
    "options": "Healthcare Practitioner",
    "read_only_depends_on": "eval: doc.docstatus != 1",
    "reqd": 1,
@@ -200,13 +201,6 @@
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Referral No",
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "referralid",
-   "fieldtype": "Data",
-   "label": "ReferralID",
    "read_only": 1,
    "search_index": 1
   },
@@ -339,8 +333,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Patient Encounter",
+   "mandatory_depends_on": "eval: doc.referral_type != \"AcknowledgeServiceReferral\"",
    "options": "Patient Encounter",
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -406,8 +400,9 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Referral Type",
-   "options": "\nForm 2C/2E\nTreatment",
-   "reqd": 1
+   "options": "\nForm 2C/2E\nTreatment\nAcknowledgeServiceReferral",
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "depends_on": "eval: doc.docstatus == 1",
@@ -440,18 +435,25 @@
    "search_index": 1
   },
   {
-   "fieldname": "series_column_break",
+   "fieldname": "cardno_column_break",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "cardno_column_break",
+   "fieldname": "referral_id",
+   "fieldtype": "Data",
+   "label": "Referral ID",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_mqi0e",
    "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-13 14:31:27.847931",
+ "modified": "2025-05-20 15:36:23.963822",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",

@@ -518,26 +518,36 @@ def get_childs_map():
             "table": "lab_test_prescription",
             "doctype": "Lab Test Template",
             "item": "lab_test_code",
+            "lrpmt_doctype": "Lab Test",
+            "lrpmt_docname": "lab_test",
         },
         {
             "table": "radiology_procedure_prescription",
             "doctype": "Radiology Examination Template",
             "item": "radiology_examination_template",
+            "lrpmt_doctype": "Radiology Examination",
+            "lrpmt_docname": "radiology_examination",
         },
         {
             "table": "procedure_prescription",
             "doctype": "Clinical Procedure Template",
             "item": "procedure",
+            "lrpmt_doctype": "Clinical Procedure",
+            "lrpmt_docname": "clinical_procedure",
         },
         {
             "table": "drug_prescription",
             "doctype": "Medication",
             "item": "drug_code",
+            "lrpmt_doctype": "Delivery Note Item",
+            "lrpmt_docname": "dn_detail",
         },
         {
             "table": "therapies",
             "doctype": "Therapy Type",
             "item": "therapy_type",
+            "lrpmt_doctype": "Therapy Session",
+            "lrpmt_docname": "",
         },
     ]
     return childs_map
