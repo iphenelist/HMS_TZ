@@ -174,7 +174,7 @@ frappe.ui.form.on("Radiology Examination", {
           approval_number: frm.doc.approval_number,
           service_type: "Radiology Examination Template",
           service_name: frm.doc.radiology_examination_template,
-          appoiintment: frm.doc.appointment,
+          appointment: frm.doc.appointment,
           ref_doctype: frm.doctype,
           ref_docname: frm.docname,
         },

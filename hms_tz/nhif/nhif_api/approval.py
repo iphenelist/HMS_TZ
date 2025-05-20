@@ -659,10 +659,6 @@ def verify_approval_number(
 
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
-    if settings_doc.validate_service_approval_number_on_lrpm_documents == 0:
-        frappe.msgprint("Service Approval Number Validation is disabled")
-        return
-
     card_no = appointment_info.coverage_plan_card_number or appointment_info.national_id
 
     url = f"{settings_doc.nhifservice_url}/api/Approvals/GetReferenceNoStatus?cardNo={card_no}&referenceNo={approval_number}&itemCode={ref_code}"
@@ -706,7 +702,7 @@ def verify_approval_number(
             ref_docname=ref_docname,
             card_no=card_no,
         )
-        if data["Status"] == "VALID":
+        if data["status"] == "VALID":
             return True
         else:
             frappe.msgprint(
