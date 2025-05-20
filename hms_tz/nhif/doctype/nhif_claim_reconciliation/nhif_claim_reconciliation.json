@@ -68,7 +68,7 @@
    "bold": 1,
    "fieldname": "total_amount_claimed",
    "fieldtype": "Currency",
-   "label": "NHIF Total Amount Claimed",
+   "label": "Total Amount Claimed (NHIF)",
    "read_only": 1,
    "search_index": 1
   },
@@ -115,7 +115,7 @@
    "bold": 1,
    "fieldname": "number_of_submitted_claims",
    "fieldtype": "Int",
-   "label": "NHIF Number of Submitted  Claims",
+   "label": "Submitted  Claims (NHIF)",
    "read_only": 1,
    "search_index": 1
   },
@@ -126,14 +126,14 @@
   {
    "fieldname": "erp_number_of_submitted_claims",
    "fieldtype": "Int",
-   "label": "ERP Number of Submitted Claims",
+   "label": "Submitted Claims (ERP)",
    "read_only": 1,
    "search_index": 1
   },
   {
    "fieldname": "erp_total_amount_claimed",
    "fieldtype": "Currency",
-   "label": "ERP Total Amount Claimed",
+   "label": "Total Amount Claimed (ERP)",
    "read_only": 1,
    "search_index": 1
   },
@@ -147,7 +147,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-13 23:39:45.623447",
+ "modified": "2025-05-20 07:32:57.797240",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Claim Reconciliation",

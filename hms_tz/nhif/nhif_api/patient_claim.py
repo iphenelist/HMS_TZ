@@ -51,7 +51,7 @@ def submit_folio(doc):
                 )
             else:
                 frappe.msgprint(
-                    f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}"
+                    f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}"
                 )
                 frappe.throw(str(r.text) if r.text else str(r))
 
@@ -209,7 +209,7 @@ def get_submitted_claims(doc):
 
     token = settings_doc.get_nhif_token()
 
-    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/GetSubmittedClaims?facilityCode={settings_doc.facility_code}&claimYear={doc.claim_year}&claimMonth={doc.claim_month}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -230,8 +230,8 @@ def get_submitted_claims(doc):
         )
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
 
     else:
@@ -324,8 +324,8 @@ def submit_monthly_claim(doc):
         )
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
 
     else:
@@ -388,8 +388,8 @@ def send_confirmation_code(ref_doctype, ref_docname):
         )
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
     else:
         data = json.loads(r.text)
@@ -452,8 +452,8 @@ def get_receipt(ref_doctype, ref_docname):
         frappe.db.commit()
 
         frappe.throw(
-            f"NHIF Server responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
-                <br><b>Message from NHIF:</b><br><br>{r.text}"
+            f"NHIF responded with HTTP status code: {str(r.status_code if r.status_code else 'NO STATUS CODE')}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
     else:
         data = json.loads(r.text)
@@ -475,6 +475,6 @@ def get_receipt(ref_doctype, ref_docname):
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"Receipt retrieved successfully!<br><b>Message from NHIF:</b><br><br>{data.get('Message')}",
+            text=f"Receipt retrieved successfully!<br><br><b>Message from NHIF:</b><br>{data.get('Message')}",
         )
         return True
