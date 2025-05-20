@@ -41,20 +41,27 @@ frappe.ui.form.on("Patient Encounter", {
         ) {
           frm
             .add_custom_button(__("Schedule Admission"), function () {
-              frappe
-                .call(
-                  "hms_tz.nhif.api.patient_encounter.validate_admission_encounter",
-                  {
+                if (frm.doc.healthcare_package_order) {
+                  frappe.msgprint(
+                    `This encounter has healhcare package order: <b>${frm.doc.healthcare_package_order}</b>,<br>you can't schedule Admission on it`
+                  )
+                  return;
+                }
+
+                frappe.call({
+                  method: "hms_tz.nhif.api.patient_encounter.validate_admission_encounter",
+                  args: {
                     encounter: frm.doc.name,
-                    healthcare_package_order: frm.doc.healthcare_package_order,
-                  }
-                )
-                .then((r) => {
-                  if (r.message) {
-                    return;
-                  } else {
-                    schedule_inpatient(frm);
-                  }
+                  },
+                  freeze: true,
+                  freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                  callback: (r) => {
+                    if (r.message) {
+                      return;
+                    } else {
+                      schedule_inpatient(frm);
+                    }
+                  },
                 });
             })
             .removeClass("btn-default")
