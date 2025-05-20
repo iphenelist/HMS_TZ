@@ -291,7 +291,7 @@ def submit_monthly_claim(doc):
     settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
 
     payload = {
-        "FacilityCode": doc.facility_code,
+        "FacilityCode": settings_doc.facility_code,
         "ClaimYear": doc.claim_year,
         "ClaimMonth": doc.claim_month,
         "FoliosSubmitted": doc.folio_submitted,
@@ -342,8 +342,12 @@ def submit_monthly_claim(doc):
             ref_docname=doc.name,
         )
 
-        # TODO: update response values to NHIF Monthly Claim doc
         doc.status = "Successful"
+        doc.acknowledgement_no = data.get("AcknowledgementNo")
+        doc.date_submitted = get_datetime(data.get("DateSubmitted"))
+
+        return True
+
 
 
 @frappe.whitelist()
