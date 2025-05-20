@@ -246,6 +246,7 @@ let show_service_dialog = (frm, data) => {
         service_name: $(this).find("#service_name").attr("data-service_name"),
         item_code: $(this).find("#item_code").attr("data-item_code"),
         qty: $(this).find("#qty").attr("data-qty"),
+        approval_ref_no: $(this).find("#approval_ref_no").attr("data-approval_ref_no"),
       });
     });
 
@@ -258,6 +259,7 @@ let show_service_dialog = (frm, data) => {
           service_name: d.service_name,
           item_code: d.item_code,
           qty: d.qty,
+          approval_ref_no: d.approval_ref_no,
         });
       });
 
@@ -338,6 +340,7 @@ let show_service_dialog = (frm, data) => {
 				<td id="service_name" data-service_name="${row.service_name}">${row.service_name}</td>
 				<td id="qty" data-qty="${row.qty}">${row.qty}</td>
 				<td id="item_code" data-item_code="${row.item_code}"></td>
+				<td id="approval_ref_no" data-approval_ref_no="${row.approval_ref_no}"></td>
 			</tr>`;
     });
 

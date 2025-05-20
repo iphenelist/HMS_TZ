@@ -119,6 +119,19 @@ class HealthcareReferral(Document):
                     "qty": row.get("quantity") or 1,
                     "item_code": ref_code,
                 }
+
+                if child["lrpmt_doctype"] != "Therapy Session":
+                    if row.get(child["lrpmt_docname"]):
+                        service["approval_ref_no"] = frappe.get_cached_value(
+                            child["lrpmt_doctype"], row.get(child["lrpmt_docname"]), "approval_number"
+                        )
+                else:
+                    service["approval_ref_no"] = frappe.get_cached_value(
+                        "Therapy Session",
+                        {"hms_tz_ref_childname": row.name},
+                        "approval_number",
+                    )
+
                 services.append(service)
 
         return services
