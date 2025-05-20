@@ -71,8 +71,9 @@ frappe.ui.form.on("Healthcare Referral", {
       freeze: true,
       freeze_message: __("Updating Referral..."),
       callback: function (r) {
+        frm.reload_doc();
+        
         if (r.message) {
-          frm.reload_doc();
           frappe.show_alert({
             message: __("Referral updated successfully"),
             indicator: "green",

@@ -51,6 +51,7 @@ def create_treatment_referral(doc):
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text)
         add_log(
             request_type="CreateTreatmentReferral",
             request_url=url,
@@ -62,7 +63,14 @@ def create_treatment_referral(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
-        frappe.throw(str(r.text))
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to create treatment referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+        )
+        frappe.db.commit()
+        doc.reload()
+
+        frappe.throw(str(data.get("reasonPhrase")))
 
     else:
         data = json.loads(r.text)
@@ -185,6 +193,7 @@ def create_service_referral(doc):
         return True
 
 
+@frappe.whitelist()
 def update_referral(ref_doctype, ref_docname):
     """
     Update referral.
@@ -213,18 +222,24 @@ def update_referral(ref_doctype, ref_docname):
 
     r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text)
         add_log(
             request_type="UpdateReferral",
             request_url=url,
             request_header=headers,
             request_body=payload,
-            response_data=r.text,
+            response_data=data,
             status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
-        frappe.throw(str(r.text))
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to update referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+        )
+        doc.reload()
+        frappe.msgprint(str(data.get("reasonPhrase")))
 
     else:
         data = json.loads(r.text)
