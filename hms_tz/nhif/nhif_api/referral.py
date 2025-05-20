@@ -47,7 +47,7 @@ def create_treatment_referral(doc):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
         add_log(
             request_type="CreateTreatmentReferral",
@@ -60,6 +60,7 @@ def create_treatment_referral(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        frappe.throw(str(r.text))
 
     else:
         data = json.loads(r.text)
@@ -137,7 +138,7 @@ def create_service_referral(doc):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
         add_log(
             request_type="CreateServiceReferral",
@@ -150,6 +151,7 @@ def create_service_referral(doc):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        frappe.throw(str(r.text))
 
     else:
         data = json.loads(r.text)
@@ -203,7 +205,7 @@ def update_referral(ref_doctype, ref_docname):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=120)
     if r.status_code != 200:
         add_log(
             request_type="UpdateReferral",
@@ -216,6 +218,7 @@ def update_referral(ref_doctype, ref_docname):
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        frappe.throw(str(r.text))
 
     else:
         data = json.loads(r.text)
