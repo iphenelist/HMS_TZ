@@ -170,6 +170,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Healthcare Practitioner",
+   "mandatory_depends_on": "eval: doc.referral_type != \"AcknowledgeServiceReferral\"",
    "options": "Healthcare Practitioner",
    "read_only_depends_on": "eval: doc.docstatus != 1",
    "reqd": 1,
@@ -332,8 +333,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Patient Encounter",
+   "mandatory_depends_on": "eval: doc.referral_type != \"AcknowledgeServiceReferral\"",
    "options": "Patient Encounter",
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -399,8 +400,9 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Referral Type",
-   "options": "\nForm 2C/2E\nTreatment",
-   "reqd": 1
+   "options": "\nForm 2C/2E\nTreatment\nAcknowledgeServiceReferral",
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "depends_on": "eval: doc.docstatus == 1",
@@ -451,7 +453,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-20 12:15:53.993282",
+ "modified": "2025-05-20 15:36:23.963822",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Referral",

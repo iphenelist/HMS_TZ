@@ -268,6 +268,55 @@ def update_referral(ref_doctype, ref_docname):
         return True
 
 
+def acknowledge_referral(company, referral_no):
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+
+    token = settings_doc.get_nhif_token()
+
+    url = f"{settings_doc.nhifservice_url}/api/Referrals/AcknowledgeServiceReferral?referralNo={referral_no}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+
+    r = requests.request("Get", url, headers=headers, timeout=120)
+    if r.status_code != 200:
+        data = json.loads(r.text)
+        add_log(
+            request_type="AcknowledgeServiceReferral",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name
+        )
+        frappe.throw(str(data.get("reasonPhrase")))
+
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="AcknowledgeServiceReferral",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+        )
+        create_healthcare_referral(data)
+
+
+def create_healthcare_referral(data):
+    referral_doc = frappe.new_doc("Healthcare Referral")
+    referral_doc.referral_no = data.get("ReferralNo")
+    referral_doc.referral_id = data.get("ReferralID")
+    referral_doc.referral_status = "Success"
+    referral_doc.save(ignore_permissions=True)
+    referral_doc.reload()
+    return True
+    
+
 def get_disease_code(code):
     # Convert the ICD code of CDC to NHIF
     disease_code = None
