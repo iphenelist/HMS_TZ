@@ -15,12 +15,12 @@ from frappe.utils import get_url_to_form, nowdate
 from hms_tz.nhif.api.healthcare_utils import (
     create_healthcare_docs,
     get_discount_percent,
-    get_healthcare_service_order_to_invoice,
     get_item_price,
     get_item_rate,
     get_mop_amount,
     get_warehouse_from_service_unit,
     validate_nhif_patient_claim_status,
+    get_healthcare_services_to_invoice
 )
 from hms_tz.nhif.api.patient_encounter import validate_patient_balance_vs_patient_costs
 
@@ -239,9 +239,7 @@ def create_sales_invoice(args):
             _(f"No Patient Encounters found for this Inpatient Record: <b>{args.inpatient_record}</b> and Patient Appointment: <b>{args.appointment_no}</b>"))
         return False
 
-    services = get_healthcare_service_order_to_invoice(
-        patient=args.patient,
-        company=args.company,
+    services = get_healthcare_services_to_invoice(
         patient_encounter_list=patient_encounter_list,
     )
     if len(services) == 0:
