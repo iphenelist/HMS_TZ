@@ -181,7 +181,7 @@ frappe.ui.form.on("Therapy Session", {
           approval_number: frm.doc.approval_number,
           service_type: "Therapy Type",
           service_name: frm.doc.therapy_type,
-          appoiintment: frm.doc.appointment,
+          appointment: frm.doc.appointment,
           ref_doctype: frm.doctype,
           ref_docname: frm.docname,
         },
