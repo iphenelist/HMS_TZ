@@ -918,7 +918,7 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
             ).run()
 
 
-def create_individual_radiology_examination(source_doc, encounter_child, hsr_child):
+def create_individual_radiology_examination(source_doc, encounter_child, hsr_child=None):
     if encounter_child.radiology_examination_created == 1 or encounter_child.is_not_available_inhouse:
         return
 
