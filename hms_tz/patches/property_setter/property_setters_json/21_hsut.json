@@ -1,0 +1,18 @@
+[
+    {
+        "name": "Healthcare Service Unit Type-main-field_order",
+        "owner": "Administrator",
+        "creation": "2025-05-20 19:18:11.438888",
+        "modified": "2025-05-20 19:18:11.438888",
+        "modified_by": "Administrator",
+        "docstatus": 0,
+        "idx": 0,
+        "is_system_generated": 0,
+        "doctype_or_field": "DocType",
+        "doc_type": "Healthcare Service Unit Type",
+        "property": "field_order",
+        "property_type": "Data",
+        "value": "[\"disabled\", \"service_unit_type\", \"allow_appointments\", \"overlap_appointments\", \"allow_procedures\", \"is_modality\", \"modality_type\", \"inpatient_occupancy\", \"is_billable\", \"item_details\", \"item\", \"item_code\", \"item_group\", \"column_break_11\", \"is_service_chargeable\", \"is_consultancy_chargeable\", \"custom_ward_type\", \"change_in_item\", \"rate\", \"uom\", \"custom_column_break_uk4dd\", \"description\", \"no_of_hours\"]",
+        "doctype": "Property Setter"
+    }
+]
