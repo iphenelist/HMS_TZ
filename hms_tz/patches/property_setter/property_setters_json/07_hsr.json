@@ -1,0 +1,19 @@
+[
+    {
+        "name": "Healthcare Service Request-naming_series-options",
+        "owner": "Administrator",
+        "creation": "2025-03-06 18:16:28.371883",
+        "modified": "2025-03-06 18:16:28.371883",
+        "modified_by": "Administrator",
+        "docstatus": 0,
+        "idx": 0,
+        "is_system_generated": 0,
+        "doctype_or_field": "DocField",
+        "doc_type": "Healthcare Service Request",
+        "field_name": "naming_series",
+        "property": "options",
+        "property_type": "Text",
+        "value": "HSR-.YYYY.-",
+        "doctype": "Property Setter"
+    }
+]
