@@ -7,9 +7,12 @@ from frappe import _
 from frappe.query_builder import DocType
 from frappe.utils import date_diff, get_fullname, nowdate
 
-from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 from hms_tz.nhif.api.healthcare_utils import update_dimensions
 from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
+    create_revenue_entry,
+    update_revenue_entry
+)
 
 
 def validate(doc, method):
@@ -272,6 +275,13 @@ def update_drug_prescription(doc):
                                 },
                                 update_modified=False,
                             )
+                            update_revenue_entry(
+                                "Delivery Note",
+                                doc.name,
+                                "Drug Prescription",
+                                item.reference_dn,
+                                lrpmt_status="Submitted",
+                            )
 
                     for original_item in doc.hms_tz_original_items:
                         if (
@@ -289,6 +299,14 @@ def update_drug_prescription(doc):
                                     "is_cancelled": 1,
                                 },
                                 update_modified=False,
+                            )
+                            update_revenue_entry(
+                                "Delivery Note",
+                                doc.name,
+                                "Drug Prescription",
+                                item.reference_dn,
+                                lrpmt_status="Submitted",
+                                is_cancelled=1,
                             )
 
         else:
@@ -323,6 +341,14 @@ def update_drug_prescription(doc):
                                     .where((hsrp.ref_docname == dni.reference_name))
                                 ).run()
 
+                                update_revenue_entry(
+                                    "Delivery Note",
+                                    doc.name,
+                                    "Drug Prescription",
+                                    dni.reference_name,
+                                    lrpmt_status="Submitted",
+                                )
+
                 for original_item in doc.hms_tz_original_items:
                     if (
                         original_item.hms_tz_is_out_of_stock == 1
@@ -348,6 +374,15 @@ def update_drug_prescription(doc):
                                     .set(hsrp.lrpmt_status, "Submitted")
                                     .where((hsrp.ref_docname == original_item.reference_name))
                                 ).run()
+
+                                update_revenue_entry(
+                                    "Delivery Note",
+                                    doc.name,
+                                    "Drug Prescription",
+                                    original_item.reference_name,
+                                    lrpmt_status="Submitted",
+                                    is_cancelled=1,
+                                )
 
 
 def check_item_for_out_of_stock(doc):
