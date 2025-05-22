@@ -1,6 +1,9 @@
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
+    update_revenue_entry,
+)
 
 
 def before_insert(doc, method):
@@ -28,6 +31,14 @@ def after_insert(doc, method):
 
     doc.save(ignore_permissions=True)
 
+    update_revenue_entry(
+        "Therapy Session",
+        doc.name,
+        "Therapy Plan Detail",
+        doc.hms_tz_ref_childname,
+        therapy_plan=doc.therapy_plan,
+    )
+
 
 def before_submit(doc, method):
     validate_not_serviced(doc)
@@ -38,6 +49,13 @@ def before_submit(doc, method):
 
 def on_submit(doc, method):
     update_therapy_detail(doc)
+    update_revenue_entry(
+        "Therapy Session",
+        doc.name,
+        "Therapy Plan Detail",
+        doc.hms_tz_ref_childname,
+        lrpmt_status="Submitted"
+    )
 
 
 def validate_not_serviced(doc):

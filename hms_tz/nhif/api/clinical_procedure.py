@@ -9,9 +9,12 @@ from frappe import _
 from frappe.query_builder import DocType
 from frappe.utils import get_fullname, nowdate
 
-from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
-from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
 from hms_tz.nhif.api.lab_test import check_cash_payments_from_encounter
+from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
+    create_revenue_entry,
+    update_revenue_entry,
+)
 
 
 def after_insert(doc, method):
@@ -31,6 +34,13 @@ def onload(doc, method):
 
 def on_submit(doc, methd):
     update_procedure_prescription(doc)
+    update_revenue_entry(
+        "Clinical Procedure",
+        doc.name,
+        "Procedure Prescription",
+        doc.hms_tz_ref_childname,
+        lrpmt_status="Submitted",
+    )
     # create_delivery_note(doc)
 
 

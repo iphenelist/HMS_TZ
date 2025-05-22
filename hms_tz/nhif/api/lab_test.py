@@ -11,8 +11,11 @@ from frappe.core.doctype.sms_settings.sms_settings import send_sms
 from frappe.query_builder import DocType
 from frappe.utils import get_fullname, getdate
 
-from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
+    create_revenue_entry,
+    update_revenue_entry
+)
 
 
 def validate(doc, method):
@@ -54,8 +57,15 @@ def before_submit(doc, method):
 
 def on_submit(doc, method):
     update_lab_prescription(doc)
-    # create_delivery_note(doc)
+    update_revenue_entry(
+        "Lab Test",
+        doc.name,
+        "Lab Prescription",
+        doc.hms_tz_ref_childname,
+        lrpmt_status="Submitted",
+    )
     send_sms_for_lab_results(doc)
+    # create_delivery_note(doc)
 
 
 def set_normals(doc):
