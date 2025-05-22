@@ -42,6 +42,49 @@ def create_revenue_entry(doc):
         hre.reload()
 
 
+def update_revenue_entry(
+    lrpmt_doctype,
+    lrpmt_docname,
+    ref_doctype,
+    ref_docname,
+    lrpmt_status=None,
+    is_cancelled=0,
+    therapy_plan=None,
+):
+    hre = DocType("Hospital Revenue Entry")
+    query = (
+        frappe.qb.update(hre)
+        .where(
+            (hre.ref_doctype == ref_doctype)
+            & (hre.ref_docname == ref_docname)
+        )
+    )
+
+    if lrpmt_status:
+        query = query.set(hre.lrpmt_status, lrpmt_status)
+
+    if is_cancelled == 1:
+        query = query.set(hre.is_cancelled, 1)
+    
+    if therapy_plan and lrpmt_doctype == "Therapy Session":
+        query = query.set(hre.lrpmt_doctype, lrpmt_doctype)
+        query = query.set(hre.lrpmt_docname, lrpmt_docname)
+
+        query = query.where(
+            (hre.lrpmt_doctype == "Therapy Plan")
+            & (hre.lrpmt_docname == therapy_plan)
+        )
+    else:
+        query = query.where(
+            (hre.lrpmt_doctype == lrpmt_doctype)
+            & (hre.lrpmt_docname == lrpmt_docname)
+        )
+
+    
+    
+    query.run()
+
+
 def get_entry_from_appointment(doc):
     """
     Get entry from the appointment document
