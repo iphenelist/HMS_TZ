@@ -81,8 +81,9 @@ def get_nhif_patient_info(
         return
 
     if check_patient_info_from_his and settings_doc.check_patient_info_on_his == 0:
-        frappe.msgprint("Please Enable Check Patient Info on HIS to proceed..")
         return
+        # frappe.msgprint("Please Enable Check Patient Info on HIS to proceed..")
+        # return
 
     if card_no:
         card_details = get_card_details_by_card_no(
@@ -200,11 +201,13 @@ def create_subscription(doc):
         sub_doc.card_type_id = verifier_entry.card_type_id
         sub_doc.card_type_name = verifier_entry.card_type_name
 
+    frappe.flags.auto_his = True
     sub_doc.save(ignore_permissions=True)
     sub_doc.submit()
     frappe.msgprint(
         _(f"<h3>AUTO</h3> Healthcare Insurance Subscription: {sub_doc.name} is created for {plan_row.name}")
     )
+    frappe.flags.auto_his = False
 
 
 def after_insert(doc, method):

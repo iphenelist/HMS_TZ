@@ -41,7 +41,7 @@ def validate_card_no(doc):
         "is_active": 1,
         "docstatus": 1,
         "coverage_plan_card_number": doc.coverage_plan_card_number,
-        "name": ["!=", doc.name],
+        "name": ["!=", doc.name or ""],
     }
 
     his = frappe.db.get_all(
@@ -78,7 +78,10 @@ def validate_national_id(doc):
 
 
 def set_insurance_card_detail_in_patient(doc):
-    his_list = frappe.get_all(
+    if frappe.flags.auto_his:
+        return
+
+    his_list = frappe.db.get_all(
         "Healthcare Insurance Subscription",
         filters={
             "patient": doc.patient,
@@ -89,10 +92,8 @@ def set_insurance_card_detail_in_patient(doc):
         group_by="coverage_plan_card_number",
     )
     str_coverage_plan_card_number = ""
-    card_count = 0
     for card in his_list:
         if card.coverage_plan_card_number:
-            card_count += 1
             str_coverage_plan_card_number += card.coverage_plan_card_number + ", "
 
     frappe.db.set_value(
