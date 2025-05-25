@@ -242,7 +242,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
         data = json.loads(r.text)
         frappe.msgprint(
             title="NHIF API Error",
-            msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('reasonPhrase')}<b>",
+            msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('reasonPhrase')}<b>",
             indicator="red",
         )
         return "Error"
@@ -299,7 +299,7 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
 
         frappe.msgprint(
             title="NHIF API Error",
-            msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>Response: <b>{response}<b>",
+            msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{response}<b>",
             indicator="red",
         )
         return "Error"
@@ -580,7 +580,7 @@ def authorize_patient(
         )
         frappe.msgprint(
             title="NHIF API Error",
-            msg=f"Failed to AuthorizePatient<br><br>Status Code: {r.status_code}<br>Response: <b>{auth_data.get('errors') or auth_data.get('message')}<b>",
+            msg=f"Failed to AuthorizePatient<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{auth_data.get('errors') or auth_data.get('message')}<b>",
             indicator="red",
         )
         return "Error"
@@ -682,7 +682,7 @@ def get_poc_reference_no(
         )
         frappe.msgprint(
             title="NHIF API Error",
-            msg=f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>Response: <b>{data.get('errors') or data.get('message')}<b>",
+            msg=f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>",
         )
         return {}
 
