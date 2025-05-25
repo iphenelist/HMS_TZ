@@ -399,11 +399,11 @@ def get_present_event(practitioner, date):
 		from
 			`tabPractitioner Availability`
 		where
-			practitioner = {practitioner} and present = 1 and
+			practitioner = '{practitioner}' and present = 1 and
 			(
-				(repeat_this_event = 1 and (from_date<={date} and ifnull(repeat_till, "3000-01-01")>={date}))
+				(repeat_this_event = 1 and (from_date<='{date}' and ifnull(repeat_till, "3000-01-01")>='{date}'))
 				or
-				(repeat_this_event != 1 and (from_date<={date} and to_date>={date}))
+				(repeat_this_event != 1 and (from_date<='{date}' and to_date>='{date}'))
 			)
 		order by
 			from_date, from_time
@@ -424,11 +424,11 @@ def get_absent_event(practitioner, date):
 		from
 			`tabPractitioner Availability`
 		where
-			practitioner = {practitioner} and present != 1 and
+			practitioner = '{practitioner}' and present != 1 and
 			(
-				(repeat_this_event = 1 and (from_date<={date} and ifnull(repeat_till, "3000-01-01")>={date}))
+				(repeat_this_event = 1 and (from_date<='{date}' and ifnull(repeat_till, "3000-01-01")>='{date}'))
 				or
-				(repeat_this_event != 1 and (from_date<={date} and to_date>={date}))
+				(repeat_this_event != 1 and (from_date<='{date}' and to_date>='{date}'))
 			)
 	""",
         as_dict=True,
