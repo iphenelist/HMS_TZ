@@ -332,10 +332,20 @@ frappe.ui.form.on("Patient Appointment", {
   },
   authorize_patient: async (frm) => {
     try {
-      let fingerprint = await new dpFingerprint({ label: "Authorize" });
-      if (!fingerprint) {
-        frappe.msgprint(__("Fingerprint capture failed. Please try again."));
-        return;
+      let biometricData;
+
+      if (frm.doc.biometric_method === "Facial Recognition") {
+        biometricData = await new FacialRecognition({ label: "Authorize" });
+        if (!biometricData) {
+          frappe.msgprint(__("Face capture failed. Please try again."));
+          return;
+        }
+      } else {
+        biometricData = await new dpFingerprint({ label: "Authorize" });
+        if (!biometricData) {
+          frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+          return;
+        }
       }
 
       frappe.call({
@@ -346,8 +356,8 @@ frappe.ui.form.on("Patient Appointment", {
           company: frm.doc.company,
           card_no: frm.doc.coverage_plan_card_number || "",
           national_id: frm.doc.national_id || "",
-          fingerprint: fingerprint.Data,
-          fpcode: fingerprint.fpCode,
+          fingerprint: biometricData.Data,
+          fpcode: biometricData.fpCode,
           biometric_method: frm.doc.biometric_method || "NaN",
           practitioner: frm.doc.practitioner,
           referral_no: frm.doc.referral_no,
@@ -383,19 +393,23 @@ frappe.ui.form.on("Patient Appointment", {
             }
           } else {
             frappe.utils.play_sound("error");
-            frm.set_value("insurance_subscription", "");
-            frm.set_value("authorization_number", "");
-            frm.set_value("fpcode", "");
-            frm.set_value("biometric_method", "");
+            // frm.set_value("insurance_subscription", "");
+            // frm.set_value("authorization_number", "");
+            // frm.set_value("fpcode", "");
+            // frm.set_value("biometric_method", "");
           }
         },
-        onerror: function (data) {
+        onerror: function () {
           frappe.utils.play_sound("error");
         },
       });
     } catch (error) {
-      console.error("Fingerprint capture error:", error);
-      frappe.msgprint(__("Failed to capture fingerprint. Please try again."));
+      console.error("Biometric capture error:", error);
+      if (frm.doc.biometric_method === "Facial Recognition") {
+        frappe.msgprint(__("Failed to capture face photo. Please try again."));
+      } else {
+        frappe.msgprint(__("Failed to capture fingerprint. Please try again."));
+      }
     }
   },
   get_patient_details_from_nhif: (frm) => {
@@ -705,7 +719,7 @@ const check_and_set_availability = (frm) => {
             .set_value("Patient Referral", frm.doc.patient_referral, {
               status: "Completed",
             })
-            .then((r) => {});
+            .then(() => {});
         }
       },
     });
@@ -1200,7 +1214,7 @@ const add_invoice_btn = (frm) => {
       args: {
         name: frm.doc.name,
       },
-      callback: function (data) {
+      callback: function () {
         frm.reload_doc();
       },
     });
@@ -1217,7 +1231,7 @@ const add_vital_btn = (frm) => {
       args: {
         appointment: frm.doc.name,
       },
-      callback: function (data) {
+      callback: function () {
         frm.reload_doc();
       },
     });
@@ -1238,8 +1252,8 @@ const validate_insurance_company = (frm) => {
     .call("hms_tz.nhif.api.patient_appointment.validate_insurance_company", {
       insurance_company: frm.doc.insurance_company,
     })
-    .then((r) => {
-      if (r.message) {
+    .then((response) => {
+      if (response.message) {
         frm.set_value("insurance_subscription", "");
         frm.set_value("insurance_company", "");
         frm.set_value("coverage_plan_name", "");
