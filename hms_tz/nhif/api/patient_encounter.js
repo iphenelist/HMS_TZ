@@ -110,6 +110,22 @@ frappe.ui.form.on("Patient Encounter", {
         },
       };
     });
+
+    frm.set_query("code_value", "patient_encounter_preliminary_diagnosis", function () {
+      return {
+        filters: {
+          code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
+        },
+      };
+    });
+    frm.set_query("code_value", "patient_encounter_final_diagnosis", function () {
+      return {
+        filters: {
+          code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
+        },
+      };
+    });
+
     frm.set_query("default_healthcare_service_unit", function () {
       return {
         filters: {
@@ -178,7 +194,7 @@ frappe.ui.form.on("Patient Encounter", {
           data.message.forEach((element) => {
             const row_idx =
               frm.doc.patient_encounter_preliminary_diagnosis.findIndex(
-                (x) => x.medical_code === element.medical_code
+                (x) => x.code_value === element.code_value
               );
             if (row_idx === -1) {
               let row = frappe.model.add_child(
@@ -186,13 +202,13 @@ frappe.ui.form.on("Patient Encounter", {
                 "Codification Table",
                 "patient_encounter_preliminary_diagnosis"
               );
-              row.medical_code = element.medical_code;
+              row.code_value = element.code_value;
               row.code = element.code;
-              row.description = element.description;
+              row.definition = element.definition;
               frappe.show_alert(
                 {
                   message: __(
-                    `Medical Code '${element.medical_code}' added successfully`
+                    `Medical Code '${element.code_value}' added successfully`
                   ),
                   indicator: "green",
                 },
@@ -202,7 +218,7 @@ frappe.ui.form.on("Patient Encounter", {
               frappe.show_alert(
                 {
                   message: __(
-                    `Medical Code '${element.medical_code}' already exists`
+                    `Medical Code '${element.code_value}' already exists`
                   ),
                   indicator: "red",
                 },
@@ -337,7 +353,7 @@ frappe.ui.form.on("Patient Encounter", {
     function set_final_diagnosis(frm, preliminary_diagnosis) {
       preliminary_diagnosis.forEach((element) => {
         const row_idx = frm.doc.patient_encounter_final_diagnosis.findIndex(
-          (x) => x.medical_code === element.medical_code
+          (x) => x.code_value === element.code_value
         );
         if (row_idx === -1) {
           let row = frappe.model.add_child(
@@ -345,19 +361,19 @@ frappe.ui.form.on("Patient Encounter", {
             "Codification Table",
             "patient_encounter_final_diagnosis"
           );
-          row.medical_code = element.medical_code;
+          row.code_value = element.code_value;
           row.code = element.code;
-          row.description = element.description;
+          row.definition = element.definition;
           row.mtuha = element.mtuha;
           // frappe.show_alert({
-          //     message: __(`Medical Code '${element.medical_code}' added successfully`),
+          //     message: __(`Medical Code '${element.code_value}' added successfully`),
           //     indicator: 'green'
           // }, 5);
         } else {
           frappe.show_alert(
             {
               message: __(
-                `Medical Code '${element.medical_code}' already exists`
+                `Medical Code '${element.code_value}' already exists`
               ),
               indicator: "yellow",
             },
@@ -632,17 +648,17 @@ frappe.ui.form.on("Patient Encounter", {
   },
   hms_tz_reuse_previous_diagnosis: (frm) => {
     let fields = [
-      "medical_code as item",
+      "code_value as item",
       "code as item_name",
-      "description",
+      "definition as description",
       "mtuha",
       "creation as date",
     ];
     let value_dict = {
       table_field: "patient_encounter_preliminary_diagnosis",
-      item_field: "medical_code",
+      item_field: "code_value",
       item_name_field: "code",
-      description_field: "description",
+      description_field: "definition",
       mtuha_field: "mtuha",
     };
     reuse_lrpmt_items(
@@ -751,16 +767,16 @@ function show_cost_estimate_model(frm, cost_estimate) {
 frappe.ui.form.on("Codification Table", {
   patient_encounter_preliminary_diagnosis_remove: set_medical_code,
   patient_encounter_final_diagnosis_remove: set_medical_code,
-  medical_code: set_medical_code,
+  code_value: set_medical_code,
 });
 
 function get_diagnosis_list(frm, table_name) {
   const diagnosis_list = [];
   if (frm.doc[table_name]) {
     frm.doc[table_name].forEach((element) => {
-      if (!element.medical_code) return;
+      if (!element.code_value) return;
       let d =
-        String(element.medical_code) + "\n " + String(element.description);
+        String(element.code_value) + "\n " + String(element.definition);
       diagnosis_list.push(d);
     });
   }

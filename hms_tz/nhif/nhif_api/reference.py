@@ -139,7 +139,7 @@ def get_diseases(company=None):
             response_data=r.text,
             status_code=r.status_code,
             company=settings_doc.name,
-            ref_doctype="Medical Code",
+            ref_doctype="Code Value",
         )
 
     else:
@@ -152,7 +152,7 @@ def get_diseases(company=None):
             response_data=data,
             status_code=r.status_code,
             company=settings_doc.name,
-            ref_doctype="Medical Code",
+            ref_doctype="Code Value",
         )
 
         if len(data) == 0:
@@ -161,9 +161,9 @@ def get_diseases(company=None):
         medical_code_standards = [row["ICDVersionCode"] for row in data if row.get("ICDVersionCode")]
         medical_code_standards = list(set(medical_code_standards))
         for code in medical_code_standards:
-            if not frappe.db.exists("Medical Code Standard", code):
-                mcs_doc = frappe.new_doc("Medical Code Standard")
-                mcs_doc.medical_code = code
+            if not frappe.db.exists("Code System", code):
+                mcs_doc = frappe.new_doc("Code System")
+                mcs_doc.code_system = code
                 mcs_doc.save(ignore_permissions=True)
                 mcs_doc.reload()
 
@@ -173,10 +173,10 @@ def get_diseases(company=None):
 
             try:
                 if frappe.db.exists(
-                    "Medical Code",
+                    "Code Value",
                     {
-                        "code": disease.get("DiseaseCode"),
-                        "medical_code_standard": disease.get("ICDVersionCode"),
+                        "code_value": disease.get("DiseaseCode"),
+                        "code_system": disease.get("ICDVersionCode"),
                     },
                     cache=True,
                 ):
@@ -194,15 +194,15 @@ def get_diseases(company=None):
 def update_medical_code(disease):
     has_changed = False
     medical_code_id = f"{disease.get('ICDVersionCode')} {disease.get('DiseaseCode')}"
-    mc_doc = frappe.get_cached_doc("Medical Code", medical_code_id)
+    mc_doc = frappe.get_cached_doc("Code Value", medical_code_id)
 
-    # if mc_doc.medical_code_standard != disease.get("ICDVersionCode"):
+    # if mc_doc.code_system != disease.get("ICDVersionCode"):
     #     has_changed = True
-    #     mc_doc.medical_code_standard = disease.get("ICDVersionCode")
+    #     mc_doc.code_system = disease.get("ICDVersionCode")
 
-    if mc_doc.description != disease.get("DiseaseName"):
+    if mc_doc.definition != disease.get("DiseaseName"):
         has_changed = True
-        mc_doc.description = disease.get("DiseaseName")
+        mc_doc.definition = disease.get("DiseaseName")
 
     if mc_doc.is_non_specific != disease.get("IsNonSpecific"):
         has_changed = True
@@ -213,10 +213,10 @@ def update_medical_code(disease):
 
 
 def create_medical_code(disease):
-    mc_doc = frappe.new_doc("Medical Code")
-    mc_doc.code = disease.get("DiseaseCode")
-    mc_doc.medical_code_standard = disease.get("ICDVersionCode")
-    mc_doc.description = disease.get("DiseaseName")
+    mc_doc = frappe.new_doc("Code Value")
+    mc_doc.code_value = disease.get("DiseaseCode")
+    mc_doc.code_system = disease.get("ICDVersionCode")
+    mc_doc.definition = disease.get("DiseaseName")
     mc_doc.is_non_specific = disease.get("IsNonSpecific")
     mc_doc.save(ignore_permissions=True)
     mc_doc.reload()
