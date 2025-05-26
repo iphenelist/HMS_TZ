@@ -194,7 +194,7 @@ frappe.ui.form.on("Patient Encounter", {
           data.message.forEach((element) => {
             const row_idx =
               frm.doc.patient_encounter_preliminary_diagnosis.findIndex(
-                (x) => x.medical_code === element.medical_code
+                (x) => x.code_value === element.code_value
               );
             if (row_idx === -1) {
               let row = frappe.model.add_child(
@@ -202,13 +202,13 @@ frappe.ui.form.on("Patient Encounter", {
                 "Codification Table",
                 "patient_encounter_preliminary_diagnosis"
               );
-              row.medical_code = element.medical_code;
+              row.code_value = element.code_value;
               row.code = element.code;
-              row.description = element.description;
+              row.definition = element.definition;
               frappe.show_alert(
                 {
                   message: __(
-                    `Medical Code '${element.medical_code}' added successfully`
+                    `Medical Code '${element.code_value}' added successfully`
                   ),
                   indicator: "green",
                 },
@@ -218,7 +218,7 @@ frappe.ui.form.on("Patient Encounter", {
               frappe.show_alert(
                 {
                   message: __(
-                    `Medical Code '${element.medical_code}' already exists`
+                    `Medical Code '${element.code_value}' already exists`
                   ),
                   indicator: "red",
                 },

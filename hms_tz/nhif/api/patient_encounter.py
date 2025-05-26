@@ -636,14 +636,14 @@ def on_submit(doc, method):
 
 @frappe.whitelist()
 def get_chronic_diagnosis(patient):
-    data = frappe.get_all(
+    data = frappe.db.get_all(
         "Codification Table",
         filters={
             "parent": patient,
             "parenttype": "Patient",
             "parentfield": "codification_table",
         },
-        fields=["medical_code", "code", "description"],
+        fields=["code_value", "code", "definition"],
     )
     return data
 
@@ -664,7 +664,7 @@ def add_chronic_diagnosis(patient, encounter):
         for d in patient_doc.codification_table:
             medical_codes.append(d.medical_code)
             for row in encounter_doc.patient_encounter_preliminary_diagnosis:
-                if row.medical_code not in medical_codes:
+                if row.code_value not in medical_codes:
                     patient_doc.append("codification_table", row)
         patient_doc.save(ignore_permissions=True)
 
