@@ -767,16 +767,16 @@ function show_cost_estimate_model(frm, cost_estimate) {
 frappe.ui.form.on("Codification Table", {
   patient_encounter_preliminary_diagnosis_remove: set_medical_code,
   patient_encounter_final_diagnosis_remove: set_medical_code,
-  medical_code: set_medical_code,
+  code_value: set_medical_code,
 });
 
 function get_diagnosis_list(frm, table_name) {
   const diagnosis_list = [];
   if (frm.doc[table_name]) {
     frm.doc[table_name].forEach((element) => {
-      if (!element.medical_code) return;
+      if (!element.code_value) return;
       let d =
-        String(element.medical_code) + "\n " + String(element.description);
+        String(element.code_value) + "\n " + String(element.definition);
       diagnosis_list.push(d);
     });
   }
