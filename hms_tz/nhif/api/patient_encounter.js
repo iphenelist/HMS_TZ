@@ -110,6 +110,22 @@ frappe.ui.form.on("Patient Encounter", {
         },
       };
     });
+
+    frm.set_query("code_value", "patient_encounter_preliminary_diagnosis", function () {
+      return {
+        filters: {
+          code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
+        },
+      };
+    });
+    frm.set_query("code_value", "patient_encounter_final_diagnosis", function () {
+      return {
+        filters: {
+          code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
+        },
+      };
+    });
+
     frm.set_query("default_healthcare_service_unit", function () {
       return {
         filters: {
