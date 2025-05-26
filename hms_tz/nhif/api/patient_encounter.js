@@ -632,17 +632,17 @@ frappe.ui.form.on("Patient Encounter", {
   },
   hms_tz_reuse_previous_diagnosis: (frm) => {
     let fields = [
-      "medical_code as item",
+      "code_value as item",
       "code as item_name",
-      "description",
+      "definition as description",
       "mtuha",
       "creation as date",
     ];
     let value_dict = {
       table_field: "patient_encounter_preliminary_diagnosis",
-      item_field: "medical_code",
+      item_field: "code_value",
       item_name_field: "code",
-      description_field: "description",
+      description_field: "definition",
       mtuha_field: "mtuha",
     };
     reuse_lrpmt_items(
