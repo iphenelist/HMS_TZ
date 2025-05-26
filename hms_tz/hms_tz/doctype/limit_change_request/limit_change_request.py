@@ -5,9 +5,8 @@ from frappe.utils import flt, get_url_to_form, nowdate, nowtime
 
 from hms_tz.nhif.api.healthcare_utils import create_therapy_plan
 from hms_tz.nhif.api.patient_encounter import (
-    create_delivery_note_per_encounter,
-    create_healthcare_docs_per_encounter,
     validate_totals,
+    create_healthcare_docs
 )
 
 
@@ -202,13 +201,13 @@ class LimitChangeRequest(Document):
                             item_row.db_set("is_cancelled", 0)
 
             encounter_doc.reload()
-            create_healthcare_docs_per_encounter(encounter_doc)
-            create_delivery_note_per_encounter(encounter_doc, "on_submit")
-            create_therapy_plan(enc_doc=encounter_doc)
-
             if encounter.get("duplicated") == 0:
                 encounter_doc.daily_limit = self.daily_limit
                 validate_totals(encounter_doc, method="validate", show_alert=False)
 
                 encounter_doc.db_update_all()
                 encounter_doc.reload()
+        
+        encounter_ids = [encounter.name for encounter in encounters]
+        create_healthcare_docs(encounter_ids[0], encounter_ids)
+

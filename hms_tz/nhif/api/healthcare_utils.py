@@ -777,9 +777,10 @@ def inpatient_billing(encounter_doc, method):
 @frappe.whitelist()
 def create_healthcare_docs(reference_encounter, encounter_list=[], method="event"):
     if len(encounter_list) == 0:
-        encounter_list = frappe.get_list(
+        encounter_list = frappe.db.get_all(
             "Patient Encounter",
             filters={"reference_encounter": reference_encounter},
+            pluck="name"
         )
 
     for encounter in encounter_list:
