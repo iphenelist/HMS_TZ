@@ -150,7 +150,7 @@ frappe.ui.form.on("Patient Appointment", {
       frm.toggle_reqd(["healthcare_referrer"], true);
       frm.set_value(
         "healthcare_referrer_type",
-        "Healthcare External Referrer"
+        "Healthcare Facility"
       );
       frm.toggle_reqd("referring_practitioner", false);
       frm.toggle_enable("referring_practitioner", false);
