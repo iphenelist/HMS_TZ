@@ -451,8 +451,9 @@ def authorize_patient(
         )
         return
 
-    fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-    image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+    # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+    image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     visit_type_id = frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")
 
@@ -465,6 +466,8 @@ def authorize_patient(
         ["verifier_id", "card_type_id", "card_type_name"],
         as_dict=True,
     )
+
+    biometric_method = biometric_method.upper()
 
     if card_type_info and (not card_type_info.verifier_id or card_type_info.verifier_id == "NHIF"):
         request_type = "AuthorizeCard"
@@ -532,7 +535,7 @@ def authorize_patient(
 
         frappe.msgprint(auth_data["Remarks"], alert=True)
         add_scheme(auth_data.get("SchemeID"), auth_data.get("SchemeName"))
-        update_insurance_subscription(insurance_subscription, auth_data)
+        auth_data = update_insurance_subscription(insurance_subscription, auth_data)
 
         auth_detail = get_authorization_details(
             auth_data.get("AuthorizationNo"),
@@ -562,6 +565,10 @@ def authorize_patient(
         )
         if reference_data:
             auth_data.update(reference_data)
+
+        auth_data.update({
+            "fpCode": fpcode,
+        })
 
         return auth_data
     else:
@@ -625,17 +632,18 @@ def get_poc_reference_no(
         )
 
     image_data = None
-    if ref_doctype != "Patient Appointment":
-        fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-        image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    else:
+    if ref_doctype == "Patient Appointment":
         image_data = fingerprint
+    else:
+        # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
+        # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+        image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     payload = {
         "pointOfCareID": point_of_care_id,
         "authorizationNo": authorization_no or appointment_info.authorization_number,
         "practitionerNo": practitioner_no,
-        "biometricMethod": biometric_method,
+        "biometricMethod": "NONE", #biometric_method.upper(), TODO: update the correct biometric method after confirmation from NHIF
         "fpCode": fpcode,
         "imageData": image_data,
     }
