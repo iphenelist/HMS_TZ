@@ -62,7 +62,7 @@ def validate_existing_appointment(doc):
 		from
 			`tabPatient Appointment`
 		where
-			practitioner = {doc.get("practitioner")} and docstatus < 2 and status != 'Cancelled' and appointment_date = {doc.from_date} and (appointment_time >= {doc.from_time} and appointment_time < {doc.to_time})
+			practitioner = '{doc.get("practitioner")}' and docstatus < 2 and status != 'Cancelled' and appointment_date = '{doc.from_date}' and (appointment_time >= '{doc.from_time}' and appointment_time < '{doc.to_time}')
 		"""
     appointments = frappe.db.sql(
         appointment_query,
@@ -103,18 +103,18 @@ def validate_event_overlap(doc):
 		from
 			`tabPractitioner Availability`
 		where
-			name != {doc.name} and present = {doc.present}
-			and practitioner = {doc.get("practitioner")} and docstatus < 2 and
+			name != '{doc.name}' and present = '{doc.present}'
+			and practitioner = '{doc.get("practitioner")}' and docstatus < 2 and
 			(
 				(
 					repeat_this_event = 1
 					and
 					(
-						(from_date between {doc.from_date} and {doc.repeat_till})
+						(from_date between '{doc.from_date}' and '{doc.repeat_till}')
 						or
-						(ifnull(repeat_till, "3000-01-01") between {doc.from_date} and {doc.repeat_till})
+						(ifnull(repeat_till, "3000-01-01") between '{doc.from_date}' and '{doc.repeat_till}')
 						or
-						(from_date < {doc.from_date} and ifnull(repeat_till, "3000-01-01") > {doc.repeat_till})
+						(from_date < '{doc.from_date}' and ifnull(repeat_till, "3000-01-01") > '{doc.repeat_till}')
 					)
 					and
 					(
@@ -132,7 +132,7 @@ def validate_event_overlap(doc):
 							repeat_on = 'Every Month'
 							and
 							(
-								month({doc.from_date})=month(from_date)
+								month('{doc.from_date}')=month(from_date)
 							)
 						)
 					)
@@ -142,23 +142,23 @@ def validate_event_overlap(doc):
 					repeat_this_event != 1
 					and
 					(
-						({doc.from_date} between from_date and to_date)
+						('{doc.from_date}' between from_date and to_date)
 						or
-						({doc.to_date} between from_date and to_date)
+						('{doc.to_date}' between from_date and to_date)
 						or
-						({doc.from_date} < from_date and {doc.to_date} > to_date)
+						('{doc.from_date}' < from_date and '{doc.to_date}' > to_date)
 					)
 				)
 			)
 			and
 			(
-				(from_time >= {doc.from_time} and from_time < {doc.to_time})
+				(from_time >= '{doc.from_time}' and from_time < '{doc.to_time}')
 				or
-				(to_time > {doc.from_time} and to_time <= {doc.to_time})
+				(to_time > '{doc.from_time}' and to_time <= '{doc.to_time}')
 				or
-				(from_time between {doc.from_time} and {doc.to_time}) and (to_time between {doc.from_time} and {doc.to_time})
+				(from_time between '{doc.from_time}' and '{doc.to_time}') and (to_time between '{doc.from_time}' and '{doc.to_time}')
 				or
-				(from_time < {doc.from_time} and to_time > {doc.to_time})
+				(from_time < '{doc.from_time}' and to_time > '{doc.to_time}')
 			)
 		"""
 
