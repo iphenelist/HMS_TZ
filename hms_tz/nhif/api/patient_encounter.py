@@ -1857,8 +1857,10 @@ def validate_medical_code(doc, method):
             for row in doc.get(diagnosis_table):
                 if not row.code_value:
                     continue
+                
                 d = str(row.code_value) + "\n " + str(row.definition)
                 diagnosis_list.append(d)
+
         return diagnosis_list
 
     for from_table, fields in medical_code_mapping().items():
@@ -1871,7 +1873,7 @@ def validate_medical_code(doc, method):
 
             fieldname_label = frappe.get_meta(doc.doctype).get_label(fieldname)
             for row in doc.get(fieldname):
-                if row.code_value not in diagnosis_list:
+                if row.medical_code not in diagnosis_list:
                     msgThrow(
                         _(f"The Medical Code in the <strong>{fieldname_label}</strong> table at line <strong>{row.idx}</strong> is empty\
                             or does not exist in the <strong>{from_table_label}</strong> table."), method, )
