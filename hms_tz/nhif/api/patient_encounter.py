@@ -662,7 +662,7 @@ def add_chronic_diagnosis(patient, encounter):
 
     else:
         for d in patient_doc.codification_table:
-            medical_codes.append(d.medical_code)
+            medical_codes.append(d.code_value)
             for row in encounter_doc.patient_encounter_preliminary_diagnosis:
                 if row.code_value not in medical_codes:
                     patient_doc.append("codification_table", row)
@@ -1815,7 +1815,7 @@ def validate_medical_code(doc, method):
     mtuha_missing = ""
     for final_diagnosis in doc.patient_encounter_final_diagnosis:
         if not final_diagnosis.mtuha:
-            mtuha_missing += "-  <b>" + final_diagnosis.medical_code + "</b><br>"
+            mtuha_missing += "-  <b>" + final_diagnosis.code_value + "</b><br>"
 
     if mtuha_missing:
         msgThrow(
@@ -1855,9 +1855,9 @@ def validate_medical_code(doc, method):
         diagnosis_list = []
         if doc.get(diagnosis_table):
             for row in doc.get(diagnosis_table):
-                if not row.medical_code:
+                if not row.code_value:
                     continue
-                d = str(row.medical_code) + "\n " + str(row.description)
+                d = str(row.code_value) + "\n " + str(row.definition)
                 diagnosis_list.append(d)
         return diagnosis_list
 
@@ -1871,7 +1871,7 @@ def validate_medical_code(doc, method):
 
             fieldname_label = frappe.get_meta(doc.doctype).get_label(fieldname)
             for row in doc.get(fieldname):
-                if row.medical_code not in diagnosis_list:
+                if row.code_value not in diagnosis_list:
                     msgThrow(
                         _(f"The Medical Code in the <strong>{fieldname_label}</strong> table at line <strong>{row.idx}</strong> is empty\
                             or does not exist in the <strong>{from_table_label}</strong> table."), method, )
