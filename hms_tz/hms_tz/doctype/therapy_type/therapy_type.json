@@ -180,14 +180,14 @@
    "fieldname": "medical_code_standard",
    "fieldtype": "Link",
    "label": "Medical Code Standard",
-   "options": "Medical Code Standard"
+   "options": "Code System"
   },
   {
    "depends_on": "medical_code_standard",
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Medical Code"
+   "options": "Code Value"
   },
   {
    "fetch_from": "healthcare_service_order_category.patient_care_type",
@@ -223,7 +223,7 @@
   }
  ],
  "links": [],
- "modified": "2021-07-31 22:31:52.054022",
+ "modified": "2025-05-27 23:13:16.062120",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Therapy Type",
@@ -265,7 +265,9 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

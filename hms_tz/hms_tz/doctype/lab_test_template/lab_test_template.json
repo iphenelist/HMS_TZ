@@ -143,13 +143,13 @@
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Medical Code"
+   "options": "Code Value"
   },
   {
    "fieldname": "medical_code_standard",
    "fieldtype": "Link",
    "label": "Medical Code Standard",
-   "options": "Medical Code Standard"
+   "options": "Code System"
   },
   {
    "depends_on": "eval:doc.lab_test_template_type == 'Single'",
@@ -361,7 +361,7 @@
   }
  ],
  "links": [],
- "modified": "2021-07-31 22:28:23.277810",
+ "modified": "2025-05-27 23:12:31.536801",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Lab Test Template",
@@ -390,9 +390,11 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "lab_test_code,lab_test_name,lab_test_template_type",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "lab_test_name",
  "track_changes": 1
 }

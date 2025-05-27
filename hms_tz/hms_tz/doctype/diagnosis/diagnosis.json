@@ -29,13 +29,14 @@
    "fieldname": "medical_code_standard",
    "fieldtype": "Link",
    "label": "Medical Code Standard",
-   "options": "Medical Code Standard"
+   "options": "Code System",
+   "search_index": 1
   },
   {
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Medical Code"
+   "options": "Code Value"
   },
   {
    "allow_in_quick_entry": 1,
@@ -47,10 +48,11 @@
   }
  ],
  "links": [],
- "modified": "2020-07-24 17:51:10.420939",
+ "modified": "2025-05-27 23:09:48.063153",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Diagnosis",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -80,8 +82,10 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "diagnosis, medical_code",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
