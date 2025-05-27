@@ -10,8 +10,9 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 @frappe.whitelist()
 def login_practitioner(fingerprint, fpcode, settings_doc=None):
-    fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-    image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+    # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+    image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     practitioner = frappe.get_cached_value(
         "Healthcare Practitioner",
@@ -30,7 +31,7 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
     payload = {
         "nationalID": practitioner.national_id,
         "practitionerNo": practitioner.tz_mct_code,
-        "biometricMethod": "Fingerprint",
+        "biometricMethod": "NONE", #"FINGERPRINT",
         "fpCode": fpcode,
         "imageData": image_data,
     }
@@ -64,7 +65,7 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
             ref_doctype="Healthcare Practitioner",
             ref_docname=practitioner.name,
         )
-        frappe.set_value(
+        frappe.db.set_value(
             "Healthcare Practitioner",
             practitioner.name,
             "date_loggedin_to_nhif",
@@ -143,7 +144,7 @@ def logout_practitioner(settings_doc=None):
             ref_doctype="Healthcare Practitioner",
             ref_docname=practitioner.name,
         )
-        frappe.set_value(
+        frappe.db.set_value(
             "Healthcare Practitioner",
             practitioner.name,
             "date_loggedin_to_nhif",

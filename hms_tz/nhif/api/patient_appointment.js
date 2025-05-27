@@ -375,10 +375,12 @@ frappe.ui.form.on("Patient Appointment", {
               frm.set_value("coverage_plan_name", card.CoveragePlanName);
               frm.set_value("authorization_number", card.AuthorizationNo);
               frm.set_value("nhif_employer_name", card.EmployerName);
-              frm.set_value("fpcode", fingerprint.fpCode);
-              frm.set_value("years_of_service", card.ServiceYear);
+              frm.set_value("fpcode", card.fpCode);
               frm.set_value("poc_reference_no", card.ReferenceNo);
-              frm.save();
+              frm.set_value("years_of_insurance", card.ServiceYear === null ? 0 : parseInt(card.ServiceYear));
+              frm.save().then(() => {
+                frm.reload_doc();
+              });
               frappe.show_alert(
                 {
                   message: __("Authorization Number is updated"),
