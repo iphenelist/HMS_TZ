@@ -1475,8 +1475,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
 
         row.item_code = item_code
 
-        healthcare_service_unit = frappe.get_cached_value(row.ref_doctype, row.ref_docname, "healthcare_service_unit")
-        warehouse = get_warehouse_from_service_unit(healthcare_service_unit)
+        warehouse = get_warehouse_from_service_unit(row.department_hsu)
 
         if warehouse not in warehouses_map:
             warehouses_map[warehouse] = []
@@ -1519,7 +1518,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
 
             item.reference_doctype = row.ref_doctype
             item.reference_name = row.ref_docname
-            item.healthcare_service_unit = row.healthcare_service_unit
+            item.healthcare_service_unit = row.department_hsu
             item.healthcare_practitioner = encounter_doc.practitioner
 
             drug_doc = frappe.get_cached_doc(row.ref_doctype, row.ref_docname)
