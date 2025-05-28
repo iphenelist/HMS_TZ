@@ -9,12 +9,20 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 
 
-def get_visit_types():
-    settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
-    if len(settings) == 0:
-        return
+@frappe.whitelist()
+def get_visit_types(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
+        company = settings[0].company
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -25,7 +33,17 @@ def get_visit_types():
     }
 
     r = requests.request("Get", url, headers=headers, timeout=60)
-    if r.status_code == 200:
+    if r.status_code != 200:
+        add_log(
+            request_type="GetVisitTypes",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+        )
+    else:
         data = json.loads(r.text)
         add_log(
             request_type="GetVisitTypes",
@@ -95,18 +113,16 @@ def get_visit_types():
             except Exception:
                 traceback = frappe.get_traceback()
                 frappe.log_error(title="GetVisitTypes", message=traceback)
-    else:
-        add_log(
-            request_type="GetVisitTypes",
-            request_url=url,
-            request_header=headers,
-            request_body="",
-            response_data=r.text,
-            status_code=r.status_code,
-            company=settings_doc.name,
-        )
+
+        if company and caller == "Front End":
+            frappe.msgprint(
+                "successfully fetched Visit Types",
+                alert=True,
+                indicator="green",
+            )
 
 
+@frappe.whitelist()
 def get_card_verifier():
     settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
