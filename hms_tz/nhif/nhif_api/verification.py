@@ -123,12 +123,19 @@ def get_visit_types(company=None, caller=None):
 
 
 @frappe.whitelist()
-def get_card_verifier():
-    settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
-    if len(settings) == 0:
-        return
+def get_card_verifier(company=None, caller=None):
+    if not company:
+        settings = frappe.db.get_all(
+            "HMS TZ Settings",
+            filters={"enable_nhif_api": 1},
+            fields=["company"],
+        )
+        company = settings[0].company
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", settings[0].company)
+    if not company:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -140,7 +147,18 @@ def get_card_verifier():
 
     r = requests.request("Get", url, headers=headers, timeout=60)
 
-    if r.status_code == 200:
+    if r.status_code != 200:
+        add_log(
+            request_type="GetCardVerifiers",
+            request_url=url,
+            request_header=headers,
+            request_body="",
+            response_data=r.text,
+            status_code=r.status_code,
+            company=settings_doc.name,
+        )
+
+    else:
         data = json.loads(r.text)
         add_log(
             request_type="GetCardVerifiers",
@@ -199,16 +217,13 @@ def get_card_verifier():
             except Exception:
                 traceback = frappe.get_traceback()
                 frappe.log_error(title="CardVerifiers", message=traceback)
-    else:
-        add_log(
-            request_type="GetCardVerifiers",
-            request_url=url,
-            request_header=headers,
-            request_body="",
-            response_data=r.text,
-            status_code=r.status_code,
-            company=settings_doc.name,
-        )
+            
+        if company and caller == "Front End":
+            frappe.msgprint(
+                "successfully fetched Card Verifier",
+                alert=True,
+                indicator="green",
+            )
 
 
 @frappe.whitelist()
