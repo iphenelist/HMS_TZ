@@ -305,7 +305,7 @@ def cancel_sales_invoice(sales_invoice):
 
 
 def check_sales_invoice_exists(appointment):
-    sales_invoice = frappe.db.get_cached_value(
+    sales_invoice = frappe.get_cached_value(
         "Sales Invoice Item",
         {
             "reference_dt": "Patient Appointment",
