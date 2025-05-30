@@ -1,0 +1,22 @@
+[
+  {
+    "dt": "Inpatient Occupancy",
+    "fieldname": "hre_created",
+    "fieldtype": "Check",
+    "insert_after": "is_confirmed",
+    "label": "HRE Created",
+    "default": "0",
+    "read_only": 1,
+    "description": "Hospital Revenue Entry has been created for this occupancy"
+  },
+  {
+    "dt": "Inpatient Consultancy",
+    "fieldname": "hre_created",
+    "fieldtype": "Check",
+    "insert_after": "is_confirmed",
+    "label": "HRE Created",
+    "default": "0",
+    "read_only": 1,
+    "description": "Hospital Revenue Entry has been created for this consultancy"
+  }
+]

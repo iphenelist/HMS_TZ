@@ -635,6 +635,12 @@ frappe.ui.form.on("Patient Appointment", {
             frm.trigger('get_insurance_amount');
         }
     }
+  },
+  biometric_method: (frm) => {
+    if (frm.doc.biometric_method == "NONE") {
+      frm.toggle_display(["remarks"], true);
+      frm.toggle_reqd("remarks", true);
+    }
   }
 });
 
