@@ -529,7 +529,7 @@
         "precision": "",
         "hide_seconds": 0,
         "hide_days": 0,
-        "options": "Fingerprint\nFacial Recognition\nNaN",
+        "options": "Fingerprint\nFacial Recognition\nNONE",
         "sort_options": 0,
         "fetch_if_empty": 0,
         "collapsible": 0,
