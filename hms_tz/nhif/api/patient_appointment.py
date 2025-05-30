@@ -156,9 +156,11 @@ def get_consulting_charge_item(
         "Appointment Type",
         appointment_type,
         [
+            "assistant_md_followup_item",
             "gp_followup_item",
             "specialist_followup_item",
             "super_specialist_followup_item",
+            "assistant_md_fasttrack_item",
             "gp_fasttrack_item",
             "specialist_fasttrack_item",
             "super_specialist_fasttrack_item",
@@ -166,34 +168,22 @@ def get_consulting_charge_item(
         as_dict=True,
     )
 
-    field_name = "inpatient_visit_charge_item" if inpatient_record else "op_consulting_charge_item"
-    cons_item = frappe.get_cached_value("Healthcare Practitioner", practitioner, field_name)
+    field_name = (
+        "inpatient_visit_charge_item"
+        if inpatient_record
+        else "op_consulting_charge_item"
+    )
+    cons_item = frappe.get_cached_value(
+        "Healthcare Practitioner", practitioner, field_name
+    )
 
     charge_item = cons_item
 
-    scheme_id = None
-    if "NHIF" in insurance_company:
-        plan_name = frappe.get_cached_value(
-            "Healthcare Insurance Subscription",
+    if insurance_company and "NHIF" in insurance_company:
+        if validate_schemes_for_fasttrack_and_followups(
             insurance_subscription,
-            "healthcare_insurance_coverage_plan",
-        )
-        scheme_id = frappe.get_cached_value("Healthcare Insurance Coverage Plan", plan_name, "nhif_scheme_id")
-
-    if insurance_company and "NHIF" in insurance_company and scheme_id:
-        if appointment_type == "Follow up Visit" and cint(scheme_id) in [
-            1001,
-            1003,
-            1005,
-            1006,
-            1007,
-            1008,
-            3001,
-            4001,
-            5001,
-            6001,
-            8001,
-        ]:
+            appointment_type,
+        ):
             if "Assistant Medical Officer" in cons_item:
                 charge_item = app_type_details.get("assistant_md_followup_item")
             elif "General Practitioner" in cons_item:
@@ -203,16 +193,10 @@ def get_consulting_charge_item(
             elif "Specialist" in cons_item:
                 charge_item = app_type_details.get("specialist_followup_item")
 
-        elif (
-            cint(apply_fasttrack_charge) == 1
-            and cint(scheme_id) in [3001, 4001, 5001, 6001, 8001]
-            and appointment_type
-            in [
-                "Outpatient Visit",
-                "Normal Visit",
-                "Emergency",
-                "NHIF External Referral",
-            ]
+        elif validate_schemes_for_fasttrack_and_followups(
+            insurance_subscription,
+            appointment_type,
+            apply_fasttrack_charge=apply_fasttrack_charge,
         ):
             if "Assistant Medical Officer" in cons_item:
                 charge_item = app_type_details.get("assistant_md_fasttrack_item")
@@ -461,6 +445,7 @@ def make_next_doc(doc, method, from_hook=True):
     if doc.is_new():
         validate_has_no_consultation(doc, method)
         return
+
     if doc.insurance_subscription:
         is_active, his_patient, coverage_plan = frappe.get_cached_value(
             "Healthcare Insurance Subscription",
@@ -603,38 +588,15 @@ def validate_has_no_consultation(doc, method):
         # Helpdesk: https://support.aakvatech.com/helpdesk/tickets/239
         # NHIF introduce follow up item and its price, therefore not need to set has not consultation charges for NHIF patient
         # 2024-07-19
-        scheme_id = None
-        if doc.insurance_company and "NHIF" in doc.insurance_company:
-            plan_name = frappe.get_cached_value(
-                "Healthcare Insurance Subscription",
-                doc.insurance_subscription,
-                "healthcare_insurance_coverage_plan",
-            )
-            scheme_id = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan",
-                plan_name,
-                "nhif_scheme_id",
-            )
 
         if not (
             doc.insurance_company
             and "NHIF" in doc.insurance_company
-            and doc.appointment_type == "Follow up Visit"
-            and scheme_id
-            and cint(scheme_id)
-            in [
-                1001,
-                1003,
-                1005,
-                1006,
-                1007,
-                1008,
-                3001,
-                4001,
-                5001,
-                6001,
-                8001,
-            ]
+            and "follow" in doc.appointment_type.lower()
+            and validate_schemes_for_fasttrack_and_followups(
+                doc.insurance_subscription,
+                doc.appointment_type
+            )
         ):
             if doc.mode_of_payment:
                 doc.has_no_consultation_charges = frappe.get_cached_value(
@@ -656,6 +618,55 @@ def validate_has_no_consultation(doc, method):
                     doc.invoiced = 1
 
                 frappe.msgprint(
-                    _(f"This appointment type: <b>{doc.appointment_type}</b> has no consultation charges."),
+                    _(
+                        f"This appointment type: <b>{doc.appointment_type}</b> has no consultation charges."
+                    ),
                     alert=True,
                 )
+
+
+@frappe.whitelist()
+def validate_schemes_for_fasttrack_and_followups(
+    insurance_subscription,
+    appointment_type,
+    apply_fasttrack_charge=False,
+):
+    plan_name = frappe.get_cached_value(
+        "Healthcare Insurance Subscription",
+        insurance_subscription,
+        ["healthcare_insurance_coverage_plan"],
+    )
+
+    type_info = frappe.get_cached_value(
+        "Appointment Type",
+        appointment_type,
+        ["has_followup_charges", "has_fasttrack_charges"],
+        as_dict=True
+    )
+
+    plan_info = frappe.get_cached_value(
+        "Healthcare Insurance Coverage Plan", plan_name, 
+        ["nhif_scheme_id", "has_followup_charges", "has_fasttrack_charges"],
+        as_dict=True,
+    )
+
+    if not plan_info.nhif_scheme_id:
+        return False
+
+    if (
+        "follow" in appointment_type.lower()
+        and plan_info.has_followup_charges
+        and type_info.has_followup_charges
+        and not apply_fasttrack_charge
+    ):
+        return True
+    
+    elif (
+        apply_fasttrack_charge
+        and plan_info.has_fasttrack_charges
+        and type_info.has_fasttrack_charges
+    ):
+        return True
+    
+    else:
+        return False
