@@ -115,8 +115,8 @@ def update_patient_history(doc):
 
     medical_history = ""
     for row in doc.codification_table:
-        if row.description:
-            medical_history += row.description + "\n"
+        if row.definition:
+            medical_history += row.definition + "\n"
     doc.medical_history = medical_history
 
     medication = ""
