@@ -996,7 +996,7 @@ def finalized_encounter(cur_encounter, ref_encounter=None):
         frappe.db.set_value("Patient Encounter", cur_encounter, "finalized", 1)
         return
 
-    encounters_list = frappe.get_all(
+    encounters_list = frappe.db.get_all(
         "Patient Encounter",
         filters={"docstatus": 1, "reference_encounter": ref_encounter},
     )
