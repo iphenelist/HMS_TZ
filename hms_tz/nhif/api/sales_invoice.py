@@ -267,7 +267,7 @@ def reset_invoiced_status(doc):
 
 @frappe.whitelist()
 def get_pos_profile(current_user):
-    pos = frappe.get_cached_value("POS Profile User", {"user": current_user}, ["parent"])
+    pos = frappe.get_cached_value("POS Profile User", {"user": current_user}, "parent")
     if pos:
         modes = frappe.db.get_all(
             "POS Payment Method",
