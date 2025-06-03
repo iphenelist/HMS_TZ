@@ -27,7 +27,7 @@ def get_service_approval(
 
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     payload = get_request_approval_payload(
         doc,
@@ -138,7 +138,7 @@ def get_service_approval(
 @frappe.whitelist()
 def get_approval_status(ref_doctype, ref_docname, dni_id=None):
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     authorization_no = ""
@@ -196,7 +196,7 @@ def update_service_approval(ref_doctype, ref_docname, service_type, service_name
 
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     payload = get_update_approval_payload(
@@ -295,7 +295,7 @@ def issue_approved_service(
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -657,7 +657,7 @@ def verify_approval_number(
     ref_code = get_item_refcode(service_type, service_name)
     appointment_info = get_appointment_details(appointment)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     card_no = appointment_info.coverage_plan_card_number or appointment_info.national_id
 
@@ -716,7 +716,7 @@ def verify_approval_number(
 def get_approval_services(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -725,7 +725,7 @@ def get_approval_services(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
     token = settings_doc.get_nhif_token()
     url = f"{settings_doc.nhifservice_url}/api/Approvals/GetApprovalServices"
     headers = {

@@ -39,7 +39,7 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
     payload = json.dumps(payload)
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", practitioner.hms_tz_company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", practitioner.hms_tz_company)
 
     url = f"{settings_doc.nhifservice_url}/api/Attendance/LoginPractitioner"
 
@@ -111,7 +111,7 @@ def logout_practitioner(settings_doc=None):
         frappe.throw(f"Please set National ID for a practitioner: <b>{practitioner.name}</b>")
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", practitioner.hms_tz_company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", practitioner.hms_tz_company)
 
     payload = {
         "practitionerNo": practitioner.tz_mct_code,

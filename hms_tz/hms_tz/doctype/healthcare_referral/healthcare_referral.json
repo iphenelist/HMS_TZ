@@ -129,7 +129,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Source Facility",
-   "options": "HMS TZ Settings",
+   "options": "HMS TZ Setting",
    "read_only": 1,
    "search_index": 1
   },
