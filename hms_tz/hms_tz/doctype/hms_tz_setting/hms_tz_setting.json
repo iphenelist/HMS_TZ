@@ -1,0 +1,238 @@
+{
+ "actions": [],
+ "autoname": "field:company",
+ "creation": "2025-06-03 16:21:08.254499",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "column_break_8xkci",
+  "company",
+  "facility_code",
+  "nhif_tab",
+  "nhif_user",
+  "nhif_client_secret",
+  "nhif_grant_type",
+  "nhif_scope",
+  "column_break_xexyf",
+  "enable_nhif_api",
+  "check_patient_info_on_his",
+  "validate_service_approval_number_on_lrpm_documents",
+  "enable_auto_submit_of_claims",
+  "auto_submit_patient_claim",
+  "get_nhif_token",
+  "section_break_5",
+  "nhif_token_url",
+  "nhifservice_url",
+  "nhif_claim_url",
+  "nhif_token_expiry",
+  "column_break_hcbi3",
+  "nhif_token",
+  "section_break_16",
+  "submit_claim_month",
+  "column_break_10",
+  "submit_claim_year"
+ ],
+ "fields": [
+  {
+   "fieldname": "column_break_8xkci",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "facility_code",
+   "fieldtype": "Data",
+   "label": "Facility Code",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "nhif_tab",
+   "fieldtype": "Tab Break",
+   "label": "NHIF"
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_user",
+   "fieldtype": "Data",
+   "label": "NHIF User",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_client_secret",
+   "fieldtype": "Password",
+   "label": "NHIF Client Secret",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_grant_type",
+   "fieldtype": "Data",
+   "label": "NHIF Grant Type",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_scope",
+   "fieldtype": "Data",
+   "label": "NHIF Scope",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1"
+  },
+  {
+   "fieldname": "column_break_xexyf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_nhif_api",
+   "fieldtype": "Check",
+   "label": "Enable NHIF API",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "check_patient_info_on_his",
+   "fieldtype": "Check",
+   "label": "Check Patient Info on HIS",
+   "search_index": 1
+  },
+  {
+   "default": "1",
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "validate_service_approval_number_on_lrpm_documents",
+   "fieldtype": "Check",
+   "label": "Validate Service Approval number on LRPM Documents",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "enable_auto_submit_of_claims",
+   "fieldtype": "Check",
+   "label": "Enable Auto Submit of Claims",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1 && !doc.__islocal && doc.enable_auto_submit_of_claims == 1",
+   "fieldname": "auto_submit_patient_claim",
+   "fieldtype": "Button",
+   "label": "Auto Submit Patient Claim"
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_claim_url",
+   "fieldtype": "Data",
+   "label": "NHIF Claim URL",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1"
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhifservice_url",
+   "fieldtype": "Data",
+   "label": "NHIF Service URL",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_token_url",
+   "fieldtype": "Data",
+   "label": "NHIF Token URL",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_token_expiry",
+   "fieldtype": "Datetime",
+   "label": "NHIF Token Expiry",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_hcbi3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "nhif_token",
+   "fieldtype": "Small Text",
+   "label": "NHIF Token",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "fieldname": "section_break_16",
+   "fieldtype": "Section Break",
+   "label": "Submit Dates"
+  },
+  {
+   "bold": 1,
+   "fieldname": "submit_claim_month",
+   "fieldtype": "Int",
+   "label": "Submit Claim Month",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_10",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "submit_claim_year",
+   "fieldtype": "Int",
+   "label": "Submit Claim Year",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1 && !doc.__islocal",
+   "fieldname": "get_nhif_token",
+   "fieldtype": "Button",
+   "label": "Get NHIF Token"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-03 16:52:56.536699",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "HMS TZ Setting",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
