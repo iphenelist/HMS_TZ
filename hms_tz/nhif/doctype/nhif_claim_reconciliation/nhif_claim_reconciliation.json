@@ -33,7 +33,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Company",
-   "options": "HMS TZ Settings",
+   "options": "HMS TZ Setting",
    "reqd": 1,
    "search_index": 1
   },

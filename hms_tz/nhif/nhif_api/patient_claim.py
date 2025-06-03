@@ -14,7 +14,7 @@ def submit_folio(doc):
 
     payload = get_payload(doc)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -205,7 +205,7 @@ def get_payload(doc):
 def get_submitted_claims(doc):
     """Get submitted claims from NHIF"""
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -288,7 +288,7 @@ def submit_monthly_claim(doc):
     Submit a monthly claim to NHIF
     """
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     payload = {
         "FacilityCode": settings_doc.facility_code,
@@ -368,7 +368,7 @@ def send_confirmation_code(ref_doctype, ref_docname):
     }
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -427,7 +427,7 @@ def get_receipt(ref_doctype, ref_docname):
 
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 

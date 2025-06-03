@@ -15,7 +15,7 @@ from frappe.utils import date_diff, get_fullname, get_url_to_form, now_datetime,
 def get_admission_types(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -24,7 +24,7 @@ def get_admission_types(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -108,7 +108,7 @@ def get_admission_types(company=None, caller=None):
 def get_discharge_types(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -117,7 +117,7 @@ def get_discharge_types(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -201,7 +201,7 @@ def get_discharge_types(company=None, caller=None):
 def get_ward_types(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -210,7 +210,7 @@ def get_ward_types(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -304,7 +304,7 @@ def get_ward_types(company=None, caller=None):
 def get_room_types(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -313,7 +313,7 @@ def get_room_types(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -463,7 +463,7 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", inpatient_doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -533,7 +533,7 @@ def discharge_patient(discharge_type, ref_doctype, ref_docname, referral_id=""):
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", inpatient_doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -617,7 +617,7 @@ def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doct
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", inpatient_doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -659,14 +659,14 @@ def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doct
 
 
 def send_overstay_nofication():
-    settings = frappe.db.get_all("HMS TZ Settings", filters={"enable_nhif_api": 1}, fields=["company"])
+    settings = frappe.db.get_all("HMS TZ Setting", filters={"enable_nhif_api": 1}, fields=["company"])
     if len(settings) == 0:
         return
 
     for d in settings:
         ip_records = get_inpatient_records(d.company)
 
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", d.company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", d.company)
 
         token = settings_doc.get_nhif_token()
 

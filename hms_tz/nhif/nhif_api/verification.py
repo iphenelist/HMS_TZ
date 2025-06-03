@@ -13,7 +13,7 @@ from hms_tz.nhif.doctype.nhif_scheme.nhif_scheme import add_scheme
 def get_visit_types(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -22,7 +22,7 @@ def get_visit_types(company=None, caller=None):
     if not company:
         return
     
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -126,7 +126,7 @@ def get_visit_types(company=None, caller=None):
 def get_card_verifier(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -135,7 +135,7 @@ def get_card_verifier(company=None, caller=None):
     if not company:
         return
     
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -229,7 +229,7 @@ def get_card_verifier(company=None, caller=None):
 @frappe.whitelist()
 def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None, settings_doc=None):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -282,7 +282,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
 @frappe.whitelist()
 def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docname=None, settings_doc=None):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -339,7 +339,7 @@ def get_card_details_by_national_id(company, national_id, ref_doctype, ref_docna
 @frappe.whitelist()
 def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=None):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -402,7 +402,7 @@ def get_member_picture(company, card_no, ref_doctype, ref_docname, settings_doc=
 @frappe.whitelist()
 def get_patient_detail(card_no, company, ref_doctype, ref_docname=None, settings_doc=None):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("Please Enable NHIF API to proceed..")
@@ -470,7 +470,7 @@ def authorize_patient(
     ref_docname=None,
 ):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("Please Enable NHIF API to proceed..")
@@ -640,7 +640,7 @@ def get_poc_reference_no(
     ref_docname=None,
 ):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     point_of_care_id = frappe.get_cached_value(
         "Healthcare Points of Care",
@@ -736,7 +736,7 @@ def get_authorization_details(
     ref_docname=None,
 ):
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     url = f"{settings_doc.nhifservice_url}/api/Verification/GetAuthorizationDetails?authorizationNo={authorization_no}"
 

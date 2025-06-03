@@ -24,7 +24,7 @@ def enqueue_get_diseases(company):
 def get_points_of_care(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -33,7 +33,7 @@ def get_points_of_care(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -110,7 +110,7 @@ def get_points_of_care(company=None, caller=None):
 def get_diseases(company=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -119,7 +119,7 @@ def get_diseases(company=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 

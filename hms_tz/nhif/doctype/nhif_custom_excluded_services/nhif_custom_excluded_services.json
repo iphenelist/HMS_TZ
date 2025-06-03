@@ -25,7 +25,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Company",
-   "options": "HMS TZ Settings",
+   "options": "HMS TZ Setting",
    "reqd": 1
   },
   {

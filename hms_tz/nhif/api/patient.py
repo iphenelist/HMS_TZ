@@ -67,7 +67,7 @@ def get_nhif_patient_info(
 
     if not company:
         company = frappe.get_list(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             fields=["company"],
             filters={"enable_nhif_api": 1},
         )[0].company
@@ -75,7 +75,7 @@ def get_nhif_patient_info(
     if not company:
         frappe.throw(_("No companies found to connect to NHIF"))
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
     if settings_doc.enable_nhif_api == 0:
         frappe.msgprint("Please Enable NHIF API to proceed..")
         return
