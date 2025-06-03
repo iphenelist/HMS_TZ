@@ -879,12 +879,14 @@ var add_btn_final = (frm) => {
             frappe.call({
               method: "hms_tz.nhif.api.patient_encounter.finalized_encounter",
               args: {
-                ref_encounter: frm.doc.reference_encounter,
                 cur_encounter: frm.doc.name,
+                ref_encounter: frm.doc.reference_encounter,
               },
               freeze: true,
               freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
               callback: function (data) {
+                $('[data-fieldname="set_as_final"]').hide();
+                $('[data-fieldname="referring_practitioner"]').hide();
                 frm.reload_doc();
               },
             });
