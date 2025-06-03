@@ -219,7 +219,7 @@ class NHIFPatientClaim(Document):
         return patient_encounters
 
     def set_claim_values(self, encounter_list):
-        self.facility_code = frappe.get_cached_value("HMS TZ Settings", self.company, "facility_code")
+        self.facility_code = frappe.get_cached_value("HMS TZ Setting", self.company, "facility_code")
         self.posting_date = nowdate()
         self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
@@ -864,7 +864,7 @@ def validate_submit_date(self):
     import calendar
 
     submit_claim_month, submit_claim_year = frappe.get_cached_value(
-        "HMS TZ Settings",
+        "HMS TZ Setting",
         self.company,
         ["submit_claim_month", "submit_claim_year"],
     )

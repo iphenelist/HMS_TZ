@@ -41,7 +41,7 @@ def enqueue_get_nhif_copayment_items(company):
 
 @frappe.whitelist()
 def process_nhif_records(company):
-    facility_code = frappe.get_cached_value("HMS TZ Settings", company, "facility_code")
+    facility_code = frappe.get_cached_value("HMS TZ Setting", company, "facility_code")
     enqueue(
         method=process_nhif_prices,
         queue="long",
@@ -77,7 +77,7 @@ def enqueue_fetch_nhif_items(company):
 
 
 def get_price_package(company):
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
     token = settings_doc.get_nhif_token()
 
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetPricePackage?facilityCode={settings_doc.facility_code}"
@@ -713,7 +713,7 @@ def get_insurance_items(for_prices=False):
 
 
 def get_nhif_copayment_items(company):
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
     token = settings_doc.get_nhif_token()
 
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetCoPaymentSchedule"
@@ -816,7 +816,7 @@ def sync_copayment_items(data):
 def get_nhif_schemes(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -825,7 +825,7 @@ def get_nhif_schemes(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -901,7 +901,7 @@ def get_nhif_products(company=None, caller=None):
 
     if len(companies) == 0:
         companies = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
             pluck="company",
@@ -919,7 +919,7 @@ def get_nhif_products(company=None, caller=None):
 
 
 def get_nhif_product_per_company(company, product_dict):
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
     token = settings_doc.get_nhif_token()
 
     url = f"{settings_doc.nhif_claim_url}/api/Packages/GetProducts"
@@ -1078,7 +1078,7 @@ def add_nhif_product(row, company, abbr):
 def get_item_types(company=None, caller=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -1087,7 +1087,7 @@ def get_item_types(company=None, caller=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 
@@ -1167,7 +1167,7 @@ def get_item_types(company=None, caller=None):
 def get_nhif_items(company=None):
     if not company:
         settings = frappe.db.get_all(
-            "HMS TZ Settings",
+            "HMS TZ Setting",
             filters={"enable_nhif_api": 1},
             fields=["company"],
         )
@@ -1176,7 +1176,7 @@ def get_nhif_items(company=None):
     if not company:
         return
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 

@@ -39,7 +39,7 @@ def create_treatment_referral(doc):
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.source_facility)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.source_facility)
 
     token = settings_doc.get_nhif_token()
 
@@ -138,7 +138,7 @@ def create_service_referral(doc):
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.source_facility)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.source_facility)
 
     token = settings_doc.get_nhif_token()
 
@@ -214,7 +214,7 @@ def update_referral(ref_doctype, ref_docname):
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", doc.source_facility)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.source_facility)
 
     token = settings_doc.get_nhif_token()
 
@@ -269,7 +269,7 @@ def update_referral(ref_doctype, ref_docname):
 
 
 def acknowledge_referral(company, referral_no):
-    settings_doc = frappe.get_cached_doc("HMS TZ Settings", company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
 

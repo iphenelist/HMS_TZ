@@ -55,7 +55,7 @@ def get_service_preapproval(
     payload = json.dumps(payload)
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", encounter_doc.company)
 
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/RequestServices"
 
@@ -163,7 +163,7 @@ def cancel_preapproval(
         return False
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Settings", encounter_doc.company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", encounter_doc.company)
 
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={preapproval_no}&remarks={remarks}"
 
