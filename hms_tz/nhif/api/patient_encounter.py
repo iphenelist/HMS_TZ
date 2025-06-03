@@ -507,8 +507,8 @@ def duplicate_encounter(encounter):
     encounter_dict["encounter_time"] = nowtime()
     encounter_doc = frappe.get_doc(encounter_dict)
     encounter_doc.save(ignore_permissions=True)
+    frappe.db.set_value(doc.doctype, doc.name, "duplicated", 1)
     frappe.msgprint(_(f"Patient Encounter {encounter_doc.name} created"))
-    frappe.db.set_value(doc.doctype, doc.name, {"duplicated": 1})
     return encounter_doc.name
 
 
