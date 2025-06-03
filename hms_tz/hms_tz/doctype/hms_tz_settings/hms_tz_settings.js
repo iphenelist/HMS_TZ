@@ -1,7 +1,8 @@
 // Copyright (c) 2025, Aakvatech and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("HMS TZ Settings", {
-  // refresh: function(frm) {
-  // }
+frappe.ui.form.on('HMS TZ Settings', {
+	// refresh: function(frm) {
+
+	// }
 });
