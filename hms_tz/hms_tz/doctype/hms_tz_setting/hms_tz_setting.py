@@ -79,8 +79,3 @@ class HMSTZSetting(Document):
 					continue
 				else:
 					raise e
-
-
-# doc = frappe.get_cached_doc("HMSTZ Setting", "Shree Hindu Mandal Hospital - Dar es Salaam")
-# token = doc.get_nhif_token()
-# print(token)

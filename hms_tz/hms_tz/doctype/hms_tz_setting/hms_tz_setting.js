@@ -2,9 +2,6 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('HMS TZ Setting', {
-	// refresh: function(frm) {
-
-	// }
 	get_nhif_token: (frm) => {
 		if (frm.is_dirty()) {
 			frm.save();
