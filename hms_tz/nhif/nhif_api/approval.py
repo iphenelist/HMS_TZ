@@ -261,41 +261,46 @@ def update_service_approval(ref_doctype, ref_docname, service_type, service_name
 
 @frappe.whitelist()
 def issue_approved_service(
-    ref_doctype,
-    ref_docname,
+    doc,
+    approval_number,
     service_type,
     service_name,
     fingerprint,
     fpcode,
-    biometric_method,
     qty=1,
+    rate=0,
+    settings_doc=None,
+    biometric_method="NONE",
 ):
-    if not ref_doctype or not ref_docname:
-        frappe.throw("Document Type and Document Name are required")
-
-    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
-
-    fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-    image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-
-    item = frappe.get_cached_value(service_type, service_name, "item")
-    item_rate = get_item_rate(item, doc.company, doc.insurance_subscription, doc.insurance_company)
+    item = ""
+    item_rate = 0
+    if doc.doctype == "Delivery Note":
+        item = service_name
+        item_rate = rate
+    else:
+        item = frappe.get_cached_value(service_type, service_name, "item")
+        item_rate = get_item_rate(item, doc.company, doc.insurance_subscription, doc.insurance_company)
+    
+    # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
+    image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     payload = {
-        "approvalReferenceNo": doc.approval_number,
-        "isBiometricVerified": True,
+        "approvalReferenceNo": approval_number,
+        "isBiometricVerified": False if biometric_method == "NONE" else True,
         "biometricMethod": biometric_method,
         "fpCode": fpcode,
         "imageData": image_data,
         "description": service_name,
         "quantity": qty,
         "unitPrice": item_rate or 0,
-        "createdBy": doc.practitioner,
+        "createdBy": doc.get("practitioner") or doc.get("healthcare_practitioner"),
     }
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
+    if not settings_doc:
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -316,14 +321,14 @@ def issue_approved_service(
             response_data=r.text,
             status_code=r.status_code,
             company=settings_doc.name,
-            ref_doctype=ref_doctype,
-            ref_docname=ref_docname,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name,
         )
-        return {
-            "status": "error",
-            "message": f"Service approval update failed with status code {r.status_code}",
-            "data": r.text,
-        }
+        
+        frappe.throw(
+            title="NHIF API Error",
+            msg=f"Failed to Issue Service<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>",
+        )
     else:
         data = json.loads(r.text)
         add_log(
@@ -334,14 +339,12 @@ def issue_approved_service(
             response_data=data,
             status_code=r.status_code,
             company=settings_doc.name,
-            ref_doctype=ref_doctype,
-            ref_docname=ref_docname,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name,
         )
-        return {
-            "status": "success",
-            "message": "Service approval update successful",
-            "data": data,
-        }
+
+        frappe.msgprint("Service Issued Successfully..!!", alert=True)
+        return data
 
 
 def get_request_approval_payload(
