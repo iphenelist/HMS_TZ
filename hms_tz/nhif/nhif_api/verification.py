@@ -587,7 +587,6 @@ def authorize_patient(
             fpcode,
             biometric_method,
             company,
-            card_no or national_id,
             appointment_id=ref_docname,
             authorization_no=auth_data.get("AuthorizationNo"),
             settings_doc=settings_doc,
@@ -649,17 +648,11 @@ def get_poc_reference_no(
     )
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
 
-    appointment_info = None
-    if appointment_id:
-        appointment_info = frappe.get_cached_value(
+    if not authorization_no and appointment_id:
+        authorization_no = frappe.get_cached_value(
             "Patient Appointment",
             appointment_id,
-            [
-                "authorization_number",
-                "coverage_plan_card_number",
-                "national_id",
-            ],
-            as_dict=True,
+            "authorization_number",
         )
 
     image_data = None
@@ -672,7 +665,7 @@ def get_poc_reference_no(
 
     payload = {
         "pointOfCareID": point_of_care_id,
-        "authorizationNo": authorization_no or appointment_info.authorization_number,
+        "authorizationNo": authorization_no
         "practitionerNo": practitioner_no,
         "biometricMethod": "NONE", #biometric_method.upper(), TODO: update the correct biometric method after confirmation from NHIF
         "fpCode": fpcode,
@@ -690,7 +683,7 @@ def get_poc_reference_no(
     }
 
     r = requests.request("Post", url, headers=headers, data=payload, timeout=60)
-    if r.status_code == 200:
+    if r.status_code != 200:
         data = json.loads(r.text)
         add_log(
             request_type="GeneratePOCReferenceNo",
@@ -702,9 +695,19 @@ def get_poc_reference_no(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id,
         )
-        return data
+        msg = f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>"
+
+        if ref_doctype == "Patient Appointment":
+            frappe.msgprint(
+                title="NHIF API Error",
+                msg=msg,
+            )
+        else:
+            frappe.throw(
+                title="NHIF API Error",
+                msg=msg,
+            )
     else:
         data = json.loads(r.text)
         add_log(
@@ -717,13 +720,11 @@ def get_poc_reference_no(
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
-            card_no=card_no or appointment_info.coverage_plan_card_number or appointment_info.national_id,
         )
-        frappe.msgprint(
-            title="NHIF API Error",
-            msg=f"Failed to Fetch POC Reference No<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>",
-        )
-        return {}
+
+        frappe.msgprint("Point of Care Reference No generated successfully..!!", alert=True)
+
+        return data
 
 
 @frappe.whitelist()
