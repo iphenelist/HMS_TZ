@@ -10,6 +10,8 @@
   "national_drug_code",
   "medication_name",
   "generic_name",
+  "column_break_mzp2e",
+  "points_of_care",
   "medication_class",
   "medication_category",
   "is_generic",
@@ -22,14 +24,15 @@
   "item",
   "item_code",
   "item_group",
-  "description",
+  "column_break_0sqsv",
   "stock_uom",
+  "description",
   "column_break_14",
   "is_billable",
   "rate",
-  "healthcare_service_order_category",
-  "patient_care_type",
   "staff_role",
+  "section_break_chbpl",
+  "company_options",
   "defaults_section",
   "default_dosage_form",
   "default_prescription_dosage",
@@ -287,38 +290,50 @@
    "label": "Is Generic"
   },
   {
-   "fetch_from": "healthcare_service_order_category.patient_care_type",
-   "fieldname": "patient_care_type",
-   "fieldtype": "Link",
-   "label": "Patient Care Type",
-   "options": "Patient Care Type",
-   "read_only": 1
-  },
-  {
    "fieldname": "staff_role",
    "fieldtype": "Link",
    "label": "Staff Role",
    "options": "Role"
   },
   {
-   "fieldname": "healthcare_service_order_category",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Order Category",
-   "options": "Healthcare Service Order Category",
-   "reqd": 1
-  },
-  {
    "fieldname": "medication_category",
    "fieldtype": "Link",
    "label": "Medication Category",
    "options": "Medication Category"
+  },
+  {
+   "fieldname": "column_break_mzp2e",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Pharmacy",
+   "fieldname": "points_of_care",
+   "fieldtype": "Link",
+   "label": "Points of Care",
+   "options": "Healthcare Points of Care",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_0sqsv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_chbpl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "company_options",
+   "fieldtype": "Table",
+   "label": "Company Options",
+   "options": "Healthcare Company Option"
   }
  ],
  "links": [],
- "modified": "2021-11-18 22:58:57.298368",
+ "modified": "2025-06-06 19:24:05.516476",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Medication",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -348,5 +363,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

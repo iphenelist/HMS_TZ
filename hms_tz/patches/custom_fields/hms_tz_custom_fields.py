@@ -1273,13 +1273,6 @@ def execute():
         # ],
         "Medication": [
             {
-                "fieldtype": "Table",
-                "label": "Company Options",
-                "fieldname": "company_options",
-                "insert_after": "column_break_6",
-                "options": "Healthcare Company Option",
-            },
-            {
                 "fieldtype": "Small Text",
                 "label": "Default Comments",
                 "fieldname": "default_comments",
@@ -2482,13 +2475,6 @@ def execute():
             },
         ],
         "Radiology Examination Template": [
-            {
-                "fieldtype": "Link",
-                "label": "Body Part",
-                "fieldname": "body_part",
-                "insert_after": "description",
-                "options": "Body Part",
-            },
             {
                 "fieldtype": "Link",
                 "label": "Healthcare Service Unit",

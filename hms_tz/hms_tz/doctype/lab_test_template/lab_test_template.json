@@ -11,16 +11,15 @@
   "item",
   "lab_test_code",
   "lab_test_group",
+  "column_break_4x34b",
+  "disabled",
   "department",
-  "healthcare_service_order_category",
-  "patient_care_type",
+  "points_of_care",
   "staff_role",
   "column_break_3",
-  "disabled",
   "lab_test_template_type",
   "is_billable",
   "lab_test_rate",
-  "healthcare_service_unit_type",
   "section_break_15",
   "company_options",
   "section_break_description",
@@ -322,31 +321,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "healthcare_service_order_category.patient_care_type",
-   "fieldname": "patient_care_type",
-   "fieldtype": "Link",
-   "label": "Patient Care Type",
-   "options": "Patient Care Type",
-   "read_only": 1
-  },
-  {
    "fieldname": "staff_role",
    "fieldtype": "Link",
    "label": "Staff Role",
    "options": "Role"
-  },
-  {
-   "fieldname": "healthcare_service_unit_type",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Unit Type",
-   "options": "Healthcare Service Unit Type"
-  },
-  {
-   "fieldname": "healthcare_service_order_category",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Order Category",
-   "options": "Healthcare Service Order Category",
-   "reqd": 1
   },
   {
    "fieldname": "section_break_15",
@@ -358,13 +336,25 @@
    "label": "Companys Options",
    "options": "Healthcare Company Option",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_4x34b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Laboratory",
+   "fieldname": "points_of_care",
+   "fieldtype": "Link",
+   "label": "Points of Care",
+   "options": "Healthcare Points of Care"
   }
  ],
  "links": [],
- "modified": "2021-07-31 22:28:23.277810",
+ "modified": "2025-06-06 18:05:06.987347",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Lab Test Template",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -393,6 +383,7 @@
  "search_fields": "lab_test_code,lab_test_name,lab_test_template_type",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "lab_test_name",
  "track_changes": 1
 }
