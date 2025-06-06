@@ -665,7 +665,7 @@ def get_poc_reference_no(
 
     payload = {
         "pointOfCareID": point_of_care_id,
-        "authorizationNo": authorization_no
+        "authorizationNo": authorization_no,
         "practitionerNo": practitioner_no,
         "biometricMethod": "NONE", #biometric_method.upper(), TODO: update the correct biometric method after confirmation from NHIF
         "fpCode": fpcode,
