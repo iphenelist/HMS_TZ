@@ -360,7 +360,7 @@
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Medical Code",
+   "options": "Code Value",
    "read_only": 1
   },
   {
@@ -638,7 +638,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-01-25 15:58:55.159419",
+ "modified": "2025-05-27 23:11:03.241151",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Lab Test",
@@ -679,10 +679,12 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "patient,practitioner,lab_test_name,sample",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "patient",
  "track_changes": 1,
  "track_seen": 1

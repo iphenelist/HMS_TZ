@@ -1,6 +1,6 @@
 [
     {
-        "name": "Medical Code-custom_column_break_yb7td",
+        "name": "Code Value-custom_column_break_yb7td",
         "owner": "Administrator",
         "creation": "2025-04-22 12:58:02.066420",
         "modified": "2025-04-22 13:03:21.230427",
@@ -8,7 +8,7 @@
         "docstatus": 0,
         "idx": 5,
         "is_system_generated": 0,
-        "dt": "Medical Code",
+        "dt": "Code Value",
         "fieldname": "column_break_yb7td",
         "insert_after": "is_non_specific",
         "length": 0,
@@ -46,7 +46,7 @@
         "doctype": "Custom Field"
     },
     {
-        "name": "Medical Code-custom_is_non_specific",
+        "name": "Code Value-custom_is_non_specific",
         "owner": "Administrator",
         "creation": "2025-04-22 12:58:02.335016",
         "modified": "2025-04-22 13:03:07.444767",
@@ -54,7 +54,7 @@
         "docstatus": 0,
         "idx": 4,
         "is_system_generated": 0,
-        "dt": "Medical Code",
+        "dt": "Code Value",
         "label": "Is Non Specific",
         "fieldname": "is_non_specific",
         "insert_after": "uri",
