@@ -14,16 +14,16 @@
   "item_code",
   "item",
   "item_group",
+  "body_part",
+  "column_break_hacpo",
+  "points_of_care",
   "description",
+  "staff_role",
   "column_break_9",
   "is_billable",
   "rate",
   "medical_department",
   "modality_type",
-  "healthcare_service_unit_type",
-  "healthcare_service_order_category",
-  "patient_care_type",
-  "staff_role",
   "accession_number",
   "section_break_20",
   "company_options",
@@ -144,30 +144,10 @@
    "label": "Medical Coding"
   },
   {
-   "fieldname": "healthcare_service_order_category",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Order Category",
-   "options": "Healthcare Service Order Category",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "healthcare_service_order_category.patient_care_type",
-   "fieldname": "patient_care_type",
-   "fieldtype": "Link",
-   "label": "Patient Care Type",
-   "options": "Patient Care Type"
-  },
-  {
    "fieldname": "staff_role",
    "fieldtype": "Link",
    "label": "Staff Role",
    "options": "Role"
-  },
-  {
-   "fieldname": "healthcare_service_unit_type",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Unit Type",
-   "options": "Healthcare Service Unit Type"
   },
   {
    "fieldname": "section_break_20",
@@ -179,14 +159,32 @@
    "label": "Companys Options",
    "options": "Healthcare Company Option",
    "reqd": 1
+  },
+  {
+   "fieldname": "body_part",
+   "fieldtype": "Link",
+   "label": "Body Part",
+   "options": "Body Part"
+  },
+  {
+   "fieldname": "column_break_hacpo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Radiology",
+   "fieldname": "points_of_care",
+   "fieldtype": "Link",
+   "label": "Points of Care",
+   "options": "Healthcare Points of Care"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-31 22:18:25.611200",
+ "modified": "2025-06-06 18:34:23.733527",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Radiology Examination Template",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -205,5 +203,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
