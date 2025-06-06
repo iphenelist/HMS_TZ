@@ -17,15 +17,15 @@
   "item",
   "item_code",
   "item_group",
+  "healthcare_notes_template",
+  "column_break_ulfw4",
+  "points_of_care",
   "description",
   "column_break_5",
   "is_billable",
   "rate",
-  "healthcare_service_order_category",
-  "patient_care_type",
   "staff_role",
   "medical_department",
-  "healthcare_service_unit_type",
   "section_break_16",
   "company_options",
   "medical_coding_section",
@@ -206,31 +206,10 @@
    "options": "Code Value"
   },
   {
-   "fetch_from": "healthcare_service_order_category.patient_care_type",
-   "fieldname": "patient_care_type",
-   "fieldtype": "Link",
-   "label": "Patient Care Type",
-   "options": "Patient Care Type",
-   "read_only": 1
-  },
-  {
    "fieldname": "staff_role",
    "fieldtype": "Link",
    "label": "Staff Role",
    "options": "Role"
-  },
-  {
-   "fieldname": "healthcare_service_unit_type",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Unit Type",
-   "options": "Healthcare Service Unit Type"
-  },
-  {
-   "fieldname": "healthcare_service_order_category",
-   "fieldtype": "Link",
-   "label": "Healthcare Service Order Category",
-   "options": "Healthcare Service Order Category",
-   "reqd": 1
   },
   {
    "collapsible": 1,
@@ -264,13 +243,31 @@
    "label": "Companys Options",
    "options": "Healthcare Company Option",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ulfw4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "points_of_care",
+   "fieldtype": "Link",
+   "label": "Points of Care",
+   "options": "Healthcare Points of Care",
+   "reqd": 1
+  },
+  {
+   "fieldname": "healthcare_notes_template",
+   "fieldtype": "Link",
+   "label": "Healthcare Notes Template",
+   "options": "Healthcare Notes Template"
   }
  ],
  "links": [],
- "modified": "2025-05-27 23:13:48.730558",
+ "modified": "2025-06-06 18:50:59.060994",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Clinical Procedure Template",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -324,6 +321,5 @@
  "sort_order": "DESC",
  "states": [],
  "title_field": "template",
- "track_changes": 1,
- "track_seen": 1
+ "track_changes": 1
 }
