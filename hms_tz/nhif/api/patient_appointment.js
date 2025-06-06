@@ -340,7 +340,7 @@ frappe.ui.form.on("Patient Appointment", {
           frappe.msgprint(__("Face capture failed. Please try again."));
           return;
         }
-      } else {
+      } else if (frm.doc.biometric_method === "Fingerprint") {
         biometricData = await new dpFingerprint({ label: "Authorize" });
         if (!biometricData) {
           frappe.msgprint(__("Fingerprint capture failed. Please try again."));
@@ -358,7 +358,7 @@ frappe.ui.form.on("Patient Appointment", {
           national_id: frm.doc.national_id || "",
           fingerprint: biometricData.Data,
           fpcode: biometricData.fpCode,
-          biometric_method: frm.doc.biometric_method || "NaN",
+          biometric_method: frm.doc.biometric_method || "NONE",
           practitioner: frm.doc.practitioner,
           referral_no: frm.doc.referral_no,
           remarks: frm.doc.remarks,
