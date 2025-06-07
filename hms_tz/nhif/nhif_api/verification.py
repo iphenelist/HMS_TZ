@@ -641,11 +641,8 @@ def get_poc_reference_no(
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
-    point_of_care_id = frappe.get_cached_value(
-        "Healthcare Points of Care",
-        {"name": ["like", point_of_care]},
-        "point_of_care_id",
-    )
+    point_of_care_id = get_point_of_care_id(point_of_care)
+    
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
 
     if not authorization_no and appointment_id:
@@ -778,3 +775,19 @@ def get_authorization_details(
             card_no=card_no,
         )
         return {"ServiceYear": data.get("ServiceYear")}
+
+
+def get_point_of_care_id(point_of_care):
+    """
+    Get the point of care ID from the Healthcare Points of Care doctype.
+    """
+    point_of_care_id = frappe.get_cached_value(
+        "Healthcare Points of Care",
+        {"name": point_of_care},
+        "point_of_care_id",
+    )
+
+    if not point_of_care_id:
+        frappe.throw(f"Point of Care '{point_of_care}' not found.")
+
+    return point_of_care_id
