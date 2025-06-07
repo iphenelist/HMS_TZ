@@ -265,8 +265,8 @@ frappe.ui.form.on("Clinical Procedure", {
         ref_docname: frm.doc.name,
         service_type: "Clinical Procedure Template",
         service_name: frm.doc.procedure_template,
-        fingerprint: biometricData.fingerprint,
-        fpcode: biometricData.fpcode,
+        fingerprint: biometricData.Data,
+        fpcode: biometricData.fpCode,
         biometric_method: frm.doc.biometric_method,
       },
       freeze: true,
@@ -275,9 +275,15 @@ frappe.ui.form.on("Clinical Procedure", {
         if (r.message) {
           if (r.message) {
             frappe.utils.play_sound("submit");
-            // frm.reload_doc();
-          } else {
-            frappe.utils.play_sound("error");
+            let data = r.message;
+            if (data.ReferenceNo) {
+              frm.set_value("poc_reference_no", data.ReferenceNo);
+              frm.save().then(() => {
+                frm.reload_doc();
+              });
+            } else {
+              frappe.utils.play_sound("error");
+            }
           }
         } else {
           frappe.utils.play_sound("error");
