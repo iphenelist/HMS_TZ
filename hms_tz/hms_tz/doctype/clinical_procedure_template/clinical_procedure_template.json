@@ -203,7 +203,7 @@
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Code Value"
+   "options": "Medical Code"
   },
   {
    "fieldname": "staff_role",
