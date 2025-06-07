@@ -1,5 +1,6 @@
 import json
 import frappe
+from frappe.utils import get_url_to_form
 from hms_tz.nhif.nhif_api.verification import get_poc_reference_no
 from hms_tz.nhif.nhif_api.approval import issue_approved_service
 
@@ -22,7 +23,10 @@ def issue_nhif_service(
     biometric_method="NONE"
 ):
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+    
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
+
+    point_of_care = get_patient_care_name(service_type, point_of_care)
 
     poc_reference = get_poc_reference_no(
         point_of_care=point_of_care,
@@ -73,4 +77,25 @@ def issue_nhif_service(
 
     return poc_reference
 
+
+def get_patient_care_name(service_type, service_name):
+    """
+    Get the name of the point of care based on service type and service name.
+    """
+    if not service_type or not service_name:
+        return None
+
+    points_of_care = frappe.get_cached_value(
+        service_type,
+        service_name,
+        "point_of_care"
+    )
+
+    if not points_of_care:
+        url = get_url_to_form(service_type, service_name)
+        frappe.throw(
+            f"Point of care is not set for <a href='{url}'>{frappe.bold(service_name)}</a>, Please set it first."
+        )
+
+    return points_of_care
 
