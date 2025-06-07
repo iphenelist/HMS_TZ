@@ -313,6 +313,7 @@ def issue_approved_service(
 
     r = requests.request("POST", url, headers=headers, data=payload, timeout=120)
     if r.status_code != 200:
+        data = json.loads(r.text) if r.text else {}
         add_log(
             request_type="IssueApprovedService",
             request_url=url,
