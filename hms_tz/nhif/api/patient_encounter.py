@@ -636,14 +636,14 @@ def on_submit(doc, method):
 
 @frappe.whitelist()
 def get_chronic_diagnosis(patient):
-    data = frappe.get_all(
+    data = frappe.db.get_all(
         "Codification Table",
         filters={
             "parent": patient,
             "parenttype": "Patient",
             "parentfield": "codification_table",
         },
-        fields=["medical_code", "code", "description"],
+        fields=["code_value", "code", "definition"],
     )
     return data
 
@@ -662,9 +662,9 @@ def add_chronic_diagnosis(patient, encounter):
 
     else:
         for d in patient_doc.codification_table:
-            medical_codes.append(d.medical_code)
+            medical_codes.append(d.code_value)
             for row in encounter_doc.patient_encounter_preliminary_diagnosis:
-                if row.medical_code not in medical_codes:
+                if row.code_value not in medical_codes:
                     patient_doc.append("codification_table", row)
         patient_doc.save(ignore_permissions=True)
 
@@ -1815,7 +1815,7 @@ def validate_medical_code(doc, method):
     mtuha_missing = ""
     for final_diagnosis in doc.patient_encounter_final_diagnosis:
         if not final_diagnosis.mtuha:
-            mtuha_missing += "-  <b>" + final_diagnosis.medical_code + "</b><br>"
+            mtuha_missing += "-  <b>" + final_diagnosis.code_value + "</b><br>"
 
     if mtuha_missing:
         msgThrow(
@@ -1855,10 +1855,12 @@ def validate_medical_code(doc, method):
         diagnosis_list = []
         if doc.get(diagnosis_table):
             for row in doc.get(diagnosis_table):
-                if not row.medical_code:
+                if not row.code_value:
                     continue
-                d = str(row.medical_code) + "\n " + str(row.description)
+                
+                d = str(row.code_value) + "\n " + str(row.definition)
                 diagnosis_list.append(d)
+
         return diagnosis_list
 
     for from_table, fields in medical_code_mapping().items():

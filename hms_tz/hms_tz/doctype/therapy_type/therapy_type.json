@@ -173,7 +173,7 @@
    "fieldname": "medical_code_standard",
    "fieldtype": "Link",
    "label": "Medical Code Standard",
-   "options": "Medical Code Standard"
+   "options": "Code System"
   },
   {
    "depends_on": "medical_code_standard",
@@ -251,6 +251,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

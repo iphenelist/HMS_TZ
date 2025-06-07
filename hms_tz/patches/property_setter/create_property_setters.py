@@ -45,11 +45,11 @@ def create_property_setter_from_json(property_setters_obj):
         property_setter_dict = {field: property_setter.get(field) for field in field_list if field in property_setter}
 
         make_property_setter(
-            doctype=property_setter_dict["doc_type"],
+            doctype=property_setter_dict.get("doc_type"),
             fieldname=property_setter_dict.get("field_name", None),
-            property=property_setter_dict["property"],
-            value=property_setter_dict["value"],
-            property_type=property_setter_dict["property_type"],
+            property=property_setter_dict.get("property"),
+            value=property_setter_dict.get("value"),
+            property_type=property_setter_dict.get("property_type"),
             for_doctype=for_doctype,
         )
 
