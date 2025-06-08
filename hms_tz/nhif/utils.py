@@ -107,4 +107,3 @@ def get_patient_care_name(service_type, service_name):
         )
 
     return points_of_care
-
