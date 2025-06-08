@@ -249,15 +249,35 @@ frappe.ui.form.on("Therapy Session", {
     if (frm.doc.biometric_method === "Facial Recognition") {
       biometricData = await new FacialRecognition({ label: "Issue Service" });
       if (!biometricData) {
-        frappe.msgprint(__("Face capture failed. Please try again."));
+        frappe.msgprint(__("Fingerprint capture failed. Please try again."));
         return;
       }
-    } else {
+    } else if (frm.doc.biometric_method === "Fingerprint") {
       biometricData = await new dpFingerprint({ label: "Issue Service" });
       if (!biometricData) {
         frappe.msgprint(__("Fingerprint capture failed. Please try again."));
         return;
       }
+    } else {
+      const confirmed = await new Promise((resolve) => {
+        frappe.confirm(
+          __(`
+            <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+            </div>
+            <br>
+            <p class="text-center"><i>Are you sure you want to continue?</i></p>`
+          ),
+          () => resolve(true),
+          () => resolve(false)
+        );
+      });
+      
+      if (!confirmed) {
+        return;
+      }
+
+      biometricData = {Data: "", fpCode: ""};
     }
 
     frappe.call({

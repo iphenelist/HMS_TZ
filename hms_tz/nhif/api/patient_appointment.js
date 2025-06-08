@@ -346,6 +346,26 @@ frappe.ui.form.on("Patient Appointment", {
           frappe.msgprint(__("Fingerprint capture failed. Please try again."));
           return;
         }
+      } else {
+        const confirmed = await new Promise((resolve) => {
+          frappe.confirm(
+            __(`
+              <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+              </div>
+              <br>
+              <p class="text-center"><i>Are you sure you want to continue?</i></p>`
+            ),
+            () => resolve(true),
+            () => resolve(false)
+          );
+        });
+        
+        if (!confirmed) {
+          return;
+        }
+
+        biometricData = {Data: "", fpCode: ""};
       }
 
       frappe.call({
@@ -410,7 +430,7 @@ frappe.ui.form.on("Patient Appointment", {
       console.error("Biometric capture error:", error);
       if (frm.doc.biometric_method === "Facial Recognition") {
         frappe.msgprint(__("Failed to capture face photo. Please try again."));
-      } else {
+      } else if (frm.doc.biometric_method === "Fingerprint") {
         frappe.msgprint(__("Failed to capture fingerprint. Please try again."));
       }
     }
@@ -571,69 +591,69 @@ frappe.ui.form.on("Patient Appointment", {
   },
   apply_fasttrack: async (frm) => {
     if (["Cancelled", "Closed"].includes(frm.doc.status)) {
-        if (frm.doc.apply_fasttrack_charge == 1) {
-            frappe.show_alert("Fasttrack Charge can not be applied for cancelled or closed appointments");
-        }
-        return;
+      if (frm.doc.apply_fasttrack_charge == 1) {
+        frappe.show_alert("Fasttrack Charge can not be applied for cancelled or closed appointments");
+      }
+      return;
     }
 
     if (
-        frm.doc.invoiced ||
-        frm.doc.healthcare_package_order
+      frm.doc.invoiced ||
+      frm.doc.healthcare_package_order
     ) {
-        if (frm.doc.apply_fasttrack_charge == 1) {
-            frappe.show_alert("Fasttrack Charge can not be applied for invoiced appointments");
-        }
-        return;
+      if (frm.doc.apply_fasttrack_charge == 1) {
+        frappe.show_alert("Fasttrack Charge can not be applied for invoiced appointments");
+      }
+      return;
     }
 
     const insurance_company = frm.doc.insurance_company;
     if (!insurance_company || !insurance_company.includes("NHIF")) {
-        return
+      return
     }
 
     await frappe.call('hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups', {
-        insurance_subscription: frm.doc.insurance_subscription,
-        appointment_type: frm.doc.appointment_type,
-        apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
+      insurance_subscription: frm.doc.insurance_subscription,
+      appointment_type: frm.doc.appointment_type,
+      apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
     })
-        .then(r => {
-            if (r.message) {
-                applyFasttrackCheck(frm, frm.doc.appointment_type);
-            } else {
-                frm.toggle_display('apply_fasttrack_charge', false);
-                frm.toggle_enable('apply_fasttrack_charge', false);
-                if (
-                    frm.doc.apply_fasttrack_charge == 1
-                    && !["Cancelled", "Closed"].includes(frm.doc.status)
-                    && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
-                ) {
-                    frm.set_value("apply_fasttrack_charge", 0);
-                }
-                frm.trigger("get_consulting_charge_item");
-                frm.trigger('get_insurance_amount');
-            }
-        });
+      .then(r => {
+        if (r.message) {
+          applyFasttrackCheck(frm, frm.doc.appointment_type);
+        } else {
+          frm.toggle_display('apply_fasttrack_charge', false);
+          frm.toggle_enable('apply_fasttrack_charge', false);
+          if (
+            frm.doc.apply_fasttrack_charge == 1
+            && !["Cancelled", "Closed"].includes(frm.doc.status)
+            && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+          ) {
+            frm.set_value("apply_fasttrack_charge", 0);
+          }
+          frm.trigger("get_consulting_charge_item");
+          frm.trigger('get_insurance_amount');
+        }
+      });
 
     function applyFasttrackCheck(frm, appointment_type) {
-        if (appointment_type.includes("Follow")) {
-            if (
-                frm.doc.apply_fasttrack_charge == 1
-                && !["Cancelled", "Closed"].includes(frm.doc.status)
-                && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
-            ) {
-                frm.set_value("apply_fasttrack_charge", 0);
-            }
-            frm.toggle_display('apply_fasttrack_charge', false);
-            frm.toggle_enable('apply_fasttrack_charge', false);
-            frm.trigger("get_consulting_charge_item");
-            frm.trigger('get_insurance_amount');
-        } else {
-            frm.toggle_display("apply_fasttrack_charge", true);
-            frm.toggle_enable("apply_fasttrack_charge", true);
-            frm.trigger("get_consulting_charge_item");
-            frm.trigger('get_insurance_amount');
+      if (appointment_type.includes("Follow")) {
+        if (
+          frm.doc.apply_fasttrack_charge == 1
+          && !["Cancelled", "Closed"].includes(frm.doc.status)
+          && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+        ) {
+          frm.set_value("apply_fasttrack_charge", 0);
         }
+        frm.toggle_display('apply_fasttrack_charge', false);
+        frm.toggle_enable('apply_fasttrack_charge', false);
+        frm.trigger("get_consulting_charge_item");
+        frm.trigger('get_insurance_amount');
+      } else {
+        frm.toggle_display("apply_fasttrack_charge", true);
+        frm.toggle_enable("apply_fasttrack_charge", true);
+        frm.trigger("get_consulting_charge_item");
+        frm.trigger('get_insurance_amount');
+      }
     }
   },
   biometric_method: (frm) => {
@@ -730,7 +750,7 @@ const check_and_set_availability = (frm) => {
             .set_value("Patient Referral", frm.doc.patient_referral, {
               status: "Completed",
             })
-            .then(() => {});
+            .then(() => { });
         }
       },
     });
@@ -885,9 +905,8 @@ const check_and_set_availability = (frm) => {
 									data-name=${start_str}
 									data-duration=${interval}
 									data-service-unit="${slot_details[i].service_unit || ""}"
-									style="margin: 0 10px 10px 0; width: 72px;" ${
-                    disabled ? 'disabled="disabled"' : ""
-                  }>
+									style="margin: 0 10px 10px 0; width: 72px;" ${disabled ? 'disabled="disabled"' : ""
+                      }>
 									${start_str.substring(0, start_str.length - 3)} ${count}
 								</button>`;
                   })
@@ -1011,9 +1030,8 @@ const check_and_set_availability = (frm) => {
 										data-service-unit="${present_events[i].service_unit || ""}"
 										data-availability="${present_events[i].availability || ""}"
 										flag-fixed-duration=${1}
-										style="margin: 0 10px 10px 0; width: 72px;" ${
-                      disabled ? 'disabled="disabled"' : ""
-                    }>
+										style="margin: 0 10px 10px 0; width: 72px;" ${disabled ? 'disabled="disabled"' : ""
+                        }>
 										${start_str.substring(0, start_str.length - 3)} ${count}
 									</button>`;
                     })
