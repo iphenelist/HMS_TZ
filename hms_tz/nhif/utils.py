@@ -25,11 +25,55 @@ def issue_nhif_service(
 
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
-    point_of_care = get_patient_care_name(service_type, service_name)
-
     data = {}
+
+    if doc.doctype == "Delivery Note":
+        approval_items = []
+        for row in doc.items:
+            if row.is_resctricted == 1:
+                if row.approval_number:
+                    approval_items.append(row)
+                else:
+                    frappe.throw(f"Item: {row.item_code} require Approval Number to issue this Item")
+
+        for d in approval_items:
+            service_data = issue_approved_service(
+                doc,
+                d.approval_number,
+                service_type,
+                d.item_code,
+                fingerprint,
+                fpcode,
+                qty=d.qty,
+                rate=d.rate,
+                settings_doc=settings_doc,
+                biometric_method=biometric_method
+            )
+
+            if service_data:
+                data.update(service_data)
+
+    else:
+        if doc.is_restricted == 1 and doc.approval_number:
+            service_data = issue_approved_service(
+                doc,
+                doc.approval_number,
+                service_type,
+                service_name,
+                fingerprint,
+                fpcode,
+                qty=1,
+                settings_doc=settings_doc,
+                biometric_method=biometric_method
+            )
+
+            if service_data:
+                data.update(service_data)
+
+    point_of_care = get_patient_care_name(service_type, service_name)
+    
     if not doc.poc_reference_no:
-        data = get_poc_reference_no(
+        service_data = get_poc_reference_no(
             point_of_care=point_of_care,
             practitioner=doc.get("practitioner") or doc.get("healthcare_practitioner"),
             fingerprint=fingerprint,
@@ -42,48 +86,9 @@ def issue_nhif_service(
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
-
-    if doc.doctype != "Delivery Note":
-        if doc.is_restricted == 1 and doc.approval_number:
-            d = issue_approved_service(
-                doc,
-                doc.approval_number,
-                service_type,
-                service_name,
-                fingerprint,
-                fpcode,
-                qty=1,
-                settings_doc=settings_doc,
-                biometric_method=biometric_method
-            )
-
-            if d:
-                data.update(d)
-
-    else:
-        for row in doc.items:
-            if (
-                row.is_resctricted == 0 or
-                not row.approval_number
-            ):
-                continue
-
-            d = issue_approved_service(
-                doc,
-                row.approval_number,
-                service_type,
-                row.item_code,
-                fingerprint,
-                fpcode,
-                qty=row.qty,
-                rate=row.rate,
-                settings_doc=settings_doc,
-                biometric_method=biometric_method
-            )
-
-            if d:
-                data.update(d)
-
+        if service_data:
+            data.update(service_data)
+    
     return data
 
 
@@ -91,8 +96,11 @@ def get_patient_care_name(service_type, service_name):
     """
     Get the name of the point of care based on service type and service name.
     """
-    if not service_type or not service_name:
+    if not service_type:
         return None
+    
+    if not service_name and service_type == "Medication":
+        return 'Pharmacy'
 
     points_of_care = frappe.get_cached_value(
         service_type,
