@@ -216,4 +216,74 @@ frappe.ui.form.on("Radiology Examination", {
         }
       });
   },
+  issue_service: async (frm) => {
+    if (!frm.doc.insurance_company.includes("NHIF")) {
+      frappe.show_alert(
+        {
+          message: __("This feature is only applicable for NHIF insurance"),
+          indicator: "orange",
+        },
+        5
+      );
+      return;
+    }
+    if (frm.doc.is_restricted == 1 && !frm.doc.approval_number) {
+      frappe.msgprint("Approval Number is required to issue approved service");
+      return;
+    }
+
+    if (frm.is_dirty()) {
+      frappe.msgprint("Please save the document before issuing approved service");
+      return;
+    }
+
+    let biometricData;
+
+    if (frm.doc.biometric_method === "Facial Recognition") {
+      biometricData = await new FacialRecognition({ label: "Issue Service" });
+      if (!biometricData) {
+        frappe.msgprint(__("Face capture failed. Please try again."));
+        return;
+      }
+    } else {
+      biometricData = await new dpFingerprint({ label: "Issue Service" });
+      if (!biometricData) {
+        frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+        return;
+      }
+    }
+
+    frappe.call({
+      method: "hms_tz.nhif.utils.issue_nhif_service",
+      args: {
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
+        service_type: "Radiology Examination Template",
+        service_name: frm.doc.radiology_examination_template,
+        fingerprint: biometricData.Data,
+        fpcode: biometricData.fpCode,
+        biometric_method: frm.doc.biometric_method,
+      },
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      callback: function (r) {
+        if (r.message) {
+          if (r.message) {
+            frappe.utils.play_sound("submit");
+            let data = r.message;
+            if (data.ReferenceNo) {
+              frm.set_value("poc_reference_no", data.ReferenceNo);
+              frm.save().then(() => {
+                frm.reload_doc();
+              });
+            } else {
+              frappe.utils.play_sound("error");
+            }
+          }
+        } else {
+          frappe.utils.play_sound("error");
+        }
+      },
+    });
+  },
 });
