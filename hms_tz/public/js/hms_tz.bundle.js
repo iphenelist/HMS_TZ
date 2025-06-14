@@ -1,3 +1,3 @@
-import "./fingerprint/digatalPersona/digitalpersona-shims.js";
-import "./fingerprint/digatalPersona/fingerprint.js";
+import "./fingerprint/digitalPersona/digitalpersona-shims.js";
+import "./fingerprint/fingerprint.js";
 import "./facial/facial_recognition.js";
