@@ -1982,7 +1982,7 @@ var login_to_nhif = (frm) => {
         fieldname: "login_to_nhif",
         fieldtype: "Button",
         click: async function () {
-          let fingerprint = await new dpFingerprint({
+          let fingerprint = await new Fingerprint({
             label: "Login To NHIF",
           });
           if (!fingerprint) {
@@ -2180,7 +2180,7 @@ var confirm_consultation_btn = (frm) => {
         fieldname: "confirm_consultation_btn",
         fieldtype: "Button",
         click: async function () {
-          let fingerprint = await new dpFingerprint({
+          let fingerprint = await new Fingerprint({
             label: "Confirm Consulation",
           });
           if (!fingerprint) {

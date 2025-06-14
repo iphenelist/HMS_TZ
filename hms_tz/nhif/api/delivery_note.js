@@ -95,7 +95,7 @@ frappe.ui.form.on("Delivery Note", {
         return;
       }
     } else if (frm.doc.biometric_method === "Fingerprint") {
-      biometricData = await new dpFingerprint({ label: "Issue Service" });
+      biometricData = await new Fingerprint({ label: "Issue Service" });
       if (!biometricData) {
         frappe.msgprint(__("Fingerprint capture failed. Please try again."));
         return;
