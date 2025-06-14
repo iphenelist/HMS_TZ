@@ -341,7 +341,7 @@ frappe.ui.form.on("Patient Appointment", {
           return;
         }
       } else if (frm.doc.biometric_method === "Fingerprint") {
-        biometricData = await new dpFingerprint({ label: "Authorize" });
+        biometricData = await new Fingerprint({ label: "Authorize" });
         if (!biometricData) {
           frappe.msgprint(__("Fingerprint capture failed. Please try again."));
           return;

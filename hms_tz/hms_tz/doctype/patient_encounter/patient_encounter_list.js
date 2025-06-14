@@ -42,7 +42,7 @@ var nhif_btns = (listview) => {
 var login_to_nhif = (listview) => {
   listview.page
     .add_inner_button(__("Login To NHIF"), async () => {
-      let fingerprint = await new dpFingerprint({ label: "Login To NHIF" });
+      let fingerprint = await new Fingerprint({ label: "Login To NHIF" });
       if (!fingerprint) {
         frappe.msgprint(__("Fingerprint capture failed. Please try again."));
         return;
