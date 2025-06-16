@@ -396,12 +396,10 @@ def get_room_types(company=None, caller=None):
 @frappe.whitelist()
 def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_docname):
     inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
-    mct_code = (
-        frappe.get_cached_value(
-            "Healthcare Practitioner",
-            inpatient_doc.admission_practitioner,
-            ["tz_mct_code"],
-        ),
+    mct_code = frappe.get_cached_value(
+        "Healthcare Practitioner",
+        inpatient_doc.primary_practitioner,
+        "tz_mct_code",
     )
 
     authorization_no = frappe.get_cached_value(
@@ -473,7 +471,7 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
     if r.status_code != 200:
         add_log(
             request_type="AdmitPatient",
