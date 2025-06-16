@@ -385,24 +385,6 @@ let admit_patient = (
           });
         }
     })
-
-  // await frappe.call({
-  //   doc: frm.doc,
-  //   method: "admit",
-  //   args: {
-  //     service_unit: service_unit,
-  //     check_in: check_in,
-  //     admission_no: admission_no,
-  //     poc_reference_no: poc_reference_no,
-  //   },
-  //   callback: function (data) {
-  //     if (!data.exc) {
-  //       frm.reload_doc();
-  //     }
-  //   },
-  //   freeze: true,
-  //   freeze_message: __("Processing Patient Admission"),
-  // });
 };
 
 let add_bed_dialog = function (frm) {
