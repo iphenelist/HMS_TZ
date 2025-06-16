@@ -84,8 +84,22 @@ class InpatientRecord(Document):
             frappe.throw(msg)
 
     @frappe.whitelist()
-    def admit(self, service_unit, check_in, expected_discharge=None):
-        admit_patient(self, service_unit, check_in, expected_discharge)
+    def admit(
+        self,
+        service_unit,
+        check_in,
+        admission_no=None,
+        poc_reference_no=None,
+        expected_discharge=None
+    ):
+        admit_patient(
+            self,
+            service_unit,
+            check_in,
+            admission_no,
+            poc_reference_no,
+            expected_discharge
+        )
 
     @frappe.whitelist()
     def discharge(self):
@@ -317,9 +331,18 @@ def get_inpatient_docs_not_invoiced(doc, inpatient_record):
     )
 
 
-def admit_patient(inpatient_record, service_unit, check_in, expected_discharge=None):
+def admit_patient(
+    inpatient_record,
+    service_unit,
+    check_in,
+    admission_no=None,
+    poc_reference_no=None,
+    expected_discharge=None
+):
     inpatient_record.admitted_datetime = check_in
     inpatient_record.status = "Admitted"
+    inpatient_record.admission_no = admission_no
+    inpatient_record.poc_reference_no = poc_reference_no
     inpatient_record.expected_discharge = expected_discharge
 
     inpatient_record.set("inpatient_occupancies", [])
@@ -332,6 +355,7 @@ def admit_patient(inpatient_record, service_unit, check_in, expected_discharge=N
         "inpatient_record",
         inpatient_record.name,
     )
+    return True
 
 
 def transfer_patient(inpatient_record, service_unit, check_in):
