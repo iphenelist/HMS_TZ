@@ -341,9 +341,12 @@ def transfer_patient(inpatient_record, service_unit, check_in):
 
     inpatient_record.save(ignore_permissions=True)
 
-    hsu = frappe.get_cached_doc("Healthcare Service Unit", service_unit)
-    hsu.occupancy_status = "Occupied"
-    hsu.save(ignore_permissions=True)
+    frappe.db.set_value(
+        "Healthcare Service Unit",
+        service_unit,
+        "occupancy_status",
+        "Occupied",
+    )
 
 
 def add_bed_charge(inpatient_record, service_unit, check_in, check_out, left):
@@ -363,9 +366,12 @@ def patient_leave_service_unit(inpatient_record, check_out, leave_from):
                 inpatient_occupancy.left = True
                 inpatient_occupancy.check_out = check_out
 
-                hsu = frappe.get_cached_doc("Healthcare Service Unit", inpatient_occupancy.service_unit)
-                hsu.occupancy_status = "Vacant"
-                hsu.save(ignore_permissions=True)
+                frappe.db.set_value(
+                    "Healthcare Service Unit",
+                    inpatient_occupancy.service_unit,
+                    "occupancy_status",
+                    "Vacant",
+                )
     inpatient_record.save(ignore_permissions=True)
 
 
