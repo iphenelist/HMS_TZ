@@ -36,6 +36,7 @@ class FacialRecognition {
   showDialog() {
     this.dialog = new frappe.ui.Dialog({
       title: __("Patient Face Capture"),
+      width: 150,
       fields: [{
         fieldname: 'face_capture_section',
         fieldtype: 'HTML',
