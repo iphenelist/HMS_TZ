@@ -222,29 +222,45 @@ let admit_patient_dialog = function (frm) {
         reqd: 1,
         default: frappe.datetime.now_datetime(),
       },
+      {
+        fieldtype: "Select",
+        label: "Biometric Method",
+        fieldname: "biometric_method",
+        options: [
+          { value: "Fingerprint", label: __("Fingerprint") },
+          { value: "Facial Recognition", label: __("Facial Recognition") },
+          { value: "NONE", label: __("NONE") },
+        ],
+        default: "Fingerprint",
+        reqd: frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
+        hidden: frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
+      }
     ],
-    primary_action_label: __("Admit"),
+    primary_action_label: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? __("Next") : __("Admit"),
     primary_action: async function () {
       let admission_type = dialog.get_value("admission_type");
       let service_unit = dialog.get_value("service_unit");
       let check_in = dialog.get_value("check_in");
+      let biometric_method = dialog.get_value("biometric_method");
       if (!service_unit && !check_in) {
         return;
       }
 
       if (frm.doc.insurance_company.includes("NHIF")) {
-        nhif_admit_patient(
+        await nhif_admit_patient(
           frm,
+          dialog,
           admission_type,
           service_unit,
           check_in,
+          biometric_method
         );
       } else {
         admit_patient(frm, service_unit, check_in);
+        
+        frm.refresh_fields();
+        dialog.hide();
       }
-
-      frm.refresh_fields();
-      dialog.hide();
     },
   });
 
@@ -270,18 +286,61 @@ let admit_patient_dialog = function (frm) {
   dialog.show();
 };
 
-let nhif_admit_patient = (
+let nhif_admit_patient = async (
   frm,
+  dialog,
   admission_type,
   service_unit,
   check_in,
+  biometric_method
 ) => {
+  let biometricData;
+  
+  if (biometric_method === "Facial Recognition") {
+    biometricData = await new FacialRecognition({ label: "Admit" });
+    if (!biometricData) {
+        frappe.msgprint(__("Face capture failed. Please try again."));
+        return;
+      }
+  } else if (biometric_method === "Fingerprint") {
+    biometricData = await new Fingerprint({ label: "Admit" });
+    if (!biometricData) {
+      frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+      return;
+    }
+  } else {
+    const confirmed = await new Promise((resolve) => {
+      frappe.confirm(
+        __(`
+          <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+            <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+          </div>
+          <br>
+          <p class="text-center"><i>Are you sure you want to continue?</i></p>`
+        ),
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    biometricData = {Data: "", fpCode: ""};
+  }
+  
+  dialog.hide();
+  
   frappe.call({
     method: "hms_tz.nhif.nhif_api.admission.admit_patient",
     args: {
       admission_type: admission_type,
       service_unit: service_unit,
       date_admitted: check_in,
+      fingerprint: biometricData.Data,
+      fpcode: biometricData.fpCode,
+      biometric_method: biometric_method,
       ref_doctype: frm.doc.doctype,
       ref_docname: frm.doc.name,
     },
@@ -289,13 +348,15 @@ let nhif_admit_patient = (
     freeze_message: __("Sending Data to NHIF"),
     callback: (r) => {
       if (r.message) {
-        let data = r.message;
+        let result = r.message;
+        console.log("NHIF Admit Response:", result.admission_no, result.poc_reference_no);
 
-        frm.reload_doc();
         admit_patient(
           frm,
           service_unit,
           check_in,
+          result.admission_no,
+          result.poc_reference_no
         );
       }
     },
@@ -306,22 +367,42 @@ let admit_patient = (
   frm,
   service_unit,
   check_in,
+  admission_no=null,
+  poc_reference_no=null,
 ) => {
-  frappe.call({
-    doc: frm.doc,
-    method: "admit",
-    args: {
-      service_unit: service_unit,
-      check_in: check_in,
-    },
-    callback: function (data) {
-      if (!data.exc) {
-        frm.reload_doc();
-      }
-    },
-    freeze: true,
-    freeze_message: __("Processing Patient Admission"),
-  });
+  frm.call('admit', {
+    service_unit: service_unit,
+    check_in: check_in,
+    admission_no: admission_no,
+    poc_reference_no: poc_reference_no
+  })
+    .then(r => {
+        if (r.message) {
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("Patient admitted successfully"),
+            indicator: "green",
+          });
+        }
+    })
+
+  // await frappe.call({
+  //   doc: frm.doc,
+  //   method: "admit",
+  //   args: {
+  //     service_unit: service_unit,
+  //     check_in: check_in,
+  //     admission_no: admission_no,
+  //     poc_reference_no: poc_reference_no,
+  //   },
+  //   callback: function (data) {
+  //     if (!data.exc) {
+  //       frm.reload_doc();
+  //     }
+  //   },
+  //   freeze: true,
+  //   freeze_message: __("Processing Patient Admission"),
+  // });
 };
 
 let add_bed_dialog = function (frm) {
