@@ -222,27 +222,12 @@ let admit_patient_dialog = function (frm) {
         reqd: 1,
         default: frappe.datetime.now_datetime(),
       },
-      {
-        fieldtype: "Date",
-        label: "Expected Discharge",
-        fieldname: "expected_discharge",
-        default: frm.doc.expected_length_of_stay
-          ? frappe.datetime.add_days(
-              frappe.datetime.now_datetime(),
-              frm.doc.expected_length_of_stay
-            )
-          : "",
-      },
     ],
     primary_action_label: __("Admit"),
     primary_action: async function () {
       let admission_type = dialog.get_value("admission_type");
       let service_unit = dialog.get_value("service_unit");
       let check_in = dialog.get_value("check_in");
-      let expected_discharge = null;
-      if (dialog.get_value("expected_discharge")) {
-        expected_discharge = dialog.get_value("expected_discharge");
-      }
       if (!service_unit && !check_in) {
         return;
       }
@@ -253,10 +238,9 @@ let admit_patient_dialog = function (frm) {
           admission_type,
           service_unit,
           check_in,
-          expected_discharge
         );
       } else {
-        admit_patient(frm, service_unit, check_in, expected_discharge);
+        admit_patient(frm, service_unit, check_in);
       }
 
       frm.refresh_fields();
@@ -291,7 +275,6 @@ let nhif_admit_patient = (
   admission_type,
   service_unit,
   check_in,
-  expected_discharge
 ) => {
   frappe.call({
     method: "hms_tz.nhif.nhif_api.admission.admit_patient",
@@ -313,21 +296,23 @@ let nhif_admit_patient = (
           frm,
           service_unit,
           check_in,
-          expected_discharge
         );
       }
     },
   });
 };
 
-let admit_patient = (frm, service_unit, check_in, expected_discharge) => {
+let admit_patient = (
+  frm,
+  service_unit,
+  check_in,
+) => {
   frappe.call({
     doc: frm.doc,
     method: "admit",
     args: {
       service_unit: service_unit,
       check_in: check_in,
-      expected_discharge: expected_discharge,
     },
     callback: function (data) {
       if (!data.exc) {
