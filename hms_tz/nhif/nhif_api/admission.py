@@ -7,6 +7,7 @@ from frappe.query_builder import DocType
 from hms_tz.nhif.nhif_api.referral import get_disease_code
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.api.inpatient_record import get_last_encounter
+from hms_tz.nhif.nhif_api.verification import get_poc_reference_no
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from frappe.utils import date_diff, get_fullname, get_url_to_form, now_datetime, nowdate, get_datetime
 
@@ -394,23 +395,32 @@ def get_room_types(company=None, caller=None):
 
 
 @frappe.whitelist()
-def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_docname):
-    inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
+def admit_patient(
+    admission_type,
+    service_unit,
+    date_admitted,
+    fingerprint,
+    fpcode,
+    biometric_method,
+    ref_doctype,
+    ref_docname
+):
+    doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
     mct_code = frappe.get_cached_value(
         "Healthcare Practitioner",
-        inpatient_doc.primary_practitioner,
+        doc.primary_practitioner,
         "tz_mct_code",
     )
 
     authorization_no = frappe.get_cached_value(
         "Patient Appointment",
-        inpatient_doc.patient_appointment,
+        doc.patient_appointment,
         "authorization_number",
     )
 
     admission_type_id = frappe.get_cached_value("Healthcare Admission Type", admission_type, "admission_type_id")
 
-    service_unit_type = inpatient_doc.admission_service_unit_type
+    service_unit_type = doc.admission_service_unit_type
     ward_type, item_code = frappe.get_cached_value(
         "Healthcare Service Unit Type",
         service_unit_type,
@@ -429,9 +439,9 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
 
     room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
 
-    bed_charge = get_item_rate(item_code, inpatient_doc.company, inpatient_doc.insurance_subscription)
+    bed_charge = get_item_rate(item_code, doc.company, doc.insurance_subscription)
 
-    admission_encounter_doc = frappe.get_cached_doc("Patient Encounter", inpatient_doc.admission_encounter)
+    admission_encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.admission_encounter)
     
     diagnosis_at_admission = []
     for row in admission_encounter_doc.patient_encounter_final_diagnosis:
@@ -445,23 +455,23 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
 
     payload = {
         "authorizationNo": authorization_no,
-        "fullName": inpatient_doc.patient_name,
-        "gender": inpatient_doc.gender,
-        "dateOfBirth": str(inpatient_doc.dob),
+        "fullName": doc.patient_name,
+        "gender": doc.gender,
+        "dateOfBirth": str(doc.dob),
         "admissionTypeID": admission_type_id,
         "wardTypeID": ward_type_id,
         "roomTypeID": room_type_id,
         "chargesPerDay": bed_charge,
         "practitionerNo": mct_code,
         "diagnosisAtAdmission": ", ".join(diagnosis_at_admission),
-        "practitionersRemarks": inpatient_doc.admission_instruction or "",
+        "practitionersRemarks": doc.admission_instruction or "",
         "dateAdmitted": get_datetime(date_admitted).isoformat(),
         "createdBy": admission_encounter_doc.practitioner,
     }
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -484,6 +494,10 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"NHIF Admission failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('message') or r.text}<b>",
+        )
 
     else:
         data = json.loads(r.text)
@@ -499,7 +513,44 @@ def admit_patient(admission_type, service_unit, date_admitted, ref_doctype, ref_
             ref_docname=ref_docname,
         )
 
-        return data
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"NHIF Admission Successful<br><br>Status Code: {r.status_code}<br>AdmissionNo: <b>{data.get('AdmissionNo')}<b>",
+        )
+
+        point_of_care_name = ""
+        if ward_type == "Normal Ward":
+            point_of_care_name = "Normal Ward Admission"
+        elif ward_type == "HDU":
+            point_of_care_name = "HDU Admission"
+        elif ward_type == "ICU":
+            point_of_care_name = "ICU Admission"
+        
+
+        reference_data = get_poc_reference_no(
+            point_of_care_name,
+            doc.primary_practitioner,
+            fingerprint,
+            fpcode,
+            biometric_method,
+            settings_doc.name,
+            appointment_id=doc.patient_appointment,
+            authorization_no=authorization_no,
+            settings_doc=settings_doc,
+            practitioner_no=mct_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+        )
+
+        # if reference_data:
+        #     data.update(reference_data)
+        
+        # doc.admission_no = data.get("AdmissionNo")
+        # doc.poc_reference_no = data.get("ReferenceNo")
+        # doc.save(ignore_permissions=True)
+        # doc.reload()
+
+        return {"admission_no": data.get("AdmissionNo"), "poc_reference_no": reference_data.get("ReferenceNo") if reference_data else ""}
 
 
 @frappe.whitelist()
