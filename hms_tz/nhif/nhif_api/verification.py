@@ -635,6 +635,7 @@ def get_poc_reference_no(
     appointment_id=None,
     authorization_no=None,
     settings_doc=None,
+    practitioner_no=None,
     ref_doctype=None,
     ref_docname=None,
 ):
@@ -643,7 +644,8 @@ def get_poc_reference_no(
 
     point_of_care_id = get_point_of_care_id(point_of_care)
     
-    practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+    if not practitioner_no:
+        practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
 
     if not authorization_no and appointment_id:
         authorization_no = frappe.get_cached_value(
