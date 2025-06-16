@@ -138,7 +138,7 @@ let discharge_patient_dialog = (frm) => {
         return;
       }
 
-      if (frm.doc.insurance_company.includes("NHIF")) {
+      if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
         nhif_discharge_patient(frm, discharge_type);
       } else {
         discharge_patient(frm);
@@ -232,8 +232,8 @@ let admit_patient_dialog = function (frm) {
           { value: "NONE", label: __("NONE") },
         ],
         default: "Fingerprint",
-        reqd: frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
-        hidden: frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
+        reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
+        hidden: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
       }
     ],
     primary_action_label: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? __("Next") : __("Admit"),
@@ -246,7 +246,7 @@ let admit_patient_dialog = function (frm) {
         return;
       }
 
-      if (frm.doc.insurance_company.includes("NHIF")) {
+      if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
         await nhif_admit_patient(
           frm,
           dialog,
@@ -258,7 +258,6 @@ let admit_patient_dialog = function (frm) {
       } else {
         admit_patient(frm, service_unit, check_in);
         
-        frm.refresh_fields();
         dialog.hide();
       }
     },
@@ -349,7 +348,6 @@ let nhif_admit_patient = async (
     callback: (r) => {
       if (r.message) {
         let result = r.message;
-        console.log("NHIF Admit Response:", result.admission_no, result.poc_reference_no);
 
         admit_patient(
           frm,
@@ -568,7 +566,7 @@ let transfer_patient_dialog = function (frm) {
         return;
       }
 
-      if (frm.doc.insurance_company.includes("NHIF")) {
+      if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
         nhif_transfer_patient(frm, service_unit_type, service_unit, check_in);
       } else {
         transfer_patient(frm);
