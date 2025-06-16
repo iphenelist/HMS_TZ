@@ -162,6 +162,7 @@ export class Fingerprint {
     this.dialog = new frappe.ui.Dialog({
       title: __("Scan Fingerprint"),
       // size: "small",
+      width: 150,
       fields: [
         {
           fieldtype: "Select",
@@ -229,7 +230,7 @@ export class Fingerprint {
       },
     });
 
-    this.dialog.$wrapper.find('.modal-content').css('width', '550px');
+    // this.dialog.$wrapper.find('.modal-content').css('width', '550px');
     this.dialog.show();
   };
 
