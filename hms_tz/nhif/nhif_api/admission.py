@@ -550,7 +550,10 @@ def admit_patient(
         # doc.save(ignore_permissions=True)
         # doc.reload()
 
-        return {"admission_no": data.get("AdmissionNo"), "poc_reference_no": reference_data.get("ReferenceNo") if reference_data else ""}
+        return {
+            "admission_no": data.get("AdmissionNo"),
+            "poc_reference_no": reference_data.get("ReferenceNo") if reference_data else ""
+        }
 
 
 @frappe.whitelist()
@@ -624,14 +627,22 @@ def discharge_patient(discharge_type, ref_doctype, ref_docname, referral_id=""):
 
 
 @frappe.whitelist()
-def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doctype, ref_docname):
-    inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
+def transfer_patient(
+    service_unit_type,
+    service_unit,
+    date_transferred,
+    fingerprint,
+    fpcode,
+    biometric_method,
+    ref_doctype,
+    ref_docname
+):
+    doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
 
     # find the last encounter to find the practitioner from the last encounter
-    last_encounter = get_last_encounter(inpatient_doc.patient, inpatient_doc.name)
-    practitioner = frappe.get_cached_value("Patient Encounter", last_encounter, "practitioner")
-
-    mct_code = (frappe.get_cached_value("Healthcare Practitioner", practitioner, ["tz_mct_code"]),)
+    last_encounter = get_last_encounter(doc.patient, doc.name)
+    practitioner, clinical_notes = frappe.get_cached_value("Patient Encounter", last_encounter, ["practitioner", "examination_detail"])
+    mct_code = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
 
     ward_type, item_code = frappe.get_cached_value(
         "Healthcare Service Unit Type",
@@ -651,22 +662,22 @@ def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doct
 
     room_type_id = frappe.get_cached_value("Healthcare Room Type", room_type, "room_type_id")
 
-    bed_charge = get_item_rate(item_code, inpatient_doc.company, inpatient_doc.insurance_subscription)
+    bed_charge = get_item_rate(item_code, doc.company, doc.insurance_subscription)
 
     payload = {
-        "admissionNo": inpatient_doc.admission_no,
+        "admissionNo": doc.admission_no,
         "practitionerNo": mct_code,
-        "practitionersRemarks": "",
+        "practitionersRemarks": clinical_notes or "",
         "wardTypeID": ward_type_id,
         "roomTypeID": room_type_id,
         "chargesPerDay": bed_charge,
-        "dateTransferred": date_transferred,
+        "dateTransferred": get_datetime(date_transferred).isoformat(),
         "createdBy": get_fullname(frappe.session.user),
     }
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -676,7 +687,7 @@ def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doct
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
     if r.status_code != 200:
         add_log(
             request_type="TransferPatient",
@@ -688,6 +699,10 @@ def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doct
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
+        )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"NHIF Transfer failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
         )
 
     else:
@@ -704,7 +719,37 @@ def transfer_patient(service_unit_type, service_unit, date_transferred, ref_doct
             ref_docname=ref_docname,
         )
 
-        return data
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"NHIF Transfer Successful<br><br>Status Code: {r.status_code}<br>AdmissionNo: <b>{data.get('AdmissionNo')}<b>",
+        )
+
+        point_of_care_name = ""
+        if ward_type == "Normal Ward":
+            point_of_care_name = "Normal Ward Admission"
+        elif ward_type == "HDU":
+            point_of_care_name = "HDU Admission"
+        elif ward_type == "ICU":
+            point_of_care_name = "ICU Admission"
+
+        reference_data = get_poc_reference_no(
+            point_of_care_name,
+            practitioner,
+            fingerprint,
+            fpcode,
+            biometric_method,
+            settings_doc.name,
+            appointment_id=doc.patient_appointment,
+            authorization_no="",
+            settings_doc=settings_doc,
+            practitioner_no=mct_code,
+            ref_doctype=ref_doctype,
+            ref_docname=ref_docname,
+        )
+
+        return {
+            "poc_reference_no": reference_data.get("ReferenceNo") if reference_data else "",
+        }
 
 
 def send_overstay_nofication():
