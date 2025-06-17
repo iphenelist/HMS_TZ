@@ -10,7 +10,7 @@ import frappe
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 from erpnext.accounts.party import get_party_account
 from frappe import _
-from frappe.utils import get_url_to_form, nowdate
+from frappe.utils import get_url_to_form, nowdate, get_datetime, add_days, date_diff, create_batch
 
 from hms_tz.nhif.api.healthcare_utils import (
     create_healthcare_docs,
@@ -76,26 +76,83 @@ def validate_inpatient_occupancies(doc):
 
 
 def daily_update_inpatient_occupancies():
-    occupancies = frappe.get_all("Inpatient Record", filters={"status": "Admitted"})
+    def update_beds(occupancies):
+        docs_to_process = []
+        
+        for item in occupancies:
+            try:
+                doc = frappe.get_doc("Inpatient Record", item.get("name"))
+                occupancies_len = len(doc.inpatient_occupancies)
+                
+                if occupancies_len > 0:
+                    count = 0
+                    last_check_in = get_datetime(doc.inpatient_occupancies[-1].check_in)
+                    last_check_out = doc.inpatient_occupancies[-1].check_out or last_check_in
+                    date_count = date_diff(nowdate(), last_check_out)
 
-    for item in occupancies:
-        try:
-            doc = frappe.get_cached_doc("Inpatient Record", item.name)
-            occupancies_len = len(doc.inpatient_occupancies)
-            if occupancies_len > 0:
-                last_row = doc.inpatient_occupancies[occupancies_len - 1]
-                if not last_row.left:
-                    last_row.left = 1
-                    last_row.check_out = nowdate()
-                    new_row = doc.append("inpatient_occupancies", {})
-                    new_row.check_in = nowdate()
-                    new_row.left = 0
-                    new_row.service_unit = last_row.service_unit
+                    if date_count <= 0:
+                        continue
+
+                    last_row = doc.inpatient_occupancies[-1]
+                    if not last_row.left:
+                        base_check_in = get_datetime(last_row.check_in)
+                        new_rows_data = []
+                        
+                        while count < date_count:
+                            current_checkin_calc = add_days(base_check_in, count + 1)
+                            current_checkout_calc = add_days(current_checkin_calc, 1)
+                            
+                            new_rows_data.append({
+                                'check_in': current_checkin_calc,
+                                'check_out': current_checkout_calc if count < date_count - 1 else None,
+                                'left': True if count < date_count - 1 else False,
+                                'service_unit': last_row.service_unit
+                            })
+                            count += 1
+                        
+                        if len(new_rows_data) == 0:
+                            continue
+
+                        last_row.left = True
+                        last_row.check_out = new_rows_data[0]['check_in']
+                        
+                        for row_data in new_rows_data:
+                            new_row = doc.append("inpatient_occupancies", row_data)
+                        
+                        docs_to_process.append(doc)
+
+            except Exception as e:
+                frappe.log_error(
+                    title=f"Daily Update Beds Error for {item.get('name')}: {str(e)[:100]}",
+                    message=frappe.get_traceback()
+                )
+                continue
+        
+        if docs_to_process:
+            for doc in docs_to_process:
+                try:
                     doc.save(ignore_permissions=True)
-                    frappe.db.commit()
-        except Exception:
-            frappe.log_error(frappe.get_traceback(), str("Daily Update Beds"))
-            continue
+                except Exception as e:
+                    frappe.log_error(
+                        title=f"Save Error for {doc.name}: {str(e)[:100]}",
+                        message=frappe.get_traceback()
+                    )
+                    continue
+    
+    occupancies = frappe.db.get_all(
+        "Inpatient Record", 
+        filters={"status": "Admitted"},
+        fields=["name"]
+    )
+    
+    if len(occupancies) == 0:
+        return
+    
+    for batch in create_batch(occupancies, 50):
+        update_beds(batch)  
+        frappe.db.commit()
+
+
 
 
 @frappe.whitelist()
