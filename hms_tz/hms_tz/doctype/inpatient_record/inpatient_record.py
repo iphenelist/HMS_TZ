@@ -92,7 +92,7 @@ class InpatientRecord(Document):
         poc_reference_no=None,
         expected_discharge=None
     ):
-        admit_patient(
+        return admit_patient(
             self,
             service_unit,
             check_in,
@@ -106,11 +106,15 @@ class InpatientRecord(Document):
         discharge_patient(self)
 
     @frappe.whitelist()
-    def transfer(self, service_unit, check_in, leave_from):
-        if leave_from:
-            patient_leave_service_unit(self, check_in, leave_from)
-        if service_unit:
-            transfer_patient(self, service_unit, check_in)
+    def transfer(self, service_unit, check_in, leave_from, poc_reference_no=None):
+        return transfer_patient(
+            self,
+            service_unit,
+            check_in,
+            check_out=check_in,
+            leave_from=leave_from,
+            poc_reference_no=poc_reference_no
+        )
 
     @frappe.whitelist()
     def add_bed(self, service_unit, check_in, check_out, left):
@@ -358,33 +362,8 @@ def admit_patient(
     return True
 
 
-def transfer_patient(inpatient_record, service_unit, check_in):
-    item_line = inpatient_record.append("inpatient_occupancies", {})
-    item_line.service_unit = service_unit
-    item_line.check_in = check_in
-
-    inpatient_record.save(ignore_permissions=True)
-
-    frappe.db.set_value(
-        "Healthcare Service Unit",
-        service_unit,
-        "occupancy_status",
-        "Occupied",
-    )
-
-
-def add_bed_charge(inpatient_record, service_unit, check_in, check_out, left):
-    item_line = inpatient_record.append("inpatient_occupancies", {})
-    item_line.service_unit = service_unit
-    item_line.check_in = check_in
-    item_line.check_out = check_out
-    item_line.left = left
-
-    inpatient_record.save(ignore_permissions=True)
-
-
-def patient_leave_service_unit(inpatient_record, check_out, leave_from):
-    if inpatient_record.inpatient_occupancies:
+def transfer_patient(inpatient_record, service_unit, check_in, check_out=None, leave_from=None, poc_reference_no=None):
+    if len(inpatient_record.inpatient_occupancies) > 0 and leave_from:
         for inpatient_occupancy in inpatient_record.inpatient_occupancies:
             if inpatient_occupancy.left != 1 and inpatient_occupancy.service_unit == leave_from:
                 inpatient_occupancy.left = True
@@ -396,6 +375,35 @@ def patient_leave_service_unit(inpatient_record, check_out, leave_from):
                     "occupancy_status",
                     "Vacant",
                 )
+    
+    if service_unit:
+        item_line = inpatient_record.append("inpatient_occupancies", {})
+        item_line.service_unit = service_unit
+        item_line.check_in = check_in
+
+        frappe.db.set_value(
+            "Healthcare Service Unit",
+            service_unit,
+            "occupancy_status",
+            "Occupied",
+        )
+    
+    if poc_reference_no:
+        inpatient_record.poc_reference_no = poc_reference_no
+
+    if service_unit or leave_from or poc_reference_no:
+        inpatient_record.save(ignore_permissions=True)
+    
+    return True
+
+
+def add_bed_charge(inpatient_record, service_unit, check_in, check_out, left):
+    item_line = inpatient_record.append("inpatient_occupancies", {})
+    item_line.service_unit = service_unit
+    item_line.check_in = check_in
+    item_line.check_out = check_out
+    item_line.left = left
+
     inpatient_record.save(ignore_permissions=True)
 
 
