@@ -771,7 +771,7 @@ def send_overstay_nofication():
         }
 
         for row in ip_records:
-            inpatient_doc = frappe.get_cached_doc("Inpatient Recrod", row.inpatient_id)
+            inpatient_doc = frappe.get_cached_doc("Inpatient Record", row.inpatient_id)
             inpatient_occupancies = inpatient_doc.get("inpatient_occupancies")
             if len(inpatient_occupancies) == 0:
                 continue
@@ -779,8 +779,8 @@ def send_overstay_nofication():
             last_bed = inpatient_occupancies[-1]
             notification_days = get_notification_days_per_ward(last_bed.service_unit)
 
-            if inpatient_doc.last_overstay_notification_date and notification_days:
-                days_diff = date_diff(inpatient_doc.last_overstay_notification_date, nowdate())
+            if inpatient_doc.get("last_overstay_date") and notification_days:
+                days_diff = date_diff(inpatient_doc.get("last_overstay_date"), nowdate())
                 if days_diff and days_diff <= notification_days:
                     continue
 
@@ -793,7 +793,7 @@ def send_overstay_nofication():
 
             payload = json.dumps(payload)
 
-            r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+            r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
             if r.status_code != 200:
                 add_log(
                     request_type="SendOverstayNotification",
@@ -807,6 +807,12 @@ def send_overstay_nofication():
                     ref_docname=inpatient_doc.name,
                 )
 
+                inpatient_doc.add_comment(
+                    comment_type="Comment",
+                    text=f"NHIF Overstay Notification failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+                )
+                continue
+
             else:
                 data = json.loads(r.text)
                 add_log(
@@ -819,6 +825,11 @@ def send_overstay_nofication():
                     company=settings_doc.name,
                     ref_doctype=inpatient_doc.doctype,
                     ref_docname=inpatient_doc.name,
+                )
+
+                inpatient_doc.add_comment(
+                    comment_type="Comment",
+                    text=f"NHIF Overstay Notification Successful<br><br>Status Code: {r.status_code}<br>AdmissionNo: <b>{data.get('AdmissionNo')}<b>",
                 )
 
 
@@ -844,12 +855,12 @@ def get_inpatient_records(company):
         .where(
             Not(ip.status.isin(["Admission Scheduled", "Discharged"]))
             & (ip.company == company)
+            & (ip.insurance_company.isnotnull() & ip.insurance_company != "")
             & (ip.insurance_company.like("NHIF"))
             & (ip.admission_no.isnotnull() & ip.admission_no != "")
             & (pe.appointment == ip.patient_appointment)
             & (pe.company == company)
             & (pe.duplicated == 0)
-            & (pe.finalized == 0)
         )
     ).run(as_dict=True)
 
@@ -867,8 +878,8 @@ def get_notification_days_per_ward(service_unit):
         .on(hsu.service_unit_type == hsut.name)
         .inner_join(hwt)
         .on(hsut.ward_type == hwt.name)
-        .select(hwt.nofication_required_after)
+        .select(hwt.notification_required_after)
         .where(hsu.name == service_unit)
     ).run(as_dict=True)
 
-    return hwt_data[0].nofication_required_after if len(hwt_data) > 0 else None
+    return hwt_data[0].notification_required_after if len(hwt_data) > 0 else None
