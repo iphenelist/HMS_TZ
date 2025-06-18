@@ -131,17 +131,23 @@ let discharge_patient_dialog = (frm) => {
       },
     ],
     primary_action_label: __("Discharge"),
-    primary_action: async function () {
+    primary_action: async () => {
       let discharge_type = d.get_value("discharge_type");
 
       if (!discharge_type) {
+        frappe.msgprint({
+          title: __("Discharge Type Required"),
+          message: __("Please select a discharge type before proceeding."),
+          indicator: "red",
+        });
+
         return;
       }
 
       if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
-        nhif_discharge_patient(frm, discharge_type);
+        await nhif_discharge_patient(frm, discharge_type);
       } else {
-        discharge_patient(frm);
+        discharge_patient(frm, discharge_type);
       }
 
       frm.refresh_fields();
@@ -160,29 +166,29 @@ let nhif_discharge_patient = (frm, discharge_type) => {
       ref_doctype: frm.doc.doctype,
       ref_docname: frm.doc.name,
     },
+    freeze: true,
+    freeze_message: __("Sending Data to NHIF"),
     callback: (r) => {
       if (r.message) {
         let data = r.message;
 
-        frm.reload_doc();
         discharge_patient(frm);
       }
     },
   });
 };
 
-let discharge_patient = function (frm) {
-  frappe.call({
-    doc: frm.doc,
-    method: "discharge",
-    callback: function (data) {
-      if (!data.exc) {
+let discharge_patient = (frm) => {
+  frm.call("discharge", {})
+  .then(r => {
+      if (!r.message) {
+        frappe.show_alert({
+          message: __("Patient discharged successfully"),
+          indicator: "green",
+        }, 10);
         frm.reload_doc();
       }
-    },
-    freeze: true,
-    freeze_message: __("Processing Inpatient Discharge"),
-  });
+  }); 
 };
 
 let admit_patient_dialog = (frm) => {
