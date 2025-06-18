@@ -498,6 +498,12 @@ def admit_patient(
             comment_type="Comment",
             text=f"NHIF Admission failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('message') or r.text}<b>",
         )
+        frappe.db.commit()
+        
+        frappe.throw(
+            title="NHIF API Error",
+            msg=f"Failed to Admit Patient<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}</b>",
+        )
 
     else:
         data = json.loads(r.text)
@@ -541,14 +547,6 @@ def admit_patient(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
-
-        # if reference_data:
-        #     data.update(reference_data)
-        
-        # doc.admission_no = data.get("AdmissionNo")
-        # doc.poc_reference_no = data.get("ReferenceNo")
-        # doc.save(ignore_permissions=True)
-        # doc.reload()
 
         return {
             "admission_no": data.get("AdmissionNo"),
@@ -704,7 +702,12 @@ def transfer_patient(
             comment_type="Comment",
             text=f"NHIF Transfer failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
         )
+        frappe.db.commit()
 
+        frappe.throw(
+            title="NHIF API Error",
+            msg=f"Failed to Transfer Patient<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}</b>",
+        )
     else:
         data = json.loads(r.text)
         add_log(
@@ -721,7 +724,7 @@ def transfer_patient(
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"NHIF Transfer Successful<br><br>Status Code: {r.status_code}<br>AdmissionNo: <b>{data.get('AdmissionNo')}<b>",
+            text=f"NHIF Transfer Successful<br><br>Status Code: {r.status_code}<br>AdmissionID: <b>{data.get('AdmissionID')}<b>",
         )
 
         point_of_care_name = ""
