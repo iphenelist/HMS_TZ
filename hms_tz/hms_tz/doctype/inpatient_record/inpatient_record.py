@@ -444,17 +444,18 @@ def validate_discharge(inpatient_record):
         )
 
     patient = inpatient_record.patient
+    appointment = inpatient_record.patient_appointment
 
     conditions = {
         "patient": patient,
-        "appointment": inpatient_record.patient_appointment,
+        "appointment": appointment,
         "inpatient_record": inpatient_record.name,
         "company": inpatient_record.company,
         "docstatus": 0,
     }
 
     lrpmt_msg = ""
-    lrpmt_docs = frappe.get_all("LRPMT Returns", filters=conditions, fields=["name"])
+    lrpmt_docs = frappe.db.get_all("LRPMT Returns", filters=conditions, fields=["name"])
     if lrpmt_docs:
         for d in lrpmt_docs:
             lrpmt_msg = _(
@@ -462,108 +463,103 @@ def validate_discharge(inpatient_record):
                 + f"LRPMT Returns: {frappe.bold(d.name)} to return and cancel items\
                 was not submitted <br>"
             )
-        lrpmt_msg += "<h4 style='background-color: LightCoral;'>\
-            please contact relevent department to submit draft LRPMT Returns\
-            before Scheduling Discharge</h4><br>"
+        
+        lrpmt_msg += """<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">\
+              <p class="text-center"><i>please contact relevent department to Submit/Cancel draft LRPMT Returns\
+                before Scheduling Discharge</i></p>
+            </div>"""
 
-    filters = {
-        "patient": patient,
-        "company": inpatient_record.company,
-        "appointment": inpatient_record.patient_appointment,
-        "inpatient_record": inpatient_record.name,
-    }
-    encounter_list = frappe.get_all("Patient Encounter", filters=filters, fields=["name"], pluck="name")
+    procedure_msg = ""
+    procedure_docs = frappe.db.get_all(
+        "Clinical Procedure",
+        filters={
+            "docstatus": 0,
+            "patient": patient,
+            "appointment": appointment,
+            "ref_doctype": "Patient Encounter",
+            "workflow_state": ["!=", "Not Serviced"],
+        },
+        fields=["name", "procedure_template"],
+    )
 
-    if encounter_list:
-        procedure_msg = ""
-        procedure_docs = frappe.get_all(
-            "Clinical Procedure",
-            filters={
-                "patient": patient,
-                "ref_doctype": "Patient Encounter",
-                "ref_docname": ["in", encounter_list],
-                "docstatus": 0,
-                "workflow_state": ["!=", "Not Serviced"],
-            },
-            fields=["name", "procedure_template"],
-        )
+    if procedure_docs:
+        for procedure in procedure_docs:
+            procedure_msg = _(
+                procedure_msg +
+                f"Clinical Procedure: {frappe.bold(procedure['procedure_template'])} of {frappe.bold(procedure['name'])}\
+                    was not Submitted <br>")
 
-        if procedure_docs:
-            for procedure in procedure_docs:
-                procedure_msg = _(
-                    procedure_msg +
-                    f"Clinical Procedure: {frappe.bold(procedure['procedure_template'])} of {frappe.bold(procedure['name'])}\
-                        was not Submitted <br>")
-            procedure_msg += "<h4 style='background-color: LightCoral;'>\
-                please contact relevent department to Submit/Cancel draft Clinical Procedure\
-                before Scheduling Discharge</h4><br>"
+        procedure_msg += """<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">\
+              <p class="text-center"><i>please contact relevent department to Submit/Cancel draft Clinical Procedure\
+                before Scheduling Discharge</i></p>
+            </div>"""
 
-        msg_throw = lrpmt_msg + procedure_msg
-        if msg_throw:
-            frappe.throw(title="Notification"(msg=msg_throw))
+    msg_throw = lrpmt_msg + procedure_msg
+    if msg_throw:
+        frappe.throw(title="Discharge Stopped", msg=msg_throw)
 
-        lab_msg = ""
-        lab_docs = frappe.get_all(
-            "Lab Test",
-            filters={
-                "patient": patient,
-                "ref_doctype": "Patient Encounter",
-                "ref_docname": ["in", encounter_list],
-                "workflow_state": ["!=", "Not Serviced"],
-                "docstatus": 0,
-            },
-            fields=["name", "template"],
-        )
+    lab_msg = ""
+    lab_docs = frappe.db.get_all(
+        "Lab Test",
+        filters={
+            "docstatus": 0,
+            "patient": patient,
+            "appointment": appointment,
+            "ref_doctype": "Patient Encounter",
+            "workflow_state": ["!=", "Not Serviced"],
+        },
+        fields=["name", "template"],
+    )
 
-        if lab_docs:
-            for lab in lab_docs:
-                lab_msg = _(
-                    lab_msg
-                    + f"Lab Test: {frappe.bold(lab['template'])} of {frappe.bold(lab['name'])}\
-                    was not Submitted <br>"
-                )
-            lab_msg += "<br><br>"
+    if lab_docs:
+        for lab in lab_docs:
+            lab_msg = _(
+                lab_msg
+                + f"<li>Lab Test: {frappe.bold(lab['template'])} of {frappe.bold(lab['name'])}\
+                was not Submitted </li>"
+            )
 
-        radiology_msg = ""
-        radiology_docs = frappe.get_all(
-            "Radiology Examination",
-            filters={
-                "patient": patient,
-                "ref_doctype": "Patient Encounter",
-                "ref_docname": ["in", encounter_list],
-                "docstatus": 0,
-                "workflow_state": ["!=", "Not Serviced"],
-            },
-            fields=["name", "radiology_examination_template"],
-        )
+    radiology_msg = ""
+    radiology_docs = frappe.db.get_all(
+        "Radiology Examination",
+        filters={
+            "docstatus": 0,
+            "patient": patient,
+            "appointment": appointment,
+            "ref_doctype": "Patient Encounter",
+            "workflow_state": ["!=", "Not Serviced"],
+        },
+        fields=["name", "radiology_examination_template"],
+    )
 
-        if radiology_docs:
-            for radiology in radiology_docs:
-                radiology_msg = _(
-                    radiology_msg +
-                    f"Radiology Examination: {frappe.bold(radiology['radiology_examination_template'])} of {frappe.bold(radiology['name'])}\
-                        was not Submitted <br>")
-            radiology_msg += "<br><br>"
+    if radiology_docs:
+        for radiology in radiology_docs:
+            radiology_msg = _(
+                radiology_msg +
+                f"<li>Radiology Examination: {frappe.bold(radiology['radiology_examination_template'])} \
+                    of {frappe.bold(radiology['name'])} was not Submitted </li>"
+            )
 
-        drug_msg = ""
-        dn_name = frappe.get_all(
-            "Delivery Note",
-            filters={
-                "patient": patient,
-                "reference_doctype": "Patient Encounter",
-                "reference_name": ["in", encounter_list],
-                "docstatus": 0,
-                "is_return": 0,
-            },
-            fields=["name"],
-        )
+    drug_msg = ""
+    dn_name = frappe.db.get_all(
+        "Delivery Note",
+        filters={
+            "docstatus": 0,
+            "is_return": 0,
+            "patient": patient,
+            "hms_tz_appointment_no": appointment,
+            "reference_doctype": "Patient Encounter",
+        },
+        fields=["name"],
+    )
 
-        if dn_name:
-            for dn in dn_name:
-                drug_msg = _(drug_msg + f"Delivery Note: #{frappe.bold(dn.name)}, was not Submitted <br>")
-            drug_msg += "<br><br>"
+    if dn_name:
+        for dn in dn_name:
+            drug_msg = _(
+                drug_msg + f"<li>Delivery Note: #{frappe.bold(dn.name)}, was not Submitted </li>"
+            )
 
-        msg = lrpmt_msg + lab_msg + radiology_msg + procedure_msg + drug_msg
+    msg = "<ul>" + lab_msg + radiology_msg + drug_msg + "</ul>"
 
-        if msg:
-            frappe.msgprint(title="Notification", msg=msg)
+    if msg:
+        frappe.msgprint(title="Notification", msg=msg)
