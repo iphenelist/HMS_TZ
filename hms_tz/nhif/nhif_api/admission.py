@@ -555,35 +555,64 @@ def admit_patient(
 
 
 @frappe.whitelist()
-def discharge_patient(discharge_type, ref_doctype, ref_docname, referral_id=""):
-    inpatient_doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
-    mct_code = (
-        frappe.get_cached_value(
-            "Healthcare Practitioner",
-            inpatient_doc.discharge_practitioner,
-            ["tz_mct_code"],
-        ),
+def discharge_patient(
+    discharge_type,
+    ref_doctype,
+    ref_docname
+):
+    doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
+    mct_code = frappe.get_cached_value(
+        "Healthcare Practitioner",
+        doc.discharge_practitioner,
+        "tz_mct_code"
     )
 
     discharge_type_id = frappe.get_cached_value("Healthcare Discharge Type", discharge_type, "discharge_type_id")
 
-    # TODO: implement referral to facility code after refferal integration is
-    # done
+    referred_to_facility_code = ""
+    if "Refferal" in discharge_type:
+        filters = {
+            "patient": doc.patient,
+            "appointment": doc.patient_appointment,
+            "source_facility": doc.company,
+            "referral_type": "Treatment",
+            "referral_no": ("is", "set"),
+        }
+        referred_to_facility_code = frappe.get_cached_value("Healthcare Referral", filters, "referred_facility_code")
+        if not referred_to_facility_code:
+            frappe.throw(
+                title="Missing Referral",
+                msg=f"""<p style="margin-left: 20px; margin-bottom: 0;">Discharge Type: <b>{discharge_type}</b></p><div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">\
+                    <p class="text-center"><i>Please create a Referral for Patient: <b>{doc.patient}</b> with Refferal Type as <b>Treatment</b> before Discharging.</i></p>\
+                    </div>"""
+            )
+
+    discharge_encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.discharge_encounter)
+    
+    diagnosis_at_discharge = []
+    for row in discharge_encounter_doc.patient_encounter_final_diagnosis:
+        disease_code = get_disease_code(row.code)
+        diagnosis_at_discharge.append(disease_code)
+
+    if len(diagnosis_at_discharge) == 0:
+        for row in discharge_encounter_doc.patient_encounter_preliminary_diagnosis:
+            disease_code = get_disease_code(row.code)
+            diagnosis_at_admission.append(disease_code)
 
     payload = {
-        "admissionNo": inpatient_doc.admission_no,
+        "admissionNo": doc.admission_no,
         "practitionerNo": mct_code,
-        "practitionersRemarks": inpatient_doc.discharge_instructions,
+        "practitionersRemarks": doc.discharge_instructions,
         "dischargeTypeID": discharge_type_id,
-        "dateDischarged": now_datetime(),
-        "diagnosisAtDischarge": inpatient_doc.diagnosis_at_discharge,
-        "referredToFacilityCode": "",
+        "dateDischarged": get_datetime(now_datetime()).isoformat(),
+        "diagnosisAtDischarge": ", ".join(diagnosis_at_discharge),
+        "referredToFacilityCode": referred_to_facility_code,
         "createdBy": get_fullname(frappe.session.user),
     }
 
     payload = json.dumps(payload)
 
-    settings_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
     token = settings_doc.get_nhif_token()
 
@@ -593,7 +622,7 @@ def discharge_patient(discharge_type, ref_doctype, ref_docname, referral_id=""):
         "Authorization": f"Bearer {token}",
     }
 
-    r = requests.request("Get", url, data=payload, headers=headers, timeout=60)
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=60)
     if r.status_code != 200:
         add_log(
             request_type="DishargePatient",
@@ -605,6 +634,15 @@ def discharge_patient(discharge_type, ref_doctype, ref_docname, referral_id=""):
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
+        )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"NHIF Discharge failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+        )
+        frappe.db.commit()
+        frappe.throw(
+            title="NHIF API Error",
+            msg=f"Failed to Discharge Patient<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}</b>",
         )
 
     else:
@@ -619,6 +657,10 @@ def discharge_patient(discharge_type, ref_doctype, ref_docname, referral_id=""):
             company=settings_doc.name,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
+        )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"NHIF Discharge Successful<br><br>Status Code: {r.status_code}<br>AdmissionID: <b>{data.get('AdmissionID')}<b>",
         )
 
         return data
