@@ -27,8 +27,8 @@ class HealthcareReferral(Document):
     def validate_required_fields(self):
         """Validate required fields"""
 
-        if not self.referrer_facility_code:
-            frappe.throw("Referrer Facility Code is required")
+        if not self.referred_to_facility_code:
+            frappe.throw("Referred To Facility Code is required")
 
         if not self.practitioner_no:
             frappe.throw("Practitioner No is required")
@@ -135,3 +135,28 @@ class HealthcareReferral(Document):
                 services.append(service)
 
         return services
+
+    @frappe.whitelist()
+    def get_source_facility(self):
+        """Get source facility code"""
+
+        if not self.company or self.referral_type == "AcknowledgeServiceReferral":
+            return
+        
+        facility_code = frappe.get_cached_value(
+            "HMS TZ Setting",
+            self.company,
+            "facility_code"
+        )
+
+        if not facility_code:
+            frappe.throw(f"Source Facility Code is not set for the HMS TZ Setting: <b>{self.company}</b>")
+        
+        source_facility = frappe.get_cached_value(
+            "Healthcare Facility",
+            {"facility_code": facility_code},
+            "name"
+        )
+
+        return {"source_facility": source_facility, "source_facility_code": facility_code}
+
