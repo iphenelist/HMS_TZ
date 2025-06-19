@@ -193,6 +193,13 @@ def schedule_inpatient(args):
     if encounter and encounter.referring_practitioner:  # Referring Practitioner
         inpatient_record.referring_practitioner = encounter.referring_practitioner
 
+    if encounter.get("insurance_subscription"):
+        inpatient_record.insurance_subscription = encounter.insurance_subscription
+    if encounter.get("insurance_coverage_plan"):
+        inpatient_record.insurance_coverage_plan = encounter.insurance_coverage_plan
+    if encounter.get("insurance_company"):
+        inpatient_record.insurance_company = encounter.insurance_company
+
     inpatient_record.status = "Admission Scheduled"
     inpatient_record.save(ignore_permissions=True)
 
