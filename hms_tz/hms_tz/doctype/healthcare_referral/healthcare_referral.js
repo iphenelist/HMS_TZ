@@ -11,6 +11,19 @@ frappe.ui.form.on("Healthcare Referral", {
   onload: (frm) => {
     frm.get_field("diagnosis").grid.cannot_add_rows = true;
   },
+  company: (frm) => {
+    if (
+      frm.doc.company &&
+      frm.doc.referral_type != "AcknowledgeServiceReferral"
+    ) {
+      frm.call("get_source_facility", {}).then((r) => {
+        if (r.message) {
+          frm.set_value("source_facility", r.message.source_facility);
+          frm.set_value("source_facility_code", r.message.source_facility_code);
+        }
+      });
+    }
+  },
   select_diagnosis: (frm) => {
     if (!frm.doc.encounter) {
       frappe.msgprint({
