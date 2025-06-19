@@ -30,7 +30,7 @@ def create_treatment_referral(doc):
         "practitionerNo": doc.practitioner_no,
         "practitionersRemarks": doc.reason_for_referral,
         "fromFacilityCode": doc.source_facility_code,
-        "toFacilityCode": doc.referrer_facility_code,
+        "toFacilityCode": doc.referred_to_facility_code,
         "diagnosis": ", ".join(
             [d.disease_code for d in doc.diagnosis]
         ),
@@ -130,7 +130,7 @@ def create_service_referral(doc):
         "practitionerNo": doc.practitioner_no,
         "attendanceDate": str(doc.attendance_date),
         "patientTypeCode": doc.patient_type_code,
-        "facilityCode": doc.referrer_facility_code,
+        "facilityCode": doc.referred_to_facility_code,
         "createdBy": get_fullname(frappe.session.user),
         "diseases": diseases,
         "services": services,
@@ -208,7 +208,7 @@ def update_referral(ref_doctype, ref_docname):
         "referralNo": doc.referral_no,
         "practitionerNo": doc.practitioner_no,
         "practitionersRemarks": doc.reason_for_referral,
-        "toFacilityCode": doc.referrer_facility_code,
+        "toFacilityCode": doc.referred_to_facility_code,
         "createdBy": get_fullname(frappe.session.user),
     }
 
