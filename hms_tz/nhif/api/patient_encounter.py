@@ -1781,7 +1781,7 @@ def set_practitioner_name(doc, method):
         doc.practitioner = practitioner_info.name
         doc.practitioner_name = practitioner_info.practitioner_name
 
-        if "NHIF" in doc.insurance_company and (
+        if doc.insurance_company and "NHIF" in doc.insurance_company and (
             not practitioner_info.date_loggedin_to_nhif
             or getdate(practitioner_info.date_loggedin_to_nhif) != getdate(nowdate())
         ):
