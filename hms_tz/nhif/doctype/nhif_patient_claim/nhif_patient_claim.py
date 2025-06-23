@@ -323,8 +323,8 @@ class NHIFPatientClaim(Document):
                 ct.name,
                 ct.parent,
                 ct.code,
-                ct.medical_code,
-                ct.description,
+                ct.code_value,
+                ct.definition,
                 ct.modified_by,
                 ct.modified,
                 ct.parentfield,
@@ -334,7 +334,7 @@ class NHIFPatientClaim(Document):
                 (ct.parenttype == "Patient Encounter")
                 & (ct.parent.isin(encounter_ids))
             )
-            .groupby(ct.medical_code, ct.parentfield)
+            .groupby(ct.code_value, ct.parentfield)
             .orderby(ct.parentfield, order=frappe.qb.desc)
         ).run(as_dict=True)
 
@@ -348,7 +348,7 @@ class NHIFPatientClaim(Document):
                 new_row.status = "Final"
             new_row.patient_encounter = row.parent
             new_row.codification_table = row.name
-            new_row.medical_code = row.medical_code
+            new_row.medical_code = row.code_value
 
             # Convert the ICD code of CDC to NHIF
             if row.code and len(row.code) > 3 and "." not in row.code:
@@ -358,7 +358,7 @@ class NHIFPatientClaim(Document):
             else:
                 new_row.disease_code = row.code[:3]
 
-            new_row.description = row.description[0:139]
+            new_row.description = row.definition[0:139]
             new_row.item_crt_by = row.practitioner
             new_row.date_created = row.modified
 
