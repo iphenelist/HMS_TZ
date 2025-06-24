@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.query_builder import DocType
-from frappe.utils import get_fullname, nowdate
+from frappe.utils import get_fullname, nowdate, getdate
 
 
 class HospitalRevenueEntry(Document):
@@ -16,7 +16,7 @@ def create_revenue_entry(doc):
     Create Hospital Revenue Entry documents
 
     Args:
-            doc: Source document
+        doc: Source document
     """
     entries = []
     if doc.doctype == "Patient Appointment":
@@ -79,8 +79,6 @@ def update_revenue_entry(
             (hre.lrpmt_doctype == lrpmt_doctype)
             & (hre.lrpmt_docname == lrpmt_docname)
         )
-
-    
     
     query.run()
 
@@ -643,3 +641,281 @@ def get_entry_from_cash_plan(doc):
         entries.append(entry_dict)
 
     return entries
+
+
+def create_inpatient_revenue_entries(doc):
+    """
+    Get entry from the Inpatient record document
+
+    Args:
+        doc: Source document
+    """
+
+    old_occupancy_map =  {}
+    old_consultancy_map = {}
+    entries_to_be_created = []
+    entries_to_be_deleted = []
+
+    old_doc = doc.get_doc_before_save()
+    if len(old_doc.inpatient_occupancies) > 0:
+        old_occupancy_map = {
+            row.name: row for row in old_doc.inpatient_occupancies
+        }
+
+    if len(old_doc.inpatient_consultancy) > 0:
+        old_consultancy_map = {
+            row.name: row for row in old_doc.inpatient_consultancy
+        }
+
+    for row in doc.inpatient_occupancies:
+        old_row = old_occupancy_map.get(row.name)
+        
+        if (
+            old_row and
+            old_row.is_confirmed == 0 and
+            row.is_confirmed == 0
+        ):
+            continue
+
+        elif (
+            old_row and
+            row.hre_created == 0 and
+            old_row.is_confirmed == 0 and
+            row.is_confirmed == 1
+        ):
+            entry_dict = get_entry_from_occupancy(doc, row)
+            entries_to_be_created.append(entry_dict)
+            row.hre_created = 1
+
+        elif (
+            old_row and
+            row.hre_created == 1 and
+            old_row.is_confirmed == 1 and
+            row.is_confirmed == 0
+        ):
+            row.hre_created = 0
+            entries_to_be_deleted.append({
+                "patient": doc.patient,
+                "appointment": doc.patient_appointment,
+                "source_doctype": doc.doctype,
+                "source_docname": doc.name,
+                "lrpmt_doctype": row.doctype,
+                "lrpmt_docname": row.name,
+            })
+        
+        elif (
+            not old_row and
+            row.hre_created == 0 and
+            row.is_confirmed == 1
+        ):
+            entry_dict = get_entry_from_occupancy(doc, row)
+            entries_to_be_created.append(entry_dict)
+            row.hre_created = 1
+        
+        elif (
+            not old_row and
+            row.hre_created == 1 and
+            row.is_confirmed == 0
+        ):
+            row.hre_created = 0
+            entries_to_be_deleted.append({
+                "patient": doc.patient,
+                "appointment": doc.patient_appointment,
+                "source_doctype": doc.doctype,
+                "source_docname": doc.name,
+                "lrpmt_doctype": row.doctype,
+                "lrpmt_docname": row.name,
+            })
+
+    for row in doc.inpatient_consultancy:
+        old_row = old_consultancy_map.get(row.name)
+
+        if (
+            old_row and
+            old_row.is_confirmed == 0 and
+            row.is_confirmed == 0
+        ):
+            continue
+
+        elif (
+            old_row and
+            row.hre_created == 0 and
+            old_row.is_confirmed == 0 and
+            row.is_confirmed == 1
+        ):
+            entry_dict = get_entry_from_consultancy(doc, row)
+            entries_to_be_created.append(entry_dict)
+            row.hre_created = 1
+
+        elif (
+            old_row and
+            row.hre_created == 1 and
+            old_row.is_confirmed == 1 and
+            row.is_confirmed == 0
+        ):
+            row.hre_created = 0
+            entries_to_be_deleted.append({
+                "patient": doc.patient,
+                "appointment": doc.patient_appointment,
+                "source_doctype": doc.doctype,
+                "source_docname": doc.name,
+                "lrpmt_doctype": row.doctype,
+                "lrpmt_docname": row.name,
+            })
+        
+        elif (
+            not old_row and
+            row.hre_created == 0 and
+            row.is_confirmed == 1
+        ):
+            entry_dict = get_entry_from_consultancy(doc, row)
+            entries_to_be_created.append(entry_dict)
+            row.hre_created = 1
+
+        elif (
+            not old_row and
+            row.hre_created == 1 and
+            row.is_confirmed == 0
+        ):
+            row.hre_created = 0
+            entries_to_be_deleted.append({
+                "patient": doc.patient,
+                "appointment": doc.patient_appointment,
+                "source_doctype": doc.doctype,
+                "source_docname": doc.name,
+                "lrpmt_doctype": row.doctype,
+                "lrpmt_docname": row.name,
+            })
+
+    if len(entries_to_be_created) == 0 and len(entries_to_be_deleted) == 0:
+        return
+    
+    for entry in entries_to_be_created:
+        hre = frappe.new_doc("Hospital Revenue Entry")
+        hre.update(entry)
+        hre.insert(ignore_permissions=True)
+        hre.reload()
+
+        # frappe.db.set_value(
+        #     entry.get("lrpmt_doctype"),
+        #     entry.get("lrpmt_docname"),
+        #     "hre_created",
+        #     1
+        # )
+
+
+    for entry in entries_to_be_deleted:
+        hre_docname = frappe.get_cached_value("Hospital Revenue Entry", entry, "name")
+        if not hre_docname:
+            continue
+
+        frappe.delete_doc(
+            "Hospital Revenue Entry",
+            hre_docname,
+            force=True,
+            delete_permanently=True
+        )
+        # frappe.db.set_value(
+        #     entry.get("lrpmt_doctype"),
+        #     entry.get("lrpmt_docname"),
+        #     "hre_created",
+        #     0
+        # )
+
+
+def get_entry_from_occupancy(doc, row):
+    """
+    Get entry from the Inpatient Occupancy row
+
+    Args:
+        doc: Source document
+        row: Inpatient Occupancy row
+
+    Returns:
+        dict: Entry dictionary
+    """
+    entry_dict = {
+        "patient": doc.patient,
+        "patient_name": doc.patient_name,
+        "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
+        "appointment": doc.patient_appointment,
+        "posting_date": getdate(row.check_in),
+        "created_by": get_fullname(frappe.session.user),
+        "company": doc.company,
+        "source_doctype": doc.doctype,
+        "source_docname": doc.name,
+        "price_list": "",
+        "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+        "qty": 1,
+        "rate": row.amount,
+        "amount": row.amount,
+        "service_type": row.doctype,
+        "service_name": frappe.get_cached_value("Healthcare Service Unit", row.service_unit, "service_unit_type"),
+        "is_cancelled": 0,
+        "payment_type":  "Insurance" if doc.insurance_subscription else "Cash",
+        "insurance_subscription": doc.insurance_subscription or "",
+        "insurance_company": doc.insurance_company or "",
+        "insurance_coverage_plan": doc.insurance_coverage_plan or "",
+        "mode_of_payment": "",
+        "sales_invoice": row.sales_invoice_number if row.sales_invoice_number else "",
+        "ref_doctype": "",
+        "ref_docname": "",
+        "lrpmt_doctype": row.doctype,
+        "lrpmt_docname": row.name,
+        "dn_detail": "",
+        "lrpmt_status": "",
+        "department": doc.medical_department,
+        "healthcare_service_unit": row.service_unit,
+        "healthcare_practitioner": "",
+    }
+
+    return entry_dict
+
+
+def get_entry_from_consultancy(doc, row):
+    """
+    Get entry from the Inpatient Consultancy row
+
+    Args:
+        doc: Source document
+        row: Inpatient Consultancy row
+
+    Returns:
+        dict: Entry dictionary
+    """
+    entry_dict = {
+        "patient": doc.patient,
+        "patient_name": doc.patient_name,
+        "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
+        "appointment": doc.patient_appointment,
+        "posting_date": getdate(row.date),
+        "created_by": get_fullname(frappe.session.user),
+        "company": doc.company,
+        "source_doctype": doc.doctype,
+        "source_docname": doc.name,
+        "price_list": "",
+        "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
+        "qty": 1,
+        "rate": row.rate,
+        "amount": row.rate,
+        "service_type": row.doctype,
+        "service_name": row.consultation_item,
+        "is_cancelled": 0,
+        "payment_type":  "Insurance" if doc.insurance_subscription else "Cash",
+        "insurance_subscription": doc.insurance_subscription or "",
+        "insurance_company": doc.insurance_company or "",
+        "insurance_coverage_plan": doc.insurance_coverage_plan or "",
+        "mode_of_payment": "",
+        "sales_invoice": row.sales_invoice_number if row.sales_invoice_number else "",
+        "ref_doctype": "",
+        "ref_docname": "",
+        "lrpmt_doctype": row.doctype,
+        "lrpmt_docname": row.name,
+        "dn_detail": "",
+        "lrpmt_status": "",
+        "department": doc.medical_department,
+        "healthcare_service_unit": "",
+        "healthcare_practitioner": row.healthcare_practitioner,
+    }
+
+    return entry_dict

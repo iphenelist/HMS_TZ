@@ -11,6 +11,7 @@ from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_a
 from erpnext.accounts.party import get_party_account
 from frappe import _
 from frappe.utils import get_url_to_form, nowdate, get_datetime, add_days, date_diff, create_batch
+from hms_tz.nhif.api.patient_encounter import validate_patient_balance_vs_patient_costs
 
 from hms_tz.nhif.api.healthcare_utils import (
     create_healthcare_docs,
@@ -22,7 +23,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     validate_nhif_patient_claim_status,
     get_healthcare_services_to_invoice
 )
-from hms_tz.nhif.api.patient_encounter import validate_patient_balance_vs_patient_costs
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_inpatient_revenue_entries
 
 
 def before_insert(doc, method):
@@ -47,6 +48,8 @@ def before_save(doc, method):
         )
         if doc.admission_service_unit_type != service_unit_type:
             doc.admission_service_unit_type = service_unit_type
+    
+    create_inpatient_revenue_entries(doc)
 
 
 def validate_inpatient_occupancies(doc):
@@ -151,8 +154,6 @@ def daily_update_inpatient_occupancies():
     for batch in create_batch(occupancies, 50):
         update_beds(batch)  
         frappe.db.commit()
-
-
 
 
 @frappe.whitelist()
