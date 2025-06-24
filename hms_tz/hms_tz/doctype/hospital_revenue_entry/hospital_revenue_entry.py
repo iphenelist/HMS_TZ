@@ -8,7 +8,27 @@ from frappe.utils import get_fullname, nowdate, getdate
 
 
 class HospitalRevenueEntry(Document):
-    pass
+    def on_trash(self):
+        """
+        On trash, update the status of the related LRPMT document
+        """
+        msg = """<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">\
+                    <p class="text-center"><i>You cannot delete Hospital Revenue Entry record</i></p>
+                </div>"""
+        
+        if self.source_doctype != "Inpatient Record":
+            frappe.throw(
+                title="Cannot Delete",
+                msg=msg,
+                exc=frappe.ValidationError,
+            )
+        
+        elif not self.flags.is_unconfirmed:
+            frappe.throw(
+                title="Cannot Delete",
+                msg=msg,
+                exc=frappe.ValidationError,
+            )
 
 
 def create_revenue_entry(doc):
@@ -813,7 +833,11 @@ def create_inpatient_revenue_entries(doc):
             "Hospital Revenue Entry",
             hre_docname,
             force=True,
-            delete_permanently=True
+            delete_permanently=True,
+            flags={
+                "ignore_permissions": True,
+                "is_unconfirmed": True
+            }
         )
         # frappe.db.set_value(
         #     entry.get("lrpmt_doctype"),
