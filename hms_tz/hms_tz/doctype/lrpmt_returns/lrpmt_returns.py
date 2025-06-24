@@ -12,6 +12,9 @@ from frappe.utils import cint, flt, get_fullname, nowdate, nowtime, unique
 
 from hms_tz.nhif.api.healthcare_utils import validate_nhif_patient_claim_status
 from hms_tz.nhif.api.patient_encounter import validate_totals
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
+    update_cancelled_revenue_entry,
+)
 
 
 class LRPMTReturns(Document):
@@ -117,7 +120,11 @@ class LRPMTReturns(Document):
                     "is_cancelled",
                     1,
                 )
-                update_cancelled_hsr(item.child_name)
+                update_cancelled_hsr(
+                    item.child_name,
+                    self.name,
+                    remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
+                )
                 continue
 
             doc = frappe.get_cached_doc(item.reference_doctype, item.reference_docname)
@@ -137,7 +144,11 @@ class LRPMTReturns(Document):
                             "is_cancelled",
                             1,
                         )
-                        update_cancelled_hsr(item.child_name)
+                        update_cancelled_hsr(
+                            item.child_name,
+                            self.name,
+                            remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
+                        )
                     
                 except Exception:
                     frappe.log_error(frappe.get_traceback(), str(self.doctype))
@@ -176,7 +187,11 @@ class LRPMTReturns(Document):
                         "sessions_cancelled": total_sessions_cancelled,
                     },
                 )
-                update_cancelled_hsr(item.get("encounter_child_table_id"))
+                update_cancelled_hsr(
+                    item.get("encounter_child_table_id"),
+                    self.name,
+                    remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
+                )
 
             elif item.get("therapy_plan") and len(item.get("therapy_session_ids")) == 0:
                 update_therapy_plan(
@@ -386,7 +401,11 @@ def update_therapy_plan(
                 "sessions_cancelled": total_sessions_cancelled,
             },
         )
-        update_cancelled_hsr(row.get("encounter_child_table_id"))
+        update_cancelled_hsr(
+            row.get("encounter_child_table_id"),
+            self.name,
+            remarks=f"Reason for cancellation: <b>{row.reason or ''}</b>",
+        )
     except Exception:
         frappe.log_error(
             frappe.get_traceback(),
@@ -452,7 +471,11 @@ def update_drug_prescription_for_uncreated_delivery_note(self):
                     "delivered_quantity": item.quantity_prescribed - (item.quantity_to_return + item.qty_returned),
                 },
             )
-            update_cancelled_hsr(item.child_name)
+            update_cancelled_hsr(
+                item.child_name,
+                self.name,
+                remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
+            )
 
 
 def update_drug_description_for_draft_delivery_note(self, delivey_note):
@@ -475,7 +498,11 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
                             - (item.quantity_to_return + item.qty_returned),
                         },
                     )
-                    update_cancelled_hsr(item.child_name)
+                    update_cancelled_hsr(
+                        item.child_name,
+                        self.name,
+                        remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
+                    )
 
     except Exception:
         frappe.log_error(
@@ -1193,7 +1220,13 @@ def set_checked_therapy_items(doc, checked_items):
     return doc.name
 
 
-def update_cancelled_hsr(ref_docname, is_cancelled=1, qty_returned=0):
+def update_cancelled_hsr(
+    ref_docname,
+    lrpmt_return_id,
+    is_cancelled=1,
+    qty_returned=0,
+    remarks=""
+):
     """
     Update the cancelled status of the Healthcare Service Request (HSR) based on the reference document name.
     If qty_returned > 0, fetch and update all Healthcare Service Request Payment records with recalculated amounts.
@@ -1229,3 +1262,11 @@ def update_cancelled_hsr(ref_docname, is_cancelled=1, qty_returned=0):
             .set(hsrp.is_cancelled, is_cancelled)
             .where(hsrp.ref_docname == ref_docname)
         ).run()
+
+        update_cancelled_revenue_entry(
+            ref_docname,
+            lrpmt_return_id,
+            is_cancelled,
+            is_cancelled=is_cancelled,
+            remarks=remarks
+        )
