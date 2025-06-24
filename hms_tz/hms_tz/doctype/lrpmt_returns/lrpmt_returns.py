@@ -117,6 +117,7 @@ class LRPMTReturns(Document):
                     "is_cancelled",
                     1,
                 )
+                update_cancelled_hsr(item.child_name)
                 continue
 
             doc = frappe.get_cached_doc(item.reference_doctype, item.reference_docname)
@@ -136,6 +137,8 @@ class LRPMTReturns(Document):
                             "is_cancelled",
                             1,
                         )
+                        update_cancelled_hsr(item.child_name)
+                    
                 except Exception:
                     frappe.log_error(frappe.get_traceback(), str(self.doctype))
                     frappe.throw(
@@ -173,6 +176,7 @@ class LRPMTReturns(Document):
                         "sessions_cancelled": total_sessions_cancelled,
                     },
                 )
+                update_cancelled_hsr(item.get("encounter_child_table_id"))
 
             elif item.get("therapy_plan") and len(item.get("therapy_session_ids")) == 0:
                 update_therapy_plan(
@@ -382,6 +386,7 @@ def update_therapy_plan(
                 "sessions_cancelled": total_sessions_cancelled,
             },
         )
+        update_cancelled_hsr(row.get("encounter_child_table_id"))
     except Exception:
         frappe.log_error(
             frappe.get_traceback(),
@@ -447,6 +452,7 @@ def update_drug_prescription_for_uncreated_delivery_note(self):
                     "delivered_quantity": item.quantity_prescribed - (item.quantity_to_return + item.qty_returned),
                 },
             )
+            update_cancelled_hsr(item.child_name)
 
 
 def update_drug_description_for_draft_delivery_note(self, delivey_note):
@@ -469,6 +475,7 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
                             - (item.quantity_to_return + item.qty_returned),
                         },
                     )
+                    update_cancelled_hsr(item.child_name)
 
     except Exception:
         frappe.log_error(
@@ -479,23 +486,23 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
             str(f"Apply workflow error, for delivery note: {bold(delivey_note)}, check error log for more details")
         )
 
-    frappe.db.commit()
-
 
 def update_drug_prescription_for_submitted_delivery_note(item):
     item_cancelled = 0
     if item.quantity_prescribed <= (item.quantity_to_return + item.qty_returned):
         item_cancelled = 1
 
+    qty_returned = item.quantity_to_return + item.qty_returned
     frappe.db.set_value(
         "Drug Prescription",
         item.child_name,
         {
-            "quantity_returned": item.quantity_to_return + item.qty_returned,
-            "delivered_quantity": item.quantity_prescribed - (item.quantity_to_return + item.qty_returned),
+            "quantity_returned": qty_returned,
+            "delivered_quantity": item.quantity_prescribed - qty_returned,
             "is_cancelled": item_cancelled,
         },
     )
+    update_cancelled_hsr(item.child_name, item_cancelled, qty_returned=qty_returned)
 
 
 def return_drug_quantity_to_stock(self, source_doc):
@@ -1184,3 +1191,41 @@ def set_checked_therapy_items(doc, checked_items):
 
     doc.save()
     return doc.name
+
+
+def update_cancelled_hsr(ref_docname, is_cancelled=1, qty_returned=0):
+    """
+    Update the cancelled status of the Healthcare Service Request (HSR) based on the reference document name.
+    If qty_returned > 0, fetch and update all Healthcare Service Request Payment records with recalculated amounts.
+    """
+    hsrp = DocType("Healthcare Service Request Payment")
+
+    if qty_returned > 0:
+        payment_records = (
+            frappe.qb.from_(hsrp)
+            .select(
+                hsrp.name,
+                hsrp.rate,
+                hsrp.qty,
+                hsrp.percent_covered
+            )
+            .where(hsrp.ref_docname == ref_docname)
+        ).run(as_dict=True)
+        
+        for record in payment_records:
+            actual_qty = record.get('qty', 0) - qty_returned
+            calculated_amount = round(record.get('rate', 0) * actual_qty * (record.get('percent_covered', 0) / 100), 2)
+
+            (
+                frappe.qb.update(hsrp)
+                .set(hsrp.amount, calculated_amount)
+                .set(hsrp.is_cancelled, is_cancelled)
+                .set(hsrp.qty_returned, qty_returned)
+                .where(hsrp.name == record.name)
+            ).run()
+    else:
+        (
+            frappe.qb.update(hsrp)
+            .set(hsrp.is_cancelled, is_cancelled)
+            .where(hsrp.ref_docname == ref_docname)
+        ).run()
