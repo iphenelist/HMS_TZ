@@ -103,6 +103,25 @@ def update_revenue_entry(
     query.run()
 
 
+def update_cancelled_revenue_entry(
+    ref_docname,
+    lrpmt_return_id,
+    is_cancelled=1,
+    remarks=""
+):
+    hre = DocType("Hospital Revenue Entry")
+    query = (
+        frappe.qb.update(hre)
+        .set(hre.is_cancelled, is_cancelled)
+        .set(hre.lrpmt_return_id, lrpmt_return_id)
+        .set(hre.remarks, remarks)
+        .where(
+            (hre.ref_docname == ref_docname)
+        )
+    )
+    query.run()
+
+
 def get_entry_from_appointment(doc):
     """
     Get entry from the appointment document
