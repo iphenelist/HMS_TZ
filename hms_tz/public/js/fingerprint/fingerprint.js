@@ -70,9 +70,9 @@ export class Fingerprint {
       onSamplesAcquired: (samples, deviceType) => {
         this.samples = samples;
         this.currentDeviceType = deviceType;
-        this.showFingerprintImage(this.samples[0]);
+        // this.showFingerprintImage(this.samples[0]);
         this.fingerprintAcquired = true;
-        this.updatePrimaryLabel();
+        this.getFingerprintData();
       },
       onQualityReported: (quality) => {
         console.log("Quality Reported:", quality);
@@ -304,42 +304,27 @@ export class Fingerprint {
     }
   };
 
-  updatePrimaryLabel = () => {
-    this.dialog.set_primary_action(this.label, async () => {
-      if (!this.fingerprintAcquired || !this.samples) {
-        frappe.msgprint(__("Please scan your fingerprint first."));
-        return;
-      }
+  getFingerprintData = async() => {
+    if (!this.fingerprintAcquired || !this.samples) {
+      frappe.msgprint(__("Please scan your fingerprint first."));
+      return;
+    }
 
-      if (!this.selectedFinger) {
-        frappe.msgprint(__("Please select a finger position."));
-        return;
-      }
+    if (!this.selectedFinger) {
+      frappe.msgprint(__("Please select a finger position."));
+      return;
+    }
 
-      // Validate fingerprint data
-      const fingerprintData = this.samples[0];
-      if (!fingerprintData || typeof fingerprintData !== 'string') {
-        frappe.msgprint(__("Invalid fingerprint data. Please try again."));
-        return;
-      }
+    if (this.fingerprintPromiseResolve) {
+      const data = {
+        Data: this.samples[0],
+        fpCode: this.selectedFinger,
+      };
+      
+      this.fingerprintPromiseResolve(data);
+    }
 
-      if (this.fingerprintPromiseResolve) {
-        const data = {
-          Data: fingerprintData,
-          fpCode: this.selectedFinger,
-        };
-        
-        console.log("Fingerprint capture successful:", {
-          deviceType: this.currentDeviceType,
-          fingerCode: this.selectedFinger,
-          dataLength: fingerprintData.length
-        });
-        
-        this.fingerprintPromiseResolve(data);
-      }
-
-      await this.destroy();
-    });
+    await this.destroy();
   };
 
   updateDeviceConnectedStatus = (content) => {
@@ -366,10 +351,10 @@ export class Fingerprint {
 
       d.html(`
           <div id="fingerprint-image"
-              style="width: 120px; height: 140px; border: 1px solid black;
+              style="width: 100px; height: 140px; border: 1px solid black;
                   display: flex; flex-direction: column; align-items: center; margin-left: 200px;
                   justify-content: center; text-align: center;">
-              <img src="${imageSrc}" alt="Fingerprint" style="width: 100px; height: 100px;">
+              <img src="${imageSrc}" alt="Fingerprint" style="width: 100px; height: 140px; background-color: white;">
           </div>
       `);
     }

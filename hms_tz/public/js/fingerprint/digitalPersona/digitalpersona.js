@@ -131,7 +131,8 @@ export class DigitalPersona {
     }
     
     const deviceId = device.deviceId || device;
-    await this.dpReader.startAcquisition(SampleFormat.PngImage, deviceId);
+    // await this.dpReader.startAcquisition(SampleFormat.PngImage, deviceId);
+    await this.dpReader.startAcquisition(SampleFormat.Compressed, deviceId); // to support WSQ format
   }
 
   async resetDeviceState() {
@@ -146,8 +147,9 @@ export class DigitalPersona {
 
   formatFingerprintImage(sample) {
     // For DigitalPersona
-    let base64Data = sample.replace(/-/g, "+").replace(/_/g, "/");
-    return `data:image/bmp;base64,${base64Data}`;
+    // let base64Data = sample.replace(/-/g, "+").replace(/_/g, "/");
+    // return `data:image/bmp;base64,${sample}`;
+    return '/assets/hms_tz/images/fingerprint.png';
   }
 
   destroy() {

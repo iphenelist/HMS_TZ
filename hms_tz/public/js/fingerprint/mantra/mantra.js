@@ -70,8 +70,10 @@ export class Mantra {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          quality: 60,
-          timeout: 10000
+          Quality: 60,
+          Timeout: 10000,
+          // TemplateFormat: "ISO",
+          // ImageFormat: "WSQ"
         }),
         signal: this.currentScanController.signal
       });
