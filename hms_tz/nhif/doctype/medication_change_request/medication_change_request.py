@@ -789,3 +789,22 @@ def create_medication_change_request_from_so(doctype, name):
     url = get_url_to_form(doc.doctype, doc.name)
     frappe.msgprint(f"Draft Medication Change Request: <a href='{url}'>{frappe.bold(doc.name)}</a> is created")
     return doc.name
+
+
+@frappe.whitelist()
+def get_service_unit(warehouse, company, service_unit_type):
+    service_units = frappe.get_all(
+        "Healthcare Service Unit",
+        filters={
+            "warehouse": warehouse,
+            "company": company,
+            "service_unit_type": service_unit_type,
+        },
+        fields=["name"],
+        limit=1
+    )
+    
+    if service_units:
+        return service_units[0].name
+    
+    return None

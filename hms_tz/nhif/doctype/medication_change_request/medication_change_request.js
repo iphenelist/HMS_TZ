@@ -57,31 +57,24 @@ frappe.ui.form.on("Codification Table", {
 frappe.ui.form.on("Drug Prescription", {
   drug_prescription_add: (frm, cdt, cdn) => {
     if (frm.doc.delivery_note) {
-      frappe.db
-        .get_value("Delivery Note", frm.doc.delivery_note, "set_warehouse")
-        .then((r) => {
-          if (r.message.set_warehouse) {
-            frappe.db
-              .get_list("Healthcare Service Unit", {
-                fields: ["name"],
-                filters: {
-                  warehouse: r.message.set_warehouse,
-                  company: frm.doc.company,
-                  service_unit_type: "Pharmacy",
-                },
-              })
-              .then((records) => {
-                if (records.length > 0) {
-                  frappe.model.set_value(
-                    cdt,
-                    cdn,
-                    "healthcare_service_unit",
-                    records[0].name
-                  );
-                }
-              });
+      frappe.call({
+        method: "hms_tz.nhif.doctype.medication_change_request.medication_change_request.get_service_unit",
+        args: {
+          warehouse: frm.doc.warehouse,
+          company: frm.doc.company,
+          service_unit_type: "Pharmacy",
+        },
+        callback: function (r) {
+          if (r.message) {
+            frappe.model.set_value(
+              cdt,
+              cdn,
+              "healthcare_service_unit",
+              r.message
+            );
           }
-        });
+        },
+      });
     }
   },
   dosage: (frm, cdt, cdn) => {
@@ -188,7 +181,7 @@ const update_childs_tables = (frm) => {
         patient_encounter: frm.doc.patient_encounter,
       },
       callback: function (data) {
-        if (data.message && data.message.name) {
+        if (data.message) {
           set_childs_tables(frm, data.message);
         }
       },
