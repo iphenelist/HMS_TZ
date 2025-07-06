@@ -30,6 +30,8 @@ class MedicationChangeRequest(Document):
         if not self.sales_order and self.delivery_note:
             validate_nhif_patient_claim_status("Medication Change Request", self.company, self.appointment)
 
+        self.posting_date = nowdate()
+
         if self.patient_encounter:
             encounter_doc = get_patient_encounter_doc(self.patient_encounter)
             if (
@@ -117,6 +119,7 @@ class MedicationChangeRequest(Document):
         if not self.sales_order:
             validate_nhif_patient_claim_status("Medication Change Request", self.company, self.appointment)
 
+        self.posting_date = nowdate()
         self.warehouse = self.get_warehouse_per_dn_or_so()
         for item in self.drug_prescription:
             if not self.sales_order:
@@ -386,7 +389,7 @@ class MedicationChangeRequest(Document):
 
             new_row["drug_prescription_created"] = 1
             doc.append("drug_prescription", new_row)
-            
+
         doc.db_update_all()
         frappe.msgprint(
             _("Patient Encounter " + self.patient_encounter + " has been updated!"),
