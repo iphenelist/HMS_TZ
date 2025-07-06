@@ -24,50 +24,8 @@ from hms_tz.nhif.api.patient_encounter import get_drug_quantity, validate_stock_
 
 class MedicationChangeRequest(Document):
     def before_insert(self):
-        if not self.sales_order and not self.delivery_note:
-            frappe.throw("Please select either Sales Order or Delivery Note to create Medication Change Request")
-
-        if not self.sales_order and self.delivery_note:
-            validate_nhif_patient_claim_status("Medication Change Request", self.company, self.appointment)
-
-        self.posting_date = nowdate()
-
-        if self.patient_encounter:
-            encounter_doc = get_patient_encounter_doc(self.patient_encounter)
-            if (
-                not encounter_doc.insurance_coverage_plan
-                and not encounter_doc.inpatient_record
-                and not self.sales_order
-            ):
-                frappe.throw(
-                    frappe.bold(
-                        "Cannot create medication change request for Cash Patient OPD via delivery note,<br>\
-                            Please create medication change request for Cash Patient OPD via Sales Order"
-                    )
-                )
-
-            self.warehouse = self.get_warehouse_per_dn_or_so()
-
-            for row in encounter_doc.drug_prescription:
-                if self.delivery_note and self.warehouse != get_warehouse_from_service_unit(
-                    row.healthcare_service_unit
-                ):
-                    continue
-
-                self.set_drugs(
-                    row,
-                    insurance_subscription=encounter_doc.insurance_subscription,
-                    inpatient_record=encounter_doc.inpatient_record,
-                )
-
-            if not self.patient_encounter_final_diagnosis:
-                for d in encounter_doc.patient_encounter_final_diagnosis:
-                    if not isinstance(d, dict):
-                        d = d.as_dict()
-
-                    d["name"] = None
-
-                    self.append("patient_encounter_final_diagnosis", d)
+        encounter_doc = self.validate_initial_values()
+        self.set_missing_values(encounter_doc)
 
     def after_insert(self):
         if self.delivery_note:
@@ -100,7 +58,7 @@ class MedicationChangeRequest(Document):
         self.warehouse = self.get_warehouse_per_dn_or_so()
 
         items = []
-        if self.drug_prescription:
+        if len(self.drug_prescription) > 0:
             for drug in self.drug_prescription:
                 if drug.drug_code not in items:
                     items.append(drug.drug_code)
@@ -121,12 +79,21 @@ class MedicationChangeRequest(Document):
 
         self.posting_date = nowdate()
         self.warehouse = self.get_warehouse_per_dn_or_so()
+
+        mop = ""
+        if not self.insurance_subscription:
+            mop = frappe.get_cached_value(
+                "Patient Appointment",
+                self.appointment,
+                "mode_of_payment",
+            )
+        
         for item in self.drug_prescription:
             if not self.sales_order:
                 self.validate_item_insurance_coverage(item, "throw")
                 validate_healthcare_service_unit(self.warehouse, item, method="throw")
 
-            set_amount(self, item)
+            set_amount(self, item, mop)
 
     def on_submit(self):
         if not self.sales_order:
@@ -161,11 +128,67 @@ class MedicationChangeRequest(Document):
                 "",
             )
 
-    def set_drugs(self, row, insurance_subscription=None, inpatient_record=None):
+    def validate_initial_values(self):
+        if not self.sales_order and not self.delivery_note:
+            frappe.throw("Please select either Sales Order or Delivery Note to create Medication Change Request")
+
+        if not self.sales_order and self.delivery_note:
+            validate_nhif_patient_claim_status("Medication Change Request", self.company, self.appointment)
+
+        if not self.patient_encounter:
+            frappe.throw(
+                "Please select Patient Encounter to create Medication Change Request."
+            )
+        
+        encounter_doc = get_patient_encounter_doc(self.patient_encounter)
+        if (
+            not encounter_doc.insurance_coverage_plan
+            and not encounter_doc.inpatient_record
+            and not self.sales_order
+        ):
+            frappe.throw(
+                frappe.bold(
+                    "Cannot create medication change request for Cash Patient OPD via delivery note,<br>\
+                        Please create medication change request for Cash Patient OPD via Sales Order"
+                )
+            )
+        
+        return encounter_doc
+
+    def set_missing_values(self, encounter_doc):
+        self.posting_date = nowdate()
+        self.warehouse = self.get_warehouse_per_dn_or_so()
+
+        if self.delivery_note:
+            self.insurance_subscription = encounter_doc.insurance_subscription
+            self.insurance_coverage_plan = encounter_doc.insurance_coverage_plan
+            self.insurance_company = encounter_doc.insurance_company
+
+        for row in encounter_doc.drug_prescription:
+            if self.delivery_note and self.warehouse != get_warehouse_from_service_unit(
+                row.healthcare_service_unit
+            ):
+                continue
+
+            self.set_drugs(
+                row,
+                inpatient_record=encounter_doc.inpatient_record,
+            )
+
+        if not self.patient_encounter_final_diagnosis:
+            for d in encounter_doc.patient_encounter_final_diagnosis:
+                if not isinstance(d, dict):
+                    d = d.as_dict()
+
+                d["name"] = None
+
+                self.append("patient_encounter_final_diagnosis", d)
+
+    def set_drugs(self, row, inpatient_record=None):
         is_so_from_encounter = frappe.get_cached_value(
             "Company", self.company, "auto_create_sales_order_from_encounter"
         )
-        if insurance_subscription:
+        if self.insurance_subscription:
             # add only covered items unser insurance coverage, means items that
             # reached to delivery note
             if self.delivery_note and row.prescribe == 0:
@@ -190,7 +213,7 @@ class MedicationChangeRequest(Document):
                 self.append("original_pharmacy_prescription", new_row)
                 self.append("drug_prescription", new_row)
 
-        elif not insurance_subscription:
+        elif not self.insurance_subscription:
             # add all cash items from sales order for OPD patient
             if is_so_from_encounter == 1 and self.sales_order and row.prescribe == 1:
                 new_row = row.as_dict()
@@ -204,7 +227,6 @@ class MedicationChangeRequest(Document):
 
             # add all cash items from pe for ipd patient
             if inpatient_record and row.prescribe == 1:
-                frappe.msgprint("not insurance_subscription inpatient_record prescribe=1")
                 new_row = row.as_dict()
                 new_row["name"] = None
                 new_row["parent"] = None
@@ -299,25 +321,14 @@ class MedicationChangeRequest(Document):
 
     def validate_item_insurance_coverage(self, row, method):
         """Validate if the Item is covered with the insurance coverage plan of a patient"""
-        if row.prescribe:
+
+        if not self.insurance_subscription or row.prescribe:
             return
 
-        insurance_subscription, insurance_company, mop = get_insurance_details(self)
-        if mop:
-            return
-
-        insurance_coverage_plan = frappe.get_cached_value(
-            "Healthcare Insurance Subscription",
-            {"name": insurance_subscription},
-            "healthcare_insurance_coverage_plan",
-        )
-        if not insurance_coverage_plan:
-            frappe.throw(_("Healthcare Insurance Coverage Plan is Not defiend"))
-
-        coverage_plan_name, is_exclusions = frappe.get_cached_value(
+        is_exclusions = frappe.get_cached_value(
             "Healthcare Insurance Coverage Plan",
-            insurance_coverage_plan,
-            ["coverage_plan_name", "is_exclusions"],
+            self.insurance_coverage_plan,
+            "is_exclusions",
         )
 
         today = frappe.utils.nowdate()
@@ -328,7 +339,7 @@ class MedicationChangeRequest(Document):
                 "start_date": ["<=", today],
                 "end_date": [">=", today],
                 "healthcare_service_template": row.drug_code,
-                "healthcare_insurance_coverage_plan": insurance_coverage_plan,
+                "healthcare_insurance_coverage_plan": self.insurance_coverage_plan,
             },
             fields=[
                 "name",
@@ -337,20 +348,20 @@ class MedicationChangeRequest(Document):
                 "healthcare_service_template",
             ],
         )
-        if service_coverage:
+        if len(service_coverage) > 0:
             row.is_restricted = service_coverage[0].approval_mandatory_for_claim
             row.has_copayment = service_coverage[0].has_copayment
 
             if is_exclusions:
                 msgThrow(
-                    _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {str(coverage_plan_name)}"),
+                    _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {self.insurance_coverage_plan}"),
                     method,
                 )
 
         else:
             if not is_exclusions:
                 msgThrow(
-                    _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {str(coverage_plan_name)}"),
+                    _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {self.insurance_coverage_plan}"),
                     method,
                 )
 
@@ -474,6 +485,7 @@ class MedicationChangeRequest(Document):
             is_stock, item_name = frappe.get_cached_value("Item", item_code, ["is_stock_item", "item_name"])
             if not is_stock:
                 continue
+
             item = frappe.new_doc("Delivery Note Item")
             item.item_code = item_code
             item.item_name = item_name
@@ -524,7 +536,6 @@ class MedicationChangeRequest(Document):
             )
 
         try:
-
             if dn_doc.workflow_state != state:
                 apply_workflow(dn_doc, action)
                 dn_doc.reload()
@@ -536,6 +547,7 @@ class MedicationChangeRequest(Document):
                     )
 
         except Exception:
+            return
             if state == "Changes Made":
                 frappe.log_error(
                     frappe.get_traceback(),
@@ -599,35 +611,25 @@ def get_patient_encounter_doc(patient_encounter):
     return doc
 
 
-def get_insurance_details(self):
-    insurance_subscription, insurance_company, mop = frappe.get_cached_value(
-        "Patient Appointment",
-        self.appointment,
-        ["insurance_subscription", "insurance_company", "mode_of_payment"],
-    )
-    return insurance_subscription, insurance_company, mop
-
-
-def set_amount(self, row):
+def set_amount(self, row, mop=""):
     item_code = frappe.get_cached_value("Medication", row.drug_code, "item")
-    insurance_subscription, insurance_company, mop = get_insurance_details(self)
 
     # apply discount if it is available on Heathcare Insurance Company
     discount_percent = 0
-    if insurance_company and "NHIF" not in insurance_company:
-        discount_percent = get_discount_percent(insurance_company)
+    if self.insurance_company and "NHIF" not in self.insurance_company:
+        discount_percent = get_discount_percent(self.insurance_company)
 
-    if insurance_subscription and not row.prescribe:
-        amount = get_item_rate(item_code, self.company, insurance_subscription, insurance_company)
+    if self.insurance_subscription and not row.prescribe:
+        amount = get_item_rate(item_code, self.company, self.insurance_subscription, self.insurance_company)
         row.amount = amount - (amount * (discount_percent / 100))
         if discount_percent > 0:
             row.hms_tz_is_discount_applied = 1
             row.hms_tz_is_discount_percent = discount_percent
 
-    elif mop:
+    elif not self.insurance_subscription:
         if not row.prescribe:
             row.prescribe = 1
-
+        
         row.amount = get_mop_amount(item_code, mop, self.company, self.patient)
 
 
@@ -662,7 +664,6 @@ def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
 
         doc.set_drugs(
             item_line,
-            insurance_subscription=patient_encounter_doc.insurance_subscription,
             inpatient_record=patient_encounter_doc.inpatient_record,
         )
 
