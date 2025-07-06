@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_copy": 1,
+ "allow_rename": 1,
  "autoname": "HLC-MCR-.#####",
  "creation": "2021-02-13 22:35:28.791881",
  "doctype": "DocType",
@@ -12,15 +13,24 @@
   "patient",
   "patient_name",
   "appointment",
-  "hms_tz_comment",
   "column_break_5",
+  "healthcare_practitioner",
+  "practitioner_name",
+  "medical_department",
+  "column_break_2nqfn",
   "company",
   "patient_encounter",
   "delivery_note",
   "sales_order",
-  "healthcare_practitioner",
-  "practitioner_name",
-  "medical_department",
+  "column_break_usdp0",
+  "posting_date",
+  "hms_tz_comment",
+  "section_break_2fstq",
+  "insurance_subscription",
+  "column_break_cbx9t",
+  "insurance_coverage_plan",
+  "column_break_k4mgj",
+  "insurance_company",
   "section_break_12",
   "patient_encounter_final_diagnosis",
   "medication_orders_section",
@@ -32,8 +42,10 @@
   {
    "fieldname": "title",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Title",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient_encounter.appointment",
@@ -41,7 +53,9 @@
    "fieldtype": "Link",
    "label": "Appointment",
    "options": "Patient Appointment",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "patient",
@@ -49,7 +63,8 @@
    "in_list_view": 1,
    "label": "Patient",
    "options": "Patient",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "patient.patient_name",
@@ -68,7 +83,8 @@
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "patient_encounter",
@@ -76,7 +92,8 @@
    "in_list_view": 1,
    "label": "Patient Encounter",
    "options": "Patient Encounter",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "depends_on": "eval: !doc.sales_order",
@@ -94,7 +111,8 @@
    "fieldtype": "Link",
    "label": "Healthcare Practitioner",
    "options": "Healthcare Practitioner",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "healthcare_practitioner.first_name",
@@ -163,13 +181,67 @@
    "fieldtype": "Link",
    "label": "Sales Order",
    "mandatory_depends_on": "eval: !doc.delivery_note",
-   "options": "Sales Order"
+   "options": "Sales Order",
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_2fstq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "appointment.insurance_subscription",
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "label": "Insurance Subscription",
+   "options": "Healthcare Insurance Subscription",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_cbx9t",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.coverage_plan_name",
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Data",
+   "label": "Insurance Coverage Plan",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_k4mgj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.insurance_company",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_2nqfn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_usdp0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-03-13 16:09:41.493711",
+ "modified": "2025-07-06 17:39:25.030673",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "Medication Change Request",
@@ -198,6 +270,5 @@
  "sort_order": "DESC",
  "states": [],
  "title_field": "title",
- "track_changes": 1,
- "track_seen": 1
+ "track_changes": 1
 }
