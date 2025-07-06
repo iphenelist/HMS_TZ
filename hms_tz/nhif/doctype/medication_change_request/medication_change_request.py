@@ -217,7 +217,7 @@ class MedicationChangeRequest(Document):
             row.quantity = get_drug_quantity(row)
 
         if not row.quantity:
-            frappe.throw("Please keep quantity for item: {frappe.bold(row.drug_code)}, Row#: {frappe.bold(row.idx)}")
+            frappe.throw(f"Please keep quantity for item: {frappe.bold(row.drug_code)}, Row#: {frappe.bold(row.idx)}")
 
         row.delivered_quantity = row.quantity - (row.quantity_returned or 0)
 
@@ -236,7 +236,7 @@ class MedicationChangeRequest(Document):
         row.is_not_available_inhouse = template_doc.is_not_available
         if row.is_not_available_inhouse == 1:
             frappe.msgprint(
-                "NOTE: This healthcare service item, <b> {frappe.bold(row.drug_code)} </b>, is not available inhouse"
+                f"NOTE: This healthcare service item, <b> {frappe.bold(row.drug_code)} </b>, is not available inhouse"
             )
 
     def validate_duplicate_medication_change_request(self):
@@ -329,12 +329,14 @@ class MedicationChangeRequest(Document):
             },
             fields=[
                 "name",
+                "has_copayment",
                 "approval_mandatory_for_claim",
                 "healthcare_service_template",
             ],
         )
         if service_coverage:
             row.is_restricted = service_coverage[0].approval_mandatory_for_claim
+            row.has_copayment = service_coverage[0].has_copayment
 
             if is_exclusions:
                 msgThrow(
@@ -377,11 +379,14 @@ class MedicationChangeRequest(Document):
         for row in self.drug_prescription:
             if row.is_not_available_inhouse == 1:
                 continue
+
             new_row = frappe.copy_doc(row).as_dict()
             for fieldname in fields_to_clear:
                 new_row[fieldname] = None
+
             new_row["drug_prescription_created"] = 1
             doc.append("drug_prescription", new_row)
+            
         doc.db_update_all()
         frappe.msgprint(
             _("Patient Encounter " + self.patient_encounter + " has been updated!"),
@@ -509,9 +514,9 @@ class MedicationChangeRequest(Document):
             dn_doc = frappe.get_cached_doc("Delivery Note", self.delivery_note)
 
         if dn_doc.form_sales_invoice:
-            get_url_to_form("sales Ivoice", dn_doc.form_sales_invoice)
+            url = get_url_to_form("sales Invoice", dn_doc.form_sales_invoice)
             frappe.throw(
-                "Cannot create medicaton change request for items paid in cash,<br>\
+                f"Cannot create medication change request for items paid in cash,<br>\
                 please refer sales invoice: <a href='{url}'>{frappe.bold(dn_doc.form_sales_invoice)}</a>"
             )
 
