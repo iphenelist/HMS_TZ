@@ -55,7 +55,6 @@ class MedicationChangeRequest(Document):
         self.validate_duplicate_medication_change_request()
 
         self.title = f"{self.patient_encounter}/{self.delivery_note or self.sales_order}"
-        self.warehouse = self.get_warehouse_per_dn_or_so()
 
         items = []
         if len(self.drug_prescription) > 0:
@@ -78,7 +77,6 @@ class MedicationChangeRequest(Document):
             validate_nhif_patient_claim_status("Medication Change Request", self.company, self.appointment)
 
         self.posting_date = nowdate()
-        self.warehouse = self.get_warehouse_per_dn_or_so()
 
         mop = ""
         if not self.insurance_subscription:
@@ -157,7 +155,8 @@ class MedicationChangeRequest(Document):
 
     def set_missing_values(self, encounter_doc):
         self.posting_date = nowdate()
-        self.warehouse = self.get_warehouse_per_dn_or_so()
+        if not self.warehouse:
+            self.warehouse = self.get_warehouse_per_dn_or_so()
 
         if self.delivery_note:
             self.insurance_subscription = encounter_doc.insurance_subscription
@@ -588,10 +587,11 @@ def get_delivery_note(patient, patient_encounter):
             Please choose one delivery note between {frappe.bold(d_list[0].name + ": warehouse: " + d_list[0].set_warehouse)} and {frappe.bold(d_list[1].name + ": warehouse: " + d_list[1].set_warehouse)}"""
         )
 
-    if len(d_list) == 1:
-        return d_list[0].name
     if len(d_list) == 0:
         return ""
+
+    if len(d_list) == 1:
+        return d_list[0].name
 
 
 @frappe.whitelist()
@@ -656,6 +656,7 @@ def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
     patient_encounter_doc = get_patient_encounter_doc(encounter)
     delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note)
 
+
     doc.drug_prescription = []
     doc.original_pharmacy_prescription = []
     for item_line in patient_encounter_doc.drug_prescription:
@@ -668,6 +669,7 @@ def get_items_on_change_of_delivery_note(name, encounter, delivery_note):
         )
 
     doc.delivery_note = delivery_note
+    doc.warehouse = delivery_note_doc.set_warehouse
     doc.save(ignore_permissions=True)
     doc.reload()
     return doc
@@ -688,6 +690,7 @@ def get_items_on_change_of_sales_order(name, encounter, sales_order):
         doc.set_drugs(item_line)
 
     doc.sales_order = sales_order
+    doc.warehouse = frappe.get_cached_value("Sales Order", sales_order, "set_warehouse")
     doc.save(ignore_permissions=True)
     doc.reload()
     return doc
@@ -746,6 +749,7 @@ def create_medication_change_request_from_dn(doctype, name):
     doc.delivery_note = source_doc.name
     doc.healthcare_practitioner = source_doc.healthcare_practitioner
     doc.hms_tz_comment = source_doc.hms_tz_comment
+    doc.warehouse = source_doc.set_warehouse
 
     validate_nhif_patient_claim_status("Medication Change Request", doc.company, doc.appointment)
 
@@ -779,6 +783,7 @@ def create_medication_change_request_from_so(doctype, name):
     doc.sales_order = source_doc.name
     doc.healthcare_practitioner = practitioner
     doc.hms_tz_comment = source_doc.med_change_request_comment
+    doc.warehouse = source_doc.set_warehouse
 
     doc.save(ignore_permissions=True)
     url = get_url_to_form(doc.doctype, doc.name)
