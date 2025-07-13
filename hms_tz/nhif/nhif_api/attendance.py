@@ -12,7 +12,7 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 def login_practitioner(fingerprint, fpcode, settings_doc=None):
     # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    image_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     practitioner = frappe.get_cached_value(
         "Healthcare Practitioner",
@@ -31,9 +31,9 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
     payload = {
         "nationalID": practitioner.national_id,
         "practitionerNo": practitioner.tz_mct_code,
-        "biometricMethod": "NONE", #"FINGERPRINT",
+        "biometricMethod": "FINGERPRINT", # "NONE",
         "fpCode": fpcode,
-        "imageData": image_data,
+        "imageData": fingerprint,
     }
 
     payload = json.dumps(payload)
