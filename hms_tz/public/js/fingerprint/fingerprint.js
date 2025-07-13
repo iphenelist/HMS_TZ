@@ -29,6 +29,7 @@ export class Fingerprint {
     this.fingerprintAcquired = false;
     this.currentDeviceType = null; // 'digitalpersona' or 'mantra'
     this.deviceScanningComplete = false;
+    this.onChangeTrigger = false; // Flag to prevent multiple onchange triggers
 
     return new Promise((resolve, reject) => {
       this.fingerprintPromiseResolve = resolve;
@@ -62,10 +63,10 @@ export class Fingerprint {
          console.log("Device Connected: ", this.selectedDevice);
       },
       onDeviceDisconnected: () => {
-        this.enumerateAllDevices().then(() => {
-          this.deviceScanningComplete = true;
-          this.updateDialog();
-        });
+        // this.enumerateAllDevices().then(() => {
+        //   this.deviceScanningComplete = true;
+        //   this.updateDialog();
+        // });
       },
       onSamplesAcquired: (samples, deviceType) => {
         this.samples = samples;
@@ -95,8 +96,8 @@ export class Fingerprint {
       }
     };
 
-    this.digitalPersona.initializeEventHandlers(callbacks);
     this.mantra.initializeEventHandlers(callbacks);
+    this.digitalPersona.initializeEventHandlers(callbacks);
   }
 
   async enumerateAllDevices() {
@@ -109,11 +110,13 @@ export class Fingerprint {
       console.warn("Mantra devices not available:", error.message);
     }
 
-    try {
-      const dpDevices = await this.digitalPersona.enumerateDevices();
-      this.allDevices.push(...dpDevices);
-    } catch (error) {
-      console.warn("DigitalPersona devices not available:", error.message);
+    if (!this.allDevices.length) {
+      try {
+        const dpDevices = await this.digitalPersona.enumerateDevices();
+        this.allDevices.push(...dpDevices);
+      } catch (error) {
+        console.warn("DigitalPersona devices not available:", error.message);
+      }
     }
   }
 
@@ -143,7 +146,6 @@ export class Fingerprint {
         this.digitalPersona.destroy(),
         this.mantra.destroy()
       ]);
-      console.log("All biometric devices cleaned up successfully");
     } catch (error) {
       console.warn("Error during device cleanup:", error);
       // Continue with cleanup even if there are errors
@@ -156,6 +158,7 @@ export class Fingerprint {
     this.fingerprintAcquired = false;
     this.currentDeviceType = null;
     this.deviceScanningComplete = false;
+    this.onChangeTrigger = false;
   };
 
   showDialog = () => {
@@ -201,7 +204,24 @@ export class Fingerprint {
             { label: __("Left Little (L5)"), value: "L5" },
           ],
           reqd: 1,
-          onchange: () => this.toggleFingerprintField(),
+          onchange: () => {
+            // Prevent multiple simultaneous executions
+            if (this.onChangeTrigger) {
+              return;
+            }
+            
+            const fingerValue = this.dialog.get_value("finger");
+            if (fingerValue) {
+              this.onChangeTrigger = true;
+              
+              // Use setTimeout to ensure the flag is reset even if there's an error
+              setTimeout(async () => {
+                this.toggleFingerprintField().finally(() => {
+                  this.onChangeTrigger = false;
+                });
+              }, 10);
+            }
+          },
         },
         {
           fieldtype: "Section Break",
@@ -290,10 +310,8 @@ export class Fingerprint {
     }
   };
 
-  toggleFingerprintField = () => {
+  toggleFingerprintField = async () => {
     if (this.dialog.get_value("finger")) {
-      this.startScan();
-
       const fingerprintDiv = this.dialog.get_field("fingerprint").$wrapper;
       fingerprintDiv.html(
         `<div id="fingerprint-image" style="width: 100px; height: 100px; border: 1px solid black;
@@ -301,6 +319,8 @@ export class Fingerprint {
                     <span>Place a finger on the device</span>
                 </div>`
       );
+      
+      await this.startScan();
     }
   };
 
