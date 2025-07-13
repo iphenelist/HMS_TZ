@@ -70,10 +70,11 @@ export class Mantra {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          Quality: 60,
-          Timeout: 10000,
-          // TemplateFormat: "ISO",
-          // ImageFormat: "WSQ"
+          Quality: 70,
+          Timeout: 30000, // milliseconds
+          InitOnLoad: 1, // Initialize device on load
+          TemplateFormat: "ISO",
+          ImageFormat: "WSQ"
         }),
         signal: this.currentScanController.signal
       });
@@ -84,8 +85,8 @@ export class Mantra {
 
       const data = await response.json();
       
-      if (data.ErrorCode == "0" && data.BitmapData) { // you can also use data.IsoImage
-        this.samples = [data.BitmapData];
+      if (data.ErrorCode == "0" && data.WsqImage) {
+        this.samples = [data.WsqImage];
         this.fingerprintAcquired = true;
         
         if (this.onSamplesAcquired) {
