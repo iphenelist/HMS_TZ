@@ -180,14 +180,14 @@ def cancel_preapproval(
     remarks,
     settings_doc=None,
 ):
-    encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
-    services, service_map, diseases = get_encounter_services(encounter_doc, preapproval_no)
+    source_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+    services, service_map, diseases = get_services(source_doc, preapproval_no)
     if len(services) == 0:
         frappe.msgprint("No servuce(s) to cancel an Pre-Approvals")
         return False
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Setting", encounter_doc.company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", source_doc.company)
 
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={preapproval_no}&remarks={remarks}"
 
@@ -210,6 +210,18 @@ def cancel_preapproval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
+        
+        source_doc.add_comment(
+            comment_type="Comment",
+            text=f"Cancel Pre-approval request Failed..!<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+        )
+        frappe.db.commit()
+
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Cancel Pre-approval failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+            indicator="red",
+        )
         return False
 
     else:
@@ -228,7 +240,10 @@ def cancel_preapproval(
 
         has_preapproval = False
         for child in get_childs_map():
-            for row in encounter_doc.get(child.get("table")):
+            if not source_doc.get(child.get("table")):
+                continue
+
+            for row in source_doc.get(child.get("table")):
                 if row.preapproval_no == preapproval_no:
                     row.preapproval_status = "Cancelled"
                     row.preapproval_no = ""
@@ -240,20 +255,20 @@ def cancel_preapproval(
                 elif row.preapproval_no and not has_preapproval:
                     has_preapproval = True
 
-        encounter_doc.reload()
-        encounter_doc.has_preapproval = has_preapproval
-        encounter_doc.db_update()
-        encounter_doc.db_update_all()
-        encounter_doc.reload()
+        source_doc.reload()
+        source_doc.has_preapproval = has_preapproval
+        source_doc.db_update()
+        source_doc.db_update_all()
+        source_doc.reload()
 
         request_ids = "<ul>"
         for row in data:
             request_ids += f"<li>{row.get('RequestedServiceID')} <br> {row.get('RequestID')}</li>"
         request_ids += "</ul>"
 
-        encounter_doc.add_comment(
+        source_doc.add_comment(
             comment_type="Comment",
-            text=f"Pre-approval request canceled successfully!<br>Pre-Approval No: <b>{preapproval_no}</b><br>NHIF RequestID(s): {request_ids}",
+            text=f"Pre-approval request canceled successfully!<br><br>Pre-Approval No: <b>{preapproval_no}</b><br><br>NHIF RequestID(s): {request_ids}",
         )
 
         return True
