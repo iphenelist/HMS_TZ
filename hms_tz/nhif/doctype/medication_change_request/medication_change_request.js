@@ -346,6 +346,7 @@ var nhif_btns = (frm) => {
   }
 
   pre_approval_btn(frm);
+  cancel_pre_approval_btn(frm);
 };
 
 
@@ -399,3 +400,75 @@ var pre_approval_btn = (frm) => {
   }
 };
 
+var cancel_pre_approval_btn = (frm) => {
+  if (!frm.page.fields_dict.cancel_pre_approval_btn) {
+    frm.page
+      .add_field({
+        label: __("Cancel Pre-Approval"),
+        fieldname: "cancel_pre_approval_btn",
+        fieldtype: "Button",
+        click: function () {
+          if (frm.is_dirty()) {
+            frappe.msgprint(
+              "<b>Please save the form before canceling pre-approval</b>"
+            );
+            return;
+          }
+
+          frappe.prompt(
+            [
+              {
+                label: "Pre-Approval No",
+                fieldname: "preapproval_no",
+                fieldtype: "Data",
+                reqd: 1,
+              },
+              {
+                label: "Remarks",
+                fieldname: "remarks",
+                fieldtype: "Small Text",
+                reqd: 1,
+              },
+            ],
+            (values) => {
+              frappe.call({
+                method: "hms_tz.nhif.nhif_api.pre_approval.cancel_preapproval",
+                args: {
+                  ref_doctype: frm.doc.doctype,
+                  ref_docname: frm.doc.name,
+                  preapproval_no: values.preapproval_no,
+                  remarks: values.remarks,
+                },
+                async: true,
+                freeze: true,
+                freeze_message: __(
+                  '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+                ),
+                callback: function (data) {
+                  if (data.message && data.message !== "Error") {
+                    frappe.utils.play_sound("submit");
+                    frm.reload_doc();
+                    frappe.show_alert(
+                      {
+                        message: __(
+                          "Pre-Approval request canceled successfully"
+                        ),
+                        indicator: "green",
+                      },
+                      10
+                    );
+                  } else {
+                    frappe.utils.play_sound("error");
+                  }
+                },
+                onerror: function (data) {
+                  frappe.utils.play_sound("error");
+                },
+              });
+            }
+          );
+        },
+      })
+      .$input.addClass("btn-sm");
+  }
+};
