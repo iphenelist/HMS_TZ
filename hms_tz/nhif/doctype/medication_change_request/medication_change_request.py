@@ -70,6 +70,7 @@ class MedicationChangeRequest(Document):
 
                 if not self.sales_order:
                     self.validate_item_insurance_coverage(drug, "validate")
+                    self.validate_insurance_pre_approval(drug, "validate")
                     validate_healthcare_service_unit(self.warehouse, drug, method="validate")
 
     def before_submit(self):
@@ -89,6 +90,7 @@ class MedicationChangeRequest(Document):
         for item in self.drug_prescription:
             if not self.sales_order:
                 self.validate_item_insurance_coverage(item, "throw")
+                self.validate_insurance_pre_approval(item, "throw")
                 validate_healthcare_service_unit(self.warehouse, item, method="throw")
 
             set_amount(self, item, mop)
@@ -363,6 +365,27 @@ class MedicationChangeRequest(Document):
                     _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {self.insurance_coverage_plan}"),
                     method,
                 )
+
+    def validate_insurance_pre_approval(self, row, method):
+        """Validate if the Item requires pre-approval from insurance company"""
+
+        if not self.insurance_company or "NHIF" not in self.insurance_company:
+            return
+        
+        if (
+            row.get("prescribe")
+            or row.get("is_not_available_inhouse")
+            or row.get("is_cancelled")
+            or row.get("is_restricted")
+            or row.get("preapproval_status") in ["Accepted", "REJECTED"]
+        ):
+            return
+        
+        if not row.get("preapproval_status"):
+            msgThrow(
+                _(f"{frappe.bold(row.drug_code)} requires pre-approval."),
+                method,
+            )
 
     def update_encounter(self):
         doc = frappe.get_cached_doc("Patient Encounter", self.patient_encounter)
