@@ -70,6 +70,7 @@ class MedicationChangeRequest(Document):
 
                 if not self.sales_order:
                     self.validate_item_insurance_coverage(drug, "validate")
+                    self.validate_copayment_added_item(drug)
                     self.validate_insurance_pre_approval(drug, "validate")
                     validate_healthcare_service_unit(self.warehouse, drug, method="validate")
 
@@ -90,6 +91,7 @@ class MedicationChangeRequest(Document):
         for item in self.drug_prescription:
             if not self.sales_order:
                 self.validate_item_insurance_coverage(item, "throw")
+                self.validate_copayment_added_item(item)
                 self.validate_insurance_pre_approval(item, "throw")
                 validate_healthcare_service_unit(self.warehouse, item, method="throw")
 
@@ -365,6 +367,30 @@ class MedicationChangeRequest(Document):
                     _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {self.insurance_coverage_plan}"),
                     method,
                 )
+    
+
+    # @frappe.whitelist()
+    def validate_copayment_added_item(self, row):
+        """Validate a co-payment item is newly added to the Medication Change Request"""
+
+        if not self.insurance_company or "NHIF" not in self.insurance_company or row.prescribe:
+            return
+
+        if row.has_copayment == 0:
+            return
+        
+        original_items = [d.drug_code for d in self.original_pharmacy_prescription if d.has_copayment == 1]
+
+        if row.drug_code not in original_items:
+            msg = f"""<div style="border-left: 4px solid red; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+                    <p class="text-center"><i>Row#: <b>{row.idx}</b> Item: <b>${row.drug_code}</b> is a co-payment item, and it should not be added via Medication Change Request.</i></p>
+                </div>
+                <br>
+                <p class="text-center"><i><b>Please select a different item to proceed..</b></i></p>
+            """
+
+            frappe.throw(title="Co-Payment Item not Allowed", msg=msg)
+
 
     def validate_insurance_pre_approval(self, row, method):
         """Validate if the Item requires pre-approval from insurance company"""
