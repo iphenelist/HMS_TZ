@@ -16,7 +16,6 @@ def get_service_preapproval(
     authorization_no=None,
     settings_doc=None,
 ):
-    # encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
     # source doc can be either Patient Encounter or Medication Change Request
     source_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
@@ -134,7 +133,7 @@ def get_service_preapproval(
                 for d in data.get("services"):
                     if d.get("itemCode") == ref_code:
                         row.preapproval_status = d.get("status")
-                        row.preapproval_no = data.get("requestNo")
+                        row.preapproval_no = data.get("requestNo") if d.get("status") != "REJECTED" else ""
                         row.rejection_reason_code = d.get("rejectionReasonCode")
                         row.rejection_details = d.get("rejectionDetails")
                         row.preapproval_cancel_remarks = ""
@@ -210,7 +209,7 @@ def cancel_preapproval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
-        
+
         source_doc.add_comment(
             comment_type="Comment",
             text=f"Cancel Pre-approval request Failed..!<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
