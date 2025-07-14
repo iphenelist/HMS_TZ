@@ -4,12 +4,14 @@
 frappe.ui.form.on("Medication Change Request", {
   setup: (frm) => {
     set_query_filters(frm);
+    nhif_btns(frm);
   },
   onload: function (frm) {
     if (!frappe.user.has_role("Healthcare Practitioner")) {
       frm.set_df_property("drug_prescription", "read_only", 1);
     }
     set_medical_code(frm);
+    nhif_btns(frm);
   },
   refresh: function (frm) {
     set_query_filters(frm);
@@ -17,6 +19,7 @@ frappe.ui.form.on("Medication Change Request", {
       frm.set_df_property("drug_prescription", "read_only", 1);
     }
     set_medical_code(frm);
+    nhif_btns(frm);
   },
   patient_encounter: (frm) => {
     if (frm.doc.patient_encounter) {
@@ -320,3 +323,79 @@ const set_query_filters = (frm) => {
     };
   });
 };
+
+
+var nhif_btns = (frm) => {
+  if (frm.is_new()) {
+    return;
+  }
+  
+  if (!frappe.user.has_role("Healthcare Practitioner")) {
+    return;
+  }
+
+  if (
+    !frm.doc.insurance_company ||
+    !frm.doc.insurance_company.includes("NHIF")
+  ) {
+    return;
+  }
+  
+  if (!frm.doc.patient || !frm.doc.patient_encounter) {
+    return;
+  }
+
+  pre_approval_btn(frm);
+};
+
+
+var pre_approval_btn = (frm) => {
+  if (!frm.page.fields_dict.pre_approval_btn) {
+    frm.page
+      .add_field({
+        label: __("Request Pre-Approval"),
+        fieldname: "pre_approval_btn",
+        fieldtype: "Button",
+        click: function () {
+          if (frm.is_dirty()) {
+            frappe.msgprint(
+              "<b>Please save the form before requesting pre-approval</b>"
+            );
+            return;
+          }
+
+          frappe.call({
+            method:
+              "hms_tz.nhif.nhif_api.pre_approval.get_service_preapproval",
+            args: {
+              ref_doctype: frm.doc.doctype,
+              ref_docname: frm.doc.name,
+            },
+            async: true,
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            callback: function (data) {
+              if (data.message && data.message !== "Error") {
+                frappe.utils.play_sound("submit");
+                frm.reload_doc();
+                frappe.show_alert(
+                  {
+                    message: __("Pre-Approval request were successful"),
+                    indicator: "green",
+                  },
+                  10
+                );
+              } else {
+                frappe.utils.play_sound("error");
+              }
+            },
+            onerror: function (data) {
+              frappe.utils.play_sound("error");
+            },
+          });
+        },
+      })
+      .$input.addClass("btn-sm");
+  }
+};
+
