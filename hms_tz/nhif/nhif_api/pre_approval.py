@@ -125,7 +125,7 @@ def get_service_preapproval(
         for child in get_childs_map():
             if not source_doc.get(child.get("table")):
                 continue
-            
+
             for row in source_doc.get(child.get("table")):
                 ref_code = service_map.get((row.doctype, row.name, row.get(child.get("item"))))
                 if not ref_code:
@@ -257,24 +257,6 @@ def cancel_preapproval(
         )
 
         return True
-
-
-def get_preliminary_diseases(doc):
-    diseases = []
-    for row in doc.patient_encounter_preliminary_diagnosis:
-        disease_code = ""
-
-        # Convert the ICD code of CDC to NHIF
-        if row.code and len(row.code) > 3 and "." not in row.code:
-            disease_code = row.code[:3] + "." + (row.code[3:4] or "0")
-        elif row.code and len(row.code) <= 5 and "." in row.code:
-            disease_code = row.code
-        else:
-            disease_code = row.code[:3]
-
-        diseases.append({"diseaseCode": disease_code, "status": ""})
-
-    return diseases
 
 
 def get_services(doc, preapproval_no=None):
