@@ -1735,7 +1735,7 @@ function set_delete_button_in_child_table(frm, child_table_fields) {
 var auto_calculate_drug_quantity = (frm, drug_item) => {
   frappe
     .call({
-      method: "hms_tz.nhif.api.patient_encounter.get_drug_quantity",
+      method: "hms_tz.nhif.api.healthcare_utils.get_drug_quantity",
       args: {
         drug_item: drug_item,
       },
