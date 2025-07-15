@@ -112,7 +112,7 @@ class MedicationChangeRequest(Document):
 
         if self.delivery_note:
             self.update_delivery_note(encounter_doc)
-            self.update_hsr(encounter_doc)
+            self.update_hsr_and_hre(encounter_doc)
 
         if self.sales_order:
             self.update_sales_order(encounter_doc)
@@ -631,8 +631,8 @@ class MedicationChangeRequest(Document):
                         update_modified=False,
                     )
 
-    def update_hsr(self, encounter_doc):
-        """Update Healthcare Service Request with new Drug Prescription"""
+    def update_hsr_and_hre(self, encounter_doc):
+        """Update Healthcare Service Request and Hospital Revenue Entry after Medication Change Request is submitted"""
 
         if not self.insurance_subscription:
             return
@@ -640,7 +640,7 @@ class MedicationChangeRequest(Document):
         params = {
             "encounter_doc": encounter_doc,
             "mcr_doc": self,
-            "mcr_comment": self.comment
+            "mcr_comment": self.hms_tz_comment
         }
         
         frappe.enqueue(
