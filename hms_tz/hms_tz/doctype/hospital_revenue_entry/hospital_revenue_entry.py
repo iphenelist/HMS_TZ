@@ -105,16 +105,21 @@ def update_revenue_entry(
 
 def update_cancelled_revenue_entry(
     ref_docname,
-    lrpmt_return_id,
+    update_from_doctype,
+    update_from_docname,
     is_cancelled=1,
     remarks=""
 ):
+    updated_by = get_fullname(frappe.session.user)
+
     hre = DocType("Hospital Revenue Entry")
     query = (
         frappe.qb.update(hre)
-        .set(hre.is_cancelled, is_cancelled)
-        .set(hre.lrpmt_return_id, lrpmt_return_id)
         .set(hre.remarks, remarks)
+        .set(hre.updated_by, updated_by)
+        .set(hre.is_cancelled, is_cancelled)
+        .set(hre.updated_from_doctype, update_from_doctype)
+        .set(hre.updated_from_docname, update_from_docname)
         .where(
             (hre.ref_docname == ref_docname)
         )
