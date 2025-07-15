@@ -10,8 +10,6 @@ from frappe.utils import get_link_to_form
 
 from hms_tz.nhif.api.healthcare_utils import *
 
-hsr = DocType("Healthcare Service Request")
-
 
 class HealthcareServiceRequest(Document):
     def before_insert(self):
@@ -35,6 +33,7 @@ class HealthcareServiceRequest(Document):
         if not self.source_doctype and not self.source_docname:
             return
 
+        hsr = DocType("Healthcare Service Request")
         hsr_dupl = (
             frappe.qb.from_(hsr)
             .select(hsr.name)
@@ -114,12 +113,15 @@ class HealthcareServiceRequest(Document):
             if row.price_list:
                 item_price_rate = get_item_price(item, row.price_list, self.company)
             else:
-                item_price_rate = get_item_rate(
+                item_price_rate, price_list = get_item_rate(
                     item,
                     self.company,
                     row.insurance_subscription,
                     row.insurance_company,
+                    for_service_request=True,
                 )
+
+                row.price_list = price_list
 
             # apply discount if it is available on Heathcare Insurance Company
             if row.insurance_company and "NHIF" not in row.insurance_company:
@@ -487,9 +489,11 @@ def set_service_amounts(row, company, insurance_company, insurance_subscription)
     if discount_percent > 0:
         row["discount_applied"] = 1
 
-    row["rate"] = item_rate
-    row["amount"] = row.get("qty") * item_rate
-    row["price_list"] = price_list
+    row.update({
+        "rate": item_rate,
+        "amount": row.get("qty") * item_rate,
+        "price_list": price_list,
+    })
 
     return row
 
