@@ -473,6 +473,12 @@ def build_insurance_drug_entry(doc, ref_docnames):
             "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.get("healthcare_practitioner"),
         }
+
+        if doc.get("doctype") == "Medication Change Request":
+            entry_dict["updated_from_doctype"] = doc.doctype
+            entry_dict["updated_from_docname"] = doc.name
+            entry_dict["remarks"] = f"Service Added from Medication Change Request"
+        
         entries.append(entry_dict)
 
     return entries
