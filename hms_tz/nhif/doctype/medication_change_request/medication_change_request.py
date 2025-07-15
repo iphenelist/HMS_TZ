@@ -900,8 +900,6 @@ def update_healthcare_service_request(params):
         return
     
     drug_map = {}
-    existing_services = {}
-    existing_payments = {}
     services_to_be_removed = []
 
     # Map current drugs from encounter
@@ -913,25 +911,16 @@ def update_healthcare_service_request(params):
 
     hsr_doc = frappe.get_cached_doc("Healthcare Service Request", hsr_id)
 
-    # Map existing services and payments
-    for service in hsr_doc.services:
-        if service.service_type == "Medication":
-            existing_services[service.service_name] = service
-            
-    for payment in hsr_doc.payments:
-        if payment.service_type == "Medication":
-            existing_payments.setdefault(payment.service_name, []).append(payment)
-
     # Identify services to be removed (no longer in encounter)
-    for service_name, service in existing_services.items():
-        if service_name not in drug_map:
+    for service in hsr_doc.services:
+        if service.service_type == "Medication" and service.service_name not in drug_map:
             services_to_be_removed.append(service)
-            
-    # Identify payments to be removed
-    for service_name, payments in existing_payments.items():
-        if service_name not in drug_map:
-            services_to_be_removed.extend(payments)
-
+    
+    # Identify payments to be removed (no longer in encounter)
+    for payment in hsr_doc.payments:
+        if payment.service_type == "Medication" and payment.service_name not in drug_map:
+            services_to_be_removed.append(payment)
+    
     # Remove obsolete services and payments
     for service in services_to_be_removed:
         frappe.delete_doc(
