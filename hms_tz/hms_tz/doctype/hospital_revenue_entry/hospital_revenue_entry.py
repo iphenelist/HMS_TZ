@@ -468,7 +468,7 @@ def build_insurance_drug_entry(doc, ref_docnames):
             "lrpmt_doctype": row.get("lrpmt_doctype"),
             "lrpmt_docname": row.get("lrpmt_docname"),
             "dn_detail": row.get("dn_detail"),
-            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted") if doc.get("doctype") == "Delivery Note" else "Draft",
+            "lrpmt_status": "Draft" if (doc.get("docstatus") == 0 or doc.get("doctype") == "Medication Change Request") else "Submitted",
             "department": doc.get("department"),
             "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.get("healthcare_practitioner"),
