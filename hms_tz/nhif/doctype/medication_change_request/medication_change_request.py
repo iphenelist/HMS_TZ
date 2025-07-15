@@ -977,6 +977,11 @@ def add_or_update_service(hsr_doc, drug_map):
             existing_service.department_hsu = first_prescription.healthcare_service_unit
             existing_service.ref_docname = first_prescription.name
             existing_service.ref_doctype = first_prescription.doctype
+            existing_service.lrpmt_doc_created = 1
+            existing_service.lrpmt_status = "Draft"
+            existing_service.lrpmt_doctype = "Delivery Note"
+            existing_service.dn_detail = first_prescription.dn_detail
+            existing_service.lrpmt_docname = first_prescription.delivery_note
             
             # Recalculate amounts
             updated_service = set_service_amounts(
@@ -1004,8 +1009,13 @@ def add_or_update_service(hsr_doc, drug_map):
                 "ref_docname": first_prescription.name,
                 "ref_doctype": first_prescription.doctype,
             })
-
-            new_service["percent_covered"] = hsr_doc.get_percent_covered(item_obj=new_service)
+            
+            new_service.lrpmt_doc_created = 1
+            new_service.lrpmt_status = "Draft"
+            new_service.lrpmt_doctype = "Delivery Note"
+            new_service.dn_detail = first_prescription.dn_detail
+            new_service.lrpmt_docname = first_prescription.delivery_note
+            new_service.percent_covered = hsr_doc.get_percent_covered(item_obj=new_service)
             
             # Calculate amounts for new service
             updated_service = set_service_amounts(
@@ -1044,10 +1054,10 @@ def update_service_payments(hsr_doc, service_name, service_row):
             payment.has_copayment = service_row.has_copayment
             payment.is_restricted = service_row.is_restricted
             payment.lrpmt_doc_created = 1
-            payment.lrpmt_doctype = "Delivery Note"
-            payment.lrpmt_docname = service_row.delivery_note
+            payment.lrpmt_doctype = service_row.lrpmt_doctype
+            payment.lrpmt_docname = service_row.lrpmt_docname
             payment.dn_detail = service_row.dn_detail
-            payment.lrpmt_status = "Draft"
+            payment.lrpmt_status = service_row.lrpmt_status
             payment.db_update()
     else:
         # Create new payment entry if none exists
