@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
+from frappe.query_builder import DocType
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
 from frappe.utils import get_url_to_form, nowdate, get_fullname
@@ -944,7 +945,6 @@ def update_healthcare_service_request(params):
                 remarks=f"Reason for Service Replacement: <br>{frappe.bold(mcr_comment)}" if mcr_comment else "",
             )
 
-
     hsr_doc.reload()
     new_ref_docnames_for_hre = add_or_update_service(
         hsr_doc,
@@ -1010,9 +1010,9 @@ def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
             # Recalculate amounts
             updated_service = set_service_amounts(
                 existing_service,
-                encounter_doc.company,
-                encounter_doc.insurance_company,
-                encounter_doc.insurance_subscription,
+                hsr_doc.company,
+                hsr_doc.insurance_company,
+                hsr_doc.insurance_subscription,
             )
             
             updated_service.db_update()
@@ -1046,13 +1046,13 @@ def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
             # Calculate amounts for new service
             updated_service = set_service_amounts(
                 new_service,
-                encounter_doc.company,
-                encounter_doc.insurance_company,
-                encounter_doc.insurance_subscription,
+                hsr_doc.company,
+                hsr_doc.insurance_company,
+                hsr_doc.insurance_subscription,
             )
             
             # Create corresponding payment entries
-            create_service_payments(hsr_doc, drug_code, updated_service, mcr_id, mcr_comment)
+            create_service_payments(hsr_doc, drug_code, updated_service)
 
             new_ref_docnames_for_hre.append(first_prescription.name)
 
@@ -1074,7 +1074,7 @@ def update_service_payments(hsr_doc, service_name, service_row, mcr_id, mcr_comm
             existing_payments.append(payment)
     
     if existing_payments:
-        updated_by = get_full_name(frappe.session.user)
+        updated_by = get_fullname(frappe.session.user)
         hre_comment = f"Reason for Qty Change: <br>{mcr_comment}" if mcr_comment else ""
 
         # Update existing payment entries with new values
@@ -1152,7 +1152,7 @@ def create_service_payments(hsr_doc, service_name, service_row):
         "lrpmt_docname": service_row.lrpmt_docname,
         "dn_detail": service_row.dn_detail,
         "lrpmt_status": service_row.lrpmt_status,
-        "department_hsu": service_row.healthcare_service_unit,
+        "department_hsu": service_row.department_hsu,
         "has_copayment": service_row.has_copayment,
         "is_restricted": service_row.is_restricted,
         "discount_applied": service_row.discount_applied,
