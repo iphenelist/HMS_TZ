@@ -441,7 +441,7 @@ def build_insurance_drug_entry(doc, ref_docnames):
         entry_dict = {
             "patient": doc.get("patient"),
             "patient_name": doc.get("patient_name"),
-            "customer": doc.customer,
+            "customer": doc.get("customer") or frappe.get_cached_value("Patient", doc.patient, "customer"),
             "appointment": doc.get("hms_tz_appointment_no") or doc.get("appointment"),
             "posting_date": nowdate(),
             "created_by": get_fullname(frappe.session.user),
