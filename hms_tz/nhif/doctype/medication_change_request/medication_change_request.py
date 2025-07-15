@@ -10,19 +10,18 @@ from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
 from frappe.utils import get_url_to_form, nowdate, get_fullname
 
-from hms_tz.nhif.api.healthcare_utils import (
-    get_discount_percent,
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
+    msgThrow,
     get_item_rate,
     get_mop_amount,
+    get_item_refcode,
+    get_drug_quantity,
+    validate_stock_item,
+    set_service_amounts,
+    get_discount_percent,
     get_template_company_option,
     get_warehouse_from_service_unit,
-    msgThrow,
     validate_nhif_patient_claim_status,
-)
-from hms_tz.nhif.api.patient_encounter import get_drug_quantity, validate_stock_item
-from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
-    set_service_amounts,
-    get_item_refcode
 )
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
     create_revenue_entry_from_mcr, update_cancelled_revenue_entry
