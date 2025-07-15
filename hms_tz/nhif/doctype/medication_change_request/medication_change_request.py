@@ -20,6 +20,10 @@ from hms_tz.nhif.api.healthcare_utils import (
     validate_nhif_patient_claim_status,
 )
 from hms_tz.nhif.api.patient_encounter import get_drug_quantity, validate_stock_item
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
+    set_service_amounts,
+    get_item_refcode
+)
 
 
 class MedicationChangeRequest(Document):
@@ -105,6 +109,7 @@ class MedicationChangeRequest(Document):
 
         if self.delivery_note:
             self.update_delivery_note(encounter_doc)
+            self.update_hsr(encounter_doc)
 
         if self.sales_order:
             self.update_sales_order(encounter_doc)
@@ -367,7 +372,6 @@ class MedicationChangeRequest(Document):
                     _(f"{frappe.bold(row.drug_code)} not covered in Healthcare Insurance Coverage Plan: {self.insurance_coverage_plan}"),
                     method,
                 )
-    
 
     # @frappe.whitelist()
     def validate_copayment_added_item(self, row):
@@ -391,7 +395,6 @@ class MedicationChangeRequest(Document):
 
             frappe.throw(title="Co-Payment Item not Allowed", msg=msg)
 
-
     def validate_insurance_pre_approval(self, row, method):
         """Validate if the Item requires pre-approval from insurance company"""
 
@@ -414,10 +417,13 @@ class MedicationChangeRequest(Document):
             )
 
     def update_encounter(self):
+        """Update Patient Encounter with new Drug Prescription"""
+
         doc = frappe.get_cached_doc("Patient Encounter", self.patient_encounter)
         for line in self.original_pharmacy_prescription:
             for row in doc.drug_prescription:
                 if line.drug_code == row.drug_code and line.healthcare_service_unit == row.healthcare_service_unit:
+
                     frappe.delete_doc(
                         row.doctype,
                         row.name,
@@ -621,6 +627,25 @@ class MedicationChangeRequest(Document):
                         },
                         update_modified=False,
                     )
+
+    def update_hsr(self, encounter_doc):
+        """Update Healthcare Service Request with new Drug Prescription"""
+
+        if not self.insurance_subscription:
+            return
+
+        params = {
+            "encounter_doc": encounter_doc,
+            "medication_change_request_id": self.name,
+        }
+        
+        frappe.enqueue(
+            "hms_tz.nhif.doctype.medication_change_request.medication_change_request.update_healthcare_service_request",
+            params=params,
+            queue="short",
+            timeout=300,
+        )
+
 
 
 @frappe.whitelist()
@@ -857,3 +882,215 @@ def get_service_unit(warehouse, company, service_unit_type):
         return service_units[0].name
     
     return None
+
+
+def update_healthcare_service_request(params):
+    """Update Healthcare Service Request with new Drug Prescription"""
+
+    encounter_doc = params.get("encounter_doc")
+    medication_change_request_id = params.get("medication_change_request_id")
+
+    hsr_id = frappe.get_cached_value(
+        "Healthcare Service Request",
+        {"source_doctype": "Patient Encounter", "source_docname": encounter_doc.name},
+        "name"
+    )
+
+    if not hsr_id:
+        return
+    
+    drug_map = {}
+    existing_services = {}
+    existing_payments = {}
+    services_to_be_removed = []
+
+    # Map current drugs from encounter
+    for d in encounter_doc.drug_prescription:
+        if d.prescribe == 1 or d.is_not_available_inhouse == 1 or d.is_cancelled == 1:
+            continue
+
+        drug_map.setdefault(d.drug_code, []).append(d)
+
+    hsr_doc = frappe.get_cached_doc("Healthcare Service Request", hsr_id)
+
+    # Map existing services and payments
+    for service in hsr_doc.services:
+        if service.service_type == "Medication":
+            existing_services[service.service_name] = service
+            
+    for payment in hsr_doc.payments:
+        if payment.service_type == "Medication":
+            existing_payments.setdefault(payment.service_name, []).append(payment)
+
+    # Identify services to be removed (no longer in encounter)
+    for service_name, service in existing_services.items():
+        if service_name not in drug_map:
+            services_to_be_removed.append(service)
+            
+    # Identify payments to be removed
+    for service_name, payments in existing_payments.items():
+        if service_name not in drug_map:
+            services_to_be_removed.extend(payments)
+
+    # Remove obsolete services and payments
+    for service in services_to_be_removed:
+        frappe.delete_doc(
+            service.doctype,
+            service.name,
+            force=1,
+            ignore_permissions=True,
+            for_reload=True,
+        )
+
+    hsr_doc.reload()
+    add_or_update_service(hsr_doc, drug_map)
+
+    # update db
+    hsr_doc.db_update()
+    hsr_doc.db_update_all()
+
+    hsr_doc.reload()
+    hsr_doc.run_method("before_save")
+    hsr_doc.db_update_all()
+    hsr_doc.add_comment(
+        comment_type="Comment",
+        text=f"Changes made from Medication Change Request: {frappe.bold(medication_change_request_id)}",
+    )
+
+def add_or_update_service(hsr_doc, drug_map):
+    """Add or update a service in the Healthcare Service Request"""
+    
+    # Update or add services and their corresponding payments
+    for drug_code, prescriptions in drug_map.items():
+        existing_service = None
+        
+        # Check if service already exists
+        for service in hsr_doc.services:
+            if service.service_type == "Medication" and service.service_name == drug_code:
+                existing_service = service
+                break
+        
+        # Calculate aggregated values
+        total_qty = sum(row.delivered_quantity or row.quantity for row in prescriptions)
+        has_copayment = any(row.has_copayment for row in prescriptions)
+        is_restricted = any(row.is_restricted for row in prescriptions)
+        discount_applied = any(row.hms_tz_is_discount_applied for row in prescriptions)
+        
+        # Use the first prescription for reference fields
+        first_prescription = prescriptions[0]
+        
+        if existing_service:
+            # Update existing service
+            existing_service.qty = total_qty
+            existing_service.has_copayment = has_copayment
+            existing_service.is_restricted = is_restricted
+            existing_service.discount_applied = discount_applied
+            existing_service.department_hsu = first_prescription.healthcare_service_unit
+            existing_service.ref_docname = first_prescription.name
+            existing_service.ref_doctype = first_prescription.doctype
+            
+            # Recalculate amounts
+            updated_service = set_service_amounts(
+                existing_service,
+                encounter_doc.company,
+                encounter_doc.insurance_company,
+                encounter_doc.insurance_subscription,
+            )
+            
+            updated_service.db_update()
+            
+            # Update corresponding payment entries
+            update_service_payments(hsr_doc, drug_code, updated_service)
+        else:
+            # Add new service
+            new_service = hsr_doc.append("services", {})
+            new_service.update({
+                "service_type": "Medication",
+                "service_name": drug_code,
+                "qty": total_qty,
+                "has_copayment": has_copayment, 
+                "is_restricted": is_restricted,
+                "discount_applied": discount_applied,
+                "department_hsu": first_prescription.healthcare_service_unit,
+                "ref_docname": first_prescription.name,
+                "ref_doctype": first_prescription.doctype,
+            })
+
+            new_service["percent_covered"] = hsr_doc.get_percent_covered(item_obj=new_service)
+            
+            # Calculate amounts for new service
+            updated_service = set_service_amounts(
+                new_service,
+                encounter_doc.company,
+                encounter_doc.insurance_company,
+                encounter_doc.insurance_subscription,
+            )
+            
+            # Create corresponding payment entries
+            create_service_payments(hsr_doc, drug_code, updated_service)
+
+
+def update_service_payments(hsr_doc, service_name, service_row):
+    """Update existing HSR payment entries for a service
+    
+    This function handles multiple payment entries for a single medication/drug.
+    Each payment entry represents different payment methods (Insurance, Cash, etc.)
+    with their own percent_covered and amounts.
+    """
+    
+    # Find existing payments for this service
+    existing_payments = []
+    for payment in hsr_doc.payments:
+        if payment.service_type == "Medication" and payment.service_name == service_name:
+            existing_payments.append(payment)
+    
+    if existing_payments:
+        # Update existing payment entries with new values
+        for payment in existing_payments:
+            payment.qty = service_row.qty
+            payment.amount = ((payment.percent_covered / 100) * payment.rate) * service_row.qty
+            payment.ref_docname = service_row.ref_docname
+            payment.ref_doctype = service_row.ref_doctype
+            payment.department_hsu = service_row.department_hsu
+            payment.has_copayment = service_row.has_copayment
+            payment.is_restricted = service_row.is_restricted
+            payment.db_update()
+    else:
+        # Create new payment entry if none exists
+        create_service_payments(hsr_doc, service_name, service_row)
+
+
+def create_service_payments(hsr_doc, service_name, service_row):
+    """Create payment entries for a new service"""
+    
+    ref_code = get_item_refcode("Medication", service_name)
+
+    # Create payment entry based on insurance subscription
+    new_payment = hsr_doc.append("payments", {})
+    new_payment.update({
+        "service_name": service_name,
+        "service_type": "Medication",
+        "item_code": ref_code,
+        "qty": service_row.qty,
+        "rate": service_row.rate,
+        "amount": service_row.amount,
+        "price_list": service_row.price_list,
+        "ref_docname": service_row.ref_docname,
+        "ref_doctype": service_row.ref_doctype,
+        "department_hsu": service_row.department_hsu,
+        "has_copayment": service_row.has_copayment,
+        "is_restricted": service_row.is_restricted,
+        "discount_applied": service_row.discount_applied,
+        "insurance_subscription": hsr_doc.insurance_subscription,
+        "payor_plan": hsr_doc.insurance_coverage_plan,
+        "insurance_company": hsr_doc.insurance_company,
+        "payment_type": "Insurance" if hsr_doc.insurance_subscription else "Cash",
+        "percent_covered": 100,
+        "years_of_insurance": hsr_doc.years_of_insurance,
+        "authorization_number": frappe.get_cached_value(
+            "Patient Appointment",
+            hsr_doc.appointment,
+            "authorization_number"
+        ),
+    })
+
