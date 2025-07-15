@@ -343,6 +343,48 @@ def get_discount_percent(insurance_company):
 
 
 @frappe.whitelist()
+def get_drug_quantity(drug_item):
+    """Get drug quantity based on dosage, period, interval and interval uom
+
+    :param drug_item: object or json string of drug item
+    """
+    if not frappe.db.get_single_value("Healthcare Settings", "enable_auto_quantity_calculation"):
+        return 0
+
+    quantity = 0
+    strength_count = 0
+
+    drug_row = frappe.parse_json(drug_item)
+
+    if drug_row.dosage and drug_row.period:
+        dosage = frappe.get_cached_doc("Prescription Dosage", drug_row.dosage)
+        period = frappe.get_cached_doc("Prescription Duration", drug_row.period)
+        for item in dosage.dosage_strength:
+            strength_count += item.strength
+        if strength_count == 0:
+            strength_count = dosage.default_strength
+        if strength_count > 0:
+            if drug_row.interval and drug_row.interval_uom:
+                if drug_row.interval_uom == "Day" and drug_row.interval:
+                    quantity = strength_count * (period.get_days() / drug_row.interval)
+                elif drug_row.interval_uom == "Hour" and drug_row.interval:
+                    quantity = strength_count * (period.get_hours() / drug_row.interval)
+            else:
+                quantity = strength_count * period.get_days()
+
+        # elif drug_row.interval and drug_row.interval_uom:
+        #     if drug_row.interval_uom == "Day" and drug_row.interval:
+        #         quantity = period.get_days() / drug_row.interval
+        #     elif drug_row.interval_uom == "Hour" and drug_row.interval:
+        #         quantity = period.get_hours() / drug_row.interval
+
+    if quantity > 0:
+        return quantity
+    else:
+        return 1
+
+
+@frappe.whitelist()
 def validate_stock_item(
     healthcare_service,
     qty,
