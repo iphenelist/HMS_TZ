@@ -1271,7 +1271,7 @@ const validate_stock_item = function (
     healthcare_service_unit = frm.doc.healthcare_service_unit;
   }
   frappe.call({
-    method: "hms_tz.nhif.api.patient_encounter.validate_stock_item",
+    method: "hms_tz.nhif.api.healthcare_utils.validate_stock_item",
     args: {
       healthcare_service: healthcare_service,
       qty: qty,
