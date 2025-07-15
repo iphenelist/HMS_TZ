@@ -60,7 +60,7 @@
   "updated_by",
   "column_break_gzouw",
   "updated_from_doctype",
-  "update_from_docname",
+  "updated_from_docname",
   "column_break_b5uew",
   "remarks"
  ],
@@ -397,13 +397,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "update_from_docname",
-   "fieldtype": "Data",
-   "label": "Update From Docname",
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks",
@@ -423,12 +416,19 @@
   {
    "fieldname": "column_break_b5uew",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "updated_from_docname",
+   "fieldtype": "Data",
+   "label": "Updated From Docname",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-15 16:35:02.754372",
+ "modified": "2025-07-15 23:57:31.109919",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Hospital Revenue Entry",
