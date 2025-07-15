@@ -1043,6 +1043,11 @@ def update_service_payments(hsr_doc, service_name, service_row):
             payment.department_hsu = service_row.department_hsu
             payment.has_copayment = service_row.has_copayment
             payment.is_restricted = service_row.is_restricted
+            payment.lrpmt_doc_created = 1
+            payment.lrpmt_doctype = "Delivery Note"
+            payment.lrpmt_docname = service_row.delivery_note
+            payment.dn_detail = service_row.dn_detail
+            payment.lrpmt_status = "Draft"
             payment.db_update()
     else:
         # Create new payment entry if none exists
@@ -1066,7 +1071,12 @@ def create_service_payments(hsr_doc, service_name, service_row):
         "price_list": service_row.price_list,
         "ref_docname": service_row.ref_docname,
         "ref_doctype": service_row.ref_doctype,
-        "department_hsu": service_row.department_hsu,
+        "lrpmt_doc_created": 1,
+        "lrpmt_doctype": "Delivery Note",
+        "lrpmt_docname": service_row.delivery_note,
+        "dn_detail": service_row.dn_detail,
+        "lrpmt_status": "Draft",
+        "department_hsu": service_row.healthcare_service_unit,
         "has_copayment": service_row.has_copayment,
         "is_restricted": service_row.is_restricted,
         "discount_applied": service_row.discount_applied,
