@@ -112,7 +112,7 @@ class MedicationChangeRequest(Document):
 
         if self.delivery_note:
             self.update_delivery_note(encounter_doc)
-            self.update_hsr_and_hre(encounter_doc)
+            self.update_hsr_and_hre()
 
         if self.sales_order:
             self.update_sales_order(encounter_doc)
@@ -631,21 +631,15 @@ class MedicationChangeRequest(Document):
                         update_modified=False,
                     )
 
-    def update_hsr_and_hre(self, encounter_doc):
+    def update_hsr_and_hre(self):
         """Update Healthcare Service Request and Hospital Revenue Entry after Medication Change Request is submitted"""
 
         if not self.insurance_subscription:
             return
-
-        params = {
-            "encounter_doc": encounter_doc,
-            "mcr_doc": self,
-            "mcr_comment": self.hms_tz_comment
-        }
         
         frappe.enqueue(
             "hms_tz.nhif.doctype.medication_change_request.medication_change_request.update_healthcare_service_request",
-            params=params,
+            mcr_doc=self,
             queue="short",
             timeout=300,
         )
@@ -888,16 +882,12 @@ def get_service_unit(warehouse, company, service_unit_type):
     return None
 
 
-def update_healthcare_service_request(params):
+def update_healthcare_service_request(mcr_doc):
     """Update Healthcare Service Request with new Drug Prescription"""
-
-    mcr_doc = params.get("mcr_doc")
-    mcr_comment = params.get("mcr_comment")
-    encounter_doc = params.get("encounter_doc")
 
     hsr_id = frappe.get_cached_value(
         "Healthcare Service Request",
-        {"source_doctype": "Patient Encounter", "source_docname": encounter_doc.name},
+        {"source_doctype": "Patient Encounter", "source_docname": mcr_doc.patient_encounter},
         "name"
     )
 
@@ -906,6 +896,11 @@ def update_healthcare_service_request(params):
     
     drug_map = {}
     services_to_be_removed = []
+
+    encounter_doc = frappe.get_cached_doc(
+        "Patient Encounter",
+        mcr_doc.patient_encounter,
+    )
 
     # Map current drugs from encounter
     for d in encounter_doc.drug_prescription:
@@ -942,7 +937,7 @@ def update_healthcare_service_request(params):
                 "Medication Change Request",
                 mcr_doc.name,
                 is_cancelled=1,
-                remarks=f"Reason for Service Replacement: <br>{frappe.bold(mcr_comment)}" if mcr_comment else "",
+                remarks=f"Reason for Service Replacement: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else "",
             )
 
     hsr_doc.reload()
@@ -950,7 +945,7 @@ def update_healthcare_service_request(params):
         hsr_doc,
         drug_map,
         mcr_doc.name,
-        mcr_comment
+        mcr_doc.hms_tz_comment
     )
 
     # update db
@@ -968,7 +963,12 @@ def update_healthcare_service_request(params):
     if len(new_ref_docnames_for_hre) > 0:
         create_revenue_entry_from_mcr(mcr_doc, new_ref_docnames_for_hre)
 
-def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
+def add_or_update_service(
+    hsr_doc,
+    drug_map,
+    mcr_id,
+    mcr_comment
+):
     """Add or update a service in the Healthcare Service Request"""
     
     new_ref_docnames_for_hre = []
@@ -1001,11 +1001,6 @@ def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
             existing_service.department_hsu = first_prescription.healthcare_service_unit
             existing_service.ref_docname = first_prescription.name
             existing_service.ref_doctype = first_prescription.doctype
-            existing_service.lrpmt_doc_created = 1
-            existing_service.lrpmt_status = "Draft"
-            existing_service.lrpmt_doctype = "Delivery Note"
-            existing_service.dn_detail = first_prescription.dn_detail
-            existing_service.lrpmt_docname = first_prescription.delivery_note
             
             # Recalculate amounts
             updated_service = set_service_amounts(
@@ -1018,7 +1013,15 @@ def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
             updated_service.db_update()
             
             # Update corresponding payment entries
-            ref_docname = update_service_payments(hsr_doc, drug_code, updated_service, mcr_id, mcr_comment)
+            ref_docname = update_service_payments(
+                hsr_doc,
+                updated_service,
+                first_prescription.delivery_note,
+                first_prescription.dn_detail,
+                mcr_id,
+                mcr_comment
+            )
+
             if ref_docname:
                 new_ref_docnames_for_hre.append(ref_docname)
         else:
@@ -1036,11 +1039,6 @@ def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
                 "ref_doctype": first_prescription.doctype,
             })
             
-            new_service.lrpmt_doc_created = 1
-            new_service.lrpmt_status = "Draft"
-            new_service.lrpmt_doctype = "Delivery Note"
-            new_service.dn_detail = first_prescription.dn_detail
-            new_service.lrpmt_docname = first_prescription.delivery_note
             new_service.percent_covered = hsr_doc.get_percent_covered(item_obj=new_service)
             
             # Calculate amounts for new service
@@ -1050,16 +1048,28 @@ def add_or_update_service(hsr_doc, drug_map, mcr_id, mcr_comment):
                 hsr_doc.insurance_company,
                 hsr_doc.insurance_subscription,
             )
-            
+
             # Create corresponding payment entries
-            create_service_payments(hsr_doc, drug_code, updated_service)
+            create_service_payments(
+                hsr_doc,
+                updated_service,
+                first_prescription.delivery_note,
+                first_prescription.dn_detail,
+            )
 
             new_ref_docnames_for_hre.append(first_prescription.name)
 
     return new_ref_docnames_for_hre
 
 
-def update_service_payments(hsr_doc, service_name, service_row, mcr_id, mcr_comment):
+def update_service_payments(
+    hsr_doc,
+    service_row,
+    delivery_note,
+    dn_detail,
+    mcr_id,
+    mcr_comment
+):
     """Update existing HSR payment entries for a service
     
     This function handles multiple payment entries for a single medication/drug.
@@ -1070,12 +1080,12 @@ def update_service_payments(hsr_doc, service_name, service_row, mcr_id, mcr_comm
     # Find existing payments for this service
     existing_payments = []
     for payment in hsr_doc.payments:
-        if payment.service_type == "Medication" and payment.service_name == service_name:
+        if payment.service_type == "Medication" and payment.service_name == service_row.service_name:
             existing_payments.append(payment)
     
     if existing_payments:
         updated_by = get_fullname(frappe.session.user)
-        hre_comment = f"Reason for Qty Change: <br>{mcr_comment}" if mcr_comment else ""
+        hre_comment = f"Reason for Qty Change: <br><br>{frappe.bold(mcr_comment)}" if mcr_comment else ""
 
         # Update existing payment entries with new values
         for payment in existing_payments:
@@ -1091,11 +1101,13 @@ def update_service_payments(hsr_doc, service_name, service_row, mcr_id, mcr_comm
             payment.has_copayment = service_row.has_copayment
             payment.is_restricted = service_row.is_restricted
             payment.lrpmt_doc_created = 1
-            payment.lrpmt_doctype = service_row.lrpmt_doctype
-            payment.lrpmt_docname = service_row.lrpmt_docname
-            payment.dn_detail = service_row.dn_detail
-            payment.lrpmt_status = service_row.lrpmt_status
+            payment.lrpmt_status = "Draft"
+            payment.dn_detail = dn_detail
+            payment.lrpmt_docname = delivery_note
+            payment.lrpmt_doctype = "Delivery Note"
+
             payment.db_update()
+            payment.reload()
 
             # Update revenue entry if necessary and if payor plan is not Cash
             # (Cash HRE will be updated via sales invoice)
@@ -1113,10 +1125,10 @@ def update_service_payments(hsr_doc, service_name, service_row, mcr_id, mcr_comm
                     .set(hre.healthcare_service_unit, payment.department_hsu)
                     .set(hre.updated_by, updated_by)
                     .set(hre.updated_from_doctype, "Medication Change Request")
-                    .set(hre.update_from_docname, mcr_id)
+                    .set(hre.updated_from_docname, mcr_id)
                     .set(hre.remarks, hre_comment)
                     .where(
-                        (hre.service_name == service_name)
+                        (hre.service_name == service_row.service_name)
                         & (hre.ref_doctype == old_ref_doctype)
                         & (hre.ref_docname == old_ref_docname)
                         & (hre.insurance_coverage_plan == old_payor_plan)
@@ -1125,20 +1137,30 @@ def update_service_payments(hsr_doc, service_name, service_row, mcr_id, mcr_comm
                 query.run()
     else:
         # Create new payment entry if none exists
-        create_service_payments(hsr_doc, service_name, service_row)
+        create_service_payments(
+            hsr_doc,
+            service_row,
+            delivery_note,
+            dn_detail
+        )
 
         return service_row.ref_docname
 
 
-def create_service_payments(hsr_doc, service_name, service_row):
+def create_service_payments(
+    hsr_doc,
+    service_row,
+    delivery_note,
+    dn_detail
+):
     """Create payment entries for a new service"""
-    
-    ref_code = get_item_refcode("Medication", service_name)
+
+    ref_code = get_item_refcode("Medication", service_row.get("service_name"))
 
     # Create payment entry based on insurance subscription
     new_payment = hsr_doc.append("payments", {})
     new_payment.update({
-        "service_name": service_name,
+        "service_name": service_row.get("service_name"),
         "service_type": "Medication",
         "item_code": ref_code,
         "qty": service_row.qty,
@@ -1148,10 +1170,10 @@ def create_service_payments(hsr_doc, service_name, service_row):
         "ref_docname": service_row.ref_docname,
         "ref_doctype": service_row.ref_doctype,
         "lrpmt_doc_created": 1,
-        "lrpmt_doctype": service_row.lrpmt_doctype,
-        "lrpmt_docname": service_row.lrpmt_docname,
-        "dn_detail": service_row.dn_detail,
-        "lrpmt_status": service_row.lrpmt_status,
+        "lrpmt_doctype": "Delivery Note",
+        "lrpmt_docname": delivery_note,
+        "dn_detail": dn_detail,
+        "lrpmt_status": "Draft",
         "department_hsu": service_row.department_hsu,
         "has_copayment": service_row.has_copayment,
         "is_restricted": service_row.is_restricted,
