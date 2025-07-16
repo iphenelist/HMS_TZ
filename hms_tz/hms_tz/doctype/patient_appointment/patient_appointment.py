@@ -758,7 +758,7 @@ def get_events(start, end, filters=None):
 		`tabPatient Appointment`
 		left join `tabAppointment Type` on `tabPatient Appointment`.appointment_type=`tabAppointment Type`.name
 		where
-		(`tabPatient Appointment`.appointment_date between {start} and {end})
+		(`tabPatient Appointment`.appointment_date between '{start}' and '{end}')
 		and `tabPatient Appointment`.status != 'Cancelled' and `tabPatient Appointment`.docstatus < 2 {conditions}""",
         as_dict=True,
         update={"allDay": 0},
