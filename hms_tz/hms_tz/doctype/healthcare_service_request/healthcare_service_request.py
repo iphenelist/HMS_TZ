@@ -427,6 +427,16 @@ def create_service_request(doc_obj=None, data=None):
         hsr.append("payments", new_row)
 
     hsr.insert(ignore_permissions=True)
+    hsr.reload()
+
+    has_copayment = any(d.has_copayment == 1 for d in hsr.services)
+    if not has_copayment:
+        hsr.run_method("before_save")
+        hsr.db_update_all()
+
+        hsr.reload()
+        hsr.submit()
+
     return hsr.name
 
 
