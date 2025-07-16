@@ -645,7 +645,6 @@ class MedicationChangeRequest(Document):
         )
 
 
-
 @frappe.whitelist()
 def get_delivery_note(patient, patient_encounter):
     d_list = frappe.get_all(
@@ -897,7 +896,7 @@ def update_healthcare_service_request(mcr_doc):
     drug_map = {}
     services_to_be_removed = []
 
-    encounter_doc = frappe.get_cached_doc(
+    encounter_doc = frappe.get_doc(
         "Patient Encounter",
         mcr_doc.patient_encounter,
     )
@@ -1158,8 +1157,11 @@ def create_service_payments(
     ref_code = get_item_refcode("Medication", service_row.get("service_name"))
 
     # Create payment entry based on insurance subscription
-    new_payment = hsr_doc.append("payments", {})
-    new_payment.update({
+    new_payment = frappe.get_doc({
+        "doctype": "Healthcare Service Request Payment",
+        "parent": hsr_doc.name,
+        "parentfield": "payments",
+        "parenttype": "Healthcare Service Request",
         "service_name": service_row.get("service_name"),
         "service_type": "Medication",
         "item_code": ref_code,
@@ -1190,6 +1192,10 @@ def create_service_payments(
             "authorization_number"
         ),
     })
-
-
+    new_payment.flags.ignore_permissions = True
+    new_payment.flags.ignore_mandatory = True
+    new_payment.insert()
+    new_payment.reload()
+    
+    return new_payment
 
