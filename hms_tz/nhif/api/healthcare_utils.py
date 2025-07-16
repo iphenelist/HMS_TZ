@@ -1725,6 +1725,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
         if doc.get("name"):
             hsrp = DocType("Healthcare Service Request Payment")
             dp = DocType("Drug Prescription")
+            hre = DocType("Hospital Revenue Entry")
 
             for item in doc.items:
                 (
@@ -1743,6 +1744,13 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
                     .set(dp.delivery_note, doc.name)
                     .set(dp.dn_detail, item.name)
                     .where(dp.name == item.reference_name)
+                ).run()
+
+                (
+                    frappe.qb.update(hre)
+                    .set(hre.lrpmt_doctype, doc.doctype)
+                    .set(hre.lrpmt_docname, doc.name)
+                    .where(hre.ref_docname == item.reference_name)
                 ).run()
 
             frappe.msgprint(_(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully."))
