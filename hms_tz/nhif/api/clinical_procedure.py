@@ -41,7 +41,6 @@ def on_submit(doc, methd):
         doc.hms_tz_ref_childname,
         lrpmt_status="Submitted",
     )
-    # create_delivery_note(doc)
 
 
 def before_submit(doc, method):
@@ -53,14 +52,6 @@ def before_submit(doc, method):
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
     doc.hms_tz_submitted_date = nowdate()
-
-    # 2023-07-13
-    # stop this validation for now
-    return
-    if doc.approval_number and doc.approval_status != "Verified":
-        frappe.throw(
-            _(f"Approval number: <b>{doc.approval_number}</b> for item: <b>{doc.procedure_template}</b> is not verified.>br>\
-                    Please verify the Approval Number."))
 
 
 def create_delivery_note(doc):
