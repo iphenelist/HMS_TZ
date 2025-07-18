@@ -11,6 +11,64 @@ def is_issuance_biometric_verification_enabled(doc_type, company, field):
 
 
 @frappe.whitelist()
+def get_poc_reference_no_for_lrpmt(
+    ref_doctype,
+    ref_docname,
+    service_type,
+    service_name,
+    fingerprint=None,
+    fpcode=None,
+    biometric_method="NONE",
+):
+    """
+    Get POC reference number for a given document.
+    """
+
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+
+    point_of_care = get_patient_care_name(service_type, service_name)
+
+    data = get_poc_reference_no(
+        point_of_care=point_of_care,
+        practitioner=doc.get("practitioner") or doc.get("healthcare_practitioner"),
+        fingerprint=fingerprint,
+        fpcode=fpcode,
+        biometric_method=biometric_method.upper(),
+        company=doc.company,
+        appointment_id=doc.get("appointment") or doc.get("hms_tz_appointment_no"),
+        authorization_no=doc.get("authorization_number") or "",
+        ref_doctype=ref_doctype,
+        ref_docname=ref_docname,
+    )
+
+    if data:
+        doc.db_set("poc_reference_no", data.get("ReferenceNo"))
+        doc.add_comment(
+            "Comment",
+            text=f"POC Reference No: <strong>{data.get('ReferenceNo')}</strong> for {point_of_care} is successfully created."
+        )
+
+        records = frappe.db.get_all(
+            doc.doctype,
+            filters={
+                "ref_docname": doc.ref_docname,
+                "ref_doctype": doc.ref_doctype,
+                "name": ["!=", doc.name],
+            },
+        )
+
+        for record in records:
+            record_doc = frappe.get_cached_doc(doc.doctype, record.name)
+            record_doc.db_set("poc_reference_no", data.get("ReferenceNo"))
+            record_doc.add_comment(
+                "Comment",
+                text=f"POC Reference No: <strong>{data.get('ReferenceNo')}</strong> for {point_of_care} is successfully created."
+            )
+
+        return True
+
+
+@frappe.whitelist()
 def issue_nhif_service(
     ref_doctype,
     ref_docname,
