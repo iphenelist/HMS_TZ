@@ -283,14 +283,14 @@ def issue_approved_service(
     
     # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    image_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     payload = {
         "approvalReferenceNo": approval_number,
         "isBiometricVerified": False if biometric_method == "NONE" else True,
         "biometricMethod": biometric_method,
         "fpCode": fpcode,
-        "imageData": image_data,
+        "imageData": fingerprint,
         "description": service_name,
         "quantity": qty,
         "unitPrice": item_rate or 0,
