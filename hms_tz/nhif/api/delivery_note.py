@@ -5,6 +5,7 @@ import json
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
+from hms_tz.nhif.utils import validate_point_of_care
 from frappe.utils import date_diff, get_fullname, nowdate
 
 from hms_tz.nhif.api.healthcare_utils import update_dimensions
@@ -224,6 +225,8 @@ def before_submit(doc, method):
         if item.is_restricted and not item.approval_number:
             frappe.throw(
                 _(f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number."))
+
+    validate_point_of_care(doc)
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
