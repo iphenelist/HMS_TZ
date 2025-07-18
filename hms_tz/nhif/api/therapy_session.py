@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
+from hms_tz.nhif.utils import validate_point_of_care
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
     update_revenue_entry,
 )
@@ -42,6 +43,7 @@ def after_insert(doc, method):
 
 def before_submit(doc, method):
     validate_not_serviced(doc)
+    validate_point_of_care(doc)
 
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(_(f"Approval number is required for <b>{doc.therapy_type}</b>. Please set the Approval Number."))

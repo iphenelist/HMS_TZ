@@ -33,6 +33,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     validate_stock_item,
     validate_nhif_patient_claim_status,
 )
+from hms_tz.nhif.utils import validate_point_of_care
 from hms_tz.nhif.api.patient_appointment import calculate_patient_age
 
 
@@ -869,6 +870,7 @@ def before_submit(doc, method):
             doc.insurance_company,
         )
 
+    validate_point_of_care(doc)
     validate_preapproval_services(doc)
 
     if not doc.healthcare_package_order:
