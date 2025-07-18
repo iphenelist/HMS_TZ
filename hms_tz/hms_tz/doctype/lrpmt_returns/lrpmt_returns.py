@@ -1265,8 +1265,8 @@ def update_cancelled_hsr(
 
         update_cancelled_revenue_entry(
             ref_docname,
+            "LRPMT Returns",
             lrpmt_return_id,
-            is_cancelled,
             is_cancelled=is_cancelled,
             remarks=remarks
         )
