@@ -128,25 +128,6 @@ def issue_nhif_service(
             if service_data:
                 data.update(service_data)
 
-    point_of_care = get_patient_care_name(service_type, service_name)
-    
-    if not doc.poc_reference_no:
-        service_data = get_poc_reference_no(
-            point_of_care=point_of_care,
-            practitioner=doc.get("practitioner") or doc.get("healthcare_practitioner"),
-            fingerprint=fingerprint,
-            fpcode=fpcode,
-            biometric_method=biometric_method,
-            company=doc.company,
-            appointment_id=doc.get("appointment") or doc.get("hms_tz_appointment_no"),
-            authorization_no=doc.get("authorization_number") or "",
-            settings_doc=settings_doc,
-            ref_doctype=doc.doctype,
-            ref_docname=doc.name,
-        )
-        if service_data:
-            data.update(service_data)
-    
     return data
 
 
