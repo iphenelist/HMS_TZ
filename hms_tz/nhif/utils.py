@@ -115,3 +115,17 @@ def get_patient_care_name(service_type, service_name):
         )
 
     return points_of_care
+
+
+def validate_point_of_care(doc):
+    """
+    Validate that the point of care is set for the given document.
+    """
+
+    if not doc.get("insurance_company") or "NHIF" not in doc.get("insurance_company", ""):
+        return
+    
+    if not doc.get("poc_reference_no"):
+        frappe.throw(
+            f"POC reference no is not set for this document, Please get POC reference no from NHIF."
+        )
