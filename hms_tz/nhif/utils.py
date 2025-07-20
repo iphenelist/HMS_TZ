@@ -59,6 +59,12 @@ def get_poc_reference_no_for_lrpmt(
 
         for record in records:
             record_doc = frappe.get_cached_doc(doc.doctype, record.name)
+            if (
+                not record_doc.get("insurance_company") and
+                not record_doc.get("coverage_plan_name")
+            ):
+                continue
+
             record_doc.db_set("poc_reference_no", data.get("ReferenceNo"))
             record_doc.add_comment(
                 "Comment",
