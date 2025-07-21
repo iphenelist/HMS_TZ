@@ -118,21 +118,25 @@ def issue_nhif_service(
                 data.update(service_data)
 
     else:
-        if doc.is_restricted == 1 and doc.approval_number:
-            service_data = issue_approved_service(
-                doc,
-                doc.approval_number,
-                service_type,
-                service_name,
-                fingerprint,
-                fpcode,
-                qty=1,
-                settings_doc=settings_doc,
-                biometric_method=biometric_method
+        if not doc.approval_number:
+            frappe.throw(
+                f"Approval Number is not set for this document, Please get Approval Number from NHIF."
             )
+        
+        service_data = issue_approved_service(
+            doc,
+            doc.approval_number,
+            service_type,
+            service_name,
+            fingerprint,
+            fpcode,
+            qty=1,
+            settings_doc=settings_doc,
+            biometric_method=biometric_method
+        )
 
-            if service_data:
-                data.update(service_data)
+        if service_data:
+            data.update(service_data)
 
     return data
 
