@@ -233,11 +233,11 @@ let admit_patient_dialog = (frm) => {
         label: "Biometric Method",
         fieldname: "biometric_method",
         options: [
-          { value: "Fingerprint", label: __("Fingerprint") },
-          { value: "Facial Recognition", label: __("Facial Recognition") },
+          { value: "FINGERPRINT", label: __("FINGERPRINT") },
+          { value: "FACIAL", label: __("FACIAL") },
           { value: "NONE", label: __("NONE") },
         ],
-        default: "Fingerprint",
+        default: "FINGERPRINT",
         reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
         hidden: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
       }
@@ -301,13 +301,13 @@ let nhif_admit_patient = async (
 ) => {
   let biometricData;
   
-  if (biometric_method === "Facial Recognition") {
+  if (biometric_method === "FACIAL") {
     biometricData = await new FacialRecognition({ label: "Admit" });
     if (!biometricData) {
         frappe.msgprint(__("Face capture failed. Please try again."));
         return;
       }
-  } else if (biometric_method === "Fingerprint") {
+  } else if (biometric_method === "FINGERPRINT") {
     biometricData = await new Fingerprint({ label: "Admit" });
     if (!biometricData) {
       frappe.msgprint(__("Fingerprint capture failed. Please try again."));
@@ -318,7 +318,7 @@ let nhif_admit_patient = async (
       frappe.confirm(
         __(`
           <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
-            <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+            <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
           </div>
           <br>
           <p class="text-center"><i>Are you sure you want to continue?</i></p>`
@@ -559,11 +559,11 @@ let transfer_patient_dialog = (frm) => {
         label: "Biometric Method",
         fieldname: "biometric_method",
         options: [
-          { value: "Fingerprint", label: __("Fingerprint") },
-          { value: "Facial Recognition", label: __("Facial Recognition") },
+          { value: "FINGERPRINT", label: __("FINGERPRINT") },
+          { value: "FACIAL", label: __("FACIAL") },
           { value: "NONE", label: __("NONE") },
         ],
-        default: "Fingerprint",
+        default: "FINGERPRINT",
         reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
         hidden: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
       }
@@ -659,14 +659,14 @@ let nhif_transfer_patient = async (
 ) => {
 
   let biometricData;
-  
-  if (biometric_method === "Facial Recognition") {
+
+  if (biometric_method === "FACIAL") {
     biometricData = await new FacialRecognition({ label: "Transfer" });
     if (!biometricData) {
         frappe.msgprint(__("Face capture failed. Please try again."));
         return;
       }
-  } else if (biometric_method === "Fingerprint") {
+  } else if (biometric_method === "FINGERPRINT") {
     biometricData = await new Fingerprint({ label: "Transfer" });
     if (!biometricData) {
       frappe.msgprint(__("Fingerprint capture failed. Please try again."));
@@ -677,7 +677,7 @@ let nhif_transfer_patient = async (
       frappe.confirm(
         __(`
           <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
-            <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+            <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
           </div>
           <br>
           <p class="text-center"><i>Are you sure you want to continue?</i></p>`
