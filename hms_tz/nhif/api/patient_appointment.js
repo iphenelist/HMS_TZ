@@ -334,13 +334,13 @@ frappe.ui.form.on("Patient Appointment", {
     try {
       let biometricData;
 
-      if (frm.doc.biometric_method === "Facial Recognition") {
+      if (frm.doc.biometric_method === "FACIAL") {
         biometricData = await new FacialRecognition({ label: "Authorize" });
         if (!biometricData) {
           frappe.msgprint(__("Face capture failed. Please try again."));
           return;
         }
-      } else if (frm.doc.biometric_method === "Fingerprint") {
+      } else if (frm.doc.biometric_method === "FINGERPRINT") {
         biometricData = await new Fingerprint({ label: "Authorize" });
         if (!biometricData) {
           frappe.msgprint(__("Fingerprint capture failed. Please try again."));
@@ -351,7 +351,7 @@ frappe.ui.form.on("Patient Appointment", {
           frappe.confirm(
             __(`
               <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
-              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
               </div>
               <br>
               <p class="text-center"><i>Are you sure you want to continue?</i></p>`
@@ -428,9 +428,9 @@ frappe.ui.form.on("Patient Appointment", {
       });
     } catch (error) {
       console.error("Biometric capture error:", error);
-      if (frm.doc.biometric_method === "Facial Recognition") {
+      if (frm.doc.biometric_method === "FACIAL") {
         frappe.msgprint(__("Failed to capture face photo. Please try again."));
-      } else if (frm.doc.biometric_method === "Fingerprint") {
+      } else if (frm.doc.biometric_method === "FINGERPRINT") {
         frappe.msgprint(__("Failed to capture fingerprint. Please try again."));
       }
     }
@@ -481,9 +481,9 @@ frappe.ui.form.on("Patient Appointment", {
             );
           }
           if (r.message.RequiresBiometricVerification == 1) {
-            frm.set_value("biometric_method", "Fingerprint");
+            frm.set_value("biometric_method", "FINGERPRINT");
           } else if (r.message.RequiresFacialRecognition == 1) {
-            frm.set_value("biometric_method", "Facial Recognition");
+            frm.set_value("biometric_method", "FACIAL");
           }
         }
       },
