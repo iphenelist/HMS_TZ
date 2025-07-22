@@ -149,7 +149,6 @@ def get_service_preapproval(
                                 <td>{d.get('rejectionDetails')}</td>\
                             </tr>"
 
-        source_doc.has_preapproval = 1
         source_doc.db_update()
         source_doc.db_update_all()
         source_doc.reload()
@@ -237,7 +236,6 @@ def cancel_preapproval(
             ref_docname=ref_docname,
         )
 
-        has_preapproval = False
         for child in get_childs_map():
             if not source_doc.get(child.get("table")):
                 continue
@@ -247,15 +245,9 @@ def cancel_preapproval(
                     row.preapproval_status = "Cancelled"
                     row.preapproval_no = ""
                     row.preapproval_cancel_remarks = remarks
-                    has_preapproval = False
                     row.db_update()
                     row.reload()
 
-                elif row.preapproval_no and not has_preapproval:
-                    has_preapproval = True
-
-        source_doc.reload()
-        source_doc.has_preapproval = has_preapproval
         source_doc.db_update()
         source_doc.db_update_all()
         source_doc.reload()
