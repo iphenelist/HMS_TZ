@@ -1,51 +1,32 @@
 <template>
-  <div class="practitioner-card h-full">
-    <div class="flex items-center space-x-2 p-2 bg-white h-full border-r border-gray-200 hover:bg-gray-50 transition-colors w-full">
-      <!-- Avatar -->
-      <div class="flex-shrink-0">
+  <div class="practitioner-card">
+    <div class="flex flex-col items-center p-2 bg-white border border-gray-200 
+      rounded-lg hover:bg-gray-50 transition-colors w-32 h-auto overflow-hidden">
+      <!-- Avatar on top -->
+      <div class="mb-2 flex-shrink-0">
         <Avatar
           :label="practitioner.avatar"
           :image="practitioner.image"
-          size="xs"
-          :class="practitioner.is_available ? 'ring-2 ring-green-200' : 'ring-2 ring-red-200'"
+          size="md"
+          :class="practitioner.image ? 'ring-2 ring-green-300 !w-10 !h-10' : 'ring-2 ring-sky-300 !w-10 !h-10'"
         />
       </div>
       
       <!-- Practitioner Info -->
-      <div class="flex-1 min-w-0">
-        <h3 class="text-xs font-semibold text-black truncate">
+      <div class="text-center w-full flex-1 min-h-0">
+        <h3 class="text-xs font-semibold text-black truncate mb-1 leading-tight">
           {{ practitioner.name }}
         </h3>
-        <p class="text-xs text-gray-600 truncate">
+        <p class="text-xs text-gray-600 truncate leading-tight">
           {{ practitioner.specialty }}
         </p>
-        <div class="flex items-center mt-0.5">
-          <Badge
-            :label="practitioner.is_available ? 'Available' : 'Unavailable'"
-            :theme="practitioner.is_available ? 'green' : 'red'"
-            size="sm"
-          />
-        </div>
-      </div>
-      
-      <!-- Actions Menu -->
-      <div class="flex-shrink-0">
-        <Dropdown :options="menuOptions" placement="bottom-end">
-          <template #default="{ open }">
-            <Button variant="ghost" size="sm">
-              <FeatherIcon name="more-vertical" class="h-3 w-3 text-gray-600" />
-            </Button>
-          </template>
-        </Dropdown>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { FeatherIcon, Avatar, Badge, Button, Dropdown, toast } from 'frappe-ui'
-import { usePractitionerStore } from '@/stores/practitioners'
+import { Avatar, Badge } from 'frappe-ui'
 
 const props = defineProps({
   practitioner: {
@@ -53,69 +34,6 @@ const props = defineProps({
     required: true
   }
 })
-
-const practitionerStore = usePractitionerStore()
-
-// Menu options
-const menuOptions = computed(() => [
-  {
-    label: 'View Details',
-    icon: 'user',
-    handler: () => viewPractitionerDetails()
-  },
-  {
-    label: props.practitioner.is_available ? 'Mark Unavailable' : 'Mark Available',
-    icon: props.practitioner.is_available ? 'user-x' : 'user-check',
-    handler: () => toggleAvailability()
-  },
-  {
-    label: 'View Schedule',
-    icon: 'calendar',
-    handler: () => viewSchedule()
-  },
-  {
-    label: 'Contact Info',
-    icon: 'phone',
-    handler: () => showContactInfo()
-  }
-])
-
-const viewPractitionerDetails = () => {
-  console.log('View practitioner details:', props.practitioner)
-  toast.info(`Viewing details for ${props.practitioner.name}`)
-  // TODO: Implement practitioner details modal
-}
-
-const toggleAvailability = async () => {
-  try {
-    const result = await practitionerStore.updatePractitionerAvailability(
-      props.practitioner.id,
-      !props.practitioner.is_available
-    )
-    
-    if (result.success) {
-      toast.success(
-        `${props.practitioner.name} marked as ${!props.practitioner.is_available ? 'available' : 'unavailable'}`
-      )
-    } else {
-      toast.error('Failed to update availability')
-    }
-  } catch (error) {
-    toast.error('Error updating practitioner availability')
-    console.error(error)
-  }
-}
-
-const viewSchedule = () => {
-  console.log('View practitioner schedule:', props.practitioner)
-  toast.info(`Viewing schedule for ${props.practitioner.name}`)
-  // TODO: Implement schedule view
-}
-
-const showContactInfo = () => {
-  const contact = `${props.practitioner.name}\nEmail: ${props.practitioner.email}\nPhone: ${props.practitioner.phone}\nDepartment: ${props.practitioner.department}`
-  alert(contact)
-}
 </script>
 
 <style scoped>
