@@ -16,36 +16,49 @@ def get_service_preapproval(
     authorization_no=None,
     settings_doc=None,
 ):
-    encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+    # source doc can be either Patient Encounter or Medication Change Request
+    source_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
-    services, service_map, diseases = get_encounter_services(encounter_doc)
+    services, service_map, diseases = get_services(source_doc)
     if len(services) == 0:
-        frappe.msgprint("No servuce(s) to request an Pre-Approvals")
+        frappe.msgprint("No service(s) to request an Pre-Approvals")
         return False
 
-    first_name, last_name, dob = frappe.get_cached_value(
-        "Patient", encounter_doc.patient, ["first_name", "last_name", "dob"]
+    first_name, last_name, dob, patient_sex = frappe.get_cached_value(
+        "Patient", source_doc.patient, ["first_name", "last_name", "dob", "sex"]
     )
+
+    practitioner = source_doc.get("practitioner") or source_doc.get("healthcare_practitioner")
     mct_code, mobile = frappe.get_cached_value(
         "Healthcare Practitioner",
-        encounter_doc.practitioner,
+        practitioner,
         ["tz_mct_code", "mobile_phone"],
     )
     if not authorization_no:
         authorization_no = frappe.get_cached_value(
             "Patient Appointment",
-            encounter_doc.appointment,
+            source_doc.appointment,
             "authorization_number",
+        )
+    
+    clinical_notes = ""
+    if source_doc.doctype == "Patient Encounter":
+        clinical_notes = source_doc.get("examination_detail") 
+    else:
+        clinical_notes = frappe.get_cached_value(
+            "Patient Encounter",
+            source_doc.get("patient_encounter"),
+            "examination_detail",
         )
 
     payload = {
         "authorizationNo": authorization_no,
         "firstName": first_name,
         "lastName": last_name,
-        "gender": encounter_doc.patient_sex,
+        "gender": patient_sex,
         "dateOfBirth": str(dob),
-        "patientFileNo": encounter_doc.patient,
-        "clinicalNotes": encounter_doc.examination_detail,
+        "patientFileNo": source_doc.patient,
+        "clinicalNotes": clinical_notes,
         "practitionerNo": mct_code,
         "practitionersRemarks": "",
         "telephoneNo": mobile,
@@ -53,9 +66,9 @@ def get_service_preapproval(
         "requestedServices": services,
     }
     payload = json.dumps(payload)
-
+    
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Setting", encounter_doc.company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", source_doc.company)
 
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/RequestServices"
 
@@ -78,9 +91,16 @@ def get_service_preapproval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Pre-approval request Failed..!<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+        )
+        frappe.db.commit()
+
         frappe.throw(
             title="NHIF API Error",
-            msg=f"Pre-approval failed<br><br>Status Code: {r.status_code}<br>Response: <b>{r.text}<b>",
+            msg=f"Pre-approval failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
             indicator="red",
         )
     else:
@@ -102,7 +122,10 @@ def get_service_preapproval(
             <table class='table table-condensed table-bordered'><tr><th>Service Type</th><th>Service</th><th>Status</th><th>Reason</th></tr>"
 
         for child in get_childs_map():
-            for row in encounter_doc.get(child.get("table")):
+            if not source_doc.get(child.get("table")):
+                continue
+
+            for row in source_doc.get(child.get("table")):
                 ref_code = service_map.get((row.doctype, row.name, row.get(child.get("item"))))
                 if not ref_code:
                     continue
@@ -110,7 +133,7 @@ def get_service_preapproval(
                 for d in data.get("services"):
                     if d.get("itemCode") == ref_code:
                         row.preapproval_status = d.get("status")
-                        row.preapproval_no = data.get("requestNo")
+                        row.preapproval_no = data.get("requestNo") if d.get("status") != "REJECTED" else ""
                         row.rejection_reason_code = d.get("rejectionReasonCode")
                         row.rejection_details = d.get("rejectionDetails")
                         row.preapproval_cancel_remarks = ""
@@ -126,12 +149,11 @@ def get_service_preapproval(
                                 <td>{d.get('rejectionDetails')}</td>\
                             </tr>"
 
-        encounter_doc.has_preapproval = 1
-        encounter_doc.db_update()
-        encounter_doc.db_update_all()
-        encounter_doc.reload()
+        source_doc.db_update()
+        source_doc.db_update_all()
+        source_doc.reload()
 
-        encounter_doc.add_comment(
+        source_doc.add_comment(
             comment_type="Comment",
             text=f"Pre-approval request sent successful!<br>RequestID: <b>{data.get('requestID')}</b><br>",
         )
@@ -156,14 +178,14 @@ def cancel_preapproval(
     remarks,
     settings_doc=None,
 ):
-    encounter_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
-    services, service_map, diseases = get_encounter_services(encounter_doc, preapproval_no)
+    source_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+    services, service_map, diseases = get_services(source_doc, preapproval_no)
     if len(services) == 0:
         frappe.msgprint("No servuce(s) to cancel an Pre-Approvals")
         return False
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Setting", encounter_doc.company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", source_doc.company)
 
     url = f"{settings_doc.nhifservice_url}/api/PreApprovals/CancelRequest?requestNo={preapproval_no}&remarks={remarks}"
 
@@ -186,6 +208,18 @@ def cancel_preapproval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
+
+        source_doc.add_comment(
+            comment_type="Comment",
+            text=f"Cancel Pre-approval request Failed..!<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+        )
+        frappe.db.commit()
+
+        frappe.msgprint(
+            title="NHIF API Error",
+            msg=f"Cancel Pre-approval failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
+            indicator="red",
+        )
         return False
 
     else:
@@ -202,63 +236,44 @@ def cancel_preapproval(
             ref_docname=ref_docname,
         )
 
-        has_preapproval = False
         for child in get_childs_map():
-            for row in encounter_doc.get(child.get("table")):
+            if not source_doc.get(child.get("table")):
+                continue
+
+            for row in source_doc.get(child.get("table")):
                 if row.preapproval_no == preapproval_no:
                     row.preapproval_status = "Cancelled"
                     row.preapproval_no = ""
                     row.preapproval_cancel_remarks = remarks
-                    has_preapproval = False
                     row.db_update()
                     row.reload()
 
-                elif row.preapproval_no and not has_preapproval:
-                    has_preapproval = True
-
-        encounter_doc.reload()
-        encounter_doc.has_preapproval = has_preapproval
-        encounter_doc.db_update()
-        encounter_doc.db_update_all()
-        encounter_doc.reload()
+        source_doc.db_update()
+        source_doc.db_update_all()
+        source_doc.reload()
 
         request_ids = "<ul>"
         for row in data:
             request_ids += f"<li>{row.get('RequestedServiceID')} <br> {row.get('RequestID')}</li>"
         request_ids += "</ul>"
 
-        encounter_doc.add_comment(
+        source_doc.add_comment(
             comment_type="Comment",
-            text=f"Pre-approval request canceled successfully!<br>Pre-Approval No: <b>{preapproval_no}</b><br>NHIF RequestID(s): {request_ids}",
+            text=f"Pre-approval request canceled successfully!<br><br>Pre-Approval No: <b>{preapproval_no}</b><br><br>NHIF RequestID(s): {request_ids}",
         )
 
         return True
 
 
-def get_preliminary_diseases(doc):
-    diseases = []
-    for row in doc.patient_encounter_preliminary_diagnosis:
-        disease_code = ""
-
-        # Convert the ICD code of CDC to NHIF
-        if row.code and len(row.code) > 3 and "." not in row.code:
-            disease_code = row.code[:3] + "." + (row.code[3:4] or "0")
-        elif row.code and len(row.code) <= 5 and "." in row.code:
-            disease_code = row.code
-        else:
-            disease_code = row.code[:3]
-
-        diseases.append({"diseaseCode": disease_code, "status": ""})
-
-    return diseases
-
-
-def get_encounter_services(doc, preapproval_no=None):
+def get_services(doc, preapproval_no=None):
     diseases = []
     services = []
     service_map = {}
 
     for child in get_childs_map():
+        if not doc.get(child.get("table")):
+            continue
+
         for row in doc.get(child.get("table")):
             if not row.get(child.get("item")):
                 continue
@@ -277,13 +292,14 @@ def get_encounter_services(doc, preapproval_no=None):
             ):
                 continue
 
+            effective_date = doc.get("encounter_date") or doc.get("posting_date")
             ref_code = get_item_refcode(child.get("doctype"), row.get(child.get("item")))
             services.append(
                 {
                     "itemCode": ref_code,
                     "usage": "",
-                    "effectiveDate": str(doc.encounter_date),
-                    "endDate": str(add_days(doc.encounter_date, 1)),
+                    "effectiveDate": str(effective_date),
+                    "endDate": str(add_days(effective_date, 1)),
                     "quantityRequested": row.get("quantity") or 1,
                     "remarks": "",
                 }

@@ -223,6 +223,85 @@ frappe.ui.form.on("Therapy Session", {
         }
       });
   },
+  get_poc_reference_no: async (frm) => {
+    if (!frm.doc.insurance_company.includes("NHIF")) {
+      frappe.show_alert(
+        {
+          message: __("This feature is only applicable for NHIF insurance"),
+          indicator: "orange",
+        },
+        5
+      );
+      return;
+    }
+
+    if (frm.is_dirty()) {
+      frappe.msgprint("Please save the document before issuing approved service");
+      return;
+    }
+
+    let biometricData;
+
+    if (frm.doc.biometric_method === "FACIAL") {
+      biometricData = await new FacialRecognition({ label: "Get POC Reference No" });
+      if (!biometricData) {
+        frappe.msgprint(__("Face capture failed. Please try again."));
+        return;
+      }
+    } else if (frm.doc.biometric_method === "FINGERPRINT") {
+      biometricData = await new Fingerprint({ label: "Get POC Reference No" });
+      if (!biometricData) {
+        frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+        return;
+      }
+    } else {
+      const confirmed = await new Promise((resolve) => {
+        frappe.confirm(
+          __(`
+            <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
+            </div>
+            <br>
+            <p class="text-center"><i>Are you sure you want to continue?</i></p>`
+          ),
+          () => resolve(true),
+          () => resolve(false)
+        );
+      });
+      
+      if (!confirmed) {
+        return;
+      }
+
+      biometricData = {Data: "", fpCode: ""};
+    }
+    frappe.call({
+      method: "hms_tz.nhif.utils.get_poc_reference_no_for_lrpmt",
+      args: {
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
+        service_type: "Therapy Type",
+        service_name: frm.doc.therapy_type,
+        fingerprint: biometricData.Data,
+        fpcode: biometricData.fpCode,
+        biometric_method: frm.doc.biometric_method,
+      },
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      callback: function (r) {
+        if (r.message) {
+          if (r.message) {
+            frm.reload_doc();
+            frappe.utils.play_sound("submit");
+          } else {
+            frappe.utils.play_sound("error");
+          }
+        } else {
+          frappe.utils.play_sound("error");
+        }
+      },
+    });
+  },
   issue_service: async (frm) => {
     if (!frm.doc.insurance_company.includes("NHIF")) {
       frappe.show_alert(
@@ -246,13 +325,13 @@ frappe.ui.form.on("Therapy Session", {
 
     let biometricData;
 
-    if (frm.doc.biometric_method === "Facial Recognition") {
+    if (frm.doc.biometric_method === "FACIAL") {
       biometricData = await new FacialRecognition({ label: "Issue Service" });
       if (!biometricData) {
-        frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+        frappe.msgprint(__("Face capture failed. Please try again."));
         return;
       }
-    } else if (frm.doc.biometric_method === "Fingerprint") {
+    } else if (frm.doc.biometric_method === "FINGERPRINT") {
       biometricData = await new Fingerprint({ label: "Issue Service" });
       if (!biometricData) {
         frappe.msgprint(__("Fingerprint capture failed. Please try again."));
@@ -263,7 +342,7 @@ frappe.ui.form.on("Therapy Session", {
         frappe.confirm(
           __(`
             <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
-              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or facial recognition.</i></p>
+              <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
             </div>
             <br>
             <p class="text-center"><i>Are you sure you want to continue?</i></p>`

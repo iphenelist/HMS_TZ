@@ -342,6 +342,144 @@ def get_discount_percent(insurance_company):
     return discount_percent
 
 
+@frappe.whitelist()
+def get_drug_quantity(drug_item):
+    """Get drug quantity based on dosage, period, interval and interval uom
+
+    :param drug_item: object or json string of drug item
+    """
+    if not frappe.db.get_single_value("Healthcare Settings", "enable_auto_quantity_calculation"):
+        return 0
+
+    quantity = 0
+    strength_count = 0
+
+    drug_row = frappe.parse_json(drug_item)
+
+    if drug_row.dosage and drug_row.period:
+        dosage = frappe.get_cached_doc("Prescription Dosage", drug_row.dosage)
+        period = frappe.get_cached_doc("Prescription Duration", drug_row.period)
+        for item in dosage.dosage_strength:
+            strength_count += item.strength
+        if strength_count == 0:
+            strength_count = dosage.default_strength
+        if strength_count > 0:
+            if drug_row.interval and drug_row.interval_uom:
+                if drug_row.interval_uom == "Day" and drug_row.interval:
+                    quantity = strength_count * (period.get_days() / drug_row.interval)
+                elif drug_row.interval_uom == "Hour" and drug_row.interval:
+                    quantity = strength_count * (period.get_hours() / drug_row.interval)
+            else:
+                quantity = strength_count * period.get_days()
+
+        # elif drug_row.interval and drug_row.interval_uom:
+        #     if drug_row.interval_uom == "Day" and drug_row.interval:
+        #         quantity = period.get_days() / drug_row.interval
+        #     elif drug_row.interval_uom == "Hour" and drug_row.interval:
+        #         quantity = period.get_hours() / drug_row.interval
+
+    if quantity > 0:
+        return quantity
+    else:
+        return 1
+
+
+@frappe.whitelist()
+def validate_stock_item(
+    healthcare_service,
+    qty,
+    company,
+    prescribe,
+    warehouse=None,
+    healthcare_service_unit=None,
+    caller="Unknown",
+    method=None,
+):
+    setting_doc = frappe.get_cached_doc("Healthcare Settings")
+
+    if prescribe == 0:
+        if setting_doc.only_alert_if_less_stock_of_drug_item_for_insurance_in_pe == 1:
+            method = "validate"
+        elif setting_doc.stop_encounter_if_less_stock_of_drug_item_for_insurance_in_pe == 1:
+            method = method
+        else:
+            frappe.throw(
+                "<b>Please set the stock validation method (either only alert or stop when less stock) in Healthcare Settings for Insurance Patients</b>"
+            )
+
+    elif prescribe == 1:
+        if setting_doc.only_alert_if_less_stock_of_drug_item_for_cash_in_pe == 1:
+            method = "validate"
+        elif setting_doc.stop_encounter_if_less_stock_of_drug_item_for_cash_in_pe == 1:
+            method = method
+        else:
+            frappe.throw(
+                "<b>Please set the stock validation method (either only alert or stop when less stock) in Healthcare Settings for Cash Patients</b>"
+            )
+
+    if caller != "Drug Prescription" and not healthcare_service_unit:
+        return
+
+    qty = float(qty or 0)
+    if qty == 0:
+        qty = 1
+
+    item_info = get_item_info(medication_name=healthcare_service)
+    stock_qty = 0
+    if healthcare_service_unit:
+        warehouse = get_warehouse_from_service_unit(healthcare_service_unit)
+    if not warehouse:
+        msgThrow(
+            _(f"Warehouse is missing in healthcare service unit {healthcare_service_unit} when checking for {item_info.get('item_code')}"),
+            method,
+        )
+    if item_info.get("is_stock") and item_info.get("item_code"):
+        stock_qty = get_stock_availability(item_info.get("item_code"), warehouse) or 0
+        if float(qty) > float(stock_qty):
+            # To be removed after few months of stability. 2021-03-18 17:01:46
+            # This is to avoid socketio diconnection when bench is restarted
+            # but user session is on.
+            msgThrow(
+                _(
+                    f"Available quantity for item: <h4 style='background-color:\
+                    LightCoral'>{item_info.get('item_code')} is {stock_qty}</h4>In {warehouse}/{healthcare_service_unit}."
+                ),
+                method,
+            )
+            return False
+    return True
+
+
+def get_item_info(item_code=None, medication_name=None):
+    data = {}
+    if not item_code and medication_name:
+        item_code = frappe.get_cached_value("Medication", medication_name, "item")
+    if item_code:
+        is_stock, disabled = frappe.get_cached_value("Item", item_code, ["is_stock_item", "disabled"])
+        data = {
+            "item_code": item_code,
+            "is_stock": is_stock,
+            "disabled": disabled,
+        }
+    return data
+
+
+def get_stock_availability(item_code, warehouse):
+    latest_sle = frappe.db.sql(
+        """SELECT qty_after_transaction AS actual_qty
+        FROM `tabStock Ledger Entry`
+        WHERE item_code = %s AND warehouse = %s
+          AND is_cancelled = 0
+        ORDER BY creation DESC
+        LIMIT 1""",
+        (item_code, warehouse),
+        as_dict=1,
+    )
+
+    sle_qty = latest_sle[0].actual_qty or 0 if latest_sle else 0
+    return sle_qty
+
+
 def to_base64(value):
     data = base64.b64encode(value)
     return str(data)[2:-1]
@@ -1587,6 +1725,7 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
         if doc.get("name"):
             hsrp = DocType("Healthcare Service Request Payment")
             dp = DocType("Drug Prescription")
+            hre = DocType("Hospital Revenue Entry")
 
             for item in doc.items:
                 (
@@ -1605,6 +1744,13 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
                     .set(dp.delivery_note, doc.name)
                     .set(dp.dn_detail, item.name)
                     .where(dp.name == item.reference_name)
+                ).run()
+
+                (
+                    frappe.qb.update(hre)
+                    .set(hre.lrpmt_doctype, doc.doctype)
+                    .set(hre.lrpmt_docname, doc.name)
+                    .where(hre.ref_docname == item.reference_name)
                 ).run()
 
             frappe.msgprint(_(f"Pharmacy Dispensing/Delivery Note {frappe.bold(doc.name)} created successfully."))

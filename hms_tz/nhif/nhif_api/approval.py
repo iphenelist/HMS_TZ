@@ -190,7 +190,14 @@ def get_approval_status(ref_doctype, ref_docname, dni_id=None):
 
 
 @frappe.whitelist()
-def update_service_approval(ref_doctype, ref_docname, service_type, service_name, qty=1, item_row=None):
+def update_service_approval(
+    ref_doctype,
+    ref_docname,
+    service_type,
+    service_name,
+    qty=1,
+    item_row=None
+):
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
 
@@ -283,14 +290,14 @@ def issue_approved_service(
     
     # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    image_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     payload = {
         "approvalReferenceNo": approval_number,
         "isBiometricVerified": False if biometric_method == "NONE" else True,
         "biometricMethod": biometric_method,
         "fpCode": fpcode,
-        "imageData": image_data,
+        "imageData": fingerprint,
         "description": service_name,
         "quantity": qty,
         "unitPrice": item_rate or 0,
@@ -517,6 +524,7 @@ def get_update_approval_payload(
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+    # qualification = 
 
     insurance_coverage_plan = doc.get("hms_tz_insurance_coverage_plan") or doc.get("coverage_plan_name")
     insurance_subscription = doc.get("insurance_subscription")

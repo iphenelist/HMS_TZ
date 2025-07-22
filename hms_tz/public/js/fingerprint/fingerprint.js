@@ -29,6 +29,7 @@ export class Fingerprint {
     this.fingerprintAcquired = false;
     this.currentDeviceType = null; // 'digitalpersona' or 'mantra'
     this.deviceScanningComplete = false;
+    this.onChangeTrigger = false; // Flag to prevent multiple onchange triggers
 
     return new Promise((resolve, reject) => {
       this.fingerprintPromiseResolve = resolve;
@@ -62,17 +63,17 @@ export class Fingerprint {
          console.log("Device Connected: ", this.selectedDevice);
       },
       onDeviceDisconnected: () => {
-        this.enumerateAllDevices().then(() => {
-          this.deviceScanningComplete = true;
-          this.updateDialog();
-        });
+        // this.enumerateAllDevices().then(() => {
+        //   this.deviceScanningComplete = true;
+        //   this.updateDialog();
+        // });
       },
       onSamplesAcquired: (samples, deviceType) => {
         this.samples = samples;
         this.currentDeviceType = deviceType;
-        this.showFingerprintImage(this.samples[0]);
+        // this.showFingerprintImage(this.samples[0]);
         this.fingerprintAcquired = true;
-        this.updatePrimaryLabel();
+        this.getFingerprintData();
       },
       onQualityReported: (quality) => {
         console.log("Quality Reported:", quality);
@@ -95,8 +96,8 @@ export class Fingerprint {
       }
     };
 
-    this.digitalPersona.initializeEventHandlers(callbacks);
     this.mantra.initializeEventHandlers(callbacks);
+    this.digitalPersona.initializeEventHandlers(callbacks);
   }
 
   async enumerateAllDevices() {
@@ -109,11 +110,13 @@ export class Fingerprint {
       console.warn("Mantra devices not available:", error.message);
     }
 
-    try {
-      const dpDevices = await this.digitalPersona.enumerateDevices();
-      this.allDevices.push(...dpDevices);
-    } catch (error) {
-      console.warn("DigitalPersona devices not available:", error.message);
+    if (!this.allDevices.length) {
+      try {
+        const dpDevices = await this.digitalPersona.enumerateDevices();
+        this.allDevices.push(...dpDevices);
+      } catch (error) {
+        console.warn("DigitalPersona devices not available:", error.message);
+      }
     }
   }
 
@@ -143,7 +146,6 @@ export class Fingerprint {
         this.digitalPersona.destroy(),
         this.mantra.destroy()
       ]);
-      console.log("All biometric devices cleaned up successfully");
     } catch (error) {
       console.warn("Error during device cleanup:", error);
       // Continue with cleanup even if there are errors
@@ -156,6 +158,7 @@ export class Fingerprint {
     this.fingerprintAcquired = false;
     this.currentDeviceType = null;
     this.deviceScanningComplete = false;
+    this.onChangeTrigger = false;
   };
 
   showDialog = () => {
@@ -201,7 +204,24 @@ export class Fingerprint {
             { label: __("Left Little (L5)"), value: "L5" },
           ],
           reqd: 1,
-          onchange: () => this.toggleFingerprintField(),
+          onchange: () => {
+            // Prevent multiple simultaneous executions
+            if (this.onChangeTrigger) {
+              return;
+            }
+            
+            const fingerValue = this.dialog.get_value("finger");
+            if (fingerValue) {
+              this.onChangeTrigger = true;
+              
+              // Use setTimeout to ensure the flag is reset even if there's an error
+              setTimeout(async () => {
+                this.toggleFingerprintField().finally(() => {
+                  this.onChangeTrigger = false;
+                });
+              }, 10);
+            }
+          },
         },
         {
           fieldtype: "Section Break",
@@ -290,10 +310,8 @@ export class Fingerprint {
     }
   };
 
-  toggleFingerprintField = () => {
+  toggleFingerprintField = async () => {
     if (this.dialog.get_value("finger")) {
-      this.startScan();
-
       const fingerprintDiv = this.dialog.get_field("fingerprint").$wrapper;
       fingerprintDiv.html(
         `<div id="fingerprint-image" style="width: 100px; height: 100px; border: 1px solid black;
@@ -301,45 +319,32 @@ export class Fingerprint {
                     <span>Place a finger on the device</span>
                 </div>`
       );
+      
+      await this.startScan();
     }
   };
 
-  updatePrimaryLabel = () => {
-    this.dialog.set_primary_action(this.label, async () => {
-      if (!this.fingerprintAcquired || !this.samples) {
-        frappe.msgprint(__("Please scan your fingerprint first."));
-        return;
-      }
+  getFingerprintData = async() => {
+    if (!this.fingerprintAcquired || !this.samples) {
+      frappe.msgprint(__("Please scan your fingerprint first."));
+      return;
+    }
 
-      if (!this.selectedFinger) {
-        frappe.msgprint(__("Please select a finger position."));
-        return;
-      }
+    if (!this.selectedFinger) {
+      frappe.msgprint(__("Please select a finger position."));
+      return;
+    }
 
-      // Validate fingerprint data
-      const fingerprintData = this.samples[0];
-      if (!fingerprintData || typeof fingerprintData !== 'string') {
-        frappe.msgprint(__("Invalid fingerprint data. Please try again."));
-        return;
-      }
+    if (this.fingerprintPromiseResolve) {
+      const data = {
+        Data: this.samples[0],
+        fpCode: this.selectedFinger,
+      };
+      
+      this.fingerprintPromiseResolve(data);
+    }
 
-      if (this.fingerprintPromiseResolve) {
-        const data = {
-          Data: fingerprintData,
-          fpCode: this.selectedFinger,
-        };
-        
-        console.log("Fingerprint capture successful:", {
-          deviceType: this.currentDeviceType,
-          fingerCode: this.selectedFinger,
-          dataLength: fingerprintData.length
-        });
-        
-        this.fingerprintPromiseResolve(data);
-      }
-
-      await this.destroy();
-    });
+    await this.destroy();
   };
 
   updateDeviceConnectedStatus = (content) => {
@@ -366,10 +371,10 @@ export class Fingerprint {
 
       d.html(`
           <div id="fingerprint-image"
-              style="width: 120px; height: 140px; border: 1px solid black;
+              style="width: 100px; height: 140px; border: 1px solid black;
                   display: flex; flex-direction: column; align-items: center; margin-left: 200px;
                   justify-content: center; text-align: center;">
-              <img src="${imageSrc}" alt="Fingerprint" style="width: 100px; height: 100px;">
+              <img src="${imageSrc}" alt="Fingerprint" style="width: 100px; height: 140px; background-color: white;">
           </div>
       `);
     }

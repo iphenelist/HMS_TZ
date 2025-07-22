@@ -5,6 +5,7 @@ import json
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
+from hms_tz.nhif.utils import validate_point_of_care
 from frappe.utils import date_diff, get_fullname, nowdate
 
 from hms_tz.nhif.api.healthcare_utils import update_dimensions
@@ -219,21 +220,13 @@ def before_submit(doc, method):
             This Delivery Note can't be submitted because all Items\
                 are not available in stock</h4>"
         )
+    
     for item in doc.items:
         if item.is_restricted and not item.approval_number:
             frappe.throw(
                 _(f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number."))
 
-        # 2023-07-13
-        # stop this validation for now
-        continue
-        if item.approval_number and item.approval_status != "Verified":
-            frappe.throw(
-                _(
-                    f"Approval number: <b>{item.approval_number}</b> for item: <b>{item.item_code}</b> is not verified.\
-                        Please open line: <b>{item.idx}</b> and verify the Approval Number."
-                )
-            )
+    validate_point_of_care(doc)
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
@@ -247,7 +240,7 @@ def on_submit(doc, method):
 
 
 def update_drug_prescription(doc):
-    if doc.patient and not doc.is_return:
+    if doc.patient and doc.is_return == 0:
         if doc.form_sales_invoice:
             sales_invoice_doc = frappe.get_cached_doc("Sales Invoice", doc.form_sales_invoice)
 

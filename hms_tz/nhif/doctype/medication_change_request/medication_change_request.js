@@ -4,12 +4,14 @@
 frappe.ui.form.on("Medication Change Request", {
   setup: (frm) => {
     set_query_filters(frm);
+    nhif_btns(frm);
   },
   onload: function (frm) {
     if (!frappe.user.has_role("Healthcare Practitioner")) {
       frm.set_df_property("drug_prescription", "read_only", 1);
     }
     set_medical_code(frm);
+    nhif_btns(frm);
   },
   refresh: function (frm) {
     set_query_filters(frm);
@@ -17,6 +19,7 @@ frappe.ui.form.on("Medication Change Request", {
       frm.set_df_property("drug_prescription", "read_only", 1);
     }
     set_medical_code(frm);
+    nhif_btns(frm);
   },
   patient_encounter: (frm) => {
     if (frm.doc.patient_encounter) {
@@ -57,31 +60,24 @@ frappe.ui.form.on("Codification Table", {
 frappe.ui.form.on("Drug Prescription", {
   drug_prescription_add: (frm, cdt, cdn) => {
     if (frm.doc.delivery_note) {
-      frappe.db
-        .get_value("Delivery Note", frm.doc.delivery_note, "set_warehouse")
-        .then((r) => {
-          if (r.message.set_warehouse) {
-            frappe.db
-              .get_list("Healthcare Service Unit", {
-                fields: ["name"],
-                filters: {
-                  warehouse: r.message.set_warehouse,
-                  company: frm.doc.company,
-                  service_unit_type: "Pharmacy",
-                },
-              })
-              .then((records) => {
-                if (records.length > 0) {
-                  frappe.model.set_value(
-                    cdt,
-                    cdn,
-                    "healthcare_service_unit",
-                    records[0].name
-                  );
-                }
-              });
+      frappe.call({
+        method: "hms_tz.nhif.doctype.medication_change_request.medication_change_request.get_service_unit",
+        args: {
+          warehouse: frm.doc.warehouse,
+          company: frm.doc.company,
+          service_unit_type: "Pharmacy",
+        },
+        callback: function (r) {
+          if (r.message) {
+            frappe.model.set_value(
+              cdt,
+              cdn,
+              "healthcare_service_unit",
+              r.message
+            );
           }
-        });
+        },
+      });
     }
   },
   dosage: (frm, cdt, cdn) => {
@@ -188,7 +184,7 @@ const update_childs_tables = (frm) => {
         patient_encounter: frm.doc.patient_encounter,
       },
       callback: function (data) {
-        if (data.message && data.message.name) {
+        if (data.message) {
           set_childs_tables(frm, data.message);
         }
       },
@@ -269,7 +265,7 @@ const get_items_on_change_of_sales_order = (frm) => {
 var auto_calculate_drug_quantity = (frm, drug_item) => {
   frappe
     .call({
-      method: "hms_tz.nhif.api.patient_encounter.get_drug_quantity",
+      method: "hms_tz.nhif.api.healthcare_utils.get_drug_quantity",
       args: {
         drug_item: drug_item,
       },
@@ -326,4 +322,153 @@ const set_query_filters = (frm) => {
       },
     };
   });
+};
+
+
+var nhif_btns = (frm) => {
+  if (frm.is_new()) {
+    return;
+  }
+  
+  if (!frappe.user.has_role("Healthcare Practitioner")) {
+    return;
+  }
+
+  if (
+    !frm.doc.insurance_company ||
+    !frm.doc.insurance_company.includes("NHIF")
+  ) {
+    return;
+  }
+  
+  if (!frm.doc.patient || !frm.doc.patient_encounter) {
+    return;
+  }
+
+  pre_approval_btn(frm);
+  cancel_pre_approval_btn(frm);
+};
+
+
+var pre_approval_btn = (frm) => {
+  if (!frm.page.fields_dict.pre_approval_btn) {
+    frm.page
+      .add_field({
+        label: __("Request Pre-Approval"),
+        fieldname: "pre_approval_btn",
+        fieldtype: "Button",
+        click: function () {
+          if (frm.is_dirty()) {
+            frappe.msgprint(
+              "<b>Please save the form before requesting pre-approval</b>"
+            );
+            return;
+          }
+
+          frappe.call({
+            method:
+              "hms_tz.nhif.nhif_api.pre_approval.get_service_preapproval",
+            args: {
+              ref_doctype: frm.doc.doctype,
+              ref_docname: frm.doc.name,
+            },
+            async: true,
+            freeze: true,
+            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+            callback: function (data) {
+              if (data.message && data.message !== "Error") {
+                frappe.utils.play_sound("submit");
+                frm.reload_doc();
+                frappe.show_alert(
+                  {
+                    message: __("Pre-Approval request were successful"),
+                    indicator: "green",
+                  },
+                  10
+                );
+              } else {
+                frappe.utils.play_sound("error");
+              }
+            },
+            onerror: function (data) {
+              frappe.utils.play_sound("error");
+            },
+          });
+        },
+      })
+      .$input.addClass("btn-sm");
+  }
+};
+
+var cancel_pre_approval_btn = (frm) => {
+  if (!frm.page.fields_dict.cancel_pre_approval_btn) {
+    frm.page
+      .add_field({
+        label: __("Cancel Pre-Approval"),
+        fieldname: "cancel_pre_approval_btn",
+        fieldtype: "Button",
+        click: function () {
+          if (frm.is_dirty()) {
+            frappe.msgprint(
+              "<b>Please save the form before canceling pre-approval</b>"
+            );
+            return;
+          }
+
+          frappe.prompt(
+            [
+              {
+                label: "Pre-Approval No",
+                fieldname: "preapproval_no",
+                fieldtype: "Data",
+                reqd: 1,
+              },
+              {
+                label: "Remarks",
+                fieldname: "remarks",
+                fieldtype: "Small Text",
+                reqd: 1,
+              },
+            ],
+            (values) => {
+              frappe.call({
+                method: "hms_tz.nhif.nhif_api.pre_approval.cancel_preapproval",
+                args: {
+                  ref_doctype: frm.doc.doctype,
+                  ref_docname: frm.doc.name,
+                  preapproval_no: values.preapproval_no,
+                  remarks: values.remarks,
+                },
+                async: true,
+                freeze: true,
+                freeze_message: __(
+                  '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+                ),
+                callback: function (data) {
+                  if (data.message && data.message !== "Error") {
+                    frappe.utils.play_sound("submit");
+                    frm.reload_doc();
+                    frappe.show_alert(
+                      {
+                        message: __(
+                          "Pre-Approval request canceled successfully"
+                        ),
+                        indicator: "green",
+                      },
+                      10
+                    );
+                  } else {
+                    frappe.utils.play_sound("error");
+                  }
+                },
+                onerror: function (data) {
+                  frappe.utils.play_sound("error");
+                },
+              });
+            }
+          );
+        },
+      })
+      .$input.addClass("btn-sm");
+  }
 };

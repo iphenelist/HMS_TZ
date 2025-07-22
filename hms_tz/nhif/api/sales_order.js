@@ -67,7 +67,6 @@ var get_healthcare_services_to_invoice = function (frm) {
             filters: {
               patient: dialog.get_value("patient"),
               company: frm.doc.company,
-              is_not_billable: 0,
               docstatus: 1,
             },
           };

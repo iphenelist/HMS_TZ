@@ -11,6 +11,70 @@ def is_issuance_biometric_verification_enabled(doc_type, company, field):
 
 
 @frappe.whitelist()
+def get_poc_reference_no_for_lrpmt(
+    ref_doctype,
+    ref_docname,
+    service_type,
+    service_name,
+    fingerprint=None,
+    fpcode=None,
+    biometric_method="NONE",
+):
+    """
+    Get POC reference number for a given document.
+    """
+
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+
+    point_of_care = get_patient_care_name(service_type, service_name)
+
+    data = get_poc_reference_no(
+        point_of_care=point_of_care,
+        practitioner=doc.get("practitioner") or doc.get("healthcare_practitioner"),
+        fingerprint=fingerprint,
+        fpcode=fpcode,
+        biometric_method=biometric_method.upper(),
+        company=doc.company,
+        appointment_id=doc.get("appointment") or doc.get("hms_tz_appointment_no"),
+        authorization_no=doc.get("authorization_number") or "",
+        ref_doctype=ref_doctype,
+        ref_docname=ref_docname,
+    )
+
+    if data:
+        doc.db_set("poc_reference_no", data.get("ReferenceNo"))
+        doc.add_comment(
+            "Comment",
+            text=f"POC Reference No: <strong>{data.get('ReferenceNo')}</strong> for {point_of_care} is successfully created."
+        )
+
+        records = frappe.db.get_all(
+            doc.doctype,
+            filters={
+                "ref_docname": doc.ref_docname,
+                "ref_doctype": doc.ref_doctype,
+                "name": ["!=", doc.name],
+            },
+        )
+
+        for record in records:
+            record_doc = frappe.get_cached_doc(doc.doctype, record.name)
+            if (
+                not record_doc.get("insurance_company") and
+                not record_doc.get("coverage_plan_name")
+            ):
+                continue
+
+            record_doc.db_set("poc_reference_no", data.get("ReferenceNo"))
+            record_doc.add_comment(
+                "Comment",
+                text=f"POC Reference No: <strong>{data.get('ReferenceNo')}</strong> for {point_of_care} is successfully created."
+            )
+
+        return True
+
+
+@frappe.whitelist()
 def issue_nhif_service(
     ref_doctype,
     ref_docname,
@@ -54,41 +118,26 @@ def issue_nhif_service(
                 data.update(service_data)
 
     else:
-        if doc.is_restricted == 1 and doc.approval_number:
-            service_data = issue_approved_service(
-                doc,
-                doc.approval_number,
-                service_type,
-                service_name,
-                fingerprint,
-                fpcode,
-                qty=1,
-                settings_doc=settings_doc,
-                biometric_method=biometric_method
+        if not doc.approval_number:
+            frappe.throw(
+                f"Approval Number is not set for this document, Please get Approval Number from NHIF."
             )
-
-            if service_data:
-                data.update(service_data)
-
-    point_of_care = get_patient_care_name(service_type, service_name)
-    
-    if not doc.poc_reference_no:
-        service_data = get_poc_reference_no(
-            point_of_care=point_of_care,
-            practitioner=doc.get("practitioner") or doc.get("healthcare_practitioner"),
-            fingerprint=fingerprint,
-            fpcode=fpcode,
-            biometric_method=biometric_method,
-            company=doc.company,
-            appointment_id=doc.get("appointment") or doc.get("hms_tz_appointment_no"),
-            authorization_no=doc.get("authorization_number") or "",
+        
+        service_data = issue_approved_service(
+            doc,
+            doc.approval_number,
+            service_type,
+            service_name,
+            fingerprint,
+            fpcode,
+            qty=1,
             settings_doc=settings_doc,
-            ref_doctype=doc.doctype,
-            ref_docname=doc.name,
+            biometric_method=biometric_method
         )
+
         if service_data:
             data.update(service_data)
-    
+
     return data
 
 
@@ -115,3 +164,17 @@ def get_patient_care_name(service_type, service_name):
         )
 
     return points_of_care
+
+
+def validate_point_of_care(doc):
+    """
+    Validate that the point of care is set for the given document.
+    """
+
+    if not doc.get("insurance_company") or "NHIF" not in doc.get("insurance_company", ""):
+        return
+    
+    if not doc.get("poc_reference_no"):
+        frappe.throw(
+            f"POC reference no is not set for this document, Please get POC reference no from NHIF."
+        )

@@ -1271,7 +1271,7 @@ const validate_stock_item = function (
     healthcare_service_unit = frm.doc.healthcare_service_unit;
   }
   frappe.call({
-    method: "hms_tz.nhif.api.patient_encounter.validate_stock_item",
+    method: "hms_tz.nhif.api.healthcare_utils.validate_stock_item",
     args: {
       healthcare_service: healthcare_service,
       qty: qty,
@@ -1735,7 +1735,7 @@ function set_delete_button_in_child_table(frm, child_table_fields) {
 var auto_calculate_drug_quantity = (frm, drug_item) => {
   frappe
     .call({
-      method: "hms_tz.nhif.api.patient_encounter.get_drug_quantity",
+      method: "hms_tz.nhif.api.healthcare_utils.get_drug_quantity",
       args: {
         drug_item: drug_item,
       },
@@ -1982,7 +1982,7 @@ var nhif_btns = (frm) => {
         logout_from_nhif(frm);
         pre_approval_btn(frm);
         cancel_pre_approval_btn(frm);
-        confirm_consultation_btn(frm);
+        confirm_poc_btn(frm);
       } else {
         login_to_nhif(frm);
       }
@@ -2188,16 +2188,16 @@ var cancel_pre_approval_btn = (frm) => {
   }
 };
 
-var confirm_consultation_btn = (frm) => {
-  if (!frm.page.fields_dict.confirm_consultation_btn) {
+var confirm_poc_btn = (frm) => {
+  if (!frm.page.fields_dict.confirm_poc_btn && !frm.doc.poc_reference_no) {
     frm.page
       .add_field({
-        label: __("Confirm Consultation"),
-        fieldname: "confirm_consultation_btn",
+        label: __("Confirm Point of Care"),
+        fieldname: "confirm_poc_btn",
         fieldtype: "Button",
         click: async function () {
           let fingerprint = await new Fingerprint({
-            label: "Confirm Consulation",
+            label: "Confirm Point of Care",
           });
           if (!fingerprint) {
             frappe.msgprint(
@@ -2212,7 +2212,7 @@ var confirm_consultation_btn = (frm) => {
               practitioner: frm.doc.practitioner,
               fingerprint: fingerprint.Data,
               fpcode: fingerprint.fpCode,
-              biometric_method: "Fingerprint",
+              biometric_method: "FINGERPRINT",
               company: frm.doc.company,
               appointment_id: frm.doc.appointment,
               ref_doctype: frm.doc.doctype,
@@ -2221,10 +2221,17 @@ var confirm_consultation_btn = (frm) => {
             async: true,
             freeze: true,
             freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            callback: function (data) {
-              if (data.message && data.message !== "Error") {
+            callback: function (r) {
+              if (r.message && r.message !== "Error") {
                 frappe.utils.play_sound("submit");
-                $container.find(".nhif-confirm-btn").hide();
+
+                const data = r.message;
+                frappe.model.set_value(
+                  frm.doc.doctype,
+                  frm.doc.name,
+                  "poc_reference_no",
+                  data.ReferenceNo
+                );
               } else {
                 frappe.utils.play_sound("error");
               }

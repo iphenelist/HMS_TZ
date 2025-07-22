@@ -62,6 +62,27 @@ def create_revenue_entry(doc):
         hre.reload()
 
 
+def create_revenue_entry_from_mcr(doc, ref_docnames=[]):
+    """
+    Create Hospital Revenue Entry documents from Medication Change Request
+
+    Args:
+        doc: Source document
+        ref_docnames: List of reference document names to create entries for
+    """
+
+    entries = build_insurance_drug_entry(doc, ref_docnames)
+
+    if len(entries) == 0:
+        return
+
+    for entry in entries:
+        hre = frappe.new_doc("Hospital Revenue Entry")
+        hre.update(entry)
+        hre.insert(ignore_permissions=True)
+        hre.reload()
+
+
 def update_revenue_entry(
     lrpmt_doctype,
     lrpmt_docname,
@@ -105,16 +126,21 @@ def update_revenue_entry(
 
 def update_cancelled_revenue_entry(
     ref_docname,
-    lrpmt_return_id,
+    update_from_doctype,
+    update_from_docname,
     is_cancelled=1,
     remarks=""
 ):
+    updated_by = get_fullname(frappe.session.user)
+
     hre = DocType("Hospital Revenue Entry")
     query = (
         frappe.qb.update(hre)
-        .set(hre.is_cancelled, is_cancelled)
-        .set(hre.lrpmt_return_id, lrpmt_return_id)
         .set(hre.remarks, remarks)
+        .set(hre.updated_by, updated_by)
+        .set(hre.is_cancelled, is_cancelled)
+        .set(hre.updated_from_doctype, update_from_doctype)
+        .set(hre.updated_from_docname, update_from_docname)
         .where(
             (hre.ref_docname == ref_docname)
         )
@@ -363,17 +389,17 @@ def get_entry_from_dn(doc):
 
     if doc.coverage_plan_name:
         insurance_ref_docnams = [d.reference_name for d in doc.items if d.reference_name]
-        entries += build_insurance_dni_entry(doc, insurance_ref_docnams)
+        entries += build_insurance_drug_entry(doc, insurance_ref_docnams)
     else:
-        entries += build_cash_dni_entry(doc)
+        entries += build_cash_drug_entry(doc)
 
     return entries
 
 
-def build_insurance_dni_entry(doc, insurance_items):
+def build_insurance_drug_entry(doc, ref_docnames):
     entries = []
 
-    if len(insurance_items) == 0:
+    if len(ref_docnames) == 0:
         return entries
 
     hsrp = DocType("Healthcare Service Request Payment")
@@ -402,7 +428,10 @@ def build_insurance_dni_entry(doc, insurance_items):
             hsrp.payment_type,
             hsrp.department_hsu,
         )
-        .where((hsrp.ref_doctype == "Drug Prescription") & (hsrp.ref_docname.isin(insurance_items)))
+        .where(
+            (hsrp.ref_doctype == "Drug Prescription") 
+            & (hsrp.ref_docname.isin(ref_docnames))
+        )
     ).run(as_dict=True)
 
     if len(hsrp_items) == 0:
@@ -412,15 +441,15 @@ def build_insurance_dni_entry(doc, insurance_items):
         entry_dict = {
             "patient": doc.get("patient"),
             "patient_name": doc.get("patient_name"),
-            "customer": doc.customer,
-            "appointment": doc.hms_tz_appointment_no,
+            "customer": doc.get("customer") or frappe.get_cached_value("Patient", doc.patient, "customer"),
+            "appointment": doc.get("hms_tz_appointment_no") or doc.get("appointment"),
             "posting_date": nowdate(),
             "created_by": get_fullname(frappe.session.user),
             "company": doc.company,
-            "source_doctype": doc.reference_doctype,
-            "source_docname": doc.reference_name,
+            "source_doctype": doc.get("reference_doctype") or "Patient Encounter",
+            "source_docname": doc.get("reference_name") or doc.get("patient_encounter"),
             "price_list": row.get("price_list"),
-            "currency": doc.currency,
+            "currency": doc.get("currency") or frappe.get_cached_value("Company", doc.company, "default_currency"),
             "qty": row.qty,
             "rate": row.rate,
             "amount": row.amount,
@@ -439,17 +468,23 @@ def build_insurance_dni_entry(doc, insurance_items):
             "lrpmt_doctype": row.get("lrpmt_doctype"),
             "lrpmt_docname": row.get("lrpmt_docname"),
             "dn_detail": row.get("dn_detail"),
-            "lrpmt_status": ("Draft" if doc.get("docstatus") == 0 else "Submitted"),
+            "lrpmt_status": "Draft" if (doc.get("docstatus") == 0 or doc.get("doctype") == "Medication Change Request") else "Submitted",
             "department": doc.get("department"),
             "healthcare_service_unit": row.get("department_hsu"),
             "healthcare_practitioner": doc.get("healthcare_practitioner"),
         }
+
+        if doc.get("doctype") == "Medication Change Request":
+            entry_dict["updated_from_doctype"] = doc.doctype
+            entry_dict["updated_from_docname"] = doc.name
+            entry_dict["remarks"] = f"Service Added from Medication Change Request"
+        
         entries.append(entry_dict)
 
     return entries
 
 
-def build_cash_dni_entry(doc):
+def build_cash_drug_entry(doc):
     entries = []
 
     for item in doc.items:

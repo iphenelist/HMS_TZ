@@ -8,6 +8,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 from frappe.utils import get_fullname, nowdate
+from hms_tz.nhif.utils import validate_point_of_care
 
 from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
 from hms_tz.nhif.api.lab_test import check_cash_payments_from_encounter
@@ -36,22 +37,12 @@ def before_submit(doc, method):
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(
             _(f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."))
+    
+    validate_point_of_care(doc)
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
     doc.hms_tz_submitted_date = nowdate()
-
-    # 2023-07-13
-    # stop this validation for now
-    return
-    if doc.approval_number and doc.approval_status != "Verified":
-        frappe.throw(
-            _(
-                f"Approval number: <b>{doc.approval_number}</b> for \
-                item: <b>{doc.radiology_examination_template}</b> is not \
-                verified.>br> Please verify the Approval Number."
-            )
-        )
 
 
 def on_submit(doc, method):
@@ -63,7 +54,6 @@ def on_submit(doc, method):
         doc.hms_tz_ref_childname,
         lrpmt_status="Submitted",
     )
-    # create_delivery_note(doc)
 
 
 def on_cancel(doc, method):

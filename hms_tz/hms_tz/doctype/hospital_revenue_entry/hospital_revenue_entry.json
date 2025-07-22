@@ -42,11 +42,12 @@
   "lrpmt_doctype",
   "lrpmt_docname",
   "dn_detail",
-  "lrpmt_status",
   "column_break_pufom",
-  "is_cancelled",
   "ref_doctype",
   "ref_docname",
+  "column_break_eza6d",
+  "is_cancelled",
+  "lrpmt_status",
   "sales_invoice",
   "section_break_4zy49",
   "healthcare_practitioner",
@@ -55,7 +56,13 @@
   "department",
   "cost_center",
   "section_break_frwzc",
-  "created_by"
+  "created_by",
+  "updated_by",
+  "column_break_gzouw",
+  "updated_from_doctype",
+  "updated_from_docname",
+  "column_break_b5uew",
+  "remarks"
  ],
  "fields": [
   {
@@ -377,12 +384,51 @@
    "label": "%Covered",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_eza6d",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "updated_from_doctype",
+   "fieldtype": "Data",
+   "label": "Updated From Doctype",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "read_only": 1
+  },
+  {
+   "fieldname": "updated_by",
+   "fieldtype": "Data",
+   "label": "Updated By",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_gzouw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_b5uew",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "updated_from_docname",
+   "fieldtype": "Data",
+   "label": "Updated From Docname",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-14 17:27:53.191608",
+ "modified": "2025-07-15 23:57:31.109919",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Hospital Revenue Entry",
