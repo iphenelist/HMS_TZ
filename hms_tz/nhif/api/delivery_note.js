@@ -281,7 +281,7 @@ frappe.ui.form.on("Delivery Note Item", {
       freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
       callback: function (r) {
         if (r.message) {
-          frm.refresh();
+          frm.reload_doc();
           if (r.message.status == "success") {
             frappe.show_alert(
               {
