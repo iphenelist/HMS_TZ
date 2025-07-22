@@ -88,11 +88,11 @@
       <!-- Fixed Time Column -->
       <div class="time-column">
         <div class="time-header">
-          <div class="h-20 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center">
+          <div class="h-20 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
             <span class="text-sm font-semibold text-gray-600">Time Slots</span>
           </div>
         </div>
-        <div class="time-slots">
+        <div class="time-slots" ref="timeSlots">
           <div
             v-for="slot in dateStore.timeSlots"
             :key="slot.time"
@@ -111,10 +111,10 @@
         </div>
       </div>
 
-      <!-- Scrollable Practitioners Area -->
+      <!-- Practitioners Area with Fixed Header -->
       <div class="practitioners-area" ref="practitionersArea">
-        <!-- Practitioners Header -->
-        <div class="practitioners-header" ref="practitionersHeader">
+        <!-- Fixed Practitioners Header -->
+        <div class="practitioners-header-fixed" ref="practitionersHeader">
           <div class="flex">
             <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[240px] h-full border-b-2 border-gray-300">
               <span class="text-gray-500 text-sm">No practitioners found</span>
@@ -129,7 +129,7 @@
           </div>
         </div>
 
-        <!-- Appointments Grid -->
+        <!-- Scrollable Appointments Grid -->
         <div class="appointments-grid" ref="appointmentsGrid">
           <div class="grid-content">
             <div
@@ -176,7 +176,7 @@
                   :title="`Create appointment for ${practitioner.name} at ${slot.display}`"
                 >
                   <div class="add-button-content">
-                    <FeatherIcon name="plus" class="h-6 w-6 text-black group-hover:text-blue-600 transition-colors" />
+                    <FeatherIcon name="plus" class="h-4 w-4 text-black group-hover:text-blue-600 transition-colors" />
                     <span class="add-text text-xs text-black group-hover:text-blue-600 transition-colors mt-1 font-medium">Add</span>
                   </div>
                 </div>
@@ -229,6 +229,7 @@ const gridContainer = ref(null)
 const practitionersArea = ref(null)
 const practitionersHeader = ref(null)
 const appointmentsGrid = ref(null)
+const timeSlots = ref(null)
 
 // State
 const isRefreshing = ref(false)
@@ -352,8 +353,9 @@ let scrollListeners = []
 
 const setupSynchronizedScrolling = () => {
   nextTick(() => {
-    if (practitionersHeader.value && appointmentsGrid.value) {
-      const syncScroll = (source, target) => {
+    if (practitionersHeader.value && appointmentsGrid.value && timeSlots.value) {
+      // Horizontal synchronization: practitioners header <-> appointments grid
+      const syncHorizontalScroll = (source, target) => {
         return () => {
           if (target) {
             target.scrollLeft = source.scrollLeft
@@ -361,15 +363,36 @@ const setupSynchronizedScrolling = () => {
         }
       }
       
-      const headerScrollListener = syncScroll(practitionersHeader.value, appointmentsGrid.value)
-      const gridScrollListener = syncScroll(appointmentsGrid.value, practitionersHeader.value)
+      // Vertical synchronization: time slots <-> appointments grid
+      const syncVerticalScroll = (source, target) => {
+        return () => {
+          if (target) {
+            target.scrollTop = source.scrollTop
+          }
+        }
+      }
       
+      // Set up horizontal scroll sync
+      const headerScrollListener = syncHorizontalScroll(practitionersHeader.value, appointmentsGrid.value)
+      const gridHorizontalScrollListener = syncHorizontalScroll(appointmentsGrid.value, practitionersHeader.value)
+      
+      // Set up vertical scroll sync
+      const timeSlotsScrollListener = syncVerticalScroll(timeSlots.value, appointmentsGrid.value)
+      const gridVerticalScrollListener = syncVerticalScroll(appointmentsGrid.value, timeSlots.value)
+      
+      // Add horizontal scroll listeners
       practitionersHeader.value.addEventListener('scroll', headerScrollListener)
-      appointmentsGrid.value.addEventListener('scroll', gridScrollListener)
+      appointmentsGrid.value.addEventListener('scroll', gridHorizontalScrollListener)
+      
+      // Add vertical scroll listeners  
+      timeSlots.value.addEventListener('scroll', timeSlotsScrollListener)
+      appointmentsGrid.value.addEventListener('scroll', gridVerticalScrollListener)
       
       scrollListeners.push(
         () => practitionersHeader.value?.removeEventListener('scroll', headerScrollListener),
-        () => appointmentsGrid.value?.removeEventListener('scroll', gridScrollListener)
+        () => appointmentsGrid.value?.removeEventListener('scroll', gridHorizontalScrollListener),
+        () => timeSlots.value?.removeEventListener('scroll', timeSlotsScrollListener),
+        () => appointmentsGrid.value?.removeEventListener('scroll', gridVerticalScrollListener)
       )
     }
   })
@@ -541,19 +564,27 @@ const handleFilterOption = (option) => {
 
 <style scoped>
 .appointment-grid {
-  @apply flex h-full overflow-hidden border-t border-gray-300 bg-white;
+  @apply flex h-full border-t border-gray-300 bg-white;
+  position: relative;
+  min-height: calc(80vh - 80px);
+  height: calc(100vh - 100px);
 }
 
 .time-column {
   @apply w-24 flex-shrink-0 bg-gray-50 border-r border-gray-300;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .time-header {
-  @apply sticky top-0 z-10;
+  @apply sticky top-0 z-40 bg-gray-50;
+  flex-shrink: 0;
 }
 
 .time-slots {
-  @apply space-y-0 bg-gray-50;
+  @apply space-y-0 bg-gray-50 overflow-y-hidden;
+  flex: 1;
 }
 
 .time-slot {
@@ -570,45 +601,61 @@ const handleFilterOption = (option) => {
 }
 
 .practitioners-area {
-  @apply flex-1 overflow-hidden;
+  @apply flex-1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.practitioners-header {
-  @apply sticky top-0 z-10 bg-white border-b border-gray-300 h-20 overflow-x-auto shadow-sm;
+.practitioners-header-fixed {
+  @apply bg-white border-b border-gray-300 h-20 overflow-x-auto shadow-sm;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  flex-shrink: 0;
 }
 
-.practitioners-header::-webkit-scrollbar {
+.appointments-grid-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.practitioners-header-fixed::-webkit-scrollbar {
   height: 6px;
 }
 
-.practitioners-header::-webkit-scrollbar-track {
+.practitioners-header-fixed::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 3px;
 }
 
-.practitioners-header::-webkit-scrollbar-thumb {
+.practitioners-header-fixed::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 3px;
 }
 
-.practitioners-header::-webkit-scrollbar-thumb:hover {
+.practitioners-header-fixed::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
 .practitioner-header-cell {
-  @apply w-56 flex-shrink-0 border-r border-gray-200 h-full bg-white;
+  @apply w-32 flex-shrink-0 border-r border-gray-200 h-full bg-white;
 }
 
 .appointments-grid {
-  @apply h-full overflow-auto border-l-2 border-gray-400;
+  @apply overflow-auto;
   scroll-behavior: smooth;
   background: 
     linear-gradient(to right, #f3f4f6 1px, transparent 1px),
     linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
-  background-size: 224px 64px; /* Match updated cell width and height */
+  background-size: 128px 64px; /* Match practitioner card width (w-32) and cell height */
+  height: 100%;
+  width: 100%;
 }
 
 .appointments-grid::-webkit-scrollbar {
@@ -637,7 +684,7 @@ const handleFilterOption = (option) => {
 }
 
 .grid-cell {
-  @apply w-56 h-16 flex-shrink-0 border-r border-gray-200 relative flex items-center justify-center p-2 transition-all bg-white;
+  @apply w-32 h-16 flex-shrink-0 border-r border-gray-200 relative flex items-center justify-center p-2 transition-all bg-white;
   min-height: 64px;
   border-bottom: 1px solid #f3f4f6;
 }
@@ -691,7 +738,7 @@ const handleFilterOption = (option) => {
   @apply outline-none ring-2 ring-blue-500 ring-offset-2;
 }
 
-.practitioners-header:focus,
+.practitioners-header-fixed:focus,
 .appointments-grid:focus {
   @apply outline-none ring-2 ring-blue-500 ring-offset-2;
 }
@@ -711,7 +758,7 @@ const handleFilterOption = (option) => {
 }
 
 /* Synchronized scrolling */
-.practitioners-header,
+.practitioners-header-fixed,
 .appointments-grid {
   scroll-behavior: smooth;
 }
@@ -727,7 +774,7 @@ const handleFilterOption = (option) => {
   }
   
   .grid-cell, .practitioner-header-cell {
-    @apply w-48 h-14;
+    @apply w-32 h-14;
     min-height: 56px;
   }
   
@@ -743,7 +790,7 @@ const handleFilterOption = (option) => {
 
 @media (max-width: 640px) {
   .grid-cell, .practitioner-header-cell {
-    @apply w-40 h-12;
+    @apply w-32 h-12;
     min-height: 48px;
   }
   
