@@ -190,7 +190,14 @@ def get_approval_status(ref_doctype, ref_docname, dni_id=None):
 
 
 @frappe.whitelist()
-def update_service_approval(ref_doctype, ref_docname, service_type, service_name, qty=1, item_row=None):
+def update_service_approval(
+    ref_doctype,
+    ref_docname,
+    service_type,
+    service_name,
+    qty=1,
+    item_row=None
+):
     if not ref_doctype or not ref_docname:
         frappe.throw("Document Type and Document Name are required")
 
@@ -517,6 +524,7 @@ def get_update_approval_payload(
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+    # qualification = 
 
     insurance_coverage_plan = doc.get("hms_tz_insurance_coverage_plan") or doc.get("coverage_plan_name")
     insurance_subscription = doc.get("insurance_subscription")

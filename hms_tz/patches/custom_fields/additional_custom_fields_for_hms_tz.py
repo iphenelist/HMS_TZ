@@ -28,7 +28,7 @@ def execute():
                 "options": "Codification Table",
             },
             {
-                "fieldname": "custom_column_break_lygpq",
+                "fieldname": "column_break_lygpq",
                 "fieldtype": "Column Break",
                 "insert_after": "patient_encounter_preliminary_diagnosis",
             },
@@ -36,7 +36,7 @@ def execute():
                 "fieldname": "patient_encounter_final_diagnosis",
                 "label": "Final Diagnosis",
                 "fieldtype": "Table",
-                "insert_after": "custom_column_break_lygpq",
+                "insert_after": "column_break_lygpq",
                 "options": "Codification Table",
             },
         ],
