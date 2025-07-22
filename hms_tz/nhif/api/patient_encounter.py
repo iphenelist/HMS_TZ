@@ -482,7 +482,6 @@ def duplicate_encounter(encounter):
         "parentfield",
         "parenttype",
         "sales_invoice",
-        "is_not_billable",
     ]
 
     for key, value in child_tables.items():
