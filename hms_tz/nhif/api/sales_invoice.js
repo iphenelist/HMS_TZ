@@ -113,7 +113,6 @@ var get_healthcare_services_to_invoice = function (frm) {
                 ">",
                 frappe.datetime.add_days(frappe.datetime.now_date(true), -7),
               ],
-              is_not_billable: 0,
               duplicated: 0,
               docstatus: 1,
             },
