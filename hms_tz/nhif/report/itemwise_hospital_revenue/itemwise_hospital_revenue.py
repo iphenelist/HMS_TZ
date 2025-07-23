@@ -1166,7 +1166,7 @@ def get_insurance_drug_data(filters, appoints):
         .select(
             pe.encounter_date.as_("date"),
             pe.appointment.as_("appointment_no"),
-            dn.name.as_("bill_no"),
+            dp.delivery_note.as_("bill_no"),
             pe.patient.as_("patient"),
             pe.patient_name.as_("patient_name"),
             Case()
@@ -1193,6 +1193,11 @@ def get_insurance_drug_data(filters, appoints):
             & (dn.docstatus != 2)
             & (dn.is_return == 0)
             & (dn.reference_doctype == "Patient Encounter")
+        )
+        .groupby(
+            dp.name,
+            # pe.appointment,
+            # dp.delivery_note,
         )
     )
 
