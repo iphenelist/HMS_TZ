@@ -899,7 +899,11 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info  += f", Medical Code: {row.medical_code}"
-                self.clinical_notes += f"Lab Test Name: {row.lab_test_name} {serv_info} <br>"
+
+                self.clinical_notes += f"Lab Test Name: <b>{row.lab_test_name}</b> {serv_info} <br>"
+                result = self.get_lab_results(row)
+                if result:
+                    self.clinical_notes += result
         
         #Radiology
         if len(encounter_doc.get("radiology_procedure_prescription")) > 0:
@@ -908,7 +912,11 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
-                self.clinical_notes += f"Service Name: {row.radiology_procedure_name} {serv_info} <br>"
+
+                self.clinical_notes += f"Service Name: <b>{row.radiology_procedure_name}</b> {serv_info} <br>"
+                radiology_report = self.get_radiology_results(row)
+                if radiology_report:
+                    self.clinical_notes += radiology_report
         
         #Clinical Procedures
         if len(encounter_doc.get("procedure_prescription")) > 0:
@@ -917,13 +925,11 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
-                
-                if row.clinical_procedure:
-                    notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
-                    
-                    serv_info += f", Procedure Notes: {notes}"
-                
-                self.clinical_notes += f"Procedure: {row.procedure_name} {serv_info}<br>"
+
+                self.clinical_notes += f"Procedure: <b>{row.procedure_name}</b> {serv_info}<br>"
+                procedure_notes = self.get_procedure_notes(row)
+                if procedure_notes:
+                    self.clinical_notes += procedure_notes
         
         #Medications
         if len(encounter_doc.get("drug_prescription")) > 0:
@@ -1054,6 +1060,95 @@ class NHIFPatientClaim(Document):
                 )
             )
 
+    def get_lab_results(self, row):
+        if not row.lab_test:
+            return
+
+        lab_test_doc = frappe.get_cached_doc("Lab Test", row.lab_test)
+        if lab_test_doc.workflow_state == "Lab Test Requested":
+            return
+
+        result = ""
+
+        if lab_test_doc.normal_test_items:
+            result += '<div align="center"><i><u><b>Normal Test Results</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += '<tr bgcolor="#CCCCCC"><th>Test Name</th><th>Result</th><th>UOM</th></tr>'
+
+            for item in lab_test_doc.normal_test_items:
+                result += f'<tr><td>{item.lab_test_name}</td>'
+                result += f'<td>{item.result_value}</td>'
+                result += f'<td>{item.lab_test_uom or ""}</td></tr>'
+
+            result += '</table><br>'
+
+        # Descriptive test items table
+        if lab_test_doc.descriptive_test_items:
+            result += '<div align="center"><i><u><b>Descriptive Test Results</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += '<tr bgcolor="#CCCCCC"><th>Test Particulars</th><th>Result</th></tr>'
+
+            for item in lab_test_doc.descriptive_test_items:
+                result += f'<tr><td>{item.lab_test_particulars}</td>'
+                result += f'<td>{item.result_value}</td></tr>'
+
+            result += '</table><br>'
+
+        # Sensitivity test items table
+        if lab_test_doc.sensitivity_test_items:
+            result += '<div align="center"><i><u><b>Sensitivity Test Results</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += '<tr bgcolor="#CCCCCC"><th>Antibiotic</th><th>Sensitivity</th></tr>'
+
+            for item in lab_test_doc.sensitivity_test_items:
+                result += f'<tr><td>{item.antibiotic}</td>'
+                result += f'<td>{item.antibiotic_sensitivity}</td></tr>'
+
+            result += '</table><br>'
+
+        # Custom result
+        if lab_test_doc.custom_result:
+            result += '<div align="center"><i><u><b>Custom Result</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += f'<tr><td>{lab_test_doc.custom_result}</td></tr>'
+            result += '</table><br>'
+
+        return result
+
+    def get_radiology_results(self, row):
+        if not row.radiology_examination:
+            return
+
+        radiology_report = frappe.get_cached_value(
+            "Radiology Examination",
+            row.radiology_examination,
+            "radiology_report_details"
+        )
+        
+        result = ""
+        if radiology_report:
+            result += f"<div align='center'><i><u><b>Radiology Report</b></u></i></div>"
+            result += f"<table border='1' cellpadding='5' cellspacing='0' width='90%' align='center'>"
+            result += f"<tr><td>{radiology_report}</td></tr>"
+            result += f"</table><br>"
+
+        return result
+ 
+    def get_procedure_notes(self, row):
+        if not row.clinical_procedure:
+            return
+        
+        notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
+
+        result = ""
+        if notes:
+            result += f"<div align='center'><i><u><b>Procedure Notes</b></u></i></div>"
+            result += f"<table border='1' cellpadding='5' cellspacing='0' width='90%' align='center'>"
+            result += f"<tr><td>{notes}</td></tr>"
+            result += f"</table><br>"
+
+        return result
+    
 
 def get_missing_patient_signature(self):
     if self.patient:
