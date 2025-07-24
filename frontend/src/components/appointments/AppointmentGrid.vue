@@ -121,7 +121,7 @@
             </div>
             <div 
               v-for="practitioner in practitionerStore.filteredPractitioners"
-              :key="practitioner.id"
+              :key="practitioner.name"
               class="practitioner-header-cell"
             >
               <PractitionerCard :practitioner="practitioner" />
@@ -143,7 +143,7 @@
             >
               <div
                 v-for="practitioner in practitionerStore.filteredPractitioners"
-                :key="`${slot.time}-${practitioner.id}`"
+                :key="`${slot.time}-${practitioner.name}`"
                 class="grid-cell"
                 :class="{ 
                   'opacity-50': slot.isPast,
@@ -152,8 +152,8 @@
               >
                 <!-- Existing Appointment -->
                 <AppointmentCard
-                  v-if="getAppointment(slot.time, practitioner.id)"
-                  :appointment="getAppointment(slot.time, practitioner.id)"
+                  v-if="getAppointment(slot.time, practitioner.name)"
+                  :appointment="getAppointment(slot.time, practitioner.name)"
                   @click="viewAppointment"
                   @complete="handleCompleteAppointment"
                   @cancel="handleCancelAppointment"
@@ -212,7 +212,7 @@
 import { onMounted, computed, ref, onUnmounted, nextTick, watch } from 'vue'
 // All Frappe UI components are now globally available from main.js
 import { useAppointmentStore } from '@/stores/appointments'
-import { usePractitionerStore } from '@/stores/practitioners'
+import { usePractitionerStore } from '@/stores/practitioner'
 import { useDateStore } from '@/stores/date'
 import PractitionerCard from './PractitionerCard.vue'
 import AppointmentCard from './AppointmentCard.vue'
@@ -238,6 +238,7 @@ const confirmMessage = ref('')
 const confirmAction = ref(null)
 const searchQuery = ref('')
 const showFilterDropdown = ref(false)
+const currentCompany = ref(null)
 
 // Filter options
 const filterOptions = computed(() => [
@@ -310,10 +311,12 @@ onMounted(async () => {
   
   try {
     console.log('🔄 Initializing appointment grid...')
-    
+
+    currentCompany.value = "Nephro One Dialysis Clinic"
+
     await Promise.all([
       dateStore.generateTimeSlots(),
-      practitionerStore.fetchPractitioners(),
+      practitionerStore.fetchPractitioners(currentCompany.value, dateStore.selectedDate),
       appointmentStore.fetchAppointments()
     ])
     
@@ -335,7 +338,9 @@ onUnmounted(() => {
 watch(
   () => dateStore.selectedDate,
   async () => {
-    practitionerStore.fetchPractitioners()
+    if (currentCompany.value) {
+      practitionerStore.fetchPractitioners(currentCompany.value, dateStore.selectedDate)
+    }
     await appointmentStore.fetchAppointments()
   }
 )
@@ -414,7 +419,7 @@ const canAddAppointment = (slot, practitioner) => {
     practitioner.is_available &&
     !slot.isPast &&
     dateStore.canBookAppointment(slot.time) &&
-    !getAppointment(slot.time, practitioner.id)
+    !getAppointment(slot.time, practitioner.name)
   )
 }
 
@@ -453,7 +458,7 @@ const goToToday = () => {
 const createAppointment = (timeSlot, practitioner) => {
   appointmentStore.openAppointmentDialog('create', {
     time_slot: timeSlot,
-    practitioner_id: practitioner.id,
+    practitioner_id: practitioner.name,
     practitioner_name: practitioner.name
   })
 }
@@ -476,7 +481,7 @@ const handleCancelAppointment = (appointment) => {
 
 const completeAppointment = async (appointment) => {
   try {
-    const result = await appointmentStore.completeAppointment(appointment.id)
+    const result = await appointmentStore.completeAppointment(appointment.name)
     if (result.success) {
       notifications.success.appointmentCompleted()
     } else {
@@ -490,7 +495,7 @@ const completeAppointment = async (appointment) => {
 
 const cancelAppointment = async (appointment) => {
   try {
-    const result = await appointmentStore.cancelAppointment(appointment.id)
+    const result = await appointmentStore.cancelAppointment(appointment.name)
     if (result.success) {
       notifications.success.appointmentCancelled()
     } else {
@@ -509,7 +514,7 @@ const refreshData = async () => {
   try {
     await Promise.all([
       dateStore.generateTimeSlots(),
-      practitionerStore.fetchPractitioners(),
+      practitionerStore.fetchPractitioners(currentCompany.value, dateStore.selectedDate),
       appointmentStore.fetchAppointments()
     ])
     notifications.success.dataRefreshed()
