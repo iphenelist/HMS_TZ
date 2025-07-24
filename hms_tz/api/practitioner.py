@@ -74,19 +74,14 @@ def get_practitioners(company=None, date=None):
                 
                 # Transform practitioner data to match frontend schema
                 practitioner_data = {
-                    'name': practitioner.practitioner_name or f"{practitioner.first_name or ''} {practitioner.last_name or ''}".strip(),
-                    'id': practitioner.name,
-                    'specialty': practitioner.department_name or 'General',
+                    'name': practitioner.name,
                     'department': practitioner.department_name or 'General',
                     'avatar': get_practitioner_avatar(practitioner.practitioner_name or practitioner.first_name),
                     'is_available': True,
                     'mobile_phone': practitioner.mobile_phone,
-                    'op_consulting_charge': practitioner.op_consulting_charge or 0,
-                    'inpatient_visit_charge': practitioner.inpatient_visit_charge or 0,
                     'image': practitioner.image,
                     'timeslots': availability_data.get('available_slots', []),
                     'present_events': availability_data.get('present_events', []),
-                    'practitioner_type': practitioner.healthcare_practitioner_type
                 }
                 
                 available_practitioners.append(practitioner_data)
