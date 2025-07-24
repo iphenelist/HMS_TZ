@@ -10,7 +10,7 @@ export const usePractitionerStore = defineStore('practitioners', {
     filterType: 'all', // 'all', 'available', 'department'
     selectedDepartment: '',
     lastFetchDate: null,
-    company: "Nephro One Dialysis Clinic" // Default company, can be set dynamically
+    company: ""
   }),
 
   getters: {
@@ -79,9 +79,7 @@ export const usePractitionerStore = defineStore('practitioners', {
       this.isLoading = true
       this.error = null
       
-      try {
-        console.log('🔄 Fetching practitioners from API...', { company, date: currentDate })
-        
+      try {        
         // Call the backend API
         const resource = createResource({
           url: 'hms_tz.api.practitioner.get_practitioners',
