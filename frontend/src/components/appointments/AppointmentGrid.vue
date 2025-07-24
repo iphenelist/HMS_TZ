@@ -4,21 +4,37 @@
     <div class="sticky top-0 z-20 bg-white border-b border-gray-300 shadow-sm">
       <div class="px-6 py-4">
         <div class="flex items-center justify-between flex-wrap gap-4">
-          <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-6">
             <h1 class="text-2xl font-semibold text-black">Appointments</h1>
+            
+            <!-- Company Selector -->
+            <div class="flex items-center">
+              <Link
+                class="form-control min-w-[240px]"
+                :value="selectedCompany || ''"
+                doctype="Company"
+                placeholder="Select Company"
+                @change="handleCompanyChange"
+                variant="outline"
+              />
+            </div>
+            
+            <!-- Date Controls -->
             <div class="flex items-center space-x-2">
               <Button variant="ghost" @click="goToPreviousDay">
                 <FeatherIcon name="chevron-left" class="h-4 w-4 text-black" />
               </Button>
-              <div class="px-4 py-2 bg-gray-100 rounded-lg min-w-[200px] text-center">
-                <span class="text-sm font-medium text-black">{{ formattedDate }}</span>
-              </div>
+              
+              <DatePicker
+                v-model="selectedDateForPicker"
+                variant="outline"
+                placeholder="Select Date"
+                @change="handleDateChange"
+                class="min-w-[200px]"
+              />
               
               <Button variant="ghost" @click="goToNextDay">
                 <FeatherIcon name="chevron-right" class="h-4 w-4 text-black" />
-              </Button>
-              <Button variant="outline" @click="goToToday">
-                <span class="text-black">Today</span>
               </Button>
             </div>
           </div>
@@ -217,6 +233,7 @@ import { useDateStore } from '@/stores/date'
 import PractitionerCard from './PractitionerCard.vue'
 import AppointmentCard from './AppointmentCard.vue'
 import AppointmentDialog from './AppointmentDialog.vue'
+import Link from '../controls/Link.vue'
 import { notifications } from '@/utils/notifications'
 import dayjs from 'dayjs'
 
@@ -238,7 +255,26 @@ const confirmMessage = ref('')
 const confirmAction = ref(null)
 const searchQuery = ref('')
 const showFilterDropdown = ref(false)
-const currentCompany = ref(null)
+const selectedCompany = ref('')
+const selectedDateForPicker = ref('')
+const userCompanies = ref([])
+
+// Initialize selectedDateForPicker with current date
+onMounted(() => {
+  selectedDateForPicker.value = dateStore.selectedDate
+  // Ensure selectedCompany has a default value
+  if (!selectedCompany.value) {
+    selectedCompany.value = ''
+  }
+})
+
+// Company options for Select component  
+const companyOptions = computed(() => {
+  return userCompanies.value.map(company => ({
+    label: company.name,
+    value: company.name
+  }))
+})
 
 // Filter options
 const filterOptions = computed(() => [
@@ -312,11 +348,12 @@ onMounted(async () => {
   try {
     console.log('🔄 Initializing appointment grid...')
 
-    currentCompany.value = "Nephro One Dialysis Clinic"
+    // Fetch user companies first
+    await fetchUserCompanies()
 
     await Promise.all([
       dateStore.generateTimeSlots(),
-      practitionerStore.fetchPractitioners(currentCompany.value, dateStore.selectedDate),
+      selectedCompany.value ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve(),
       appointmentStore.fetchAppointments()
     ])
     
@@ -337,11 +374,25 @@ onUnmounted(() => {
 // Watch for date changes
 watch(
   () => dateStore.selectedDate,
-  async () => {
-    if (currentCompany.value) {
-      practitionerStore.fetchPractitioners(currentCompany.value, dateStore.selectedDate)
+  async (newDate) => {
+    selectedDateForPicker.value = newDate
+    if (selectedCompany.value && selectedCompany.value.trim()) {
+      practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate)
     }
     await appointmentStore.fetchAppointments()
+  }
+)
+
+// Watch for company changes
+watch(
+  selectedCompany,
+  async (newCompany) => {
+    if (newCompany && newCompany.trim()) {
+      await Promise.all([
+        practitionerStore.fetchPractitioners(newCompany, dateStore.selectedDate),
+        appointmentStore.fetchAppointments()
+      ])
+    }
   }
 )
 
@@ -450,8 +501,45 @@ const goToNextDay = () => {
   dateStore.goToNextDay()
 }
 
-const goToToday = () => {
-  dateStore.goToToday()
+// Handle date change from DatePicker
+const handleDateChange = (selectedDate) => {
+  if (selectedDate) {
+    dateStore.setSelectedDate(selectedDate)
+    selectedDateForPicker.value = selectedDate
+  }
+}
+
+// Handle company change from Link component
+const handleCompanyChange = (selectedCompanyValue) => {
+  if (selectedCompanyValue && typeof selectedCompanyValue === 'string') {
+    selectedCompany.value = selectedCompanyValue
+    console.log('Company changed to:', selectedCompanyValue)
+  } else if (selectedCompanyValue && selectedCompanyValue.name) {
+    // Handle if Link component returns an object
+    selectedCompany.value = selectedCompanyValue.name
+    console.log('Company changed to:', selectedCompanyValue.name)
+  }
+}
+
+// Fetch user companies function
+const fetchUserCompanies = async () => {
+  try {
+    // Mock data for now - replace with actual API call
+    userCompanies.value = [
+      { name: 'Nephro One Dialysis Clinic' },
+      { name: 'Heart Care Center' },
+      { name: 'General Hospital' }
+    ]
+    
+    // Set default company if none selected
+    if (userCompanies.value.length > 0 && !selectedCompany.value) {
+      selectedCompany.value = userCompanies.value[0].name
+    }
+  } catch (error) {
+    console.error('Error fetching user companies:', error)
+    userCompanies.value = [{ name: 'Default Company' }]
+    selectedCompany.value = 'Default Company'
+  }
 }
 
 // Event handlers
@@ -514,7 +602,7 @@ const refreshData = async () => {
   try {
     await Promise.all([
       dateStore.generateTimeSlots(),
-      practitionerStore.fetchPractitioners(currentCompany.value, dateStore.selectedDate),
+      (selectedCompany.value && selectedCompany.value.trim()) ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve(),
       appointmentStore.fetchAppointments()
     ])
     notifications.success.dataRefreshed()
