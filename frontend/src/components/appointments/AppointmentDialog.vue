@@ -136,7 +136,7 @@ import {
   Button
 } from 'frappe-ui'
 import { useAppointmentStore } from '@/stores/appointments'
-import { usePractitionerStore } from '@/stores/practitioners'
+import { usePractitionerStore } from '@/stores/practitioner'
 import { useDateStore } from '@/stores/date'
 import { notifications } from '@/utils/notifications'
 import dayjs from 'dayjs'
