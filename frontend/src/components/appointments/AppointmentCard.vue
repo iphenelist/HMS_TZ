@@ -10,10 +10,23 @@
         {{ appointment.patient_name }}
       </h4>
       
-      <!-- Appointment Type -->
-      <p class="text-xs text-gray-600 truncate mb-1">
-        {{ appointment.appointment_type }}
-      </p>
+      <!-- Insurance Company -->
+      <div class="flex items-center text-xs text-gray-600 mb-1">
+        <FeatherIcon name="shield" class="h-3 w-3 mr-1" />
+        <span class="truncate">{{ appointment.insurance_company || 'Cash' }}</span>
+      </div>
+      
+      <!-- Billing Item -->
+      <div v-if="appointment.billing_item" class="flex items-center text-xs text-gray-600 mb-1">
+        <FeatherIcon name="file-text" class="h-3 w-3 mr-1" />
+        <span class="truncate">{{ appointment.billing_item }}</span>
+      </div>
+      
+      <!-- Paid Amount / Item Rate -->
+      <div class="flex items-center text-xs text-gray-600 mb-2">
+        <FeatherIcon name="dollar-sign" class="h-3 w-3 mr-1" />
+        <span>{{ formatAmount(appointment.paid_amount || appointment.item_rate || 0) }}</span>
+      </div>
       
       <!-- Time Display -->
       <div class="flex items-center text-xs text-gray-500 mb-2">
@@ -128,6 +141,11 @@ const formatStatus = (status) => {
     cancelled: 'Cancelled'
   }
   return statusMap[status] || status
+}
+
+const formatAmount = (amount) => {
+  if (!amount || amount === 0) return 'TZS 0'
+  return `TZS ${Number(amount).toLocaleString()}`
 }
 </script>
 
