@@ -48,88 +48,51 @@
                 v-model="searchQuery"
               />
             </div>
-            
-            <!-- Filter Dropdown - Simplified without Frappe UI -->
-            <div class="relative">
-              <Button 
-                variant="outline" 
-                @click="toggleFilterDropdown"
-                class="min-w-[120px]"
-              >
-                <FeatherIcon name="filter" class="h-4 w-4 mr-2 text-black" />
-                <span class="text-black">Filter</span>
-                <FeatherIcon name="chevron-down" class="h-4 w-4 ml-2 text-black" :class="{ 'rotate-180': showFilterDropdown }" />
-              </Button>
-              
-              <!-- Dropdown Menu -->
-              <div 
-                v-if="showFilterDropdown" 
-                class="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50"
-              >
-                <div class="py-1">
-                  <button 
-                    v-for="option in filterOptions" 
-                    :key="option.value"
-                    @click="handleFilterOption(option)"
-                    class="block w-full text-left px-4 py-2 text-sm text-black hover:bg-gray-100"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
-              </div>
-            </div>
-            
             <Button @click="refreshData" :loading="isRefreshing">
               <FeatherIcon name="refresh-cw" class="h-4 w-4 mr-2 text-black" />
               <span class="text-black">Refresh</span>
             </Button>
           </div>
         </div>
+        
+        <div class="py-2">
+          <div class="text-sm text-gray-500">
+            {{ formattedDate }}
+          </div>
+        </div>
       </div>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="appointmentStore.isLoading && !appointments.length" class="flex items-center justify-center h-64">
-      <LoadingIndicator class="w-8 h-8" />
-      <span class="ml-2 text-gray-600">Loading appointments...</span>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="appointmentStore.error" class="p-6">
-      <Alert type="error" :title="appointmentStore.error" />
     </div>
 
     <!-- Main Grid Container -->
-    <div v-else class="appointment-grid" ref="gridContainer">
-      <!-- Fixed Time Column -->
+    <div class="appointment-grid">
+      <!-- Time Column -->
       <div class="time-column">
+        <!-- Time Slots Header -->
         <div class="time-header">
-          <div class="h-20 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
-            <span class="text-sm font-semibold text-gray-600">Time Slots</span>
-          </div>
-        </div>
-        <div class="time-slots" ref="timeSlots">
-          <div
-            v-for="slot in dateStore.timeSlots"
-            :key="slot.time"
-            class="time-slot"
-            :class="{ 
-              'text-gray-400 bg-gray-50': slot.isPast,
-              'current-time': isCurrentTimeSlot(slot),
-              'border-b-2 border-blue-200': isCurrentTimeSlot(slot)
-            }"
-          >
-            <div class="flex flex-col items-center">
-              <span class="text-sm font-medium text-black">{{ slot.display }}</span>
-              <!-- <span class="text-xs text-gray-600">{{ slot.time }}</span> -->
+          <div class="flex flex-col">
+            <div
+              v-for="(slot, index) in dateStore.timeSlots"
+              :key="slot.time"
+              class="time-slot"
+              :class="{ 
+                'current-time': isCurrentTimeSlot(slot),
+                'opacity-60': slot.isPast 
+              }"
+            >
+              {{ slot.display }}
             </div>
           </div>
         </div>
+
+        <!-- Time Slots Body - Empty, controlled by appointments grid -->
+        <div class="time-slots" ref="timeSlots">
+          <!-- Time slots are now generated in the appointments grid for better control -->
+        </div>
       </div>
 
-      <!-- Practitioners Area with Fixed Header -->
+      <!-- Practitioners Area -->
       <div class="practitioners-area" ref="practitionersArea">
-        <!-- Fixed Practitioners Header -->
+        <!-- Practitioners Header - Fixed -->
         <div class="practitioners-header-fixed" ref="practitionersHeader">
           <div class="flex">
             <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[240px] h-full border-b-2 border-gray-300">
@@ -254,7 +217,6 @@ const showConfirmDialog = ref(false)
 const confirmMessage = ref('')
 const confirmAction = ref(null)
 const searchQuery = ref('')
-const showFilterDropdown = ref(false)
 const selectedCompany = ref('')
 const selectedDateForPicker = ref('')
 const userCompanies = ref([])
@@ -275,35 +237,6 @@ const companyOptions = computed(() => {
     value: company.name
   }))
 })
-
-// Filter options
-const filterOptions = computed(() => [
-  {
-    label: 'All Practitioners',
-    value: 'all',
-    handler: () => filterPractitioners('all')
-  },
-  {
-    label: 'Available Only',
-    value: 'available',
-    handler: () => filterPractitioners('available')
-  },
-  {
-    label: 'By Department',
-    value: 'department',
-    handler: () => filterPractitioners('department'),
-    children: practitionerStore.departments.map(dept => ({
-      label: dept,
-      value: dept,
-      handler: () => filterByDepartment(dept)
-    }))
-  },
-  {
-    label: 'Clear Filters',
-    value: 'clear',
-    handler: () => clearFilters()
-  }
-])
 
 // Computed properties
 const appointments = computed(() => appointmentStore.todaysAppointments)
@@ -659,33 +592,6 @@ const refreshData = async () => {
   }
 }
 
-const filterPractitioners = (type) => {
-  practitionerStore.setFilter(type)
-  switch (type) {
-    case 'all':
-      notifications.info.filterApplied('All practitioners')
-      break
-    case 'available':
-      notifications.info.filterApplied('Available practitioners only')
-      break
-    case 'department':
-      notifications.info.filterApplied('Filter by department - select a department')
-      break
-    default:
-      break
-  }
-}
-
-const filterByDepartment = (department) => {
-  practitionerStore.setFilter('department', department)
-  notifications.info.filterApplied(`${department} department`)
-}
-
-const clearFilters = () => {
-  practitionerStore.clearFilters()
-  notifications.success.filtersCleared()
-}
-
 // Dropdown methods
 const toggleFilterDropdown = () => {
   showFilterDropdown.value = !showFilterDropdown.value
@@ -760,6 +666,10 @@ const handleFilterOption = (option) => {
   flex: 1;
   overflow: hidden;
   position: relative;
+}
+
+.practitioner-header-cell {
+  @apply w-32 flex-shrink-0 border-r border-gray-200 h-full bg-white;
 }
 
 .appointments-grid {
