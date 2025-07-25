@@ -135,7 +135,7 @@ import {
   Badge, 
   Button
 } from 'frappe-ui'
-import { useAppointmentStore } from '@/stores/appointments'
+import { useAppointmentStore } from '@/stores/appointment'
 import { usePractitionerStore } from '@/stores/practitioner'
 import { useDateStore } from '@/stores/date'
 import { notifications } from '@/utils/notifications'
