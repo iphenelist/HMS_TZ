@@ -69,43 +69,70 @@
       <div class="time-column">
         <!-- Time Slots Header -->
         <div class="time-header">
-          <div class="flex flex-col">
-            <div
-              v-for="(slot, index) in dateStore.timeSlots"
-              :key="slot.time"
-              class="time-slot"
-              :class="{ 
-                'current-time': isCurrentTimeSlot(slot),
-                'opacity-60': slot.isPast 
-              }"
-            >
-              {{ slot.display }}
-            </div>
+          <div class="h-20 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
+            <span class="text-sm font-semibold text-gray-600">Time Slots</span>
           </div>
         </div>
 
-        <!-- Time Slots Body - Empty, controlled by appointments grid -->
+        <!-- Time Slots Body - Scrollable -->
         <div class="time-slots" ref="timeSlots">
-          <!-- Time slots are now generated in the appointments grid for better control -->
+          <div
+            v-for="slot in dateStore.timeSlots"
+            :key="slot.time"
+            class="time-slot"
+            :class="{ 
+              'current-time': isCurrentTimeSlot(slot),
+              'opacity-60': slot.isPast 
+            }"
+          >
+            <div class="flex flex-col items-center">
+              <span class="text-sm font-medium text-black">{{ slot.display }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Practitioners Area -->
       <div class="practitioners-area" ref="practitionersArea">
-        <!-- Practitioners Header - Fixed -->
-        <div class="practitioners-header-fixed" ref="practitionersHeader">
-          <div class="flex">
-            <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[240px] h-full border-b-2 border-gray-300">
-              <span class="text-gray-500 text-sm">No practitioners found</span>
-            </div>
-            <div 
-              v-for="practitioner in practitionerStore.filteredPractitioners"
-              :key="practitioner.name"
-              class="practitioner-header-cell"
-            >
-              <PractitionerCard :practitioner="practitioner" />
+        <!-- Practitioners Header with Navigation Controls -->
+        <div class="practitioners-header-container">
+          <!-- Left Scroll Button -->
+          <button
+            v-if="canScrollLeft"
+            @click="scrollHorizontally('left')"
+            class="scroll-control scroll-control-left"
+            :disabled="!canScrollLeft"
+            title="Scroll left"
+          >
+            <FeatherIcon name="chevron-left" class="h-5 w-5 text-white drop-shadow-sm" />
+          </button>
+
+          <!-- Practitioners Header - Fixed -->
+          <div class="practitioners-header-fixed" ref="practitionersHeader">
+            <div class="flex">
+              <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[240px] h-full border-b-2 border-gray-300">
+                <span class="text-gray-500 text-sm">No practitioners found</span>
+              </div>
+              <div 
+                v-for="practitioner in practitionerStore.filteredPractitioners"
+                :key="practitioner.name"
+                class="practitioner-header-cell"
+              >
+                <PractitionerCard :practitioner="practitioner" />
+              </div>
             </div>
           </div>
+
+          <!-- Right Scroll Button -->
+          <button
+            v-if="canScrollRight"
+            @click="scrollHorizontally('right')"
+            class="scroll-control scroll-control-right"
+            :disabled="!canScrollRight"
+            title="Scroll right"
+          >
+            <FeatherIcon name="chevron-right" class="h-5 w-5 text-white drop-shadow-sm" />
+          </button>
         </div>
 
         <!-- Scrollable Appointments Grid -->
@@ -221,6 +248,11 @@ const selectedCompany = ref('')
 const selectedDateForPicker = ref('')
 const userCompanies = ref([])
 
+// Horizontal scroll control state
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+const scrollAmount = 256 // 2 practitioner cards width (128px each)
+
 // Initialize selectedDateForPicker with current date
 onMounted(() => {
   selectedDateForPicker.value = dateStore.selectedDate
@@ -266,18 +298,8 @@ const confirmDialogOptions = computed(() => ({
   ]
 }))
 
-// Close dropdown when clicking outside
-const handleClickOutside = (event) => {
-  if (showFilterDropdown.value && !event.target.closest('.relative')) {
-    showFilterDropdown.value = false
-  }
-}
-
 // Initialize data
 onMounted(async () => {
-  // Add click outside listener
-  document.addEventListener('click', handleClickOutside)
-  
   try {
     console.log('🔄 Initializing appointment grid...')
 
@@ -300,6 +322,9 @@ onMounted(async () => {
     
     setupSynchronizedScrolling()
 
+    // Add window resize listener for scroll button states
+    window.addEventListener('resize', updateScrollButtonStates)
+
   } catch (error) {
     console.error('❌ Error initializing appointment grid:', error)
     notifications.error.dataLoadFailed(error.message)
@@ -308,8 +333,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cleanupSynchronizedScrolling()
-  // Remove click outside listener
-  document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', updateScrollButtonStates)
 })
 
 // Watch for date changes
@@ -347,68 +371,104 @@ watch(
   }
 )
 
-// Synchronized scrolling setup
+// Watch for practitioners changes to update scroll states
+watch(
+  () => practitionerStore.filteredPractitioners,
+  () => {
+    nextTick(() => {
+      updateScrollButtonStates()
+    })
+  }
+)
+
+// Synchronized scrolling setup (vertical only)
 let scrollListeners = []
 
-
-// Synchronized scrolling: practitioners header <-> appointments grid (horizontal), time slots <-> appointments grid (vertical)
-
-// Improved synchronized scrolling: instant, lag-free using requestAnimationFrame
+// Simplified vertical-only synchronized scrolling
 const setupSynchronizedScrolling = () => {
   nextTick(() => {
-    if (practitionersHeader.value && appointmentsGrid.value && timeSlots.value) {
-      let syncingHorizontal = false
-      let syncingVertical = false
+    if (appointmentsGrid.value && timeSlots.value) {
+      let isScrolling = false
 
-      // Horizontal sync
-      const onHeaderScroll = () => {
-        if (syncingHorizontal) return
-        syncingHorizontal = true
-        requestAnimationFrame(() => {
-          appointmentsGrid.value.scrollLeft = practitionersHeader.value.scrollLeft
-          syncingHorizontal = false
-        })
-      }
-      const onGridScrollHorizontal = () => {
-        if (syncingHorizontal) return
-        syncingHorizontal = true
-        requestAnimationFrame(() => {
-          practitionersHeader.value.scrollLeft = appointmentsGrid.value.scrollLeft
-          syncingHorizontal = false
-        })
-      }
-
-      // Vertical sync
-      const onGridScrollVertical = () => {
-        if (syncingVertical) return
-        syncingVertical = true
-        requestAnimationFrame(() => {
-          timeSlots.value.scrollTop = appointmentsGrid.value.scrollTop
-          syncingVertical = false
-        })
-      }
-      const onTimeSlotsScroll = () => {
-        if (syncingVertical) return
-        syncingVertical = true
-        requestAnimationFrame(() => {
-          appointmentsGrid.value.scrollTop = timeSlots.value.scrollTop
-          syncingVertical = false
-        })
+      // Vertical sync: appointments grid to time slots
+      const handleAppointmentsGridScroll = () => {
+        if (isScrolling) return
+        isScrolling = true
+        
+        const scrollTop = appointmentsGrid.value.scrollTop
+        
+        // Sync vertical with time slots only
+        if (timeSlots.value.scrollTop !== scrollTop) {
+          timeSlots.value.scrollTop = scrollTop
+        }
+        
+        // Update horizontal scroll button states
+        updateScrollButtonStates()
+        
+        isScrolling = false
       }
 
-      practitionersHeader.value.addEventListener('scroll', onHeaderScroll, { passive: true })
-      appointmentsGrid.value.addEventListener('scroll', onGridScrollHorizontal, { passive: true })
-      appointmentsGrid.value.addEventListener('scroll', onGridScrollVertical, { passive: true })
-      timeSlots.value.addEventListener('scroll', onTimeSlotsScroll, { passive: true })
+      // Vertical sync: time slots to appointments grid
+      const handleTimeSlotsScroll = () => {
+        if (isScrolling) return
+        isScrolling = true
+        
+        const scrollTop = timeSlots.value.scrollTop
+        if (appointmentsGrid.value.scrollTop !== scrollTop) {
+          appointmentsGrid.value.scrollTop = scrollTop
+        }
+        
+        isScrolling = false
+      }
+
+      // Add event listeners with passive: true for better performance
+      appointmentsGrid.value.addEventListener('scroll', handleAppointmentsGridScroll, { passive: true })
+      timeSlots.value.addEventListener('scroll', handleTimeSlotsScroll, { passive: true })
 
       scrollListeners.push(
-        () => practitionersHeader.value?.removeEventListener('scroll', onHeaderScroll),
-        () => appointmentsGrid.value?.removeEventListener('scroll', onGridScrollHorizontal),
-        () => appointmentsGrid.value?.removeEventListener('scroll', onGridScrollVertical),
-        () => timeSlots.value?.removeEventListener('scroll', onTimeSlotsScroll)
+        () => appointmentsGrid.value?.removeEventListener('scroll', handleAppointmentsGridScroll),
+        () => timeSlots.value?.removeEventListener('scroll', handleTimeSlotsScroll)
       )
+
+      // Initial scroll button state check
+      updateScrollButtonStates()
     }
   })
+}
+
+// Horizontal scroll control functions
+const scrollHorizontally = (direction) => {
+  if (!practitionersHeader.value || !appointmentsGrid.value) return
+
+  const currentScrollLeft = practitionersHeader.value.scrollLeft
+  const newScrollLeft = direction === 'left' 
+    ? Math.max(0, currentScrollLeft - scrollAmount)
+    : currentScrollLeft + scrollAmount
+
+  // Smooth scroll both elements simultaneously
+  practitionersHeader.value.scrollTo({
+    left: newScrollLeft,
+    behavior: 'smooth'
+  })
+  
+  appointmentsGrid.value.scrollTo({
+    left: newScrollLeft,
+    top: appointmentsGrid.value.scrollTop,
+    behavior: 'smooth'
+  })
+
+  // Update button states after scroll animation
+  setTimeout(updateScrollButtonStates, 300)
+}
+
+const updateScrollButtonStates = () => {
+  if (!practitionersHeader.value) return
+
+  const scrollLeft = practitionersHeader.value.scrollLeft
+  const maxScrollLeft = practitionersHeader.value.scrollWidth - practitionersHeader.value.clientWidth
+
+  canScrollLeft.value = scrollLeft > 0
+  canScrollRight.value = scrollLeft < maxScrollLeft - 1 // -1 for precision issues
 }
 
 const cleanupSynchronizedScrolling = () => {
@@ -581,7 +641,6 @@ const refreshData = async () => {
       dateStore.generateTimeSlots(),
       (selectedCompany.value && selectedCompany.value.trim()) ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve(),
       (selectedCompany.value && selectedCompany.value.trim()) ? appointmentStore.fetchAppointments() : Promise.resolve(),
-      // appointmentStore.fetchAppointments()
     ])
     notifications.success.dataRefreshed()
   } catch (error) {
@@ -589,18 +648,6 @@ const refreshData = async () => {
     console.error(error)
   } finally {
     isRefreshing.value = false
-  }
-}
-
-// Dropdown methods
-const toggleFilterDropdown = () => {
-  showFilterDropdown.value = !showFilterDropdown.value
-}
-
-const handleFilterOption = (option) => {
-  showFilterDropdown.value = false
-  if (option.handler) {
-    option.handler()
   }
 }
 </script>
@@ -626,10 +673,35 @@ const handleFilterOption = (option) => {
   flex-shrink: 0;
 }
 
+.practitioners-header-fixed {
+  @apply bg-white border-b border-gray-300 h-20 shadow-sm;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: auto; /* Remove smooth scrolling for instant sync */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.practitioners-header-fixed::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
 .time-slots {
   @apply space-y-0 bg-gray-50;
   flex: 1;
-  overflow-y: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: auto; /* Remove smooth scrolling for instant sync */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.time-slots::-webkit-scrollbar {
+  display: none; /* WebKit */
 }
 
 .time-slot {
@@ -653,13 +725,138 @@ const handleFilterOption = (option) => {
   overflow: hidden;
 }
 
-.practitioners-header-fixed {
-  @apply bg-white border-b border-gray-300 h-20 shadow-sm;
-  position: sticky;
-  top: 0;
-  z-index: 50;
+.practitioners-header-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 2px solid #e5e7eb;
+  height: 80px;
   flex-shrink: 0;
-  overflow-x: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.scroll-control {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%);
+  border: 2px solid #60a5fa;
+}
+
+.scroll-control:hover:not(:disabled) {
+  box-shadow: 0 8px 25px rgba(96, 165, 250, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-50%) scale(1.1);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+  border-color: #3b82f6;
+}
+
+.scroll-control:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #9ca3af;
+  border-color: #6b7280;
+}
+
+
+
+.scroll-control:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.95);
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
+}
+
+.scroll-control:focus {
+  outline: none;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 2px #3b82f6, 0 0 0 4px rgba(96, 165, 250, 0.2);
+}
+
+/* Subtle pulse animation to draw attention */
+@keyframes pulse-blue {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.scroll-control:not(:disabled) {
+  animation: pulse-blue 3s ease-in-out infinite;
+}
+
+/* Entrance animation */
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+.scroll-control {
+  animation: slideIn 0.3s ease-out;
+}
+
+.scroll-control-left {
+  left: 12px;
+}
+
+.scroll-control-left::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.scroll-control-right {
+  right: 12px;
+}
+
+.scroll-control-right::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.practitioners-header-fixed {
+  @apply bg-white h-20;
+  flex: 1;
+  margin: 0 60px; /* Increased space for larger scroll buttons */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  border-radius: 8px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.practitioners-header-fixed::-webkit-scrollbar {
+  display: none; /* WebKit */
 }
 
 .appointments-grid-wrapper {
@@ -673,7 +870,8 @@ const handleFilterOption = (option) => {
 }
 
 .appointments-grid {
-  @apply overflow-auto;
+  @apply overflow-y-auto;
+  overflow-x: auto;
   scroll-behavior: smooth;
   background: 
     linear-gradient(to right, #f3f4f6 1px, transparent 1px),
@@ -683,8 +881,12 @@ const handleFilterOption = (option) => {
   width: 100%;
 }
 
-.appointments-grid::-webkit-scrollbar {
-  @apply w-2 h-2;
+.appointments-grid::-webkit-scrollbar-horizontal {
+  display: none; /* Hide horizontal scrollbar */
+}
+
+.appointments-grid::-webkit-scrollbar:vertical {
+  @apply w-2;
 }
 
 .appointments-grid::-webkit-scrollbar-track {
