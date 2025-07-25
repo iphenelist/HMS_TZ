@@ -227,7 +227,7 @@
 <script setup>
 import { onMounted, computed, ref, onUnmounted, nextTick, watch } from 'vue'
 // All Frappe UI components are now globally available from main.js
-import { useAppointmentStore } from '@/stores/appointments'
+import { useAppointmentStore } from '@/stores/appointment'
 import { usePractitionerStore } from '@/stores/practitioner'
 import { useDateStore } from '@/stores/date'
 import PractitionerCard from './PractitionerCard.vue'
@@ -351,10 +351,18 @@ onMounted(async () => {
     // Fetch user companies first
     await fetchUserCompanies()
 
+    // Sync dates between stores initially
+    appointmentStore.setSelectedDate(dateStore.selectedDate)
+    selectedDateForPicker.value = dateStore.selectedDate
+
+    // Set initial company in appointment store if one is selected
+    if (selectedCompany.value) {
+      appointmentStore.setSelectedCompany(selectedCompany.value)
+    }
+
     await Promise.all([
       dateStore.generateTimeSlots(),
-      selectedCompany.value ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve(),
-      appointmentStore.fetchAppointments()
+      selectedCompany.value ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve()
     ])
     
     setupSynchronizedScrolling()
@@ -375,11 +383,12 @@ onUnmounted(() => {
 watch(
   () => dateStore.selectedDate,
   async (newDate) => {
+    console.log('🔍 DateStore date changed to:', newDate)
     selectedDateForPicker.value = newDate
+    appointmentStore.setSelectedDate(newDate) // Update appointment store date
     if (selectedCompany.value && selectedCompany.value.trim()) {
       practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate)
     }
-    await appointmentStore.fetchAppointments()
   }
 )
 
@@ -388,6 +397,7 @@ watch(
   selectedCompany,
   async (newCompany) => {
     if (newCompany && newCompany.trim()) {
+      appointmentStore.setSelectedCompany(newCompany)
       await Promise.all([
         practitionerStore.fetchPractitioners(newCompany, dateStore.selectedDate),
         appointmentStore.fetchAppointments()
@@ -407,48 +417,62 @@ watch(
 // Synchronized scrolling setup
 let scrollListeners = []
 
+
+// Synchronized scrolling: practitioners header <-> appointments grid (horizontal), time slots <-> appointments grid (vertical)
+
+// Improved synchronized scrolling: instant, lag-free using requestAnimationFrame
 const setupSynchronizedScrolling = () => {
   nextTick(() => {
     if (practitionersHeader.value && appointmentsGrid.value && timeSlots.value) {
-      // Horizontal synchronization: practitioners header <-> appointments grid
-      const syncHorizontalScroll = (source, target) => {
-        return () => {
-          if (target) {
-            target.scrollLeft = source.scrollLeft
-          }
-        }
+      let syncingHorizontal = false
+      let syncingVertical = false
+
+      // Horizontal sync
+      const onHeaderScroll = () => {
+        if (syncingHorizontal) return
+        syncingHorizontal = true
+        requestAnimationFrame(() => {
+          appointmentsGrid.value.scrollLeft = practitionersHeader.value.scrollLeft
+          syncingHorizontal = false
+        })
       }
-      
-      // Vertical synchronization: time slots <-> appointments grid
-      const syncVerticalScroll = (source, target) => {
-        return () => {
-          if (target) {
-            target.scrollTop = source.scrollTop
-          }
-        }
+      const onGridScrollHorizontal = () => {
+        if (syncingHorizontal) return
+        syncingHorizontal = true
+        requestAnimationFrame(() => {
+          practitionersHeader.value.scrollLeft = appointmentsGrid.value.scrollLeft
+          syncingHorizontal = false
+        })
       }
-      
-      // Set up horizontal scroll sync
-      const headerScrollListener = syncHorizontalScroll(practitionersHeader.value, appointmentsGrid.value)
-      const gridHorizontalScrollListener = syncHorizontalScroll(appointmentsGrid.value, practitionersHeader.value)
-      
-      // Set up vertical scroll sync
-      const timeSlotsScrollListener = syncVerticalScroll(timeSlots.value, appointmentsGrid.value)
-      const gridVerticalScrollListener = syncVerticalScroll(appointmentsGrid.value, timeSlots.value)
-      
-      // Add horizontal scroll listeners
-      practitionersHeader.value.addEventListener('scroll', headerScrollListener)
-      appointmentsGrid.value.addEventListener('scroll', gridHorizontalScrollListener)
-      
-      // Add vertical scroll listeners  
-      timeSlots.value.addEventListener('scroll', timeSlotsScrollListener)
-      appointmentsGrid.value.addEventListener('scroll', gridVerticalScrollListener)
-      
+
+      // Vertical sync
+      const onGridScrollVertical = () => {
+        if (syncingVertical) return
+        syncingVertical = true
+        requestAnimationFrame(() => {
+          timeSlots.value.scrollTop = appointmentsGrid.value.scrollTop
+          syncingVertical = false
+        })
+      }
+      const onTimeSlotsScroll = () => {
+        if (syncingVertical) return
+        syncingVertical = true
+        requestAnimationFrame(() => {
+          appointmentsGrid.value.scrollTop = timeSlots.value.scrollTop
+          syncingVertical = false
+        })
+      }
+
+      practitionersHeader.value.addEventListener('scroll', onHeaderScroll, { passive: true })
+      appointmentsGrid.value.addEventListener('scroll', onGridScrollHorizontal, { passive: true })
+      appointmentsGrid.value.addEventListener('scroll', onGridScrollVertical, { passive: true })
+      timeSlots.value.addEventListener('scroll', onTimeSlotsScroll, { passive: true })
+
       scrollListeners.push(
-        () => practitionersHeader.value?.removeEventListener('scroll', headerScrollListener),
-        () => appointmentsGrid.value?.removeEventListener('scroll', gridHorizontalScrollListener),
-        () => timeSlots.value?.removeEventListener('scroll', timeSlotsScrollListener),
-        () => appointmentsGrid.value?.removeEventListener('scroll', gridVerticalScrollListener)
+        () => practitionersHeader.value?.removeEventListener('scroll', onHeaderScroll),
+        () => appointmentsGrid.value?.removeEventListener('scroll', onGridScrollHorizontal),
+        () => appointmentsGrid.value?.removeEventListener('scroll', onGridScrollVertical),
+        () => timeSlots.value?.removeEventListener('scroll', onTimeSlotsScroll)
       )
     }
   })
@@ -462,7 +486,9 @@ const cleanupSynchronizedScrolling = () => {
 // Helper functions
 const getAppointment = (timeSlot, practitionerId) => {
   const key = `${timeSlot}-${practitionerId}`
-  return appointmentStore.appointmentsByTimeSlot[key]
+  const appointment = appointmentStore.appointmentsByTimeSlot[key]
+  
+  return appointment
 }
 
 const canAddAppointment = (slot, practitioner) => {
@@ -502,21 +528,40 @@ const goToNextDay = () => {
 }
 
 // Handle date change from DatePicker
-const handleDateChange = (selectedDate) => {
+const handleDateChange = async(selectedDate) => {
   if (selectedDate) {
+    console.log('🔍 Date picker changed to:', selectedDate)
     dateStore.setSelectedDate(selectedDate)
+
+    await Promise.all([
+      practitionerStore.fetchPractitioners(selectedCompany.value, selectedDate),
+      appointmentStore.fetchAppointments()
+    ])
+
     selectedDateForPicker.value = selectedDate
   }
 }
 
 // Handle company change from Link component
-const handleCompanyChange = (selectedCompanyValue) => {
+const handleCompanyChange = async (selectedCompanyValue) => {
   if (selectedCompanyValue && typeof selectedCompanyValue === 'string') {
     selectedCompany.value = selectedCompanyValue
+
+    await Promise.all([
+      practitionerStore.fetchPractitioners(selectedCompanyValue, dateStore.selectedDate),
+      appointmentStore.setSelectedCompany(selectedCompanyValue)
+    ])
+
     console.log('Company changed to:', selectedCompanyValue)
   } else if (selectedCompanyValue && selectedCompanyValue.name) {
     // Handle if Link component returns an object
     selectedCompany.value = selectedCompanyValue.name
+
+    await Promise.all([
+      practitionerStore.fetchPractitioners(selectedCompanyValue.name, dateStore.selectedDate),
+      appointmentStore.setSelectedCompany(selectedCompanyValue.name)
+    ])
+
     console.log('Company changed to:', selectedCompanyValue.name)
   }
 }
@@ -526,9 +571,8 @@ const fetchUserCompanies = async () => {
   try {
     // Mock data for now - replace with actual API call
     userCompanies.value = [
-      { name: 'Nephro One Dialysis Clinic' },
-      { name: 'Heart Care Center' },
-      { name: 'General Hospital' }
+      // { name: 'Nephro One Dialysis Clinic' },
+      { name: 'Shree Hindu Mandal Hospital - Mwanza' },
     ]
     
     // Set default company if none selected
@@ -603,7 +647,8 @@ const refreshData = async () => {
     await Promise.all([
       dateStore.generateTimeSlots(),
       (selectedCompany.value && selectedCompany.value.trim()) ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve(),
-      appointmentStore.fetchAppointments()
+      (selectedCompany.value && selectedCompany.value.trim()) ? appointmentStore.fetchAppointments() : Promise.resolve(),
+      // appointmentStore.fetchAppointments()
     ])
     notifications.success.dataRefreshed()
   } catch (error) {
@@ -676,8 +721,9 @@ const handleFilterOption = (option) => {
 }
 
 .time-slots {
-  @apply space-y-0 bg-gray-50 overflow-y-hidden;
+  @apply space-y-0 bg-gray-50;
   flex: 1;
+  overflow-y: hidden;
 }
 
 .time-slot {
@@ -702,42 +748,18 @@ const handleFilterOption = (option) => {
 }
 
 .practitioners-header-fixed {
-  @apply bg-white border-b border-gray-300 h-20 overflow-x-auto shadow-sm;
-  scroll-behavior: smooth;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  @apply bg-white border-b border-gray-300 h-20 shadow-sm;
   position: sticky;
   top: 0;
   z-index: 50;
   flex-shrink: 0;
+  overflow-x: hidden;
 }
 
 .appointments-grid-wrapper {
   flex: 1;
   overflow: hidden;
   position: relative;
-}
-
-.practitioners-header-fixed::-webkit-scrollbar {
-  height: 6px;
-}
-
-.practitioners-header-fixed::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.practitioners-header-fixed::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.practitioners-header-fixed::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.practitioner-header-cell {
-  @apply w-32 flex-shrink-0 border-r border-gray-200 h-full bg-white;
 }
 
 .appointments-grid {
