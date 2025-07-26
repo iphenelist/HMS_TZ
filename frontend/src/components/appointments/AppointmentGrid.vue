@@ -69,7 +69,7 @@
       <div class="time-column">
         <!-- Time Slots Header -->
         <div class="time-header">
-          <div class="h-20 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
+          <div class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
             <span class="text-sm font-semibold text-gray-600">Time Slots</span>
           </div>
         </div>
@@ -81,12 +81,11 @@
             :key="slot.time"
             class="time-slot"
             :class="{ 
-              'current-time': isCurrentTimeSlot(slot),
-              'opacity-60': slot.isPast 
+              'current-time': isCurrentTimeSlot(slot)
             }"
           >
             <div class="flex flex-col items-center">
-              <span class="text-sm font-medium text-black">{{ slot.display }}</span>
+              <span class="text-sm font-bold text-gray-900">{{ slot.display }}</span>
             </div>
           </div>
         </div>
@@ -110,7 +109,7 @@
           <!-- Practitioners Header - Fixed -->
           <div class="practitioners-header-fixed" ref="practitionersHeader">
             <div class="flex">
-              <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[240px] h-full border-b-2 border-gray-300">
+              <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[320px] h-full border-b-2 border-gray-300">
                 <span class="text-gray-500 text-sm">No practitioners found</span>
               </div>
               <div 
@@ -143,8 +142,7 @@
               :key="slot.time"
               class="grid-row"
               :class="{ 
-                'current-time': isCurrentTimeSlot(slot),
-                'opacity-60': slot.isPast 
+                'current-time': isCurrentTimeSlot(slot)
               }"
             >
               <div
@@ -152,7 +150,6 @@
                 :key="`${slot.time}-${practitioner.name}`"
                 class="grid-cell"
                 :class="{ 
-                  'opacity-50': slot.isPast,
                   'bg-gray-50': !practitioner.is_available
                 }"
               >
@@ -171,7 +168,7 @@
                   class="break-slot"
                   :title="slot.breakLabel"
                 >
-                  <span class="text-xs text-gray-500">{{ slot.breakLabel || 'Break' }}</span>
+                  <span class="text-xs font-bold text-orange-800">{{ slot.breakLabel || 'Break' }}</span>
                 </div>
                 
                 <!-- Empty Slot with Add Button -->
@@ -182,8 +179,8 @@
                   :title="`Create appointment for ${practitioner.name} at ${slot.display}`"
                 >
                   <div class="add-button-content">
-                    <FeatherIcon name="plus" class="h-4 w-4 text-black group-hover:text-blue-600 transition-colors" />
-                    <span class="add-text text-xs text-black group-hover:text-blue-600 transition-colors mt-1 font-medium">Add</span>
+                    <FeatherIcon name="plus" class="h-4 w-4 text-gray-900 group-hover:text-blue-600 transition-colors" />
+                    <span class="add-text text-xs font-bold text-gray-900 group-hover:text-blue-600 transition-colors mt-1">Add</span>
                   </div>
                 </div>
                 
@@ -193,7 +190,7 @@
                   class="unavailable-slot"
                   :title="getUnavailableReason(slot, practitioner)"
                 >
-                  <span class="text-xs text-gray-400">—</span>
+                  <span class="text-xs font-bold text-gray-600">—</span>
                 </div>
               </div>
             </div>
@@ -251,7 +248,7 @@ const userCompanies = ref([])
 // Horizontal scroll control state
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
-const scrollAmount = 256 // 2 practitioner cards width (128px each)
+const scrollAmount = 320 // 2 practitioner cards width (160px each)
 
 // Initialize selectedDateForPicker with current date
 onMounted(() => {
@@ -662,7 +659,7 @@ const refreshData = async () => {
 }
 
 .time-column {
-  @apply w-24 flex-shrink-0 bg-gray-50 border-r border-gray-300;
+  @apply w-28 flex-shrink-0 bg-gray-50 border-r border-gray-300;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -674,7 +671,7 @@ const refreshData = async () => {
 }
 
 .practitioners-header-fixed {
-  @apply bg-white border-b border-gray-300 h-20 shadow-sm;
+  @apply bg-white border-b border-gray-300 h-24 shadow-sm;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -705,8 +702,8 @@ const refreshData = async () => {
 }
 
 .time-slot {
-  @apply h-14 flex items-center justify-center border-b border-gray-200 px-3 text-center transition-colors bg-gray-50;
-  min-height: 64px;
+  @apply h-24 flex items-center justify-center border-b border-gray-200 px-3 text-center transition-colors bg-gray-50;
+  min-height: 96px;
 }
 
 .time-slot.current-time {
@@ -731,7 +728,7 @@ const refreshData = async () => {
   align-items: center;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border-bottom: 2px solid #e5e7eb;
-  height: 80px;
+  height: 96px;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -843,9 +840,9 @@ const refreshData = async () => {
 }
 
 .practitioners-header-fixed {
-  @apply bg-white h-20;
+  @apply bg-white h-24;
   flex: 1;
-  margin: 0 60px; /* Increased space for larger scroll buttons */
+  margin: 0 70px; /* Increased space for larger scroll buttons and cards */
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
@@ -866,7 +863,8 @@ const refreshData = async () => {
 }
 
 .practitioner-header-cell {
-  @apply w-32 flex-shrink-0 border-r border-gray-200 h-full bg-white;
+  @apply w-40 flex-shrink-0 h-full bg-white rounded-md;
+  border-right: 1px solid #e5e7eb;
 }
 
 .appointments-grid {
@@ -876,7 +874,7 @@ const refreshData = async () => {
   background: 
     linear-gradient(to right, #f3f4f6 1px, transparent 1px),
     linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
-  background-size: 128px 64px; /* Match practitioner card width (w-32) and cell height */
+  background-size: 160px 96px; /* Match practitioner card width (w-40) and cell height */
   height: 100%;
   width: 100%;
 }
@@ -907,12 +905,13 @@ const refreshData = async () => {
 
 .grid-row {
   @apply flex transition-colors bg-white;
-  min-height: 64px;
+  min-height: 96px;
 }
 
 .grid-cell {
-  @apply w-32 h-16 flex-shrink-0 border-r border-gray-200 relative flex items-center justify-center p-2 transition-all bg-white;
-  min-height: 64px;
+  @apply w-40 h-24 flex-shrink-0 relative flex items-stretch justify-stretch p-0 transition-all bg-white rounded-md;
+  min-height: 96px;
+  border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #f3f4f6;
 }
 
@@ -921,9 +920,9 @@ const refreshData = async () => {
 }
 
 .add-appointment-button {
-  @apply w-full h-full flex items-center justify-center cursor-pointer hover:bg-blue-100 transition-all rounded-md border border-dashed border-gray-400 hover:border-blue-500;
-  min-height: 60px;
-  background-color: #fafafa;
+  @apply w-full h-full flex items-center justify-center cursor-pointer hover:bg-blue-200 transition-all border-2 border-dashed border-gray-500 hover:border-blue-600;
+  min-height: 92px;
+  background-color: #f8f9fa;
 }
 
 .add-appointment-button:hover {
@@ -943,15 +942,15 @@ const refreshData = async () => {
 }
 
 .add-button-content .add-text {
-  @apply text-xs font-medium;
+  @apply text-xs font-bold;
 }
 
 .unavailable-slot {
-  @apply w-full h-full flex items-center justify-center text-gray-400 bg-gray-100 border border-gray-300;
+  @apply w-full h-full flex items-center justify-center text-gray-600 bg-gray-200 border-2 border-gray-400;
 }
 
 .break-slot {
-  @apply w-full h-full flex items-center justify-center bg-orange-100 text-orange-600 border-2 border-orange-300;
+  @apply w-full h-full flex items-center justify-center bg-orange-300 text-orange-800 border-2 border-orange-500;
 }
 
 /* Enhanced visual elements for better grid visibility */
@@ -1001,37 +1000,38 @@ const refreshData = async () => {
   }
   
   .grid-cell, .practitioner-header-cell {
-    @apply w-32 h-14;
-    min-height: 56px;
+    @apply w-36;
+    height: 80px;
+    min-height: 80px;
   }
   
   .time-slot {
-    @apply h-14;
-    min-height: 56px;
+    height: 80px;
+    min-height: 80px;
   }
   
   .practitioners-header {
-    @apply h-16;
+    height: 80px;
   }
 }
 
 @media (max-width: 640px) {
   .grid-cell, .practitioner-header-cell {
-    @apply w-32 h-12;
-    min-height: 48px;
+    @apply w-32 h-16;
+    min-height: 64px;
   }
   
   .time-slot {
-    @apply h-12 text-xs;
-    min-height: 48px;
+    @apply h-16 text-xs;
+    min-height: 64px;
   }
   
   .time-column {
-    @apply w-24;
+    @apply w-20;
   }
   
   .practitioners-header {
-    @apply h-14;
+    @apply h-16;
   }
   
   .appointment-grid-container .px-6 {
