@@ -11,6 +11,8 @@ declare module 'vue' {
     AppointmentCard: typeof import('./src/components/appointments/AppointmentCard.vue')['default']
     AppointmentDialog: typeof import('./src/components/appointments/AppointmentDialog.vue')['default']
     AppointmentGrid: typeof import('./src/components/appointments/AppointmentGrid.vue')['default']
+    Autocomplete: typeof import('./src/components/controls/Autocomplete.vue')['default']
+    Link: typeof import('./src/components/controls/Link.vue')['default']
     PractitionerCard: typeof import('./src/components/appointments/PractitionerCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

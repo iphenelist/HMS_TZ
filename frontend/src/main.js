@@ -19,7 +19,6 @@ import {
 	FeatherIcon,
 	FormControl,
 	Input,
-	Link,
 	LoadingIndicator,
 	LoadingText,
 	Popover,
@@ -55,7 +54,6 @@ const globalComponents = {
 	// Layout & Navigation
 	Dialog,
 	Dropdown,
-	Link,
 	Popover,
 	Tooltip,
 	
