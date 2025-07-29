@@ -95,20 +95,9 @@
       <div class="practitioners-area" ref="practitionersArea">
         <!-- Practitioners Header with Navigation Controls -->
         <div class="practitioners-header-container">
-          <!-- Left Scroll Button -->
-          <button
-            v-if="canScrollLeft"
-            @click="scrollHorizontally('left')"
-            class="scroll-control scroll-control-left"
-            :disabled="!canScrollLeft"
-            title="Scroll left"
-          >
-            <FeatherIcon name="chevron-left" class="h-5 w-5 text-white drop-shadow-sm" />
-          </button>
-
           <!-- Practitioners Header - Fixed -->
           <div class="practitioners-header-fixed" ref="practitionersHeader">
-            <div class="flex">
+            <div class="flex gap-4">
               <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[320px] h-full border-b-2 border-gray-300">
                 <span class="text-gray-500 text-sm">No practitioners found</span>
               </div>
@@ -121,17 +110,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Right Scroll Button -->
-          <button
-            v-if="canScrollRight"
-            @click="scrollHorizontally('right')"
-            class="scroll-control scroll-control-right"
-            :disabled="!canScrollRight"
-            title="Scroll right"
-          >
-            <FeatherIcon name="chevron-right" class="h-5 w-5 text-white drop-shadow-sm" />
-          </button>
         </div>
 
         <!-- Scrollable Appointments Grid -->
@@ -197,6 +175,31 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Bottom Scroll Controls -->
+    <div class="bottom-scroll-controls">
+      <!-- Left Scroll Button -->
+      <button
+        v-if="canScrollLeft"
+        @click="scrollHorizontally('left')"
+        class="scroll-control scroll-control-left"
+        :disabled="!canScrollLeft"
+        title="Scroll left"
+      >
+        <FeatherIcon name="chevron-left" class="h-5 w-5 text-white drop-shadow-sm" />
+      </button>
+
+      <!-- Right Scroll Button -->
+      <button
+        v-if="canScrollRight"
+        @click="scrollHorizontally('right')"
+        class="scroll-control scroll-control-right"
+        :disabled="!canScrollRight"
+        title="Scroll right"
+      >
+        <FeatherIcon name="chevron-right" class="h-5 w-5 text-white drop-shadow-sm" />
+      </button>
     </div>
 
     <!-- Appointment Dialog -->
@@ -652,26 +655,38 @@ const refreshData = async () => {
 
 <style scoped>
 .appointment-grid {
-  @apply flex h-full border-t border-gray-300 bg-white;
+  display: flex;
+  height: 100%;
+  border-top: 1px solid #d1d5db;
+  background-color: white;
   position: relative;
   min-height: calc(80vh - 80px);
   height: calc(100vh - 100px);
 }
 
 .time-column {
-  @apply w-28 flex-shrink-0 bg-gray-50 border-r border-gray-300;
+  width: 7rem;
+  flex-shrink: 0;
+  background-color: #f9fafb;
+  border-right: 1px solid #d1d5db;
   position: relative;
   display: flex;
   flex-direction: column;
 }
 
 .time-header {
-  @apply sticky top-0 z-40 bg-gray-50;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: #f9fafb;
   flex-shrink: 0;
 }
 
 .practitioners-header-fixed {
-  @apply bg-white border-b border-gray-300 h-24 shadow-sm;
+  background-color: white;
+  border-bottom: 1px solid #d1d5db;
+  height: 6rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -688,7 +703,8 @@ const refreshData = async () => {
 }
 
 .time-slots {
-  @apply space-y-0 bg-gray-50;
+  /* space-y-0 equivalent: margin-top: 0; margin-bottom: 0; */
+  background-color: #f9fafb;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -702,20 +718,34 @@ const refreshData = async () => {
 }
 
 .time-slot {
-  @apply h-24 flex items-center justify-center border-b border-gray-200 px-3 text-center transition-colors bg-gray-50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #e5e7eb;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  text-align: center;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  background-color: #f9fafb;
+  height: 96px; /* Match grid cell height + margin */
   min-height: 96px;
 }
 
 .time-slot.current-time {
-  @apply bg-blue-100 text-blue-800 font-semibold border-blue-300;
+  background-color: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
+  border-bottom-color: #93c5fd;
 }
 
 .grid-row.current-time {
-  @apply bg-blue-50;
+  background-color: #eff6ff;
 }
 
 .practitioners-area {
-  @apply flex-1;
+  flex: 1;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -734,10 +764,6 @@ const refreshData = async () => {
 }
 
 .scroll-control {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 60;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -753,7 +779,7 @@ const refreshData = async () => {
 
 .scroll-control:hover:not(:disabled) {
   box-shadow: 0 8px 25px rgba(96, 165, 250, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-50%) scale(1.1);
+  transform: scale(1.1);
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
   border-color: #3b82f6;
 }
@@ -768,7 +794,7 @@ const refreshData = async () => {
 
 
 .scroll-control:active:not(:disabled) {
-  transform: translateY(-50%) scale(0.95);
+  transform: scale(0.95);
   box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
 }
 
@@ -795,11 +821,11 @@ const refreshData = async () => {
 @keyframes slideIn {
   0% {
     opacity: 0;
-    transform: translateY(-50%) scale(0.5);
+    transform: scale(0.5);
   }
   100% {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
+    transform: scale(1);
   }
 }
 
@@ -807,42 +833,9 @@ const refreshData = async () => {
   animation: slideIn 0.3s ease-out;
 }
 
-.scroll-control-left {
-  left: 12px;
-}
-
-.scroll-control-left::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-  border-radius: 50%;
-  z-index: -1;
-}
-
-.scroll-control-right {
-  right: 12px;
-}
-
-.scroll-control-right::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-  border-radius: 50%;
-  z-index: -1;
-}
-
 .practitioners-header-fixed {
   @apply bg-white h-24;
   flex: 1;
-  margin: 0 70px; /* Increased space for larger scroll buttons and cards */
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
@@ -863,20 +856,27 @@ const refreshData = async () => {
 }
 
 .practitioner-header-cell {
-  @apply w-40 flex-shrink-0 h-full bg-white rounded-md;
-  border-right: 1px solid #e5e7eb;
+  width: 10rem;
+  flex-shrink: 0;
+  height: 100%;
+  background-color: white;
+  border-radius: 0.375rem;
+  border-right: 1px dotted #d1d5db;
+  border-bottom: 2px dotted #d1d5db;
 }
 
 .appointments-grid {
-  @apply overflow-y-auto;
+  overflow-y: auto;
   overflow-x: auto;
   scroll-behavior: smooth;
   background: 
     linear-gradient(to right, #f3f4f6 1px, transparent 1px),
     linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
-  background-size: 160px 96px; /* Match practitioner card width (w-40) and cell height */
+  background-size: 176px 96px; /* 160px width + 16px gap, 96px height to match time slots */
   height: 100%;
   width: 100%;
+  border-top: 2px solid #e5e7eb;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .appointments-grid::-webkit-scrollbar-horizontal {
@@ -884,103 +884,168 @@ const refreshData = async () => {
 }
 
 .appointments-grid::-webkit-scrollbar:vertical {
-  @apply w-2;
+  width: 0.5rem;
 }
 
 .appointments-grid::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  background-color: #f3f4f6;
 }
 
 .appointments-grid::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded-full;
+  background-color: #9ca3af;
+  border-radius: 9999px;
 }
 
 .appointments-grid::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  background-color: #6b7280;
 }
 
 .grid-content {
-  @apply space-y-0;
+  /* space-y-0 equivalent: direct children have no vertical spacing */
 }
 
 .grid-row {
-  @apply flex transition-colors bg-white;
-  min-height: 96px;
+  display: flex;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  background-color: white;
+  gap: 1rem;
+  min-height: 96px; /* Match time slot height */
+  margin-bottom: 0; /* Remove row margin since cells have their own spacing */
 }
 
 .grid-cell {
-  @apply w-40 h-24 flex-shrink-0 relative flex items-stretch justify-stretch p-0 transition-all bg-white rounded-md;
-  min-height: 96px;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 1px solid #f3f4f6;
+  width: 10rem;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0.25rem;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  background-color: white;
+  height: 88px;
+  min-height: 88px;
+  margin-bottom: 8px; /* Add space between cards to show bottom borders */
+  border-right: 1px dotted #d1d5db;
+  border-bottom: 1px dotted #d1d5db;
 }
 
 .grid-cell:hover {
-  @apply bg-blue-50;
+  background-color: #eff6ff;
 }
 
 .add-appointment-button {
-  @apply w-full h-full flex items-center justify-center cursor-pointer hover:bg-blue-200 transition-all border-2 border-dashed border-gray-500 hover:border-blue-600;
-  min-height: 92px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  border: 1px dotted #9ca3af;
+  border-radius: 0.375rem;
+  height: 86px; /* Slightly smaller than cell to show spacing */
   background-color: #f8f9fa;
 }
 
 .add-appointment-button:hover {
-  @apply shadow-md;
+  background-color: #bfdbfe;
+  border-color: #2563eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .add-appointment-button:hover .add-button-content {
-  @apply transform scale-110;
+  transform: scale(1.1);
 }
 
 .add-appointment-button:active {
-  @apply scale-95;
+  transform: scale(0.95);
 }
 
 .add-button-content {
-  @apply flex flex-col items-center justify-center text-center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .add-button-content .add-text {
-  @apply text-xs font-bold;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 700;
 }
 
 .unavailable-slot {
-  @apply w-full h-full flex items-center justify-center text-gray-600 bg-gray-200 border-2 border-gray-400;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+  background-color: #e5e7eb;
+  border: 1px dotted #9ca3af;
+  border-radius: 0.375rem;
 }
 
 .break-slot {
-  @apply w-full h-full flex items-center justify-center bg-orange-300 text-orange-800 border-2 border-orange-500;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fed7aa;
+  color: #9a3412;
+  border: 1px dotted #f97316;
+  border-radius: 0.375rem;
 }
 
 /* Enhanced visual elements for better grid visibility */
 .current-time-indicator {
-  @apply absolute left-0 right-0 h-0.5 bg-red-500 z-20;
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.125rem;
+  background-color: #ef4444;
+  z-index: 20;
   box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
 }
 
 /* Focus styles for accessibility */
 .add-appointment-button:focus {
-  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 .practitioners-header-fixed:focus,
 .appointments-grid:focus {
-  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 /* Current time slot highlighting */
 .time-slot.current-time {
-  @apply bg-red-100 border-red-300 text-red-700 font-bold;
+  background-color: #fecaca;
+  border-bottom-color: #fca5a5;
+  color: #b91c1c;
+  font-weight: 700;
   box-shadow: inset 3px 0 0 #ef4444;
 }
 
 .grid-row.current-time {
-  @apply bg-red-50 border-red-300;
+  background-color: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .grid-row.current-time .grid-cell {
-  @apply border-red-200;
+  border-color: #fecaca;
 }
 
 /* Synchronized scrolling */
@@ -989,18 +1054,37 @@ const refreshData = async () => {
   scroll-behavior: smooth;
 }
 
+/* Bottom scroll controls */
+.bottom-scroll-controls {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  z-index: 1000;
+  pointer-events: none; /* Allow clicks to pass through the container */
+}
+
+.bottom-scroll-controls .scroll-control {
+  pointer-events: auto; /* Re-enable clicks on the buttons */
+}
+
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .appointment-grid-container {
-    @apply text-sm;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
   }
   
   .time-column {
-    @apply w-20;
+    width: 5rem;
   }
   
   .grid-cell, .practitioner-header-cell {
-    @apply w-36;
+    width: 9rem;
     height: 80px;
     min-height: 80px;
   }
@@ -1017,58 +1101,72 @@ const refreshData = async () => {
 
 @media (max-width: 640px) {
   .grid-cell, .practitioner-header-cell {
-    @apply w-32 h-16;
+    width: 8rem;
+    height: 4rem;
     min-height: 64px;
   }
   
   .time-slot {
-    @apply h-16 text-xs;
+    height: 4rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
     min-height: 64px;
   }
   
   .time-column {
-    @apply w-20;
+    width: 5rem;
   }
   
   .practitioners-header {
-    @apply h-16;
+    height: 4rem;
   }
   
   .appointment-grid-container .px-6 {
-    @apply px-4;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
   
   .appointment-grid-container .py-4 {
-    @apply py-3;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
   }
 }
 
 /* Loading and error states */
 .loading-overlay {
-  @apply absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20;
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
 }
 
 /* Smooth transitions */
 .appointment-card {
-  @apply transition-all duration-200 ease-in-out;
+  transition-property: all;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .appointment-card:hover {
-  @apply scale-105 shadow-md;
+  transform: scale(1.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .grid-cell {
-    @apply border-gray-400;
+    border-color: #9ca3af;
   }
   
   .time-slot {
-    @apply border-gray-400;
+    border-color: #9ca3af;
   }
   
   .appointment-card {
-    @apply border-2;
+    border: 2px solid;
   }
 }
 
@@ -1079,7 +1177,7 @@ const refreshData = async () => {
   .time-slot,
   .grid-row,
   .grid-cell {
-    @apply transition-none;
+    transition: none;
   }
   
   .practitioners-header,
