@@ -1,6 +1,6 @@
 <template>
   <div 
-    class="appointment-card cursor-pointer transition-all duration-200 hover:shadow-md w-full h-full"
+    class="appointment-card cursor-pointer transition-all duration-200 hover:shadow-md w-full h-full rounded-md border border-dotted group"
     :class="cardStyleClasses"
     @click="$emit('click', appointment)"
   >
@@ -103,7 +103,7 @@ const emit = defineEmits(['click', 'complete', 'cancel'])
 
 // Status-based styling
 const cardStyleClasses = computed(() => {
-  const baseClasses = 'rounded-md border-2 group shadow-sm'
+  const baseClasses = 'shadow-sm'
   
   switch (props.appointment.status) {
     case 'open':
