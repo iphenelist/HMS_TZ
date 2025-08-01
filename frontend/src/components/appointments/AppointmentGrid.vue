@@ -150,9 +150,10 @@
                 </div>
                 
                 <!-- Empty Slot with Add Button -->
+                  <!-- v-else-if="canAddAppointment(slot, practitioner)" -->
                 <div
-                  v-else-if="canAddAppointment(slot, practitioner)"
-                  class="add-appointment-button group"
+                  v-else
+                  class="add-appointment-button group cursor-pointer"
                   @click="createAppointment(slot.time, practitioner)"
                   :title="`Create appointment for ${practitioner.name} at ${slot.display}`"
                 >
@@ -163,13 +164,13 @@
                 </div>
                 
                 <!-- Unavailable Slot -->
-                <div
+                <!-- <div
                   v-else
                   class="unavailable-slot"
                   :title="getUnavailableReason(slot, practitioner)"
                 >
                   <span class="text-xs font-bold text-gray-600">—</span>
-                </div>
+                </div> -->
               </div>
             </div>
           </div>
@@ -202,8 +203,16 @@
       </button>
     </div>
 
-    <!-- Appointment Dialog -->
-    <AppointmentDialog />
+    <!-- Appointment Dialog with v-model approach -->
+    <AppointmentDialog 
+      v-model:show-dialog="showAppointmentDialog"
+      :time-slot="selectedTimeSlot"
+      :practitioner-data="selectedPractitioner"
+      :mode="dialogMode"
+      :appointment="selectedAppointmentData"
+      @appointment-created="handleAppointmentCreated"
+      @close-dialog="closeAppointmentDialog"
+    />
     
     <!-- Confirmation Dialog -->
     <Dialog v-model="showConfirmDialog" :options="confirmDialogOptions">
@@ -247,6 +256,13 @@ const searchQuery = ref('')
 const selectedCompany = ref('')
 const selectedDateForPicker = ref('')
 const userCompanies = ref([])
+
+// Simple appointment dialog state
+const showAppointmentDialog = ref(false)
+const selectedTimeSlot = ref('')
+const selectedPractitioner = ref(null)
+const dialogMode = ref('create')
+const selectedAppointmentData = ref({})
 
 // Horizontal scroll control state
 const canScrollLeft = ref(false)
@@ -487,9 +503,11 @@ const getAppointment = (timeSlot, practitionerId) => {
 const canAddAppointment = (slot, practitioner) => {
   return (
     practitioner.is_available &&
-    !slot.isPast &&
-    dateStore.canBookAppointment(slot.time) &&
-    !getAppointment(slot.time, practitioner.name)
+    !slot.isPast 
+    //&&
+    //dateStore.canBookAppointment(slot.time) 
+    //&&
+    //!getAppointment(slot.time, practitioner.name)
   )
 }
 
@@ -581,15 +599,30 @@ const fetchUserCompanies = async () => {
 
 // Event handlers
 const createAppointment = (timeSlot, practitioner) => {
-  appointmentStore.openAppointmentDialog('create', {
-    time_slot: timeSlot,
-    practitioner_id: practitioner.name,
-    practitioner_name: practitioner.name
+  // Immediate state update for fast dialog opening
+  selectedTimeSlot.value = timeSlot
+  selectedPractitioner.value = practitioner
+  dialogMode.value = 'create'
+  selectedAppointmentData.value = {}
+  
+  // Use nextTick for immediate UI update
+  nextTick(() => {
+    showAppointmentDialog.value = true
   })
 }
 
 const viewAppointment = (appointment) => {
-  appointmentStore.openAppointmentDialog('view', appointment)
+  selectedAppointmentData.value = appointment
+  dialogMode.value = 'view'
+  showAppointmentDialog.value = true
+}
+
+const closeAppointmentDialog = () => {
+  showAppointmentDialog.value = false
+  selectedTimeSlot.value = ''
+  selectedPractitioner.value = null
+  selectedAppointmentData.value = {}
+  dialogMode.value = 'create'
 }
 
 const handleCompleteAppointment = (appointment) => {
@@ -650,10 +683,35 @@ const refreshData = async () => {
     isRefreshing.value = false
   }
 }
+
+const handleAppointmentCreated = async () => {
+  // Refresh appointments after creating new one
+  if (selectedCompany.value && selectedCompany.value.trim()) {
+    await appointmentStore.fetchAppointments()
+  }
+}
 </script>
 
 
 <style scoped>
+/* Dialog z-index fixes */
+:deep(.dialog-wrapper) {
+  z-index: 10000 !important;
+}
+
+:deep(.dialog-overlay) {
+  z-index: 9999 !important;
+}
+
+:deep(.dialog-content) {
+  z-index: 10001 !important;
+}
+
+/* Ensure appointment dialog is above everything */
+.appointment-dialog-wrapper {
+  z-index: 10000 !important;
+}
+
 .appointment-grid {
   display: flex;
   height: 100%;
@@ -662,6 +720,7 @@ const refreshData = async () => {
   position: relative;
   min-height: calc(80vh - 80px);
   height: calc(100vh - 100px);
+  z-index: 1; /* Lower z-index for the grid */
 }
 
 .time-column {
@@ -677,7 +736,7 @@ const refreshData = async () => {
 .time-header {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 35; /* Reduced z-index to be below dialog */
   background-color: #f9fafb;
   flex-shrink: 0;
 }
@@ -689,7 +748,7 @@ const refreshData = async () => {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 40; /* Reduced z-index to be below dialog */
   flex-shrink: 0;
   overflow-x: auto;
   overflow-y: hidden;

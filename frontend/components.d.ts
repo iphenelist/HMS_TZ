@@ -16,7 +16,6 @@ declare module 'vue' {
     PractitionerCard: typeof import('./src/components/appointments/PractitionerCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    SimpleAppointmentGrid: typeof import('./src/components/SimpleAppointmentGrid.vue')['default']
     TestComponent: typeof import('./src/components/TestComponent.vue')['default']
   }
 }
