@@ -930,8 +930,8 @@ const refreshData = async () => {
   height: 88px;
   min-height: 88px;
   margin-bottom: 8px; /* Add space between cards to show bottom borders */
-  border-right: 1px dotted #d1d5db;
-  border-bottom: 1px dotted #d1d5db;
+  /* border-right: 1px dotted #d1d5db; */
+  /* border-bottom: 1px dotted #d1d5db; */
 }
 
 .grid-cell:hover {
