@@ -26,7 +26,6 @@
 import { createResource } from "frappe-ui"
 import { ref } from "vue"
 import { session } from "../data/session"
-import Appointments from "./Appointments.vue"
 
 const ping = createResource({
 	url: "ping",
