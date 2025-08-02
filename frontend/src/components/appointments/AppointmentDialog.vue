@@ -2,20 +2,23 @@
   <Dialog
     v-model="localShowDialog"
     :options="{
+      title: dialogTitle,
       actions: dialogActions,
-      size: '5xl'
+      size: '4xl'
     }"
+    :disable-outside-click-to-close="true"
     style="z-index: 10000;"
   >
+    <!-- 'Create New Appointment' -->
     <template #body-content>
       <div class="space-y-4">
-        <div class="bg-white px-4 pb-6 pt-5 sm:px-6">
+        <div class="bg-white px-2 pb-6 pt-1 sm:px-2">
           <div class="mb-5 flex gap-36 items-center justify-around">
-            <div class="ml-60 w-112">
+            <!-- <div class="w-112 mb-4">
               <h3 class="text-2xl text-center font-semibold leading-6 text-gray-900">
                 {{ dialogTitle }}
               </h3>
-            </div>
+            </div> -->
           </div>
           <div v-if="isCreating" class="text-center py-4 text-gray-500">{{ statusMessage }}</div>
           <div>
