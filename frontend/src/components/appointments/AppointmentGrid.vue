@@ -150,9 +150,8 @@
                 </div>
                 
                 <!-- Empty Slot with Add Button -->
-                  <!-- v-else-if="canAddAppointment(slot, practitioner)" -->
                 <div
-                  v-else
+                  v-else-if="!slot.isPast && practitioner.is_available"
                   class="add-appointment-button group cursor-pointer"
                   @click="createAppointment(slot.time, practitioner)"
                   :title="`Create appointment for ${practitioner.name} at ${slot.display}`"
@@ -164,13 +163,13 @@
                 </div>
                 
                 <!-- Unavailable Slot -->
-                <!-- <div
+                <div
                   v-else
                   class="unavailable-slot"
                   :title="getUnavailableReason(slot, practitioner)"
                 >
                   <span class="text-xs font-bold text-gray-600">—</span>
-                </div> -->
+                </div>
               </div>
             </div>
           </div>
@@ -498,17 +497,6 @@ const getAppointment = (timeSlot, practitionerId) => {
   const appointment = appointmentStore.appointmentsByTimeSlot[key]
   
   return appointment
-}
-
-const canAddAppointment = (slot, practitioner) => {
-  return (
-    practitioner.is_available &&
-    !slot.isPast 
-    //&&
-    //dateStore.canBookAppointment(slot.time) 
-    //&&
-    //!getAppointment(slot.time, practitioner.name)
-  )
 }
 
 const isCurrentTimeSlot = (slot) => {
