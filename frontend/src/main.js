@@ -23,6 +23,7 @@ import {
 	LoadingText,
 	Popover,
 	Select,
+	Checkbox,
 	TextInput,
 	TextEditor,
 	Tooltip,
@@ -48,6 +49,7 @@ const globalComponents = {
 	FormControl,
 	Input,
 	Select,
+	Checkbox,
 	TextInput,
 	TextEditor,
 	
