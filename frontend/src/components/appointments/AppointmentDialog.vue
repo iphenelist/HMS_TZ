@@ -1,6 +1,7 @@
 <template>
   <Dialog
-    v-model="localShowDialog"
+    :model-value="localShowDialog"
+    @update:model-value="updateDialogState"
     :options="{
       title: dialogTitle,
       actions: dialogActions,
@@ -30,7 +31,11 @@
           </div>
           <div v-if="isCreating" class="text-center py-4 text-gray-500">{{ statusMessage }}</div>
           <div>
-            <FieldMap v-if="sections" :sections="sections" :data="appointment" />
+            <FieldMap 
+              v-if="sections" 
+              :sections="sections" 
+              :data="appointment" 
+            />
             <div v-if="error" class="mt-4 text-lg font-bold text-red-600">{{ error }}</div>
           </div>
         </div>
@@ -192,6 +197,7 @@ const appointment = reactive({
       "insurance_subscription": "",
       "coverage_plan_card_number": "",
       "national_id": "",
+      "card_no": "",
       "authorization_number": "",
       "require_fingerprint": "",
       "require_facial_recognation": "",
@@ -228,10 +234,12 @@ const appointment = reactive({
     }
 })
 
-const sections = [
+// Computed property to reorder sections with "Initial Data" first
+const sections = computed(() => [
+  // Initial Data section - always first
   {
     "label": "Initial Data",
-    "doctype": "",
+    "doctype": "Patient Appointment",
     "fields": [
       {
         "name": "payment_mode",
@@ -271,104 +279,7 @@ const sections = [
     ],
     "hideLabel": true,
   },
-  {
-      "label":"Appointment Details",
-      "doctype":"Patient Appointment",
-      "fields":[
-          {
-            "name": "is_new_patient",
-            "label": "Is New Patient",
-            "type": "Check",
-            "placeholder": "Is New Patient",
-            "reqd": false
-          },
-          {
-            "name": "patient",
-            "label": "Patient",
-            "type": "Link",
-            "placeholder": "Patient",
-            "options": "Patient",
-            "reqd": true
-          },
-          {
-            "name": "patient_name",
-            "label": "Patient Name",
-            "type": "Data",
-            "placeholder": "Patient Name",
-            "reqd": false
-          },
-          {
-            "name": "practitioner",
-            "label": "Practitioner",
-            "type": "Link",
-            "placeholder": "Practitioner",
-            "options": "Healthcare Practitioner",
-            "reqd": true
-          },
-          {
-            "name": "appointment_type",
-            "label": "Appointment Type",
-            "type": "Select",
-            "placeholder": "Appointment Type",
-            "options": [
-                  {"label": "Consultation", "value": "Consultation"},
-                  {"label": "Follow-up", "value": "Follow-up"},
-                  {"label": "Emergency", "value": "Emergency"},
-                  {"label": "Checkup", "value": "Checkup"},
-                  {"label": "Surgery", "value": "Surgery"},
-                  {"label": "Therapy", "value": "Therapy"},
-                  {"label": "Laboratory", "value": "Laboratory"},
-                  {"label": "Radiology", "value": "Radiology"}
-              ],
-            "reqd": true
-          },
-          {
-            "name": "appointment_date",
-            "label": "Appointment Date",
-            "type": "Date",
-            "placeholder": "Appointment Date",
-            "reqd": true
-          },
-          {
-            "name": "appointment_time",
-            "label": "Appointment Time",
-            "type": "Time",
-            "placeholder": "Appointment Time",
-            "reqd": true
-          },
-          {
-            "name": "is_new_his",
-            "label": "Is New Insurance",
-            "type": "Check",
-            "placeholder": "Is New Insurance",
-            "reqd": false
-          },
-          {
-            "name": "insurance_subscription",
-            "label": "Insurance Subscription",
-            "type": "Link",
-            "placeholder": "Insurance Subscription",
-            "options": "Healthcare Insurance Subscription",
-            "reqd": false
-          },
-          {
-            "name": "referral_no",
-            "label": "Referral No",
-            "type": "Data",
-            "placeholder": "Referral No",
-            "reqd": false
-          },
-          {
-            "name": "remarks",
-            "label": "Remarks",
-            "type": "Small Text",
-            "placeholder": "Remarks",
-            "reqd": false
-          }
-      ],
-      "columns": 3,
-      "hideLabel":false
-  },
+  // Other sections
   {
       "label":"Patient Details",
       "doctype":"Patient",
@@ -468,9 +379,108 @@ const sections = [
       ],
       "columns": 2,
       "hideLabel":false,
-      // "hideBorder":false
+      "hideBorder":false
+  },
+  {
+      "label":"Appointment Details",
+      "doctype":"Patient Appointment",
+      "fields":[
+          {
+            "name": "is_new_patient",
+            "label": "Is New Patient",
+            "type": "Check",
+            "placeholder": "Is New Patient",
+            "reqd": false
+          },
+          {
+            "name": "patient",
+            "label": "Patient",
+            "type": "Link",
+            "placeholder": "Patient",
+            "options": "Patient",
+            "reqd": true
+          },
+          {
+            "name": "patient_name",
+            "label": "Patient Name",
+            "type": "Data",
+            "placeholder": "Patient Name",
+            "reqd": false
+          },
+          {
+            "name": "practitioner",
+            "label": "Practitioner",
+            "type": "Link",
+            "placeholder": "Practitioner",
+            "options": "Healthcare Practitioner",
+            "reqd": true
+          },
+          {
+            "name": "appointment_type",
+            "label": "Appointment Type",
+            "type": "Select",
+            "placeholder": "Appointment Type",
+            "options": [
+                  {"label": "Consultation", "value": "Consultation"},
+                  {"label": "Follow-up", "value": "Follow-up"},
+                  {"label": "Emergency", "value": "Emergency"},
+                  {"label": "Checkup", "value": "Checkup"},
+                  {"label": "Surgery", "value": "Surgery"},
+                  {"label": "Therapy", "value": "Therapy"},
+                  {"label": "Laboratory", "value": "Laboratory"},
+                  {"label": "Radiology", "value": "Radiology"}
+              ],
+            "reqd": true
+          },
+          {
+            "name": "appointment_date",
+            "label": "Appointment Date",
+            "type": "Date",
+            "placeholder": "Appointment Date",
+            "reqd": true
+          },
+          {
+            "name": "appointment_time",
+            "label": "Appointment Time",
+            "type": "Time",
+            "placeholder": "Appointment Time",
+            "reqd": true
+          },
+          {
+            "name": "is_new_his",
+            "label": "Is New Insurance",
+            "type": "Check",
+            "placeholder": "Is New Insurance",
+            "reqd": false
+          },
+          {
+            "name": "insurance_subscription",
+            "label": "Insurance Subscription",
+            "type": "Link",
+            "placeholder": "Insurance Subscription",
+            "options": "Healthcare Insurance Subscription",
+            "reqd": false
+          },
+          {
+            "name": "referral_no",
+            "label": "Referral No",
+            "type": "Data",
+            "placeholder": "Referral No",
+            "reqd": false
+          },
+          {
+            "name": "remarks",
+            "label": "Remarks",
+            "type": "Small Text",
+            "placeholder": "Remarks",
+            "reqd": false
+          }
+      ],
+      "columns": 3,
+      "hideLabel":false,
+      "hideBorder":false
   }
-]
+])
 
 
 // Form options
@@ -525,45 +535,87 @@ const formattedTimeSlot = computed(() => {
   return dayjs(`2024-01-01 ${props.timeSlot}`).format('h:mm A')
 })
 
-// Watch for dialog state changes - v-model approach
-watch(() => props.showDialog, (newVal) => {
-  localShowDialog.value = newVal
-  if (newVal) {
-    // Use nextTick for immediate opening
-    nextTick(() => {
-      resetAppointment()
-      error.value = ''
-      if (props.appointment && Object.keys(props.appointment).length > 0) {
-        // populateForm(props.appointment) - TODO: implement populate for appointment object
-      } else if (isCreateMode.value) {
-        // Pre-fill data for create mode
-        appointment['Patient Appointment']['appointment_time'] = props.timeSlot
-        appointment['Patient Appointment']['practitioner'] = props.practitionerData?.name
-        appointment['Patient Appointment']['appointment_date'] = dateStore.selectedDate
-      }
-    })
-  }
-})
+// Utility functions
+const formatDate = (dateString) => {
+  return dayjs(dateString).format('dddd, MMMM D, YYYY')
+}
 
-watch(localShowDialog, (newVal) => {
+const formatTime = (timeSlot) => {
+  return dayjs(`2024-01-01 ${timeSlot}`).format('h:mm A')
+}
+
+const formatStatus = (status) => {
+  const statusMap = {
+    'open': 'Open',
+    'scheduled': 'Scheduled', 
+    'completed': 'Completed',
+    'cancelled': 'Cancelled'
+  }
+  return statusMap[status] || status
+}
+
+const getStatusTheme = (status) => {
+  const themeMap = {
+    'open': 'blue',
+    'scheduled': 'yellow',
+    'completed': 'green', 
+    'cancelled': 'red'
+  }
+  return themeMap[status] || 'gray'
+}
+
+// Dialog state update handler
+const updateDialogState = (newVal) => {
+  if (localShowDialog.value === newVal) return // Prevent unnecessary updates
+  
+  localShowDialog.value = newVal
   emit('update:showDialog', newVal)
+  
   if (!newVal) {
     emit('closeDialog')
+    resetAppointment()
   }
-})
+}
+
+// Watch for dialog state changes - v-model approach
+watch(() => props.showDialog, (newVal, oldVal) => {
+  // Only update if there's an actual change and it's different from local state
+  if (oldVal !== newVal && newVal !== localShowDialog.value) {
+    localShowDialog.value = newVal
+    if (newVal) {
+      // Use nextTick for immediate opening
+      nextTick(() => {
+        resetAppointment()
+        error.value = ''
+        if (props.appointment && Object.keys(props.appointment).length > 0) {
+          // populateForm(props.appointment) - TODO: implement populate for appointment object
+        } else if (isCreateMode.value) {
+          // Pre-fill data for create mode
+          appointment['Patient Appointment']['appointment_time'] = props.timeSlot
+          appointment['Patient Appointment']['practitioner'] = props.practitionerData?.name
+          appointment['Patient Appointment']['appointment_date'] = dateStore.selectedDate
+        }
+      })
+    }
+  }
+}, { immediate: false })
 
 // Legacy watch for backward compatibility with old store-based approach
 watch(
   () => appointmentStore.showAppointmentDialog,
-  (isOpen) => {
-    if (isOpen && !localShowDialog.value) {
+  (isOpen, wasOpen) => {
+    // Only update if legacy store is opening and current dialog is closed
+    // And avoid triggering if it was already open
+    if (isOpen && !wasOpen && !localShowDialog.value) {
       localShowDialog.value = true
+      emit('update:showDialog', true)
       resetAppointment()
       if (appointmentStore.selectedAppointment) {
         // populateForm(appointmentStore.selectedAppointment) - TODO: implement populate for appointment object
       }
     }
-  }
+  },
+  { immediate: false }
 )
 
 // Form methods
@@ -864,8 +916,7 @@ const editAppointment = () => {
 }
 
 const closeDialog = () => {
-  localShowDialog.value = false
-  resetAppointment()
+  updateDialogState(false)
   // Close legacy store dialog if open
   if (appointmentStore.showAppointmentDialog) {
     appointmentStore.closeAppointmentDialog()
@@ -910,35 +961,6 @@ const cancelAppointment = async () => {
     notifications.error.appointmentUpdateFailed('Error cancelling appointment')
     console.error(error)
   }
-}
-
-// Utility functions
-const formatDate = (dateString) => {
-  return dayjs(dateString).format('dddd, MMMM D, YYYY')
-}
-
-const formatTime = (timeSlot) => {
-  return dayjs(`2024-01-01 ${timeSlot}`).format('h:mm A')
-}
-
-const formatStatus = (status) => {
-  const statusMap = {
-    open: 'Open',
-    completed: 'Completed',
-    scheduled: 'Scheduled',
-    cancelled: 'Cancelled'
-  }
-  return statusMap[status] || status
-}
-
-const getStatusTheme = (status) => {
-  const themeMap = {
-    open: 'gray',
-    completed: 'green',
-    scheduled: 'orange',
-    cancelled: 'red'
-  }
-  return themeMap[status] || 'gray'
 }
 </script>
 
