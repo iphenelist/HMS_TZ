@@ -235,252 +235,307 @@ const appointment = reactive({
 })
 
 // Computed property to reorder sections with "Initial Data" first
-const sections = computed(() => [
-  // Initial Data section - always first
-  {
-    "label": "Initial Data",
-    "doctype": "Patient Appointment",
-    "fields": [
-      {
-        "name": "payment_mode",
-        "label": "Payment Mode",
-        "type": "Select",
-        "options": [
-          { "label": "Cash", "value": "Cash" },
-          { "label": "Insurance", "value": "Insurance" },
-        ],
-        "reqd": true
-      },
-      { 
-        "name": "insurance_provider",
-        "label": "Insurance Provider",
-        "type": "Select",
-        "options": [
-          { "label": "NHIF", "value": "NHIF" },
-          { "label": "Jubilee", "value": "Jubilee" },
-        ],
-        "placeholder": "for API triggering",
-        "reqd": false
-      },
-      {
-        "name": "card_no",
-        "label": "Card No",
-        "type": "Data",
-        "placeholder": "Card No",
-        "reqd": false
-      },
-      {
-        "name": "national_id",
-        "label": "National ID",
-        "type": "Data",
-        "placeholder": "National ID",
-        "reqd": false
-      }
-    ],
-    "hideLabel": true,
-  },
-  // Other sections
-  {
-      "label":"Patient Details",
-      "doctype":"Patient",
-      "fields":[
-          {
-            "name": "first_name",
-            "label": "First Name",
-            "type": "Data",
-            "placeholder": "First Name",
-            "reqd": true
-          },
-          {
-            "name": "middle_name",
-            "label": "Middle Name",
-            "type": "Data",
-            "placeholder": "Middle Name",
-            "reqd": false
-          },
-          {
-            "name": "last_name",
-            "label": "Last Name",
-            "type": "Data",
-            "placeholder": "Last Name",
-            "reqd": true
-          },
-          {
-            "name": "sex",
-            "label": "Sex",
-            "type": "Select",
-            "placeholder": "Sex",
-            "options": [
-              {"label": "Male", "value": "Male"},
-              {"label": "Female", "value": "Female"},
-            ],
-            "reqd": true
-          },
-          {
-            "name": "dob",
-            "label": "Date of Birth",
-            "type": "Date",
-            "placeholder": "Date of Birth",
-            "reqd": true
-          },
-          {
-            "name": "mobile",
-            "label": "Mobile",
-            "type": "Data",
-            "placeholder": "Mobile",
-            "reqd": false
-          },
-          {
-            "name": "next_to_kin_name",
-            "label": "Next of Kin Name",
-            "type": "Data",
-            "placeholder": "Next of Kin Name",
-            "reqd": false
-          },
-          {
-            "name": "next_to_kin_mobile_no",
-            "label": "Next of Kin Mobile",
-            "type": "Data",
-            "placeholder": "Next of Kin Mobile",
-            "reqd": false
-          },
-          {
-            "name": "next_to_kin_relationship",
-            "label": "Next of Kin Relationship",
-            "type": "Data",
-            "placeholder": "Next of Kin Relationship",
-            "reqd": false
-          },
-      ],
-      "columns": 3,
-      "hideLabel":false,
-      "hideBorder":false
-  },
-  {
-      "label":"Healthcare Insurance Subscription",
-      "doctype":"Healthcare Insurance Subscription", 
-      "fields":[
-          {
-            "name": "insurance_company",
-            "label": "Insurance Company",
-            "type": "Link",
-            "placeholder": "Insurance Company",
-            "options": "Healthcare Insurance Company",
-            "reqd": true
-          },
-          {
-            "name": "healthcare_insurance_coverage_plan",
-            "label": "Coverage Plan",
-            "type": "Link",
-            "placeholder": "Coverage Plan",
-            "options": "Healthcare Insurance Coverage Plan",
-            "reqd": true
-          },
-      ],
-      "columns": 2,
-      "hideLabel":false,
-      "hideBorder":false
-  },
-  {
-      "label":"Appointment Details",
-      "doctype":"Patient Appointment",
-      "fields":[
-          {
-            "name": "is_new_patient",
-            "label": "Is New Patient",
-            "type": "Check",
-            "placeholder": "Is New Patient",
-            "reqd": false
-          },
-          {
-            "name": "patient",
-            "label": "Patient",
-            "type": "Link",
-            "placeholder": "Patient",
-            "options": "Patient",
-            "reqd": true
-          },
-          {
-            "name": "patient_name",
-            "label": "Patient Name",
-            "type": "Data",
-            "placeholder": "Patient Name",
-            "reqd": false
-          },
-          {
-            "name": "practitioner",
-            "label": "Practitioner",
-            "type": "Link",
-            "placeholder": "Practitioner",
-            "options": "Healthcare Practitioner",
-            "reqd": true
-          },
-          {
-            "name": "appointment_type",
-            "label": "Appointment Type",
-            "type": "Select",
-            "placeholder": "Appointment Type",
-            "options": [
-                  {"label": "Consultation", "value": "Consultation"},
-                  {"label": "Follow-up", "value": "Follow-up"},
-                  {"label": "Emergency", "value": "Emergency"},
-                  {"label": "Checkup", "value": "Checkup"},
-                  {"label": "Surgery", "value": "Surgery"},
-                  {"label": "Therapy", "value": "Therapy"},
-                  {"label": "Laboratory", "value": "Laboratory"},
-                  {"label": "Radiology", "value": "Radiology"}
-              ],
-            "reqd": true
-          },
-          {
-            "name": "appointment_date",
-            "label": "Appointment Date",
-            "type": "Date",
-            "placeholder": "Appointment Date",
-            "reqd": true
-          },
-          {
-            "name": "appointment_time",
-            "label": "Appointment Time",
-            "type": "Time",
-            "placeholder": "Appointment Time",
-            "reqd": true
-          },
-          {
-            "name": "is_new_his",
-            "label": "Is New HIS",
-            "type": "Check",
-            "placeholder": "Is New HIS",
-            "reqd": false
-          },
-          {
-            "name": "insurance_subscription",
-            "label": "Insurance Subscription",
-            "type": "Link",
-            "placeholder": "Insurance Subscription",
-            "options": "Healthcare Insurance Subscription",
-            "reqd": false
-          },
-          {
-            "name": "referral_no",
-            "label": "Referral No",
-            "type": "Data",
-            "placeholder": "Referral No",
-            "reqd": false
-          },
-          {
-            "name": "remarks",
-            "label": "Remarks",
-            "type": "Small Text",
-            "placeholder": "Remarks",
-            "reqd": false
-          }
-      ],
-      "columns": 3,
-      "hideLabel":false,
-      "hideBorder":false
+const sections = computed(() => {
+  const paymentMode = appointment['Patient Appointment']['payment_mode']
+  
+  // Helper function to filter fields based on payment mode
+  const filterFieldsByPaymentMode = (fields, doctype) => {
+    if (!paymentMode) {
+      // If payment mode is empty, only show payment_mode field
+      return fields.filter(field => field.name === 'payment_mode')
+    }
+    
+    if (paymentMode === 'Cash') {
+      // Hide insurance-related fields when payment mode is Cash
+      const insuranceFields = [
+        'insurance_provider', 'card_no', 'national_id', 
+        'insurance_company', 'healthcare_insurance_coverage_plan',
+        'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
+      ]
+      return fields.filter(field => !insuranceFields.includes(field.name))
+    }
+    
+    // For Insurance payment mode, show all fields
+    return fields
   }
-])
+  
+  const allSections = [
+    // Initial Data section - always first
+    {
+      "label": "Initial Data",
+      "doctype": "Patient Appointment",
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "payment_mode",
+          "label": "Payment Mode",
+          "type": "Select",
+          "options": [
+            { "label": "", "value": "" },
+            { "label": "Cash", "value": "Cash" },
+            { "label": "Insurance", "value": "Insurance" },
+          ],
+          "reqd": true
+        },
+        { 
+          "name": "insurance_provider",
+          "label": "Insurance Provider",
+          "type": "Select",
+          "options": [
+            { "label": "", "value": "" },
+            { "label": "NHIF", "value": "NHIF" },
+            { "label": "Jubilee", "value": "Jubilee" },
+          ],
+          "placeholder": "for API triggering",
+          "reqd": false
+        },
+        {
+          "name": "card_no",
+          "label": "Card No",
+          "type": "Data",
+          "placeholder": "Card No",
+          "reqd": false
+        },
+        {
+          "name": "national_id",
+          "label": "National ID",
+          "type": "Data",
+          "placeholder": "National ID",
+          "reqd": false
+        }
+      ], "Patient Appointment"),
+      "hideLabel": true,
+    },
+    // Other sections
+    {
+        "label":"Patient Details",
+        "doctype":"Patient",
+        "fields": filterFieldsByPaymentMode([
+            {
+              "name": "first_name",
+              "label": "First Name",
+              "type": "Data",
+              "placeholder": "First Name",
+              "reqd": true
+            },
+            {
+              "name": "middle_name",
+              "label": "Middle Name",
+              "type": "Data",
+              "placeholder": "Middle Name",
+              "reqd": false
+            },
+            {
+              "name": "last_name",
+              "label": "Last Name",
+              "type": "Data",
+              "placeholder": "Last Name",
+              "reqd": true
+            },
+            {
+              "name": "sex",
+              "label": "Sex",
+              "type": "Select",
+              "placeholder": "Sex",
+              "options": [
+                {"label": "Male", "value": "Male"},
+                {"label": "Female", "value": "Female"},
+              ],
+              "reqd": true
+            },
+            {
+              "name": "dob",
+              "label": "Date of Birth",
+              "type": "Date",
+              "placeholder": "Date of Birth",
+              "reqd": true
+            },
+            {
+              "name": "mobile",
+              "label": "Mobile",
+              "type": "Data",
+              "placeholder": "Mobile",
+              "reqd": false
+            },
+            {
+              "name": "card_no",
+              "label": "Patient Card No",
+              "type": "Data",
+              "placeholder": "Patient Card No",
+              "reqd": false
+            },
+            {
+              "name": "national_id",
+              "label": "Patient National ID",
+              "type": "Data",
+              "placeholder": "Patient National ID",
+              "reqd": false
+            },
+            {
+              "name": "next_to_kin_name",
+              "label": "Next of Kin Name",
+              "type": "Data",
+              "placeholder": "Next of Kin Name",
+              "reqd": false
+            },
+            {
+              "name": "next_to_kin_mobile_no",
+              "label": "Next of Kin Mobile",
+              "type": "Data",
+              "placeholder": "Next of Kin Mobile",
+              "reqd": false
+            },
+            {
+              "name": "next_to_kin_relationship",
+              "label": "Next of Kin Relationship",
+              "type": "Data",
+              "placeholder": "Next of Kin Relationship",
+              "reqd": false
+            },
+        ], "Patient"),
+        "columns": 3,
+        "hideLabel":false,
+        "hideBorder":false
+    },
+    {
+        "label":"Healthcare Insurance Subscription",
+        "doctype":"Healthcare Insurance Subscription", 
+        "fields": filterFieldsByPaymentMode([
+            {
+              "name": "insurance_company",
+              "label": "Insurance Company",
+              "type": "Link",
+              "placeholder": "Insurance Company",
+              "options": "Healthcare Insurance Company",
+              "reqd": true
+            },
+            {
+              "name": "healthcare_insurance_coverage_plan",
+              "label": "Coverage Plan",
+              "type": "Link",
+              "placeholder": "Coverage Plan",
+              "options": "Healthcare Insurance Coverage Plan",
+              "reqd": true
+            },
+        ], "Healthcare Insurance Subscription"),
+        "columns": 2,
+        "hideLabel":false,
+        "hideBorder":false
+    },
+    {
+        "label":"Appointment Details",
+        "doctype":"Patient Appointment",
+        "fields": filterFieldsByPaymentMode([
+            {
+              "name": "is_new_patient",
+              "label": "Is New Patient",
+              "type": "Check",
+              "placeholder": "Is New Patient",
+              "reqd": false
+            },
+            {
+              "name": "patient",
+              "label": "Patient",
+              "type": "Link",
+              "placeholder": "Patient",
+              "options": "Patient",
+              "reqd": true
+            },
+            {
+              "name": "patient_name",
+              "label": "Patient Name",
+              "type": "Data",
+              "placeholder": "Patient Name",
+              "reqd": false
+            },
+            {
+              "name": "practitioner",
+              "label": "Practitioner",
+              "type": "Link",
+              "placeholder": "Practitioner",
+              "options": "Healthcare Practitioner",
+              "reqd": true
+            },
+            {
+              "name": "appointment_type",
+              "label": "Appointment Type",
+              "type": "Select",
+              "placeholder": "Appointment Type",
+              "options": [
+                    {"label": "Consultation", "value": "Consultation"},
+                    {"label": "Follow-up", "value": "Follow-up"},
+                    {"label": "Emergency", "value": "Emergency"},
+                    {"label": "Checkup", "value": "Checkup"},
+                    {"label": "Surgery", "value": "Surgery"},
+                    {"label": "Therapy", "value": "Therapy"},
+                    {"label": "Laboratory", "value": "Laboratory"},
+                    {"label": "Radiology", "value": "Radiology"}
+                ],
+              "reqd": true
+            },
+            {
+              "name": "appointment_date",
+              "label": "Appointment Date",
+              "type": "Date",
+              "placeholder": "Appointment Date",
+              "reqd": true
+            },
+            {
+              "name": "appointment_time",
+              "label": "Appointment Time",
+              "type": "Time",
+              "placeholder": "Appointment Time",
+              "reqd": true
+            },
+            {
+              "name": "is_new_his",
+              "label": "Is New HIS",
+              "type": "Check",
+              "placeholder": "Is New HIS",
+              "reqd": false
+            },
+            {
+              "name": "insurance_subscription",
+              "label": "Insurance Subscription",
+              "type": "Link",
+              "placeholder": "Insurance Subscription",
+              "options": "Healthcare Insurance Subscription",
+              "reqd": false
+            },
+            {
+              "name": "referral_no",
+              "label": "Referral No",
+              "type": "Data",
+              "placeholder": "Referral No",
+              "reqd": false
+            },
+            {
+              "name": "remarks",
+              "label": "Remarks",
+              "type": "Small Text",
+              "placeholder": "Remarks",
+              "reqd": false
+            }
+        ], "Patient Appointment"),
+        "columns": 3,
+        "hideLabel":false,
+        "hideBorder":false
+    }
+  ]
+  
+  // Filter sections based on payment mode
+  if (!paymentMode) {
+    // If payment mode is empty, only show Initial Data section
+    return allSections.filter(section => section.label === "Initial Data")
+  }
+  
+  if (paymentMode === 'Cash') {
+    // For Cash payment mode, hide Healthcare Insurance Subscription section
+    return allSections.filter(section => section.doctype !== "Healthcare Insurance Subscription")
+  }
+  
+  // For Insurance payment mode, show all sections
+  return allSections
+})
 
 
 // Form options

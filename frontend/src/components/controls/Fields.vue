@@ -1,5 +1,5 @@
 <template>
-  <div v-for="field in section.fields" :key="field.name">
+  <div v-for="field in visibleFields" :key="field.name">
     <div
       v-if="field.type != 'Check'"
       class="mb-2 text-base text-gray-900 font-semibold"
@@ -85,11 +85,35 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import Link from './Link.vue';
 
 const props = defineProps({
   section: Object,
   data: Object,
+})
+
+// Computed property to filter visible fields based on payment mode
+const visibleFields = computed(() => {
+  const paymentMode = props.data?.['Patient Appointment']?.['payment_mode']
+  
+  if (!paymentMode) {
+    // If payment mode is empty, only show payment_mode field
+    return props.section.fields.filter(field => field.name === 'payment_mode')
+  }
+  
+  if (paymentMode === 'Cash') {
+    // Hide insurance-related fields when payment mode is Cash
+    const insuranceFields = [
+      'insurance_provider', 'card_no', 'national_id', 
+      'insurance_company', 'healthcare_insurance_coverage_plan',
+      'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
+    ]
+    return props.section.fields.filter(field => !insuranceFields.includes(field.name))
+  }
+  
+  // For Insurance payment mode, show all fields
+  return props.section.fields
 })
 
 function updateField(doctype, name, value) {

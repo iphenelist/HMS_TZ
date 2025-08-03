@@ -17,7 +17,7 @@
 
           <!-- Section Fields -->
           <div
-            class="grid gap-4"
+            class="grid gap-6"
             :class="
               section.columns
                 ? 'grid-cols-' + section.columns
