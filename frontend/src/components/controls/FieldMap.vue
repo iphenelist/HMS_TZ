@@ -6,6 +6,8 @@
         class="first:border-t-0 first:pt-0"
         :class="section.hideBorder ? '' : 'border-t pt-4'"
       >
+
+        <!-- This section is for Patient Appointment -->
         <div
           v-if="!section.hideLabel && section.doctype == 'Patient Appointment'"
           class="flex h-7 mb-3 max-w-fit cursor-pointer items-center gap-2 text-xl font-bold text-blue-700 font-mono leading-5"
@@ -13,16 +15,18 @@
           {{ section.label }}
         </div>
         <div
-          class="grid gap-6"
+          class="grid gap-4"
           :class="
             section.columns
               ? 'grid-cols-' + section.columns
-              : 'grid-cols-3 sm:grid-cols-3'
+              : 'grid-cols-2 sm:grid-cols-2'
           "
           v-if="section.doctype == 'Patient Appointment'"
         >
           <Fields :section="section" :data="data" />
         </div>
+
+        <!-- This section is for Patient Details -->
         <div
           v-if="!section.hideLabel && section.doctype == 'Patient' && data['Patient Appointment']['is_new_patient']"
           class="flex h-7 mb-3 max-w-fit cursor-pointer items-center gap-2 text-xl font-bold text-blue-700 font-mono leading-5"
@@ -34,12 +38,14 @@
           :class="
             section.columns
               ? 'grid-cols-' + section.columns
-              : 'grid-cols-3 sm:grid-cols-3'
+              : 'grid-cols-2 sm:grid-cols-2'
           "
           v-if="section.doctype == 'Patient' && data['Patient Appointment']['is_new_patient']"
         >
           <Fields :section="section" :data="data" />
         </div>
+
+        <!-- This section is for Healthcare Insurance Subscription -->
         <div
           v-if="!section.hideLabel && section.doctype == 'Healthcare Insurance Subscription' && data['Patient Appointment']['is_new_his']"
           class="flex h-7 mb-3 max-w-fit cursor-pointer items-center gap-2 text-xl font-bold text-blue-700 font-mono leading-5"
@@ -51,7 +57,7 @@
           :class="
             section.columns
               ? 'grid-cols-' + section.columns
-              : 'grid-cols-3 sm:grid-cols-3'
+              : 'grid-cols-2 sm:grid-cols-2'
           "
           v-if="section.doctype == 'Healthcare Insurance Subscription' && data['Patient Appointment']['is_new_his']"
         >
