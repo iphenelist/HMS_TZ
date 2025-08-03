@@ -5,7 +5,7 @@
     :options="{
       title: dialogTitle,
       actions: dialogActions,
-      size: '2xl'
+      size: '3xl'
     }"
     :disable-outside-click-to-close="true"
     style="z-index: 10000;"
@@ -448,9 +448,9 @@ const sections = computed(() => [
           },
           {
             "name": "is_new_his",
-            "label": "Is New Insurance",
+            "label": "Is New HIS",
             "type": "Check",
-            "placeholder": "Is New Insurance",
+            "placeholder": "Is New HIS",
             "reqd": false
           },
           {
