@@ -4,12 +4,20 @@
     :options="{
       title: dialogTitle,
       actions: dialogActions,
-      size: '4xl'
+      size: '2xl'
     }"
     :disable-outside-click-to-close="true"
     style="z-index: 10000;"
   >
-    <!-- 'Create New Appointment' -->
+    <!-- <template #body-title>
+      <div class="flex gap-36 items-center justify-center mb-0">
+        <div class="w-112 mb-4 justify-center">
+          <h3 class="flex justify-center text-2xl text-center font-semibold leading-6 text-gray-900">
+            {{ dialogTitle }}
+          </h3>
+        </div>
+      </div>
+    </template> -->
     <template #body-content>
       <div class="space-y-4">
         <div class="bg-white px-2 pb-6 pt-1 sm:px-2">
@@ -119,14 +127,15 @@ const dialogActions = computed(() => {
     actions.push({
       label: 'Close',
       variant: 'outline',
-      handler: () => closeDialog()
+      // handler: () => closeDialog()
+      onClick: () => closeDialog()
     })
     
     if (formData.status !== 'cancelled') {
       actions.push({
         label: 'Edit',
         variant: 'outline',
-        handler: editAppointment
+        onClick: () => editAppointment()
       })
     }
     
@@ -135,7 +144,7 @@ const dialogActions = computed(() => {
         label: 'Mark Complete',
         variant: 'solid',
         theme: 'green',
-        handler: completeAppointment
+        onClick: () => completeAppointment()
       })
     }
     
@@ -144,21 +153,21 @@ const dialogActions = computed(() => {
         label: 'Cancel',
         variant: 'outline',
         theme: 'red',
-        handler: () => showCancelConfirmation()
+        onClick: () => showCancelConfirmation()
       })
     }
   } else {
     actions.push({
       label: 'Cancel',
       variant: 'outline',
-      handler: () => closeDialog()
+      onClick: () => closeDialog()
     })
     
     actions.push({
       label: isCreateMode.value ? 'Create Appointment' : 'Update Appointment',
       variant: 'solid',
       loading: isCreating.value,
-      handler: handleSubmit
+      onClick: () => handleSubmit()
     })
   }
   
