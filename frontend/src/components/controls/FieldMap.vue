@@ -10,7 +10,7 @@
           <!-- Section Label -->
           <div
             v-if="!section.hideLabel"
-            class="flex h-7 mb-3 max-w-fit cursor-pointer items-center gap-2 text-xl font-bold text-blue-700 font-mono leading-5"
+            class="flex h-7 mb-3 text-xl font-bold text-blue-700 font-mono"
           >
             {{ section.label }}
           </div>
