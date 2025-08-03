@@ -229,78 +229,247 @@ const appointment = reactive({
 })
 
 const sections = [
-    {
-        "label":"Appointment Details",
-        "doctype":"Patient Appointment",
-        "fields":[
-            {"name": "is_new_patient", "label": "Is New Patient", "type": "Check", "placeholder": "Is New Patient", "reqd": false},
-            {"name": "patient", "label": "Patient", "type": "Link", "placeholder": "Patient", "options": "Patient", "reqd": true},
-            {"name": "patient_name", "label": "Patient Name", "type": "Data", "placeholder": "Patient Name", "reqd": false},
-            {"name": "practitioner", "label": "Practitioner", "type": "Link", "placeholder": "Practitioner", "options": "Healthcare Practitioner", "reqd": true},
-            {"name": "appointment_type", "label": "Appointment Type", "type": "Select", "placeholder": "Appointment Type", 
-                "options": [
-                    {"label": "Consultation", "value": "Consultation"},
-                    {"label": "Follow-up", "value": "Follow-up"},
-                    {"label": "Emergency", "value": "Emergency"},
-                    {"label": "Checkup", "value": "Checkup"},
-                    {"label": "Surgery", "value": "Surgery"},
-                    {"label": "Therapy", "value": "Therapy"},
-                    {"label": "Laboratory", "value": "Laboratory"},
-                    {"label": "Radiology", "value": "Radiology"}
-                ], "reqd": true
-            },
-            {"name": "appointment_date", "label": "Appointment Date", "type": "Date", "placeholder": "Appointment Date", "reqd": true},
-            {"name": "appointment_time", "label": "Appointment Time", "type": "Time", "placeholder": "Appointment Time", "reqd": true},
-            {"name": "payment_mode", "label": "Payment Mode", "type": "Select", "placeholder": "Payment Mode",
-                "options": [
-                    {"label": "Cash", "value": "Cash"},
-                    {"label": "Insurance", "value": "Insurance"},
-                    {"label": "Credit", "value": "Credit"}
-                ], "reqd": false
-            },
-            {"name": "is_new_his", "label": "Is New Insurance", "type": "Check", "placeholder": "Is New Insurance", "reqd": false},
-            {"name": "insurance_subscription", "label": "Insurance Subscription", "type": "Link", "placeholder": "Insurance Subscription", "options": "Healthcare Insurance Subscription", "reqd": false},
-            {"name": "referral_no", "label": "Referral No", "type": "Data", "placeholder": "Referral No", "reqd": false},
-            {"name": "remarks", "label": "Remarks", "type": "Small Text", "placeholder": "Remarks", "reqd": false},
+  {
+    "label": "Initial Data",
+    "doctype": "",
+    "fields": [
+      {
+        "name": "payment_mode",
+        "label": "Payment Mode",
+        "type": "Select",
+        "options": [
+          { "label": "Cash", "value": "Cash" },
+          { "label": "Insurance", "value": "Insurance" },
         ],
-        "hideLabel":false
-    },
-    {
-        "label":"Patient Details",
-        "doctype":"Patient",
-        "fields":[
-            {"name": "first_name", "label": "First Name", "type": "Data", "placeholder": "First Name", "reqd": true},
-            {"name": "middle_name", "label": "Middle Name", "type": "Data", "placeholder": "Middle Name", "reqd": false},
-            {"name": "last_name", "label": "Last Name", "type": "Data", "placeholder": "Last Name", "reqd": true},
-            {"name": "sex", "label": "Sex", "type": "Select", "placeholder": "Sex",
-                "options": [
-                    {"label": "Male", "value": "Male"},
-                    {"label": "Female", "value": "Female"},
-                    {"label": "Other", "value": "Other"}
-                ], "reqd": true
-            },
-            {"name": "dob", "label": "Date of Birth", "type": "Date", "placeholder": "Date of Birth", "reqd": true},
-            {"name": "mobile", "label": "Mobile", "type": "Data", "placeholder": "Mobile", "reqd": false},
-            {"name": "national_id", "label": "National ID", "type": "Data", "placeholder": "National ID", "reqd": false},
-            {"name": "next_to_kin_name", "label": "Next of Kin Name", "type": "Data", "placeholder": "Next of Kin Name", "reqd": false},
-            {"name": "next_to_kin_mobile_no", "label": "Next of Kin Mobile", "type": "Data", "placeholder": "Next of Kin Mobile", "reqd": false},
-            {"name": "next_to_kin_relationship", "label": "Next of Kin Relationship", "type": "Data", "placeholder": "Next of Kin Relationship", "reqd": false},
+        "reqd": true
+      },
+      { 
+        "name": "insurance_provider",
+        "label": "Insurance Provider",
+        "type": "Select",
+        "options": [
+          { "label": "NHIF", "value": "NHIF" },
+          { "label": "Jubilee", "value": "Jubilee" },
         ],
-        "hideLabel":false,
-        "hideBorder":false
-    },
-    {
-        "label":"Healthcare Insurance Subscription",
-        "doctype":"Healthcare Insurance Subscription", 
-        "fields":[
-            {"name": "insurance_company", "label": "Insurance Company", "type": "Link", "placeholder": "Insurance Company", "options": "Healthcare Insurance Company", "reqd": true},
-            {"name": "healthcare_insurance_coverage_plan", "label": "Coverage Plan", "type": "Link", "placeholder": "Coverage Plan", "options": "Healthcare Insurance Coverage Plan", "reqd": true},
-            {"name": "coverage_plan_card_number", "label": "Card Number", "type": "Data", "placeholder": "Card Number", "reqd": false},
-            {"name": "national_id", "label": "National ID", "type": "Data", "placeholder": "National ID", "reqd": false},
-        ],
-        "hideLabel":false,
-        "hideBorder":false
-    }
+        "placeholder": "for API triggering",
+        "reqd": false
+      },
+      {
+        "name": "card_no",
+        "label": "Card No",
+        "type": "Data",
+        "placeholder": "Card No",
+        "reqd": false
+      },
+      {
+        "name": "national_id",
+        "label": "National ID",
+        "type": "Data",
+        "placeholder": "National ID",
+        "reqd": false
+      }
+    ],
+    "hideLabel": true,
+  },
+  {
+      "label":"Appointment Details",
+      "doctype":"Patient Appointment",
+      "fields":[
+          {
+            "name": "is_new_patient",
+            "label": "Is New Patient",
+            "type": "Check",
+            "placeholder": "Is New Patient",
+            "reqd": false
+          },
+          {
+            "name": "patient",
+            "label": "Patient",
+            "type": "Link",
+            "placeholder": "Patient",
+            "options": "Patient",
+            "reqd": true
+          },
+          {
+            "name": "patient_name",
+            "label": "Patient Name",
+            "type": "Data",
+            "placeholder": "Patient Name",
+            "reqd": false
+          },
+          {
+            "name": "practitioner",
+            "label": "Practitioner",
+            "type": "Link",
+            "placeholder": "Practitioner",
+            "options": "Healthcare Practitioner",
+            "reqd": true
+          },
+          {
+            "name": "appointment_type",
+            "label": "Appointment Type",
+            "type": "Select",
+            "placeholder": "Appointment Type",
+            "options": [
+                  {"label": "Consultation", "value": "Consultation"},
+                  {"label": "Follow-up", "value": "Follow-up"},
+                  {"label": "Emergency", "value": "Emergency"},
+                  {"label": "Checkup", "value": "Checkup"},
+                  {"label": "Surgery", "value": "Surgery"},
+                  {"label": "Therapy", "value": "Therapy"},
+                  {"label": "Laboratory", "value": "Laboratory"},
+                  {"label": "Radiology", "value": "Radiology"}
+              ],
+            "reqd": true
+          },
+          {
+            "name": "appointment_date",
+            "label": "Appointment Date",
+            "type": "Date",
+            "placeholder": "Appointment Date",
+            "reqd": true
+          },
+          {
+            "name": "appointment_time",
+            "label": "Appointment Time",
+            "type": "Time",
+            "placeholder": "Appointment Time",
+            "reqd": true
+          },
+          {
+            "name": "is_new_his",
+            "label": "Is New Insurance",
+            "type": "Check",
+            "placeholder": "Is New Insurance",
+            "reqd": false
+          },
+          {
+            "name": "insurance_subscription",
+            "label": "Insurance Subscription",
+            "type": "Link",
+            "placeholder": "Insurance Subscription",
+            "options": "Healthcare Insurance Subscription",
+            "reqd": false
+          },
+          {
+            "name": "referral_no",
+            "label": "Referral No",
+            "type": "Data",
+            "placeholder": "Referral No",
+            "reqd": false
+          },
+          {
+            "name": "remarks",
+            "label": "Remarks",
+            "type": "Small Text",
+            "placeholder": "Remarks",
+            "reqd": false
+          }
+      ],
+      "columns": 3,
+      "hideLabel":false
+  },
+  {
+      "label":"Patient Details",
+      "doctype":"Patient",
+      "fields":[
+          {
+            "name": "first_name",
+            "label": "First Name",
+            "type": "Data",
+            "placeholder": "First Name",
+            "reqd": true
+          },
+          {
+            "name": "middle_name",
+            "label": "Middle Name",
+            "type": "Data",
+            "placeholder": "Middle Name",
+            "reqd": false
+          },
+          {
+            "name": "last_name",
+            "label": "Last Name",
+            "type": "Data",
+            "placeholder": "Last Name",
+            "reqd": true
+          },
+          {
+            "name": "sex",
+            "label": "Sex",
+            "type": "Select",
+            "placeholder": "Sex",
+            "options": [
+              {"label": "Male", "value": "Male"},
+              {"label": "Female", "value": "Female"},
+            ],
+            "reqd": true
+          },
+          {
+            "name": "dob",
+            "label": "Date of Birth",
+            "type": "Date",
+            "placeholder": "Date of Birth",
+            "reqd": true
+          },
+          {
+            "name": "mobile",
+            "label": "Mobile",
+            "type": "Data",
+            "placeholder": "Mobile",
+            "reqd": false
+          },
+          {
+            "name": "next_to_kin_name",
+            "label": "Next of Kin Name",
+            "type": "Data",
+            "placeholder": "Next of Kin Name",
+            "reqd": false
+          },
+          {
+            "name": "next_to_kin_mobile_no",
+            "label": "Next of Kin Mobile",
+            "type": "Data",
+            "placeholder": "Next of Kin Mobile",
+            "reqd": false
+          },
+          {
+            "name": "next_to_kin_relationship",
+            "label": "Next of Kin Relationship",
+            "type": "Data",
+            "placeholder": "Next of Kin Relationship",
+            "reqd": false
+          },
+      ],
+      "columns": 3,
+      "hideLabel":false,
+      "hideBorder":false
+  },
+  {
+      "label":"Healthcare Insurance Subscription",
+      "doctype":"Healthcare Insurance Subscription", 
+      "fields":[
+          {
+            "name": "insurance_company",
+            "label": "Insurance Company",
+            "type": "Link",
+            "placeholder": "Insurance Company",
+            "options": "Healthcare Insurance Company",
+            "reqd": true
+          },
+          {
+            "name": "healthcare_insurance_coverage_plan",
+            "label": "Coverage Plan",
+            "type": "Link",
+            "placeholder": "Coverage Plan",
+            "options": "Healthcare Insurance Coverage Plan",
+            "reqd": true
+          },
+      ],
+      "columns": 2,
+      "hideLabel":false,
+      // "hideBorder":false
+  }
 ]
 
 
