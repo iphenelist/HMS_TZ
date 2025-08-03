@@ -352,22 +352,22 @@ const sections = computed(() => {
             {
               "name": "mobile",
               "label": "Mobile",
-              "type": "Data",
+              "type": "Int",
               "placeholder": "Mobile",
-              "reqd": false
+              "reqd": true
             },
             {
               "name": "card_no",
-              "label": "Patient Card No",
+              "label": "Card No",
               "type": "Data",
-              "placeholder": "Patient Card No",
+              "placeholder": "Card No",
               "reqd": false
             },
             {
               "name": "national_id",
-              "label": "Patient National ID",
+              "label": "National ID",
               "type": "Data",
-              "placeholder": "Patient National ID",
+              "placeholder": "National ID",
               "reqd": false
             },
             {
