@@ -5,7 +5,7 @@
     :options="{
       title: dialogTitle,
       actions: dialogActions,
-      size: '3xl',
+      size: '2xl',
       icon: {
         name: 'book',
         appearance: 'black',
@@ -360,20 +360,6 @@ const sections = computed(() => {
               "type": "Int",
               "placeholder": "Mobile",
               "reqd": true
-            },
-            {
-              "name": "card_no",
-              "label": "Card No",
-              "type": "Data",
-              "placeholder": "Card No",
-              "reqd": false
-            },
-            {
-              "name": "national_id",
-              "label": "National ID",
-              "type": "Data",
-              "placeholder": "National ID",
-              "reqd": false
             },
             {
               "name": "next_to_kin_name",
