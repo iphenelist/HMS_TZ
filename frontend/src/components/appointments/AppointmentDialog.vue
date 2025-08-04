@@ -8,8 +8,9 @@
       size: '3xl'
     }"
     :disable-outside-click-to-close="true"
-    style="z-index: 10000;"
+    class="appointment-dialog-overlay z-[1050]"
   >
+
     <!-- <template #body-title>
       <div class="flex gap-36 items-center justify-center mb-0">
         <div class="w-112 mb-4 justify-center">
@@ -47,7 +48,7 @@
 
 
 <script setup>
-import { computed, reactive, watch, ref, nextTick } from 'vue'
+import { computed, reactive, watch, ref, nextTick, onUnmounted } from 'vue'
 import {  createResource } from 'frappe-ui'
 import { useAppointmentStore } from '@/stores/appointment'
 import { usePractitionerStore } from '@/stores/practitioner'
@@ -458,18 +459,9 @@ const sections = computed(() => {
             {
               "name": "appointment_type",
               "label": "Appointment Type",
-              "type": "Select",
+              "type": "Link",
               "placeholder": "Appointment Type",
-              "options": [
-                    {"label": "Consultation", "value": "Consultation"},
-                    {"label": "Follow-up", "value": "Follow-up"},
-                    {"label": "Emergency", "value": "Emergency"},
-                    {"label": "Checkup", "value": "Checkup"},
-                    {"label": "Surgery", "value": "Surgery"},
-                    {"label": "Therapy", "value": "Therapy"},
-                    {"label": "Laboratory", "value": "Laboratory"},
-                    {"label": "Radiology", "value": "Radiology"}
-                ],
+              "options": "Appointment Type",
               "reqd": true
             },
             {
@@ -626,10 +618,96 @@ const updateDialogState = (newVal) => {
   localShowDialog.value = newVal
   emit('update:showDialog', newVal)
   
-  if (!newVal) {
+  if (newVal) {
+    // Dialog is opening - ensure popovers appear above dialog
+    ensurePopoverZIndex()
+  } else {
+    // Dialog is closing - restore normal popover z-index
+    restorePopoverZIndex()
     emit('closeDialog')
     resetAppointment()
   }
+}
+
+// Utility functions to manage popover z-index
+let popoverObserver = null
+
+const ensurePopoverZIndex = () => {
+  nextTick(() => {
+    const popoverRoot = document.getElementById('frappeui-popper-root')
+    if (popoverRoot) {
+      popoverRoot.style.zIndex = '1080'
+      // Also apply to any existing popover content
+      const popoverElements = popoverRoot.querySelectorAll('*')
+      popoverElements.forEach(el => {
+        if (el.classList.contains('z-[100]') || el.style.zIndex) {
+          el.style.zIndex = '1080'
+        }
+      })
+      
+      // Set up mutation observer to handle dynamically created popovers
+      if (!popoverObserver) {
+        popoverObserver = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                // Apply z-index to new popover elements
+                if (node.classList?.contains('z-[100]')) {
+                  node.style.zIndex = '1080'
+                }
+                // Also check children
+                const childPopovers = node.querySelectorAll?.('.z-\\[100\\]')
+                childPopovers?.forEach(child => {
+                  child.style.zIndex = '1080'
+                })
+              }
+            })
+          })
+        })
+        
+        popoverObserver.observe(popoverRoot, {
+          childList: true,
+          subtree: true
+        })
+      }
+    }
+    
+    // Apply to any existing bootstrap popovers
+    const bootstrapPopovers = document.querySelectorAll('.popover')
+    bootstrapPopovers.forEach(el => {
+      el.style.zIndex = '1080'
+    })
+  })
+}
+
+const restorePopoverZIndex = () => {
+  nextTick(() => {
+    // Disconnect the mutation observer
+    if (popoverObserver) {
+      popoverObserver.disconnect()
+      popoverObserver = null
+    }
+    
+    const popoverRoot = document.getElementById('frappeui-popper-root')
+    if (popoverRoot) {
+      popoverRoot.style.zIndex = ''
+      // Restore original z-index for popover content
+      const popoverElements = popoverRoot.querySelectorAll('*')
+      popoverElements.forEach(el => {
+        if (el.style.zIndex === '1080') {
+          el.style.zIndex = ''
+        }
+      })
+    }
+    
+    // Restore bootstrap popovers
+    const bootstrapPopovers = document.querySelectorAll('.popover')
+    bootstrapPopovers.forEach(el => {
+      if (el.style.zIndex === '1080') {
+        el.style.zIndex = ''
+      }
+    })
+  })
 }
 
 // Watch for dialog state changes - v-model approach
@@ -638,6 +716,8 @@ watch(() => props.showDialog, (newVal, oldVal) => {
   if (oldVal !== newVal && newVal !== localShowDialog.value) {
     localShowDialog.value = newVal
     if (newVal) {
+      // Dialog is opening
+      ensurePopoverZIndex()
       // Use nextTick for immediate opening
       nextTick(() => {
         resetAppointment()
@@ -651,6 +731,9 @@ watch(() => props.showDialog, (newVal, oldVal) => {
           appointment['Patient Appointment']['appointment_date'] = dateStore.selectedDate
         }
       })
+    } else {
+      // Dialog is closing
+      restorePopoverZIndex()
     }
   }
 }, { immediate: false })
@@ -664,10 +747,14 @@ watch(
     if (isOpen && !wasOpen && !localShowDialog.value) {
       localShowDialog.value = true
       emit('update:showDialog', true)
+      ensurePopoverZIndex()
       resetAppointment()
       if (appointmentStore.selectedAppointment) {
         // populateForm(appointmentStore.selectedAppointment) - TODO: implement populate for appointment object
       }
+    } else if (!isOpen && wasOpen) {
+      // Store-based dialog is closing
+      restorePopoverZIndex()
     }
   },
   { immediate: false }
@@ -1017,45 +1104,111 @@ const cancelAppointment = async () => {
     console.error(error)
   }
 }
+
+// Cleanup on component unmount
+onUnmounted(() => {
+  if (popoverObserver) {
+    popoverObserver.disconnect()
+    popoverObserver = null
+  }
+  // Restore popover z-index when component is destroyed
+  restorePopoverZIndex()
+})
 </script>
 
 <style scoped>
-/* Ensure dialog appears above everything with highest z-index */
+/*
+ * Strategic z-index layering to ensure proper dialog visibility
+ * while preserving dropdown functionality inside the dialog
+ */
+
+/* Base dialog styling - appears above page elements but below dropdowns */
 :deep(.dialog) {
-  z-index: 10000 !important;
-}
-
-:deep(.modal) {
-  z-index: 10000 !important;
-}
-
-:deep(.modal-backdrop) {
-  z-index: 9999 !important;
-}
-
-:deep(.modal-dialog) {
-  z-index: 10001 !important;
+  z-index: 1050 !important;
 }
 
 :deep(.dialog-wrapper) {
-  z-index: 10000 !important;
+  z-index: 1050 !important;
 }
 
+/* Dialog backdrop - below dialog content */
 :deep(.dialog-overlay) {
-  z-index: 9999 !important;
+  z-index: 1040 !important;
 }
 
+/* Dialog content - main dialog layer */
 :deep(.dialog-content) {
-  z-index: 10001 !important;
+  z-index: 1055 !important;
 }
 
-/* Additional specific targeting for frappe-ui dialog */
+/* Additional targeting for Frappe UI dialog components */
 :deep([role="dialog"]) {
-  z-index: 10000 !important;
+  z-index: 1055 !important;
 }
 
+/* Fixed backdrop elements */
 :deep(.fixed.inset-0) {
-  z-index: 9999 !important;
+  z-index: 1040 !important;
+}
+
+/* Modal backdrop */
+:deep(.modal-backdrop) {
+  z-index: 1035 !important;
+}
+
+/* Ensure dialog container has proper layering */
+:deep(.modal) {
+  z-index: 1055 !important;
+}
+
+/* Frappe-specific dialog wrapper */
+:deep(.frappe-dialog) {
+  z-index: 1055 !important;
+}
+
+/* Base dialog wrapper styling */
+.appointment-dialog-overlay {
+  z-index: 1050 !important;
 }
 </style>
 
+<style>
+/* 
+ * GLOBAL STYLES: Ensure Frappe UI popover components appear above dialogs
+ * These styles target the teleported popover root container
+ */
+
+/* When appointment dialog is open, ensure popover root has higher z-index */
+body:has(.appointment-dialog-overlay) #frappeui-popper-root {
+  z-index: 1080 !important;
+}
+
+body:has(.appointment-dialog-overlay) #frappeui-popper-root > * {
+  z-index: 1080 !important;
+}
+
+/* Target all popover content containers */
+body:has(.appointment-dialog-overlay) #frappeui-popper-root .z-\[100\] {
+  z-index: 1080 !important;
+}
+
+/* Alternative targeting for popover panels */
+body:has(.appointment-dialog-overlay) [role="listbox"],
+body:has(.appointment-dialog-overlay) [role="menu"],
+body:has(.appointment-dialog-overlay) .popover,
+body:has(.appointment-dialog-overlay) [data-popover] {
+  z-index: 1080 !important;
+}
+
+/* Bootstrap popover compatibility */
+body:has(.appointment-dialog-overlay) .popover {
+  z-index: 1080 !important;
+}
+
+/* Ensure dropdown menus from any UI library work */
+body:has(.appointment-dialog-overlay) .dropdown-menu,
+body:has(.appointment-dialog-overlay) .select-dropdown,
+body:has(.appointment-dialog-overlay) .autocomplete-dropdown {
+  z-index: 1080 !important;
+}
+</style>
