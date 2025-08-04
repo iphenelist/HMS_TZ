@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-1.5" v-if="!attrs.disabled">
+  <div class="space-y-1.5 link-field-container" v-if="!attrs.disabled">
     <label class="block" :class="labelClasses" v-if="attrs.label">
       {{ attrs.label }}
     </label>
@@ -11,6 +11,7 @@
       :variant="attrs.variant"
       :placeholder="attrs.placeholder"
       :filterable="false"
+      class="z-high-popover"
     >
       <template #target="{ open, togglePopover }">
         <slot name="target" v-bind="{ open, togglePopover }" />
@@ -172,3 +173,15 @@ const labelClasses = computed(() => {
   ]
 })
 </script>
+
+<style scoped>
+/* Ensure link field dropdowns appear above dialogs */
+.link-field-container {
+  position: relative;
+}
+
+/* Target the autocomplete dropdown within this component */
+:deep(.z-high-popover) {
+  z-index: 1080 !important;
+}
+</style>
