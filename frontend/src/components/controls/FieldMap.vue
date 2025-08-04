@@ -20,7 +20,7 @@
             class="grid gap-6"
             :class="
               section.columns
-                ? 'grid-cols-' + section.columns
+                ? 'grid-cols-' + section.columns + ' sm:grid-cols-' + section.columns
                 : 'grid-cols-2 sm:grid-cols-2'
             "
           >
