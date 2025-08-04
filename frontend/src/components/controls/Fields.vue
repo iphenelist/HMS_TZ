@@ -44,16 +44,10 @@
       :onCreate="field.create"
       :disabled="(field.name === 'patient' && data['Patient Appointment']['is_new_patient']) || (field.name === 'insurance_subscription' && data['Patient Appointment']['is_new_his'])"
     />
-    <!-- <DatePicker
+    <DatePicker
       v-else-if="field.type === 'Date'"
       v-model="data[section.doctype][field.name]"
       :placeholder="field.placeholder || field.label"
-    /> -->
-    <FormControl
-      v-else-if="field.type === 'Date'"
-      type="date"
-      :placeholder="field.placeholder || field.label"
-      v-model="data[section.doctype][field.name]"
     />
     <FormControl
       v-else-if="field.type === 'Time'"
