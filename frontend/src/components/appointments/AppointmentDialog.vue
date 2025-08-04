@@ -5,7 +5,11 @@
     :options="{
       title: dialogTitle,
       actions: dialogActions,
-      size: '3xl'
+      size: '3xl',
+      icon: {
+        name: 'book',
+        appearance: 'black',
+      },
     }"
     :disable-outside-click-to-close="true"
     class="appointment-dialog-overlay z-[1050]"
