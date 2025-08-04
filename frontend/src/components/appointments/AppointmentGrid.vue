@@ -1,7 +1,7 @@
 <template>
   <div class="appointment-grid-container min-h-screen bg-gray-100">
     <!-- Header with Date Controls -->
-    <div class="sticky top-0 z-20 bg-white border-b border-gray-300 shadow-sm">
+    <div class="sticky top-0 z-10 bg-white border-b border-gray-300 shadow-sm">
       <div class="px-6 py-4">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center space-x-6">
@@ -69,7 +69,7 @@
       <div class="time-column">
         <!-- Time Slots Header -->
         <div class="time-header">
-          <div class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
+          <div class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-10">
             <span class="text-sm font-semibold text-gray-600">Time Slots</span>
           </div>
         </div>
@@ -178,10 +178,10 @@
     </div>
 
     <!-- Bottom Scroll Controls -->
-    <div class="bottom-scroll-controls">
+    <div class="bottom-scroll-controls" :class="{ 'hidden': showAppointmentDialog }">
       <!-- Left Scroll Button -->
       <button
-        v-if="canScrollLeft"
+        v-if="canScrollLeft && !showAppointmentDialog"
         @click="scrollHorizontally('left')"
         class="scroll-control scroll-control-left"
         :disabled="!canScrollLeft"
@@ -192,7 +192,7 @@
 
       <!-- Right Scroll Button -->
       <button
-        v-if="canScrollRight"
+        v-if="canScrollRight && !showAppointmentDialog"
         @click="scrollHorizontally('right')"
         class="scroll-control scroll-control-right"
         :disabled="!canScrollRight"
@@ -682,24 +682,6 @@ const handleAppointmentCreated = async () => {
 
 
 <style scoped>
-/* Dialog z-index fixes */
-:deep(.dialog-wrapper) {
-  z-index: 10000 !important;
-}
-
-:deep(.dialog-overlay) {
-  z-index: 9999 !important;
-}
-
-:deep(.dialog-content) {
-  z-index: 10001 !important;
-}
-
-/* Ensure appointment dialog is above everything */
-.appointment-dialog-wrapper {
-  z-index: 10000 !important;
-}
-
 .appointment-grid {
   display: flex;
   height: 100%;
@@ -724,7 +706,7 @@ const handleAppointmentCreated = async () => {
 .time-header {
   position: sticky;
   top: 0;
-  z-index: 35; /* Reduced z-index to be below dialog */
+  z-index: 15; /* Lower z-index to be below dialog */
   background-color: #f9fafb;
   flex-shrink: 0;
 }
@@ -736,7 +718,7 @@ const handleAppointmentCreated = async () => {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
-  z-index: 40; /* Reduced z-index to be below dialog */
+  z-index: 20; /* Lower z-index to be below dialog */
   flex-shrink: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1108,7 +1090,7 @@ const handleAppointmentCreated = async () => {
   justify-content: center;
   align-items: center;
   gap: 20px;
-  z-index: 1000;
+  z-index: 30; /* Lower z-index to be below dialog */
   pointer-events: none; /* Allow clicks to pass through the container */
 }
 
