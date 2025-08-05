@@ -277,21 +277,7 @@ onMounted(() => {
   }
 })
 
-// Company options for Select component  
-const companyOptions = computed(() => {
-  return userCompanies.value.map(company => ({
-    label: company.name,
-    value: company.name
-  }))
-})
-
 // Computed properties
-const appointments = computed(() => appointmentStore.todaysAppointments)
-
-const formattedDate = computed(() => {
-  return dayjs(dateStore.selectedDate).format('dddd, MMMM D, YYYY')
-})
-
 const confirmDialogOptions = computed(() => ({
   title: 'Confirm Action',
   actions: [
