@@ -16,17 +16,6 @@ export const useAppointmentStore = defineStore('appointments', {
   }),
 
   getters: {
-    appointmentsByPractitioner: (state) => {
-      const grouped = {}
-      state.appointments.forEach(appointment => {
-        if (!grouped[appointment.practitioner_id]) {
-          grouped[appointment.practitioner_id] = []
-        }
-        grouped[appointment.practitioner_id].push(appointment)
-      })
-      return grouped
-    },
-
     appointmentsByTimeSlot: (state) => {
       const grouped = {}
       state.appointments.forEach(appointment => {
@@ -34,12 +23,6 @@ export const useAppointmentStore = defineStore('appointments', {
         grouped[key] = appointment
       })
       return grouped
-    },
-
-    todaysAppointments: (state) => {
-      return state.appointments.filter(
-        appointment => appointment.date === state.selectedDate
-      )
     }
   },
 
@@ -83,12 +66,6 @@ export const useAppointmentStore = defineStore('appointments', {
     setSelectedCompany(company) {
       this.selectedCompany = company
       this.fetchAppointments()
-    },
-
-    openAppointmentDialog(mode = 'create', appointment = null) {
-      this.dialogMode = mode
-      this.selectedAppointment = appointment
-      this.showAppointmentDialog = true
     },
 
     closeAppointmentDialog() {
@@ -156,59 +133,6 @@ export const useAppointmentStore = defineStore('appointments', {
       }
     },
 
-    async createAppointment(appointmentData) {
-      this.isLoading = true
-      this.error = null
-
-      try {
-        // Validate required fields
-        if (!appointmentData.patient_name || !appointmentData.contact || !appointmentData.time_slot) {
-          throw new Error('Missing required fields')
-        }
-
-        // TODO: Replace with actual API call
-        /*
-        const createResource = createResource({
-          url: 'hms_tz.api.appointments.create_appointment',
-          params: {
-            ...appointmentData,
-            date: this.selectedDate
-          },
-          auto: false
-        })
-        
-        const response = await createResource.fetch()
-        const newAppointment = response.message
-        */
-
-        // Create new appointment - sample implementation
-        const newAppointment = {
-          id: Date.now(), // Temporary ID generation
-          ...appointmentData,
-          date: this.selectedDate,
-          status: 'scheduled',
-          created_at: new Date().toISOString(),
-          modified_at: new Date().toISOString(),
-          created_by: 'Reception',
-          patient_id: `PAT-${String(Date.now()).slice(-3)}`
-        }
-
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        this.appointments.push(newAppointment)
-        this.closeAppointmentDialog()
-
-        return { success: true, data: newAppointment }
-      } catch (error) {
-        this.error = error.message || 'Failed to create appointment'
-        console.error('Error creating appointment:', error)
-        return { success: false, error: error.message }
-      } finally {
-        this.isLoading = false
-      }
-    },
-
     async updateAppointment(appointmentId, updates) {
       this.isLoading = true
       this.error = null
@@ -234,28 +158,6 @@ export const useAppointmentStore = defineStore('appointments', {
       } catch (error) {
         this.error = error.message
         console.error('Error updating appointment:', error)
-        return { success: false, error: error.message }
-      } finally {
-        this.isLoading = false
-      }
-    },
-
-    async deleteAppointment(appointmentId) {
-      this.isLoading = true
-      this.error = null
-
-      try {
-        // TODO: Replace with actual API call
-        // const response = await createResource({
-        //   url: 'hms_tz.api.appointments.delete_appointment',
-        //   params: { id: appointmentId }
-        // }).fetch()
-
-        this.appointments = this.appointments.filter(app => app.id !== appointmentId)
-        return { success: true }
-      } catch (error) {
-        this.error = error.message
-        console.error('Error deleting appointment:', error)
         return { success: false, error: error.message }
       } finally {
         this.isLoading = false
