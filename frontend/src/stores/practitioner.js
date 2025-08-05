@@ -7,8 +7,6 @@ export const usePractitionerStore = defineStore('practitioners', {
     isLoading: false,
     error: null,
     searchQuery: '',
-    filterType: 'all', // 'all', 'available', 'department'
-    selectedDepartment: '',
     lastFetchDate: null,
     company: ""
   }),
@@ -16,16 +14,6 @@ export const usePractitionerStore = defineStore('practitioners', {
   getters: {
     filteredPractitioners: (state) => {
       let filtered = state.practitioners
-
-      // Apply department filter
-      if (state.filterType === 'department' && state.selectedDepartment) {
-        filtered = filtered.filter(p => p.department === state.selectedDepartment)
-      }
-
-      // Apply availability filter
-      if (state.filterType === 'available') {
-        filtered = filtered.filter(p => p.is_available)
-      }
 
       // Apply search query
       if (state.searchQuery) {
@@ -37,32 +25,12 @@ export const usePractitionerStore = defineStore('practitioners', {
       }
 
       return filtered
-    },
-
-    availablePractitioners: (state) => (date) => {
-      return state.practitioners.filter(p => p.is_available)
-    },
-
-    departments: (state) => {
-      const depts = [...new Set(state.practitioners.map(p => p.department))]
-      return depts.sort()
     }
   },
 
   actions: {
     setSearchQuery(query) {
       this.searchQuery = query
-    },
-
-    setFilter(type, department = '') {
-      this.filterType = type
-      this.selectedDepartment = department
-    },
-
-    clearFilters() {
-      this.searchQuery = ''
-      this.filterType = 'all'
-      this.selectedDepartment = ''
     },
 
     async fetchPractitioners(company = null, date = null, forceRefresh = false) {
