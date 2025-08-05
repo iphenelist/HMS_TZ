@@ -704,7 +704,6 @@ watch(() => props.showDialog, (newVal, oldVal) => {
         resetAppointment()
         error.value = ''
         if (props.appointment && Object.keys(props.appointment).length > 0) {
-          // populateForm(props.appointment) - TODO: implement populate for appointment object
         } else if (isCreateMode.value) {
           // Pre-fill data for create mode
           appointment['Patient Appointment']['appointment_time'] = props.timeSlot
@@ -731,7 +730,6 @@ watch(
       ensurePopoverZIndex()
       resetAppointment()
       if (appointmentStore.selectedAppointment) {
-        // populateForm(appointmentStore.selectedAppointment) - TODO: implement populate for appointment object
       }
     } else if (!isOpen && wasOpen) {
       // Store-based dialog is closing
@@ -797,18 +795,6 @@ const resetAppointment = () => {
   }
 }
 
-const populateForm = (appointment) => {
-  Object.assign(formData, {
-    patient_name: appointment.patient_name || '',
-    contact: appointment.contact || '',
-    appointment_type: appointment.appointment_type || '',
-    time_slot: appointment.time_slot || '',
-    practitioner_id: appointment.practitioner_id || null,
-    notes: appointment.notes || '',
-    status: appointment.status || 'scheduled',
-    date: appointment.date || dateStore.selectedDate
-  })
-}
 
 const validateForm = () => {
   // Validate appointment form based on sections
