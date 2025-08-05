@@ -308,6 +308,7 @@ const sections = computed(() => {
           "reqd": false
         }
       ], "Patient Appointment"),
+      "columns": 2,
       "hideLabel": true,
     },
     // Other sections
