@@ -98,18 +98,6 @@ const isCreating = ref(false)
 const statusMessage = ref('')
 const error = ref('')
 
-// Form data
-const formData = reactive({
-  patient_name: '',
-  contact: '',
-  appointment_type: '',
-  time_slot: '',
-  practitioner_id: null,
-  notes: '',
-  status: 'scheduled',
-  date: ''
-})
-
 // Form validation errors
 const errors = reactive({})
 
@@ -141,7 +129,7 @@ const dialogActions = computed(() => {
       onClick: () => closeDialog()
     })
     
-    if (formData.status !== 'cancelled') {
+    if (appointment['Patient Appointment']['status'] !== 'cancelled') {
       actions.push({
         label: 'Edit',
         variant: 'outline',
@@ -149,7 +137,7 @@ const dialogActions = computed(() => {
       })
     }
     
-    if (formData.status === 'scheduled') {
+    if (appointment['Patient Appointment']['status'] === 'scheduled') {
       actions.push({
         label: 'Mark Complete',
         variant: 'solid',
@@ -158,7 +146,7 @@ const dialogActions = computed(() => {
       })
     }
     
-    if (formData.status !== 'cancelled') {
+    if (appointment['Patient Appointment']['status'] !== 'cancelled') {
       actions.push({
         label: 'Cancel',
         variant: 'outline',
@@ -520,77 +508,6 @@ const sections = computed(() => {
   return allSections
 })
 
-
-// Form options
-const appointmentTypes = [
-  { label: 'Consultation', value: 'Consultation' },
-  { label: 'Follow-up', value: 'Follow-up' },
-  { label: 'Emergency', value: 'Emergency' },
-  { label: 'Checkup', value: 'Checkup' },
-  { label: 'Surgery', value: 'Surgery' },
-  { label: 'Therapy', value: 'Therapy' },
-  { label: 'Laboratory', value: 'Laboratory' },
-  { label: 'Radiology', value: 'Radiology' }
-]
-
-const statusOptions = [
-  { label: 'Open', value: 'open' },
-  { label: 'Scheduled', value: 'scheduled' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Cancelled', value: 'cancelled' }
-]
-
-const availableTimeSlots = computed(() => {
-  return dateStore.timeSlots
-    .filter(slot => {
-      // For create mode, only show future slots
-      if (isCreateMode.value) {
-        return !slot.isPast
-      }
-      // For edit/view mode, show all slots
-      return true
-    })
-    .map(slot => ({
-      label: slot.display,
-      value: slot.time
-    }))
-})
-
-
-// Computed property for formatted time slot in create mode
-const formattedTimeSlot = computed(() => {
-  if (!props.timeSlot) return ''
-  return dayjs(`2024-01-01 ${props.timeSlot}`).format('h:mm A')
-})
-
-// Utility functions
-const formatDate = (dateString) => {
-  return dayjs(dateString).format('dddd, MMMM D, YYYY')
-}
-
-const formatTime = (timeSlot) => {
-  return dayjs(`2024-01-01 ${timeSlot}`).format('h:mm A')
-}
-
-const formatStatus = (status) => {
-  const statusMap = {
-    'open': 'Open',
-    'scheduled': 'Scheduled', 
-    'completed': 'Completed',
-    'cancelled': 'Cancelled'
-  }
-  return statusMap[status] || status
-}
-
-const getStatusTheme = (status) => {
-  const themeMap = {
-    'open': 'blue',
-    'scheduled': 'yellow',
-    'completed': 'green', 
-    'cancelled': 'red'
-  }
-  return themeMap[status] || 'gray'
-}
 
 // Dialog state update handler
 const updateDialogState = (newVal) => {
