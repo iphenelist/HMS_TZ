@@ -741,20 +741,6 @@ watch(
   { immediate: false }
 )
 
-// Form methods
-const resetForm = () => {
-  Object.assign(formData, {
-    patient_name: '',
-    contact: '',
-    appointment_type: '',
-    time_slot: '',
-    practitioner_id: null,
-    notes: '',
-    status: 'scheduled',
-    date: dateStore.selectedDate
-  })
-  Object.keys(errors).forEach(key => delete errors[key])
-}
 
 const resetAppointment = () => {
   appointment["Patient Appointment"] = {
