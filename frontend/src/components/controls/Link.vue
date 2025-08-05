@@ -11,7 +11,10 @@
       :variant="attrs.variant"
       :placeholder="attrs.placeholder"
       :filterable="false"
+      :class="hideMe ? 'pointer-events-none' : ''"
+      :disabled="hideMe"
       class="z-high-popover"
+      @update:query="reload"
     >
       <template #target="{ open, togglePopover }">
         <slot name="target" v-bind="{ open, togglePopover }" />
@@ -74,6 +77,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+	filters: {
+		type: Object,
+		default: {},
+	},
   hideMe: {
     type: Boolean,
     default: false,
@@ -123,6 +130,7 @@ const options = createResource({
   params: {
     txt: text.value,
     doctype: props.doctype,
+    filters: props.filters,
   },
   transform: (data) => {
     let allData = data.map((option) => {
@@ -153,6 +161,7 @@ function reload(val) {
     params: {
       txt: val,
       doctype: props.doctype,
+      filters: props.filters,
     },
   })
   options.reload()
