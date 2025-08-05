@@ -556,16 +556,6 @@ const availableTimeSlots = computed(() => {
     }))
 })
 
-const displayPractitioner = computed(() => {
-  // For create mode, use practitionerData prop
-  if (isCreateMode.value) {
-    return props.practitionerData
-  }
-  // For edit/view mode, find from store
-  return practitionerStore.practitioners.find(
-    p => p.id === formData.practitioner_id
-  )
-})
 
 // Computed property for formatted time slot in create mode
 const formattedTimeSlot = computed(() => {
