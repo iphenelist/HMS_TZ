@@ -39,7 +39,7 @@
       class="form-control"
       :value="data[section.doctype][field.name]"
       :doctype="field.options"
-      @change="(v) => (data[section.doctype][field.name] = v)"
+      @change="(v) => handleLinkChange(section.doctype, field.name, field.options, v)"
       :placeholder="field.placeholder || field.label"
       :onCreate="field.create"
       :disabled="(field.name === 'patient' && data['Patient Appointment']['is_new_patient']) || (field.name === 'insurance_subscription' && data['Patient Appointment']['is_new_his'])"
@@ -86,6 +86,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { createResource } from 'frappe-ui'
 import Link from './Link.vue';
 
 const props = defineProps({
@@ -115,6 +116,66 @@ const visibleFields = computed(() => {
   // For Insurance payment mode, show all fields
   return props.section.fields
 })
+
+
+// Resource to fetch patient details
+const patientResource = createResource({
+  url: 'frappe.client.get',
+  method: 'GET',
+  onSuccess: (data) => {
+    if (data && data.patient_name) {
+      // Set the patient_name field in the Patient Appointment doctype
+      if (props.data['Patient Appointment']) {
+        props.data['Patient Appointment']['patient_name'] = data.patient_name
+      }
+      // Also set in Healthcare Insurance Subscription if it exists
+      if (props.data['Healthcare Insurance Subscription']) {
+        props.data['Healthcare Insurance Subscription']['patient_name'] = data.patient_name
+      }
+    }
+  },
+  onError: (error) => {
+    console.error('Error fetching patient details:', error)
+  }
+})
+
+
+// Handle Link field changes with special logic for patient field
+function handleLinkChange(doctype, fieldName, linkDoctype, value) {
+  // Update the field value
+  const data = props.data;
+  if (data[doctype]) {
+    data[doctype][fieldName] = value;
+  }
+  
+  // Special handling for patient field
+  if (fieldName === 'patient' && linkDoctype === 'Patient') {
+    if (value) {
+      // Fetch patient details to get patient_name
+      patientResource.submit({
+        doctype: 'Patient',
+        name: value
+      })
+      
+      // Sync patient field to Healthcare Insurance Subscription if selecting from Patient Appointment
+      if (doctype === 'Patient Appointment' && data['Healthcare Insurance Subscription']) {
+        data['Healthcare Insurance Subscription']['patient'] = value
+      }
+    } else {
+      // Clear patient_name when patient is cleared
+      if (data['Patient Appointment']) {
+        data['Patient Appointment']['patient_name'] = ''
+      }
+      if (data['Healthcare Insurance Subscription']) {
+        data['Healthcare Insurance Subscription']['patient_name'] = ''
+        // Also clear the patient field in Healthcare Insurance Subscription if clearing from Patient Appointment
+        if (doctype === 'Patient Appointment') {
+          data['Healthcare Insurance Subscription']['patient'] = ''
+        }
+      }
+    }
+  }
+}
 
 function updateField(doctype, name, value) {
   const data = props.data;

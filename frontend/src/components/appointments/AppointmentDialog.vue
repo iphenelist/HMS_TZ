@@ -425,7 +425,8 @@ const sections = computed(() => {
               "label": "Patient Name",
               "type": "Data",
               "placeholder": "Patient Name",
-              "reqd": false
+              "reqd": false,
+              "read_only": true
             },
             {
               "name": "practitioner",
