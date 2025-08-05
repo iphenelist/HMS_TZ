@@ -21,7 +21,7 @@
             :class="
               section.columns
                 ? 'grid-cols-' + section.columns + ' sm:grid-cols-' + section.columns
-                : 'grid-cols-2 sm:grid-cols-2'
+                : 'grid-cols-3 sm:grid-cols-3'
             "
           >
             <Fields :section="section" :data="data" />
