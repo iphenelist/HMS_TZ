@@ -110,10 +110,6 @@ export const useAppointmentStore = defineStore('appointments', {
           invoiced: appointment.invoiced,
         }))
 
-        console.log('✅ Appointments loaded:', this.appointments.length)
-        console.log('✅ Transformed appointments:', this.appointments)
-        console.log('✅ Appointments by time slot keys:', Object.keys(this.appointmentsByTimeSlot))
-
       } catch (error) {
         this.error = error.message || 'Failed to fetch appointments'
         console.error('❌ Error fetching appointments:', error)
