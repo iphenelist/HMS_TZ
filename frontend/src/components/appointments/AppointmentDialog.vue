@@ -24,7 +24,7 @@
       </div>
     </template> -->
     <template #body-content>
-      <div class="space-y-4">
+      <div class="space-y-4 relative">
         <div class="bg-white px-2 pb-6 pt-1 sm:px-2">
           <div class="mb-5 flex gap-36 items-center justify-around">
             <!-- <div class="w-112 mb-4">
@@ -33,15 +33,88 @@
               </h3>
             </div> -->
           </div>
-          <div v-if="isCreating" class="text-center py-4 text-gray-500">{{ statusMessage }}</div>
-          <div>
+          <div class="relative">
             <FieldMap 
               v-if="sections" 
               :sections="sections" 
               :data="appointment" 
             />
+            
+            <!-- Local Dialog Content Overlay -->
+            <Transition name="loading-fade">
+              <div 
+                v-if="isCreating" 
+                class="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm z-10 flex items-center justify-center"
+                @click.stop
+                @keydown.stop
+                @mousedown.stop
+                @touchstart.stop
+              >
+                <div class="text-center p-4">
+                  <div class="spinner-container">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-3">
+                      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    </div>
+                  </div>
+                  <p class="text-sm text-gray-600 font-medium">Processing...</p>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
+
+        <!-- Full Screen Loading Overlay -->
+        <Teleport to="body">
+          <Transition name="loading-fade">
+            <div 
+              v-if="isCreating" 
+              class="fixed inset-0 z-[1100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm loading-overlay"
+              @click.stop
+              @keydown.stop
+              @mousedown.stop
+              @touchstart.stop
+            >
+              <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300">
+                <div class="text-center">
+                  <!-- Animated Loading Spinner -->
+                  <div class="mb-6 spinner-container">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+                      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  </div>
+
+                  <!-- Loading Title -->
+                  <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                    Creating Appointment
+                  </h3>
+
+                  <!-- Dynamic Status Message -->
+                  <p class="text-gray-600 mb-4 min-h-[1.5rem]">
+                    {{ statusMessage }}
+                  </p>
+
+                  <!-- Progress Indicator -->
+                  <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                    <div 
+                      class="bg-blue-600 h-2 rounded-full progress-bar"
+                      :style="{ width: `${loadingProgress}%` }"
+                    ></div>
+                  </div>
+
+                  <!-- Please Wait Message -->
+                  <p class="text-sm text-gray-500">
+                    Please wait while we process your request...
+                  </p>
+
+                  <!-- Additional instruction -->
+                  <p class="text-xs text-gray-400 mt-2">
+                    Please do not close this window
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
       </div>
     </template>
     
@@ -51,6 +124,7 @@
           <Button 
             variant="outline" 
             size="sm"
+            :disabled="isCreating"
             @click="closeDialog()"
           >
             Close
@@ -60,6 +134,7 @@
             v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
             variant="outline" 
             size="sm"
+            :disabled="isCreating"
             @click="editAppointment()"
           >
             Edit
@@ -70,6 +145,7 @@
             variant="solid" 
             size="sm"
             theme="green"
+            :disabled="isCreating"
             @click="completeAppointment()"
           >
             Mark Complete
@@ -80,6 +156,7 @@
             variant="outline" 
             size="sm"
             theme="red"
+            :disabled="isCreating"
             @click="showCancelConfirmation()"
           >
             Cancel
@@ -91,6 +168,7 @@
             variant="subtle" 
             size="sm"
             theme="gray"
+            :disabled="isCreating"
             @click="closeDialog()"
           >
             Cancel
@@ -100,6 +178,7 @@
             variant="solid" 
             size="sm"
             :loading="isCreating"
+            :disabled="isCreating"
             @click="handleSubmit()"
           >
             {{ isCreateMode ? 'Create' : 'Update' }}
@@ -113,7 +192,7 @@
 
 
 <script setup>
-import { computed, reactive, watch, ref, nextTick, onUnmounted } from 'vue'
+import { computed, reactive, watch, ref, nextTick, onUnmounted, onMounted } from 'vue'
 import {  createResource } from 'frappe-ui'
 import { useAppointmentStore } from '@/stores/appointment'
 import { usePractitionerStore } from '@/stores/practitioner'
@@ -159,6 +238,7 @@ const localShowDialog = ref(props.showDialog)
 const isCreating = ref(false)
 const statusMessage = ref('')
 const error = ref('')
+const loadingProgress = ref(0)
 
 // Form validation errors
 const errors = reactive({})
@@ -522,6 +602,11 @@ const sections = computed(() => {
 const updateDialogState = (newVal) => {
   if (localShowDialog.value === newVal) return // Prevent unnecessary updates
   
+  // Prevent closing dialog while creating documents
+  if (!newVal && isCreating.value) {
+    return // Don't allow closing during document creation
+  }
+  
   localShowDialog.value = newVal
   emit('update:showDialog', newVal)
   
@@ -700,6 +785,12 @@ const resetAppointment = () => {
     "coverage_plan_card_number": "",
     "national_id": "",
   }
+
+  // Reset loading states
+  isCreating.value = false
+  statusMessage.value = ''
+  loadingProgress.value = 0
+  error.value = ''
 }
 
 
@@ -840,17 +931,14 @@ const appointment_doc = createResource({
       error.value = 'Appointment Time is required'
       return error.value
     }
-    isCreating.value = true
   },
   onSuccess: (data) => {
-    isCreating.value = false
     notifications.success.appointmentCreated()
     closeDialog()
     resetAppointment()
     emit('appointmentCreated')
   },
   onError: (err) => {
-    isCreating.value = false
     handleResourceError(err)
     notifications.error.appointmentCreateFailed(err.message)
   }
@@ -938,25 +1026,63 @@ const insurance_doc = createResource({
 async function create_appointment_docs() {
   isCreating.value = true
   error.value = null
+  loadingProgress.value = 0
 
   try {
+    // Calculate total steps for progress tracking
+    let totalSteps = 1 // Always create appointment
+    let currentStep = 0
+    
     if (appointment['Patient Appointment']['is_new_patient']) {
-      statusMessage.value = 'Creating patient...'
-      await patient_doc.submit()
+      totalSteps++
     }
-
+    
     if (appointment['Patient Appointment']['is_new_his']) {
-      statusMessage.value = 'Creating insurance subscription...'
-      await insurance_doc.submit()
+      totalSteps++
     }
 
-    statusMessage.value = 'Creating appointment...'
+    // Step 1: Create patient if needed
+    if (appointment['Patient Appointment']['is_new_patient']) {
+      currentStep++
+      statusMessage.value = 'Creating new patient record...'
+      loadingProgress.value = Math.round((currentStep / totalSteps) * 100)
+      await patient_doc.submit()
+      
+      // Small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+
+    // Step 2: Create insurance subscription if needed
+    if (appointment['Patient Appointment']['is_new_his']) {
+      currentStep++
+      statusMessage.value = 'Setting up healthcare insurance subscription...'
+      loadingProgress.value = Math.round((currentStep / totalSteps) * 100)
+      await insurance_doc.submit()
+      
+      // Small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+
+    // Final Step: Create appointment
+    currentStep++
+    statusMessage.value = 'Finalizing appointment booking...'
+    loadingProgress.value = Math.round((currentStep / totalSteps) * 100)
     await appointment_doc.submit()
 
   } catch (err) {
     error.value = 'Error while creating appointment documents'
+    statusMessage.value = 'An error occurred. Please try again.'
+    loadingProgress.value = 0
   } finally {
+    // Keep loading for a brief moment to show completion
+    if (!error.value) {
+      statusMessage.value = 'Appointment created successfully!'
+      loadingProgress.value = 100
+      await new Promise(resolve => setTimeout(resolve, 800))
+    }
+    
     isCreating.value = false
+    loadingProgress.value = 0
   }
 }
 
@@ -979,6 +1105,10 @@ const editAppointment = () => {
 }
 
 const closeDialog = () => {
+  // Prevent closing during document creation
+  if (isCreating.value) {
+    return
+  }
   updateDialogState(false)
 }
 
@@ -1030,6 +1160,22 @@ onUnmounted(() => {
   }
   // Restore popover z-index when component is destroyed
   restorePopoverZIndex()
+  // Remove event listeners
+  document.removeEventListener('keydown', handleKeyDown)
+})
+
+// Handle keyboard events to prevent closing during loading
+const handleKeyDown = (event) => {
+  if (isCreating.value && (event.key === 'Escape' || event.keyCode === 27)) {
+    event.preventDefault()
+    event.stopPropagation()
+    return false
+  }
+}
+
+// Add keyboard event listener
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown, { capture: true })
 })
 </script>
 
@@ -1091,5 +1237,38 @@ onUnmounted(() => {
 /* Custom actions styling */
 :deep(.dialog .actions) {
   padding: 1rem !important;
+}
+
+/* Loading overlay animations */
+.loading-fade-enter-active,
+.loading-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.loading-fade-enter-from,
+.loading-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+/* Progress bar animation */
+.progress-bar {
+  transition: width 0.5s ease-in-out;
+}
+
+/* Prevent text selection during loading */
+.loading-overlay * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Ensure spinner is always centered */
+.spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4rem;
 }
 </style>
