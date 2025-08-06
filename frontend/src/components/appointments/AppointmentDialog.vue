@@ -4,7 +4,6 @@
     @update:model-value="updateDialogState"
     :options="{
       title: dialogTitle,
-      actions: dialogActions,
       size: '2xl',
       icon: {
         name: 'book',
@@ -44,6 +43,69 @@
             <div v-if="error" class="mt-4 text-lg font-bold text-red-600">{{ error }}</div>
           </div>
         </div>
+      </div>
+    </template>
+    
+    <template #actions>
+      <div class="flex gap-2 justify-end">
+        <template v-if="isViewMode">
+          <Button 
+            variant="outline" 
+            size="sm"
+            @click="closeDialog()"
+          >
+            Close
+          </Button>
+          
+          <Button 
+            v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
+            variant="outline" 
+            size="sm"
+            @click="editAppointment()"
+          >
+            Edit
+          </Button>
+          
+          <Button 
+            v-if="appointment['Patient Appointment']['status'] === 'scheduled'"
+            variant="solid" 
+            size="sm"
+            theme="green"
+            @click="completeAppointment()"
+          >
+            Mark Complete
+          </Button>
+          
+          <Button 
+            v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
+            variant="outline" 
+            size="sm"
+            theme="red"
+            @click="showCancelConfirmation()"
+          >
+            Cancel
+          </Button>
+        </template>
+        
+        <template v-else>
+          <Button 
+            variant="subtle" 
+            size="sm"
+            theme="gray"
+            @click="closeDialog()"
+          >
+            Cancel
+          </Button>
+          
+          <Button 
+            variant="solid" 
+            size="sm"
+            :loading="isCreating"
+            @click="handleSubmit()"
+          >
+            {{ isCreateMode ? 'Create' : 'Update' }}
+          </Button>
+        </template>
       </div>
     </template>
   </Dialog>
@@ -116,60 +178,6 @@ const dialogTitle = computed(() => {
     default:
       return 'Appointment'
   }
-})
-
-const dialogActions = computed(() => {
-  const actions = []
-  
-  if (isViewMode.value) {
-    actions.push({
-      label: 'Close',
-      variant: 'outline',
-      // handler: () => closeDialog()
-      onClick: () => closeDialog()
-    })
-    
-    if (appointment['Patient Appointment']['status'] !== 'cancelled') {
-      actions.push({
-        label: 'Edit',
-        variant: 'outline',
-        onClick: () => editAppointment()
-      })
-    }
-    
-    if (appointment['Patient Appointment']['status'] === 'scheduled') {
-      actions.push({
-        label: 'Mark Complete',
-        variant: 'solid',
-        theme: 'green',
-        onClick: () => completeAppointment()
-      })
-    }
-    
-    if (appointment['Patient Appointment']['status'] !== 'cancelled') {
-      actions.push({
-        label: 'Cancel',
-        variant: 'outline',
-        theme: 'red',
-        onClick: () => showCancelConfirmation()
-      })
-    }
-  } else {
-    actions.push({
-      label: 'Cancel',
-      variant: 'outline',
-      onClick: () => closeDialog()
-    })
-    
-    actions.push({
-      label: isCreateMode.value ? 'Create Appointment' : 'Update Appointment',
-      variant: 'solid',
-      loading: isCreating.value,
-      onClick: () => handleSubmit()
-    })
-  }
-  
-  return actions
 })
 
 
@@ -1040,5 +1048,10 @@ onUnmounted(() => {
 /* Base dialog wrapper styling */
 .appointment-dialog-overlay {
   z-index: 1050 !important;
+}
+
+/* Custom actions styling */
+:deep(.dialog .actions) {
+  padding: 1rem !important;
 }
 </style>
