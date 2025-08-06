@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { createResource } from 'frappe-ui'
+import { useToast } from '../composables/useToast'
 
 export const usePractitionerStore = defineStore('practitioners', {
   state: () => ({
@@ -74,6 +75,8 @@ export const usePractitionerStore = defineStore('practitioners', {
         
       } catch (error) {
         console.warn('⚠️ API call failed, using sample data for testing:', error.message)
+        const { notifications } = useToast()
+        notifications.error.dataLoadFailed(error.message || 'practitioners')
         
       } finally {
         this.isLoading = false

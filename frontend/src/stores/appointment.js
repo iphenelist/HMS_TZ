@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { createListResource } from 'frappe-ui'
 import dayjs from 'dayjs'
+import { useToast } from '../composables/useToast'
 
 export const useAppointmentStore = defineStore('appointments', {
   state: () => ({
@@ -113,6 +114,8 @@ export const useAppointmentStore = defineStore('appointments', {
       } catch (error) {
         this.error = error.message || 'Failed to fetch appointments'
         console.error('❌ Error fetching appointments:', error)
+        const { notifications } = useToast()
+        notifications.error.dataLoadFailed(error.message || 'appointments')
         this.appointments = []
         throw error
       } finally {
