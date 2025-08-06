@@ -227,12 +227,13 @@ import PractitionerCard from './PractitionerCard.vue'
 import AppointmentCard from './AppointmentCard.vue'
 import AppointmentDialog from './AppointmentDialog.vue'
 import Link from '../controls/Link.vue'
-import { notifications } from '@/utils/notifications'
+import { useToast } from '@/composables/useToast'
 import dayjs from 'dayjs'
 
 const appointmentStore = useAppointmentStore()
 const practitionerStore = usePractitionerStore()
 const dateStore = useDateStore()
+const { notifications } = useToast()
 
 // Refs for DOM elements
 const practitionersArea = ref(null)
