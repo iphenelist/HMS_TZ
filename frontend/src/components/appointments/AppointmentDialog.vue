@@ -119,7 +119,7 @@ import {  createResource } from 'frappe-ui'
 import { useAppointmentStore } from '@/stores/appointment'
 import { usePractitionerStore } from '@/stores/practitioner'
 import { useDateStore } from '@/stores/date'
-import { notifications } from '@/utils/notifications'
+import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
 import dayjs from 'dayjs'
 
@@ -153,6 +153,7 @@ const emit = defineEmits(['update:showDialog', 'closeDialog', 'appointmentCreate
 const appointmentStore = useAppointmentStore()
 const practitionerStore = usePractitionerStore()
 const dateStore = useDateStore()
+const { notifications, handleResourceError } = useToast()
 
 // Local dialog state for v-model approach
 const localShowDialog = ref(props.showDialog)
@@ -781,11 +782,8 @@ const appointment_doc = createResource({
   },
   onError: (err) => {
     isCreating.value = false
-    if (!err.messages) {
-      error.value = err.message
-      return
-    }
-    error.value = err.messages.join('\n')
+    handleResourceError(err)
+    notifications.error.appointmentCreateFailed(err.message)
   }
 })
 
@@ -827,11 +825,8 @@ const patient_doc = createResource({
     console.log('Patient created successfully')
   },
   onError: (err) => {
-    if (!err.messages) {
-      error.value = err.message
-      return
-    }
-    error.value = err.messages.join('\n')
+    handleResourceError(err)
+    notifications.error.patientCreateFailed(err.message)
   }
 })
 
@@ -866,11 +861,8 @@ const insurance_doc = createResource({
     console.log('Insurance subscription created successfully')
   },
   onError: (err) => {
-    if (!err.messages) {
-      error.value = err.message
-      return
-    }
-    error.value = err.messages.join('\n')
+    handleResourceError(err)
+    notifications.error.appointmentCreateFailed(err.message)
   }
 })
 
