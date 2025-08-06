@@ -5,7 +5,7 @@ export const useToast = () => {
 
   const showToast = (message, type = 'info', options = {}) => {
     const defaultOptions = {
-      timeout: options.timeout || 5000,
+      timeout: options.timeout || 5000, // Default to 5 seconds for better readability
       position: options.position || 'bottom-right',
       hideProgressBar: true,
       closeOnClick: true,
@@ -20,7 +20,7 @@ export const useToast = () => {
         toast.success(message, defaultOptions);
         break;
       case 'error':
-        toast.error(message, { ...defaultOptions, timeout: options.timeout || 8000 });
+        toast.error(message, { ...defaultOptions, timeout: options.timeout || 5000 }); // Longer timeout for errors
         break;
       case 'warning':
         toast.warning(message, defaultOptions);
