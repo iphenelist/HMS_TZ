@@ -40,7 +40,6 @@
               :sections="sections" 
               :data="appointment" 
             />
-            <div v-if="error" class="mt-4 text-lg font-bold text-red-600">{{ error }}</div>
           </div>
         </div>
       </div>
@@ -153,7 +152,7 @@ const emit = defineEmits(['update:showDialog', 'closeDialog', 'appointmentCreate
 const appointmentStore = useAppointmentStore()
 const practitionerStore = usePractitionerStore()
 const dateStore = useDateStore()
-const { notifications, handleResourceError } = useToast()
+const { notifications, handleResourceError, showError } = useToast()
 
 // Local dialog state for v-model approach
 const localShowDialog = ref(props.showDialog)
@@ -705,36 +704,106 @@ const resetAppointment = () => {
 
 
 const validateForm = () => {
-  // Validate appointment form based on sections
+  // Clear previous errors
   Object.keys(errors).forEach(key => delete errors[key])
   
   const appointmentData = appointment["Patient Appointment"]
+  const patientData = appointment["Patient"]
+  const insuranceData = appointment["Healthcare Insurance Subscription"]
+  const validationErrors = []
   
-  if (!appointmentData.patient_name?.trim() && appointmentData.is_new_patient) {
-    errors.patient_name = 'Patient name is required'
+  // Payment mode validation
+  if (!appointmentData.payment_mode) {
+    validationErrors.push('Payment Mode is required')
   }
   
-  if (!appointmentData.patient && !appointmentData.is_new_patient) {
-    errors.patient = 'Patient is required'
+  // Insurance-specific validations
+  if (appointmentData.payment_mode === 'Insurance') {
+    if (!appointmentData.insurance_provider) {
+      validationErrors.push('Insurance Provider is required')
+    }
+    if (!appointmentData.card_no) {
+      validationErrors.push('Card No is required')
+    }
+    if (!appointmentData.national_id) {
+      validationErrors.push('National ID is required')
+    }
+    
+    // Insurance subscription validations
+    if (appointmentData.is_new_his) {
+      if (!insuranceData.insurance_company) {
+        validationErrors.push('Insurance Company is required')
+      }
+      if (!insuranceData.healthcare_insurance_coverage_plan) {
+        validationErrors.push('Coverage Plan is required')
+      }
+    }
   }
   
+  // Patient validations
+  if (appointmentData.is_new_patient) {
+    if (!patientData.first_name?.trim()) {
+      validationErrors.push('First Name is required')
+    }
+    if (!patientData.last_name?.trim()) {
+      validationErrors.push('Last Name is required')
+    }
+    if (!patientData.sex) {
+      validationErrors.push('Sex is required')
+    }
+    if (!patientData.dob) {
+      validationErrors.push('Date of Birth is required')
+    }
+    if (!patientData.mobile) {
+      validationErrors.push('Mobile is required')
+    }
+  } else {
+    if (!appointmentData.patient) {
+      validationErrors.push('Patient is required')
+    }
+  }
+  
+  // Appointment details validations
   if (!appointmentData.practitioner) {
-    errors.practitioner = 'Practitioner is required'
+    validationErrors.push('Practitioner is required')
   }
   
   if (!appointmentData.appointment_type) {
-    errors.appointment_type = 'Appointment type is required'
+    validationErrors.push('Appointment Type is required')
   }
   
   if (!appointmentData.appointment_date) {
-    errors.appointment_date = 'Appointment date is required'
+    validationErrors.push('Appointment Date is required')
   }
   
   if (!appointmentData.appointment_time) {
-    errors.appointment_time = 'Appointment time is required'
+    validationErrors.push('Appointment Time is required')
   }
   
-  return Object.keys(errors).length === 0
+  // Show validation errors as a single toast notification
+  if (validationErrors.length > 0) {
+    let errorMessage
+    
+    if (validationErrors.length === 1) {
+      errorMessage = validationErrors[0]
+    } else {
+      // Create a clean, readable error message with proper formatting
+      const title = 'Please fill in all required fields:'
+      const errorList = validationErrors.map(error => `• ${error}`).join('\n')
+      errorMessage = `${title}\n\n${errorList}`
+    }
+    
+    showError(errorMessage, {
+      timeout: 10000, // Show for 10 seconds as requested
+      position: 'bottom-right', // Use bottom-right position consistently
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: false // Disable dragging to prevent accidental dismissal
+    })
+    return false
+  }
+  
+  return true
 }
 
 // Create resources for document creation
@@ -892,13 +961,15 @@ async function create_appointment_docs() {
 }
 
 const handleSubmit = async () => {
+  // Clear any previous errors
   error.value = ''
   
+  // Validate the form - validation errors will be shown as toast notifications
   if (!validateForm()) {
-    error.value = 'Please fill in all required fields correctly.'
     return
   }
   
+  // Proceed with creating appointment documents
   await create_appointment_docs()
 }
 
