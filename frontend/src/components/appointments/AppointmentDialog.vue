@@ -644,26 +644,10 @@ watch(() => props.showDialog, (newVal, oldVal) => {
   }
 }, { immediate: false })
 
-// Legacy watch for backward compatibility with old store-based approach
-watch(
-  () => appointmentStore.showAppointmentDialog,
-  (isOpen, wasOpen) => {
-    // Only update if legacy store is opening and current dialog is closed
-    // And avoid triggering if it was already open
-    if (isOpen && !wasOpen && !localShowDialog.value) {
-      localShowDialog.value = true
-      emit('update:showDialog', true)
-      ensurePopoverZIndex()
-      resetAppointment()
-      if (appointmentStore.selectedAppointment) {
-      }
-    } else if (!isOpen && wasOpen) {
-      // Store-based dialog is closing
-      restorePopoverZIndex()
-    }
-  },
-  { immediate: false }
-)
+// Legacy watch for backward compatibility with old store-based approach - REMOVED
+// Store-based dialog management is no longer used, everything is handled via v-model
+
+// Watch for dialog prop changes (v-model approach)
 
 
 const resetAppointment = () => {
@@ -930,23 +914,17 @@ const handleSubmit = async () => {
 }
 
 const editAppointment = () => {
-  // For legacy support
-  if (appointmentStore.dialogMode) {
-    appointmentStore.dialogMode = 'edit'
-  }
+  // Switch to edit mode - handled by parent component
+  emit('edit-appointment')
 }
 
 const closeDialog = () => {
   updateDialogState(false)
-  // Close legacy store dialog if open
-  if (appointmentStore.showAppointmentDialog) {
-    appointmentStore.closeAppointmentDialog()
-  }
 }
 
 const completeAppointment = async () => {
   try {
-    const appointmentId = props.appointment?.id || appointmentStore.selectedAppointment?.id
+    const appointmentId = props.appointment?.id
     const result = await appointmentStore.completeAppointment(appointmentId)
     
     if (result?.success) {
@@ -969,7 +947,7 @@ const showCancelConfirmation = () => {
 
 const cancelAppointment = async () => {
   try {
-    const appointmentId = props.appointment?.id || appointmentStore.selectedAppointment?.id
+    const appointmentId = props.appointment?.id
     const result = await appointmentStore.cancelAppointment(appointmentId)
     
     if (result?.success) {

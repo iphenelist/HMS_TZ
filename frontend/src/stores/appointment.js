@@ -7,11 +7,8 @@ export const useAppointmentStore = defineStore('appointments', {
     appointments: [],
     selectedDate: dayjs().format('YYYY-MM-DD'),
     selectedCompany: '',
-    selectedAppointment: null,
     isLoading: false,
     error: null,
-    showAppointmentDialog: false,
-    dialogMode: 'create', // 'create', 'edit', 'view'
     appointmentsResource: null
   }),
 
@@ -66,12 +63,6 @@ export const useAppointmentStore = defineStore('appointments', {
     setSelectedCompany(company) {
       this.selectedCompany = company
       this.fetchAppointments()
-    },
-
-    closeAppointmentDialog() {
-      this.showAppointmentDialog = false
-      this.selectedAppointment = null
-      this.dialogMode = 'create'
     },
 
     async fetchAppointments() {
@@ -153,7 +144,6 @@ export const useAppointmentStore = defineStore('appointments', {
           }
         }
 
-        this.closeAppointmentDialog()
         return { success: true }
       } catch (error) {
         this.error = error.message
