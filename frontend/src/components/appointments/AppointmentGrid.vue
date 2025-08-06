@@ -54,12 +54,6 @@
             </Button>
           </div>
         </div>
-        
-        <!-- <div class="py-2">
-          <div class="text-sm text-gray-500">
-            {{ formattedDate }}
-          </div>
-        </div> -->
       </div>
     </div>
 
@@ -211,6 +205,7 @@
       :appointment="selectedAppointmentData"
       @appointment-created="handleAppointmentCreated"
       @close-dialog="closeAppointmentDialog"
+      @edit-appointment="handleEditAppointment"
     />
     
     <!-- Confirmation Dialog -->
@@ -240,7 +235,6 @@ const practitionerStore = usePractitionerStore()
 const dateStore = useDateStore()
 
 // Refs for DOM elements
-const gridContainer = ref(null)
 const practitionersArea = ref(null)
 const practitionersHeader = ref(null)
 const appointmentsGrid = ref(null)
@@ -663,6 +657,11 @@ const handleAppointmentCreated = async () => {
   if (selectedCompany.value && selectedCompany.value.trim()) {
     await appointmentStore.fetchAppointments()
   }
+}
+
+const handleEditAppointment = () => {
+  // Switch from view mode to edit mode
+  dialogMode.value = 'edit'
 }
 </script>
 

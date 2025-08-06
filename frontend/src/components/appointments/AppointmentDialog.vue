@@ -148,7 +148,7 @@ const props = defineProps({
 })
 
 // Emits for v-model approach
-const emit = defineEmits(['update:showDialog', 'closeDialog', 'appointmentCreated'])
+const emit = defineEmits(['update:showDialog', 'closeDialog', 'appointmentCreated', 'editAppointment'])
 
 const appointmentStore = useAppointmentStore()
 const practitionerStore = usePractitionerStore()
@@ -644,9 +644,6 @@ watch(() => props.showDialog, (newVal, oldVal) => {
   }
 }, { immediate: false })
 
-// Legacy watch for backward compatibility with old store-based approach - REMOVED
-// Store-based dialog management is no longer used, everything is handled via v-model
-
 // Watch for dialog prop changes (v-model approach)
 
 
@@ -915,7 +912,7 @@ const handleSubmit = async () => {
 
 const editAppointment = () => {
   // Switch to edit mode - handled by parent component
-  emit('edit-appointment')
+  emit('editAppointment')
 }
 
 const closeDialog = () => {
