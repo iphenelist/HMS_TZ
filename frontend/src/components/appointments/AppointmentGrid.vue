@@ -206,6 +206,7 @@
       @appointment-created="handleAppointmentCreated"
       @close-dialog="closeAppointmentDialog"
       @edit-appointment="handleEditAppointment"
+      @mode-changed="handleModeChanged"
     />
     
     <!-- Confirmation Dialog -->
@@ -653,10 +654,18 @@ const refreshData = async () => {
   }
 }
 
-const handleAppointmentCreated = async () => {
+const handleAppointmentCreated = async (data) => {
   // Refresh appointments after creating new one
   if (selectedCompany.value && selectedCompany.value.trim()) {
     await appointmentStore.fetchAppointments()
+  }
+}
+
+const handleModeChanged = (newMode, appointmentData) => {
+  // Update dialog mode and appointment data
+  dialogMode.value = newMode
+  if (appointmentData) {
+    selectedAppointmentData.value = appointmentData
   }
 }
 

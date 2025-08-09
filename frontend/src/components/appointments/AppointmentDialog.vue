@@ -25,6 +25,28 @@
     </template> -->
     <template #body-content>
       <div class="space-y-4 relative">
+        <!-- Success Banner for newly created cash appointments -->
+        <div 
+          v-if="isViewMode && justCreated && appointment['Patient Appointment']['payment_mode'] === 'Cash'"
+          class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 animate-pulse-gentle"
+        >
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-green-800">
+                Appointment created successfully! 
+              </p>
+              <p class="text-xs text-green-600 mt-1">
+                You can now create a sales invoice for this cash payment appointment.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div class="bg-white px-2 pb-6 pt-1 sm:px-2">
           <div class="mb-5 flex gap-36 items-center justify-around">
             <!-- <div class="w-112 mb-4">
@@ -140,6 +162,24 @@
             Edit
           </Button>
           
+          <!-- Sales Invoice Button for Cash Appointments -->
+          <Button 
+            v-if="appointment['Patient Appointment']['payment_mode'] === 'Cash' && 
+                  appointment['Patient Appointment']['status'] === 'scheduled'"
+            variant="solid" 
+            size="sm"
+            theme="blue"
+            :disabled="isCreating"
+            @click="createSalesInvoice()"
+            class="font-semibold"
+          >
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+            Create Sales Invoice
+          </Button>
+          
           <Button 
             v-if="appointment['Patient Appointment']['status'] === 'scheduled'"
             variant="solid" 
@@ -226,7 +266,7 @@ const props = defineProps({
 })
 
 // Emits for v-model approach
-const emit = defineEmits(['update:showDialog', 'closeDialog', 'appointmentCreated', 'editAppointment'])
+const emit = defineEmits(['update:showDialog', 'closeDialog', 'appointmentCreated', 'editAppointment', 'modeChanged'])
 
 const appointmentStore = useAppointmentStore()
 const practitionerStore = usePractitionerStore()
@@ -239,6 +279,7 @@ const isCreating = ref(false)
 const statusMessage = ref('')
 const error = ref('')
 const loadingProgress = ref(0)
+const justCreated = ref(false)
 
 // Form validation errors
 const errors = reactive({})
@@ -791,6 +832,7 @@ const resetAppointment = () => {
   statusMessage.value = ''
   loadingProgress.value = 0
   error.value = ''
+  justCreated.value = false
 }
 
 
@@ -908,9 +950,39 @@ const appointment_doc = createResource({
   },
   onSuccess: (data) => {
     notifications.success.appointmentCreated()
-    closeDialog()
-    resetAppointment()
-    emit('appointmentCreated')
+    
+    // For cash appointments, automatically switch to view mode
+    if (appointment['Patient Appointment']['payment_mode'] === 'Cash') {
+      // Update the appointment data with the response from server
+      appointment['Patient Appointment'] = {
+        ...appointment['Patient Appointment'],
+        name: data.name || data.appointment_name,
+        status: data.status || 'scheduled',
+        ...data
+      }
+      
+      // Reset loading state
+      isCreating.value = false
+      statusMessage.value = ''
+      loadingProgress.value = 0
+      
+      // Set flag to show success banner
+      justCreated.value = true
+      
+      // Emit appointmentCreated to refresh parent data
+      emit('appointmentCreated', data)
+      
+      // Small delay to let the UI update, then emit mode change
+      setTimeout(() => {
+        // Emit mode change to view
+        emit('modeChanged', 'view', { 'Patient Appointment': appointment['Patient Appointment'] })
+      }, 300)
+    } else {
+      // For insurance appointments, just close and reset as before
+      closeDialog()
+      resetAppointment()
+      emit('appointmentCreated', data)
+    }
   },
   onError: (err) => {
     handleResourceError(err)
@@ -1126,6 +1198,37 @@ const cancelAppointment = async () => {
   }
 }
 
+const createSalesInvoice = () => {
+  try {
+    const appointmentName = appointment['Patient Appointment']['name']
+    const patientName = appointment['Patient Appointment']['patient_name'] || appointment['Patient Appointment']['patient']
+    
+    if (!appointmentName) {
+      notifications.error.appointmentUpdateFailed('Appointment ID not found')
+      return
+    }
+    
+    // Construct the sales invoice URL
+    const baseUrl = window.location.origin
+    const salesInvoiceUrl = `${baseUrl}/app/sales-invoice/new-sales-invoice-1?patient_appointment=${encodeURIComponent(appointmentName)}`
+    
+    // Show success message
+    notifications.success.generic(`Opening Sales Invoice for ${patientName}`)
+    
+    // Open in new tab
+    window.open(salesInvoiceUrl, '_blank', 'noopener,noreferrer')
+    
+    // Optionally close the dialog after a short delay
+    setTimeout(() => {
+      closeDialog()
+    }, 1000)
+    
+  } catch (error) {
+    console.error('Error creating sales invoice:', error)
+    notifications.error.appointmentUpdateFailed('Error opening Sales Invoice')
+  }
+}
+
 // Cleanup on component unmount
 onUnmounted(() => {
   if (popoverObserver) {
@@ -1244,5 +1347,19 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 4rem;
+}
+
+/* Gentle pulse animation for success banner */
+@keyframes pulse-gentle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 2s ease-in-out 3;
 }
 </style>
