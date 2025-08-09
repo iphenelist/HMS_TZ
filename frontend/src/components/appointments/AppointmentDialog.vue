@@ -899,37 +899,11 @@ const validateForm = () => {
 
 // Create resources for document creation
 const appointment_doc = createResource({
-  url: 'frappe.client.insert',
+  url: 'hms_tz.api.appointment.create_appointment',
   method: 'POST',
   makeParams() {
     return {
-      doc: {
-        doctype: 'Patient Appointment',
-        ...appointment['Patient Appointment']
-      }
-    }
-  },
-  validate(params) {
-    error.value = null
-    if (!params.doc.patient_name && !params.doc.patient) {
-      error.value = 'Patient or Patient Name is required'
-      return error.value
-    }
-    if (!params.doc.practitioner) {
-      error.value = 'Practitioner is required'
-      return error.value
-    }
-    if (!params.doc.appointment_type) {
-      error.value = 'Appointment Type is required'
-      return error.value
-    }
-    if (!params.doc.appointment_date) {
-      error.value = 'Appointment Date is required'
-      return error.value
-    }
-    if (!params.doc.appointment_time) {
-      error.value = 'Appointment Time is required'
-      return error.value
+      appointment_data: appointment['Patient Appointment'],
     }
   },
   onSuccess: (data) => {
