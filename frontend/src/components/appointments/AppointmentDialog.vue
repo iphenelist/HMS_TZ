@@ -25,6 +25,41 @@
     </template> -->
     <template #body-content>
       <div class="space-y-4 relative">
+        <!-- Mode Badge -->
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+                  :class="modeBadgeClasses">
+              <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path v-if="isCreateMode" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                <path v-else-if="props.mode === 'edit'" fill-rule="evenodd" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" clip-rule="evenodd" />
+                <path v-else fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+              </svg>
+              {{ modeBadgeText }}
+            </span>
+          </div>
+          
+          <!-- Sales Invoice Button for Cash Appointments in View Mode -->
+          <div v-if="isViewMode" class="flex items-center">
+            <Button 
+              v-if="appointment['Patient Appointment']['payment_mode'] === 'Cash' && 
+                    !appointment['Patient Appointment']['ref_sales_invoice']"
+              variant="solid" 
+              size="sm"
+              theme="blue"
+              :disabled="isCreating"
+              @click="createSalesInvoice()"
+              class="font-semibold"
+            >
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+              Create Sales Invoice
+            </Button>
+          </div>
+        </div>
+
         <!-- Success Banner for newly created cash appointments -->
         <div 
           v-if="isViewMode && justCreated && appointment['Patient Appointment']['payment_mode'] === 'Cash'"
@@ -42,6 +77,28 @@
               </p>
               <p class="text-xs text-green-600 mt-1">
                 You can now create a sales invoice for this cash payment appointment.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Edit Mode Banner -->
+        <div 
+          v-if="props.mode === 'edit'"
+          class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4"
+        >
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-blue-800">
+                Edit Mode: You can modify selected fields
+              </p>
+              <p class="text-xs text-blue-600 mt-1">
+                Only practitioner, appointment time, and appointment type can be edited.
               </p>
             </div>
           </div>
@@ -160,24 +217,6 @@
             @click="editAppointment()"
           >
             Edit
-          </Button>
-          
-          <!-- Sales Invoice Button for Cash Appointments -->
-          <Button 
-            v-if="appointment['Patient Appointment']['payment_mode'] === 'Cash' && 
-                  appointment['Patient Appointment']['status'] === 'scheduled'"
-            variant="solid" 
-            size="sm"
-            theme="blue"
-            :disabled="isCreating"
-            @click="createSalesInvoice()"
-            class="font-semibold"
-          >
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-            </svg>
-            Create Sales Invoice
           </Button>
           
           <Button 
@@ -301,6 +340,33 @@ const dialogTitle = computed(() => {
   }
 })
 
+// Mode badge styling
+const modeBadgeClasses = computed(() => {
+  switch (props.mode) {
+    case 'create':
+      return 'bg-green-100 text-green-800 border border-green-300'
+    case 'edit':
+      return 'bg-blue-100 text-blue-800 border border-blue-300'
+    case 'view':
+      return 'bg-gray-100 text-gray-800 border border-gray-300'
+    default:
+      return 'bg-gray-100 text-gray-800 border border-gray-300'
+  }
+})
+
+const modeBadgeText = computed(() => {
+  switch (props.mode) {
+    case 'create':
+      return 'Create Mode'
+    case 'edit':
+      return 'Edit Mode'
+    case 'view':
+      return 'View Mode'
+    default:
+      return 'Unknown Mode'
+  }
+})
+
 
 const appointment = reactive({
     "Patient Appointment": {
@@ -309,10 +375,16 @@ const appointment = reactive({
       "is_new_patient": false,
       "patient": "",
       "patient_name": "",
+      "patient_sex": "",
       "practitioner": "",
+      "department": "",
       "appointment_type": "",
       "appointment_date": "",
       "appointment_time": "",
+      "follow_up": false,
+      "has_no_consultation_charges": false,
+      "billing_item": "",
+      "paid_amount": "",
       "referral_no": "",
       "remarks": "",
       "is_new_his": false,
@@ -327,8 +399,8 @@ const appointment = reactive({
       "fpcode": "",
       "poc_reference_no": "",
       "mode_of_payment": "",
-      "billing_item": "",
-      "paid_amount": "",
+      "ref_sales_invoice": "",
+      "status": ""
     },
     "Patient": {
       "first_name": "",
@@ -359,26 +431,53 @@ const appointment = reactive({
 // Computed property to reorder sections with "Initial Data" first
 const sections = computed(() => {
   const paymentMode = appointment['Patient Appointment']['payment_mode']
+  const currentMode = props.mode
   
-  // Helper function to filter fields based on payment mode
+  // Helper function to filter fields based on payment mode and dialog mode
   const filterFieldsByPaymentMode = (fields, doctype) => {
-    if (!paymentMode) {
-      // If payment mode is empty, only show payment_mode field
-      return fields.filter(field => field.name === 'payment_mode')
+    let filteredFields = fields
+    
+    // Only apply payment mode filtering in create mode
+    if (currentMode === 'create') {
+      if (!paymentMode) {
+        // If payment mode is empty in create mode, only show payment_mode field
+        filteredFields = fields.filter(field => field.name === 'payment_mode')
+      } else if (paymentMode === 'Cash') {
+        // Hide insurance-related fields when payment mode is Cash in create mode
+        const insuranceFields = [
+          'insurance_provider', 'card_no', 'national_id', 
+          'insurance_company', 'healthcare_insurance_coverage_plan',
+          'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
+        ]
+        filteredFields = fields.filter(field => !insuranceFields.includes(field.name))
+      }
+    }
+    // In view/edit mode, show ALL fields - don't filter by payment mode
+    
+    // Then filter by dialog mode
+    if (currentMode === 'view') {
+      // In view mode, hide fields that are only relevant during creation
+      const creationOnlyFields = ['is_new_patient', 'is_new_his']
+      filteredFields = filteredFields.filter(field => !creationOnlyFields.includes(field.name))
+      
+      // Make all fields read-only in view mode
+      filteredFields = filteredFields.map(field => ({
+        ...field,
+        read_only: true
+      }))
+    } else if (currentMode === 'edit') {
+      // In edit mode, hide creation-only fields and make most fields read-only except specific editable ones
+      const creationOnlyFields = ['is_new_patient', 'is_new_his']
+      filteredFields = filteredFields.filter(field => !creationOnlyFields.includes(field.name))
+      
+      const editableFields = ['practitioner', 'appointment_time', 'appointment_type']
+      filteredFields = filteredFields.map(field => ({
+        ...field,
+        read_only: !editableFields.includes(field.name)
+      }))
     }
     
-    if (paymentMode === 'Cash') {
-      // Hide insurance-related fields when payment mode is Cash
-      const insuranceFields = [
-        'insurance_provider', 'card_no', 'national_id', 
-        'insurance_company', 'healthcare_insurance_coverage_plan',
-        'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
-      ]
-      return fields.filter(field => !insuranceFields.includes(field.name))
-    }
-    
-    // For Insurance payment mode, show all fields
-    return fields
+    return filteredFields
   }
   
   const allSections = [
@@ -554,8 +653,14 @@ const sections = computed(() => {
               "label": "Patient Name",
               "type": "Data",
               "placeholder": "Patient Name",
-              "reqd": false,
-              "read_only": true
+              "reqd": false
+            },
+            {
+              "name": "patient_sex", 
+              "label": "Gender",
+              "type": "Data",
+              "placeholder": "Gender",
+              "reqd": false
             },
             {
               "name": "practitioner",
@@ -564,6 +669,14 @@ const sections = computed(() => {
               "placeholder": "Practitioner",
               "options": "Healthcare Practitioner",
               "reqd": true
+            },
+            {
+              "name": "department",
+              "label": "Department",
+              "type": "Link",
+              "placeholder": "Department",
+              "options": "Medical Department",
+              "reqd": false
             },
             {
               "name": "appointment_type",
@@ -586,6 +699,35 @@ const sections = computed(() => {
               "type": "Time",
               "placeholder": "Appointment Time",
               "reqd": true
+            },
+            {
+              "name": "follow_up",
+              "label": "Follow Up",
+              "type": "Check",
+              "placeholder": "Follow Up",
+              "reqd": false
+            },
+            {
+              "name": "has_no_consultation_charges",
+              "label": "Has No Consultation Charges",
+              "type": "Check", 
+              "placeholder": "Has No Consultation Charges",
+              "reqd": false
+            },
+            {
+              "name": "billing_item",
+              "label": "Billing Item",
+              "type": "Link",
+              "placeholder": "Billing Item",
+              "options": "Item",
+              "reqd": false
+            },
+            {
+              "name": "paid_amount",
+              "label": "Paid Amount",
+              "type": "Currency",
+              "placeholder": "Paid Amount",
+              "reqd": false
             },
             {
               "name": "is_new_his",
@@ -618,23 +760,29 @@ const sections = computed(() => {
             }
         ], "Patient Appointment"),
         "columns": 3,
-        "hideLabel":false,
+        "hideLabel": currentMode === 'view', // Hide label in view mode since it duplicates dialog title
         "hideBorder":false
     }
   ]
   
-  // Filter sections based on payment mode
-  if (!paymentMode) {
-    // If payment mode is empty, only show Initial Data section
-    return allSections.filter(section => section.label === "Initial Data")
+  // Filter sections based on payment mode and dialog mode
+  if (currentMode === 'create') {
+    // In create mode, filter sections based on payment mode selection
+    if (!paymentMode) {
+      // If payment mode is empty in create mode, only show Initial Data section
+      return allSections.filter(section => section.label === "Initial Data")
+    }
+    
+    if (paymentMode === 'Cash') {
+      // For Cash payment mode in create mode, hide Healthcare Insurance Subscription section
+      return allSections.filter(section => section.doctype !== "Healthcare Insurance Subscription")
+    }
+    
+    // For Insurance payment mode in create mode, show all sections
+    return allSections
   }
   
-  if (paymentMode === 'Cash') {
-    // For Cash payment mode, hide Healthcare Insurance Subscription section
-    return allSections.filter(section => section.doctype !== "Healthcare Insurance Subscription")
-  }
-  
-  // For Insurance payment mode, show all sections
+  // For view mode or edit mode, always show all sections (user needs to see all data)
   return allSections
 })
 
@@ -658,7 +806,10 @@ const updateDialogState = (newVal) => {
     // Dialog is closing - restore normal popover z-index
     restorePopoverZIndex()
     emit('closeDialog')
-    resetAppointment()
+    // Only reset appointment data if not in view mode to preserve data
+    if (!isViewMode.value) {
+      resetAppointment()
+    }
   }
 }
 
@@ -756,6 +907,8 @@ watch(() => props.showDialog, (newVal, oldVal) => {
         resetAppointment()
         error.value = ''
         if (props.appointment && Object.keys(props.appointment).length > 0) {
+          // Load existing appointment data for view/edit mode
+          loadAppointmentData(props.appointment)
         } else if (isCreateMode.value) {
           // Pre-fill data for create mode
           appointment['Patient Appointment']['appointment_time'] = props.timeSlot
@@ -770,6 +923,21 @@ watch(() => props.showDialog, (newVal, oldVal) => {
   }
 }, { immediate: false })
 
+// Watch for appointment prop changes (for view/edit mode updates from parent)
+watch(() => props.appointment, (newAppointment) => {
+  if (newAppointment && Object.keys(newAppointment).length > 0 && (isViewMode.value || props.mode === 'edit')) {
+    loadAppointmentData(newAppointment)
+  }
+}, { deep: true, immediate: true })
+
+// Watch for mode changes to ensure sections are recalculated
+watch(() => props.mode, (newMode) => {
+  // Force reactivity update by triggering the computed property
+  if ((newMode === 'view' || newMode === 'edit') && props.appointment && Object.keys(props.appointment).length > 0) {
+    loadAppointmentData(props.appointment)
+  }
+}, { immediate: true })
+
 // Watch for dialog prop changes (v-model approach)
 
 
@@ -780,16 +948,23 @@ const resetAppointment = () => {
     "is_new_patient": false,
     "patient": "",
     "patient_name": "",
+    "patient_sex": "",
     "practitioner": "",
+    "department": "",
     "appointment_type": "",
     "appointment_date": "",
     "appointment_time": "",
+    "follow_up": false,
+    "has_no_consultation_charges": false,
+    "billing_item": "",
+    "paid_amount": "",
     "referral_no": "",
     "remarks": "",
     "is_new_his": false,
     "insurance_subscription": "",
     "coverage_plan_card_number": "",
     "national_id": "",
+    "card_no": "",
     "authorization_number": "",
     "require_fingerprint": "",
     "require_facial_recognation": "",
@@ -797,8 +972,8 @@ const resetAppointment = () => {
     "fpcode": "",
     "poc_reference_no": "",
     "mode_of_payment": "",
-    "billing_item": "",
-    "paid_amount": "",
+    "ref_sales_invoice": "",
+    "status": ""
   }
 
   appointment["Patient"] = {
@@ -827,6 +1002,87 @@ const resetAppointment = () => {
     "national_id": "",
   }
 
+  // Reset loading states
+  isCreating.value = false
+  statusMessage.value = ''
+  loadingProgress.value = 0
+  error.value = ''
+  justCreated.value = false
+}
+
+// Function to load existing appointment data for view/edit mode
+const loadAppointmentData = (appointmentData) => {
+  if (!appointmentData) return
+  
+  console.log('Loading appointment data:', appointmentData) // Debug log
+  
+  // Handle both nested structure and flat structure
+  if (appointmentData['Patient Appointment']) {
+    // Nested structure
+    const appointmentInfo = appointmentData['Patient Appointment']
+    Object.keys(appointment['Patient Appointment']).forEach(key => {
+      if (appointmentInfo[key] !== undefined) {
+        appointment['Patient Appointment'][key] = appointmentInfo[key]
+      }
+    })
+    
+    if (appointmentData['Patient']) {
+      Object.keys(appointment['Patient']).forEach(key => {
+        if (appointmentData['Patient'][key] !== undefined) {
+          appointment['Patient'][key] = appointmentData['Patient'][key]
+        }
+      })
+      
+      // Map patient fields to appointment fields for display
+      if (appointmentData['Patient']['sex']) {
+        appointment['Patient Appointment']['patient_sex'] = appointmentData['Patient']['sex']
+      }
+    }
+    
+    if (appointmentData['Healthcare Insurance Subscription']) {
+      Object.keys(appointment['Healthcare Insurance Subscription']).forEach(key => {
+        if (appointmentData['Healthcare Insurance Subscription'][key] !== undefined) {
+          appointment['Healthcare Insurance Subscription'][key] = appointmentData['Healthcare Insurance Subscription'][key]
+        }
+      })
+    }
+  } else {
+    // Flat structure - appointmentData is the appointment directly
+    Object.keys(appointment['Patient Appointment']).forEach(key => {
+      if (appointmentData[key] !== undefined) {
+        appointment['Patient Appointment'][key] = appointmentData[key]
+      }
+    })
+    
+    // Handle patient fields that might come from linked patient data
+    if (appointmentData.patient_sex) {
+      appointment['Patient Appointment']['patient_sex'] = appointmentData.patient_sex
+    }
+    if (appointmentData.sex) { // Alternative field name
+      appointment['Patient Appointment']['patient_sex'] = appointmentData.sex
+    }
+  }
+  
+  // Auto-fill payment mode for view/edit mode based on insurance subscription
+  if (props.mode === 'view' || props.mode === 'edit') {
+    // Check multiple ways an appointment might have insurance
+    const hasInsurance = appointment['Patient Appointment']['insurance_subscription'] || 
+                        appointment['Patient Appointment']['insurance_provider'] ||
+                        appointment['Healthcare Insurance Subscription']['insurance_company']
+    
+    appointment['Patient Appointment']['payment_mode'] = hasInsurance ? 'Insurance' : 'Cash'
+    
+    // If we don't have a payment_mode value already, try to determine it from the original data
+    if (!appointment['Patient Appointment']['payment_mode'] && appointmentData) {
+      const originalPaymentMode = appointmentData['Patient Appointment']?.payment_mode || appointmentData.payment_mode
+      if (originalPaymentMode) {
+        appointment['Patient Appointment']['payment_mode'] = originalPaymentMode
+      }
+    }
+  }
+  
+  console.log('Loaded appointment:', appointment) // Debug log
+  
   // Reset loading states
   isCreating.value = false
   statusMessage.value = ''
@@ -954,12 +1210,13 @@ const appointment_doc = createResource({
     // For cash appointments, automatically switch to view mode
     if (appointment['Patient Appointment']['payment_mode'] === 'Cash') {
       // Update the appointment data with the response from server
-      appointment['Patient Appointment'] = {
+      const updatedAppointment = {
         ...appointment['Patient Appointment'],
         name: data.name || data.appointment_name,
         status: data.status || 'scheduled',
         ...data
       }
+      appointment['Patient Appointment'] = updatedAppointment
       
       // Reset loading state
       isCreating.value = false
@@ -972,10 +1229,14 @@ const appointment_doc = createResource({
       // Emit appointmentCreated to refresh parent data
       emit('appointmentCreated', data)
       
-      // Small delay to let the UI update, then emit mode change
+      // Small delay to let the UI update, then emit mode change with complete appointment data
       setTimeout(() => {
-        // Emit mode change to view
-        emit('modeChanged', 'view', { 'Patient Appointment': appointment['Patient Appointment'] })
+        // Emit mode change to view with complete appointment object
+        emit('modeChanged', 'view', {
+          'Patient Appointment': appointment['Patient Appointment'],
+          'Patient': appointment['Patient'],
+          'Healthcare Insurance Subscription': appointment['Healthcare Insurance Subscription']
+        })
       }, 300)
     } else {
       // For insurance appointments, just close and reset as before
