@@ -760,7 +760,7 @@ const sections = computed(() => {
             }
         ], "Patient Appointment"),
         "columns": 3,
-        "hideLabel": currentMode === 'view', // Hide label in view mode since it duplicates dialog title
+        "hideLabel": ['view', 'edit'].includes(currentMode), // Hide label in view mode since it duplicates dialog title
         "hideBorder":false
     }
   ]
