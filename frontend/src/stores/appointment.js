@@ -17,7 +17,7 @@ export const useAppointmentStore = defineStore('appointments', {
     appointmentsByTimeSlot: (state) => {
       const grouped = {}
       state.appointments.forEach(appointment => {
-        const key = `${appointment.time_slot}-${appointment.practitioner_id}`
+        const key = `${appointment.appointment_time}-${appointment.practitioner}`
         grouped[key] = appointment
       })
       return grouped
@@ -44,7 +44,19 @@ export const useAppointmentStore = defineStore('appointments', {
             'mode_of_payment',
             'billing_item',
             'paid_amount',
-            'invoiced'
+            'invoiced',
+            'referral_no',
+            'remarks',
+            'coverage_plan_name',
+            'nhif_employer_name',
+            'daily_limit',
+            'apply_fasttrack_charge',
+            'authorization_number',
+            'poc_reference_no',
+            'require_fingerprint',
+            'require_facial_recognation',
+            'biometric_method',
+            'fpcode'
           ],
           filters: {},
           orderBy: 'appointment_time asc',
@@ -94,21 +106,34 @@ export const useAppointmentStore = defineStore('appointments', {
         this.appointments = (this.appointmentsResource.data || []).map(appointment => ({
           id: appointment.name,
           name: appointment.name,
+          patient: appointment.patient,
           patient_name: appointment.patient_name,
-          patient_id: appointment.patient,
-          practitioner_id: appointment.practitioner,
-          time_slot: dayjs(`2024-01-01 ${appointment.appointment_time}`).format('HH:mm'), // Normalize to HH:mm format
-          date: appointment.appointment_date,
+          patient_sex: appointment.patient_sex,
+          practitioner: appointment.practitioner,
+          appointment_time: dayjs(`2024-01-01 ${appointment.appointment_time}`).format('HH:mm'), // Normalize to HH:mm format
+          appointment_date: appointment.appointment_date,
           status: appointment.status?.toLowerCase() || 'scheduled',
           appointment_type: appointment.appointment_type,
           department: appointment.department,
           company: appointment.company,
           insurance_company: appointment.insurance_company || 'Cash',
+          insurance_subscription: appointment.insurance_subscription,
           billing_item: appointment.billing_item,
           paid_amount: appointment.paid_amount || 0,
-          item_rate: appointment.paid_amount || 0,
           mode_of_payment: appointment.mode_of_payment,
           invoiced: appointment.invoiced,
+          referral_no: appointment.referral_no,
+          remarks: appointment.remarks,
+          coverage_plan_name: appointment.coverage_plan_name,
+          nhif_employer_name: appointment.nhif_employer_name,
+          daily_limit: appointment.daily_limit,
+          apply_fasttrack_charge: appointment.apply_fasttrack_charge,
+          authorization_number: appointment.authorization_number,
+          poc_reference_no: appointment.poc_reference_no,
+          require_fingerprint: appointment.require_fingerprint,
+          require_facial_recognation: appointment.require_facial_recognation,
+          biometric_method: appointment.biometric_method,
+          fpcode: appointment.fpcode,
         }))
 
       } catch (error) {
