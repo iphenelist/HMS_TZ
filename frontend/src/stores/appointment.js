@@ -33,6 +33,7 @@ export const useAppointmentStore = defineStore('appointments', {
             'name',
             'patient',
             'patient_name',
+            'patient_sex',
             'practitioner',
             'appointment_time',
             'appointment_date',

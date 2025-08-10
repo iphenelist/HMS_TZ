@@ -1058,9 +1058,6 @@ const loadAppointmentData = (appointmentData) => {
     if (appointmentData.patient_sex) {
       appointment['Patient Appointment']['patient_sex'] = appointmentData.patient_sex
     }
-    if (appointmentData.sex) { // Alternative field name
-      appointment['Patient Appointment']['patient_sex'] = appointmentData.sex
-    }
   }
   
   // Auto-fill payment mode for view/edit mode based on insurance subscription
