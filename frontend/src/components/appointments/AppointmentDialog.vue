@@ -591,9 +591,9 @@ const sections = computed(() => {
             },
             {
               "name": "sex",
-              "label": "Sex",
+              "label": "Gender",
               "type": "Select",
-              "placeholder": "Sex",
+              "placeholder": "Gender",
               "options": [
                 {"label": "Male", "value": "Male"},
                 {"label": "Female", "value": "Female"},
@@ -1144,11 +1144,8 @@ const validateForm = () => {
     if (!appointmentData.insurance_provider) {
       validationErrors.push('Insurance Provider is required')
     }
-    if (!appointmentData.card_no) {
-      validationErrors.push('Card No is required')
-    }
-    if (!appointmentData.national_id) {
-      validationErrors.push('National ID is required')
+    if (!appointmentData.card_no && !appointmentData.national_id) {
+      validationErrors.push('Card No or National ID is required')
     }
     
     // Insurance subscription validations
