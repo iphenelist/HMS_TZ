@@ -28,7 +28,7 @@
         <!-- Mode Badge -->
         <div class="flex justify-between items-center mb-4">
           <div class="flex items-center space-x-2">
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
                   :class="modeBadgeClasses">
               <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path v-if="isCreateMode" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -37,6 +37,23 @@
               </svg>
               {{ modeBadgeText }}
             </span>
+          </div>
+
+          <!-- Cancel Appointment Button in View Mode -->
+          <div v-if="isViewMode" class="flex items-center">
+            <Button 
+              v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
+              variant="subtle" 
+              size="md"
+              theme="red"
+              :disabled="isCreating"
+              @click="showCancelConfirmation()"
+            >
+              <template #prefix>
+                <FeatherIcon name="x" class="w-4 h-4" /> 
+              </template>
+              Cancel Appointment
+            </Button>
           </div>
           
           <!-- Sales Invoice Button for Cash Appointments in View Mode -->
@@ -223,56 +240,57 @@
           <template v-if="isViewMode">
             <Button 
               variant="outline" 
-              size="sm"
+              size="lg"
               :disabled="isCreating"
               @click="closeDialog()"
             >
+              <template #prefix>
+                <FeatherIcon name="x" class="w-4 h-4 mr-1" />
+              </template>
               Close
             </Button>
             
             <Button 
               v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
               variant="outline" 
-              size="sm"
+              size="lg"
+              theme="gray"
               :disabled="isCreating"
               @click="editAppointment()"
             >
+              <template #suffix>
+                <FeatherIcon name="edit-3" class="w-4 h-4 mr-1" />
+              </template>
               Edit
-            </Button>
-            
-
-            
-            <Button 
-              v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
-              variant="outline" 
-              size="sm"
-              theme="red"
-              :disabled="isCreating"
-              @click="showCancelConfirmation()"
-            >
-              Cancel
             </Button>
           </template>
           
           <template v-else>
             <Button 
               variant="subtle" 
-              size="sm"
+              size="lg"
               theme="gray"
               :disabled="isCreating"
               @click="closeDialog()"
             >
+              <template #prefix>
+                <FeatherIcon name="x" class="w-4 h-4 mr-1" />
+              </template>
               Cancel
             </Button>
             
             <Button 
-              variant="solid" 
-              size="sm"
+              variant="subtle" 
+              size="lg"
+              theme="blue"
               :loading="isCreating"
               :disabled="isCreating"
               @click="handleSubmit()"
             >
               {{ isCreateMode ? 'Create' : 'Update' }}
+              <template #suffix>
+                <FeatherIcon name="check-circle" class="w-4 h-4 mr-1" />
+              </template>
             </Button>
           </template>
         </div>
