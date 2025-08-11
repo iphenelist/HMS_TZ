@@ -42,7 +42,7 @@
           <!-- Cancel Appointment Button in View Mode -->
           <div v-if="isViewMode" class="flex items-center">
             <Button 
-              v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
+              v-if="appointment['Patient Appointment']['status'] !== 'cancelled' && canShowCancelButton"
               variant="subtle" 
               size="md"
               theme="red"
@@ -396,6 +396,11 @@ const modeBadgeText = computed(() => {
     default:
       return 'Unknown Mode'
   }
+})
+
+// Role-based visibility for Cancel button
+const canShowCancelButton = computed(() => {
+  return appointmentStore.canCancelAppointment
 })
 
 
@@ -1534,6 +1539,9 @@ const handleKeyDown = (event) => {
 // Add keyboard event listener
 onMounted(() => {
   document.addEventListener('keydown', handleKeyDown, { capture: true })
+  
+  // Fetch user roles when component mounts
+  appointmentStore.fetchUserRoles()
 })
 </script>
 
