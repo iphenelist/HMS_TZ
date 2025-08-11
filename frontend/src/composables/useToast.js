@@ -58,7 +58,6 @@ export const useToast = () => {
     appointmentCreated: () => showSuccess('Appointment created successfully!'),
     appointmentUpdated: () => showSuccess('Appointment updated successfully!'),
     appointmentCancelled: () => showSuccess('Appointment cancelled successfully!'),
-    appointmentCompleted: () => showSuccess('Appointment marked as completed!'),
     appointmentRescheduled: () => showSuccess('Appointment rescheduled successfully!'),
     patientCreated: () => showSuccess('Patient created successfully!'),
     dataRefreshed: () => showSuccess('Data refreshed successfully!'),

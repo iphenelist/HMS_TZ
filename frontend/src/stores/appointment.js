@@ -181,10 +181,6 @@ export const useAppointmentStore = defineStore('appointments', {
 
     async cancelAppointment(appointmentId) {
       return this.updateAppointment(appointmentId, { status: 'cancelled' })
-    },
-
-    async completeAppointment(appointmentId) {
-      return this.updateAppointment(appointmentId, { status: 'completed' })
     }
   }
 })

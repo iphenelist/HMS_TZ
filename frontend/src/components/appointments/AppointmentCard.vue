@@ -48,7 +48,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'complete', 'cancel'])
+const emit = defineEmits(['click', 'cancel'])
 
 // Status-based styling
 const cardStyleClasses = computed(() => {

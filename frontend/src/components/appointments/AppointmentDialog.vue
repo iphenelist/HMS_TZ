@@ -240,16 +240,7 @@
               Edit
             </Button>
             
-            <Button 
-              v-if="appointment['Patient Appointment']['status'] === 'scheduled'"
-              variant="solid" 
-              size="sm"
-              theme="green"
-              :disabled="isCreating"
-              @click="completeAppointment()"
-            >
-              Mark Complete
-            </Button>
+
             
             <Button 
               v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
@@ -1445,23 +1436,6 @@ const closeDialog = () => {
     return
   }
   updateDialogState(false)
-}
-
-const completeAppointment = async () => {
-  try {
-    const appointmentId = props.appointment?.id
-    const result = await appointmentStore.completeAppointment(appointmentId)
-    
-    if (result?.success) {
-      notifications.success.appointmentCompleted()
-      closeDialog()
-    } else {
-      notifications.error.appointmentUpdateFailed('Failed to update appointment status')
-    }
-  } catch (error) {
-    notifications.error.appointmentUpdateFailed('Error updating appointment')
-    console.error(error)
-  }
 }
 
 const showCancelConfirmation = () => {

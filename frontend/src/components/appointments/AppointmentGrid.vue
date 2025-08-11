@@ -130,7 +130,6 @@
                   v-if="getAppointment(slot.time, practitioner.name)"
                   :appointment="getAppointment(slot.time, practitioner.name)"
                   @click="viewAppointment"
-                  @complete="handleCompleteAppointment"
                   @cancel="handleCancelAppointment"
                 />
                 
@@ -595,30 +594,10 @@ const closeAppointmentDialog = () => {
   dialogMode.value = 'create'
 }
 
-const handleCompleteAppointment = (appointment) => {
-  confirmMessage.value = `Mark appointment with ${appointment.patient_name} as completed?`
-  confirmAction.value = () => completeAppointment(appointment)
-  showConfirmDialog.value = true
-}
-
 const handleCancelAppointment = (appointment) => {
   confirmMessage.value = `Cancel appointment with ${appointment.patient_name}?`
   confirmAction.value = () => cancelAppointment(appointment)
   showConfirmDialog.value = true
-}
-
-const completeAppointment = async (appointment) => {
-  try {
-    const result = await appointmentStore.completeAppointment(appointment.name)
-    if (result.success) {
-      notifications.success.appointmentCompleted()
-    } else {
-      notifications.error.appointmentUpdateFailed(result.error || 'Unknown error')
-    }
-  } catch (error) {
-    notifications.error.appointmentUpdateFailed('Error completing appointment')
-    console.error(error)
-  }
 }
 
 const cancelAppointment = async (appointment) => {
