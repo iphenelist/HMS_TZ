@@ -208,9 +208,12 @@
             theme="black"
             :disabled="isCreating"
             @click="backToViewMode()"
-            class="font-medium"
+            class="font-medium inline-flex items-center"
             title="Back to previous page"
           >
+            <template #prefix>
+              <FeatherIcon name="arrow-left" class="w-4 h-4 mr-1" />
+            </template>
             Back
           </Button>
         </div>
