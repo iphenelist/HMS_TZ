@@ -47,3 +47,18 @@ def get_mode_of_payment():
         frappe.throw(f"No mode of payment found for user: {user}")
 
     return mp_data[0].get("mode_of_payment", "")
+
+
+@frappe.whitelist()
+def get_user_roles():
+    """
+    Fetch user roles.
+    """
+    
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+    
+    if not roles:
+        frappe.throw(f"No roles found for user: {user}")
+    
+    return roles

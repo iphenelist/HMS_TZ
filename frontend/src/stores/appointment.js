@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { createListResource } from 'frappe-ui'
+import { createListResource, createResource } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { useToast } from '../composables/useToast'
 
@@ -10,7 +10,9 @@ export const useAppointmentStore = defineStore('appointments', {
     selectedCompany: '',
     isLoading: false,
     error: null,
-    appointmentsResource: null
+    appointmentsResource: null,
+    userRoles: [],
+    rolesLoading: false
   }),
 
   getters: {
@@ -21,6 +23,11 @@ export const useAppointmentStore = defineStore('appointments', {
         grouped[key] = appointment
       })
       return grouped
+    },
+
+    canCancelAppointment: (state) => {
+      const allowedRoles = ['System Manager', 'Healthcare Administrator', 'Healthcare Head Receptionist']
+      return state.userRoles.some(role => allowedRoles.includes(role))
     }
   },
 
@@ -181,6 +188,32 @@ export const useAppointmentStore = defineStore('appointments', {
 
     async cancelAppointment(appointmentId) {
       return this.updateAppointment(appointmentId, { status: 'cancelled' })
+    },
+
+    async fetchUserRoles() {
+      this.rolesLoading = true
+      this.error = null
+
+      try {
+        const userRolesResource = createResource({
+          url: 'hms_tz.api.appointment.get_user_roles',
+          auto: false
+        })
+
+        const roles = await userRolesResource.fetch()
+        this.userRoles = roles || []
+        
+        return { success: true, roles: this.userRoles }
+      } catch (error) {
+        this.error = error.message || 'Failed to fetch user roles'
+        console.error('❌ Error fetching user roles:', error)
+        const { notifications } = useToast()
+        notifications.error.dataLoadFailed(error.message || 'user roles')
+        this.userRoles = []
+        return { success: false, error: error.message }
+      } finally {
+        this.rolesLoading = false
+      }
     }
   }
 })
