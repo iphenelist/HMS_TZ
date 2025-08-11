@@ -198,71 +198,90 @@
     </template>
     
     <template #actions>
-      <div class="flex gap-2 justify-end">
-        <template v-if="isViewMode">
-          <Button 
-            variant="outline" 
-            size="sm"
+      <div class="flex gap-2 justify-between">
+        <!-- Back button for edit mode -->
+        <div class="flex items-center">
+          <Button
+            v-if="props.mode === 'edit'"
+            variant="subtle"
+            size="md"
+            theme="black"
             :disabled="isCreating"
-            @click="closeDialog()"
+            @click="backToViewMode()"
+            class="font-medium"
+            title="Back to previous page"
           >
-            Close
+            Back
           </Button>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex gap-2">
+          <template v-if="isViewMode">
+            <Button 
+              variant="outline" 
+              size="sm"
+              :disabled="isCreating"
+              @click="closeDialog()"
+            >
+              Close
+            </Button>
+            
+            <Button 
+              v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
+              variant="outline" 
+              size="sm"
+              :disabled="isCreating"
+              @click="editAppointment()"
+            >
+              Edit
+            </Button>
+            
+            <Button 
+              v-if="appointment['Patient Appointment']['status'] === 'scheduled'"
+              variant="solid" 
+              size="sm"
+              theme="green"
+              :disabled="isCreating"
+              @click="completeAppointment()"
+            >
+              Mark Complete
+            </Button>
+            
+            <Button 
+              v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
+              variant="outline" 
+              size="sm"
+              theme="red"
+              :disabled="isCreating"
+              @click="showCancelConfirmation()"
+            >
+              Cancel
+            </Button>
+          </template>
           
-          <Button 
-            v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
-            variant="outline" 
-            size="sm"
-            :disabled="isCreating"
-            @click="editAppointment()"
-          >
-            Edit
-          </Button>
-          
-          <Button 
-            v-if="appointment['Patient Appointment']['status'] === 'scheduled'"
-            variant="solid" 
-            size="sm"
-            theme="green"
-            :disabled="isCreating"
-            @click="completeAppointment()"
-          >
-            Mark Complete
-          </Button>
-          
-          <Button 
-            v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
-            variant="outline" 
-            size="sm"
-            theme="red"
-            :disabled="isCreating"
-            @click="showCancelConfirmation()"
-          >
-            Cancel
-          </Button>
-        </template>
-        
-        <template v-else>
-          <Button 
-            variant="subtle" 
-            size="sm"
-            theme="gray"
-            :disabled="isCreating"
-            @click="closeDialog()"
-          >
-            Cancel
-          </Button>
-          
-          <Button 
-            variant="solid" 
-            size="sm"
-            :loading="isCreating"
-            :disabled="isCreating"
-            @click="handleSubmit()"
-          >
-            {{ isCreateMode ? 'Create' : 'Update' }}
-          </Button>
-        </template>
+          <template v-else>
+            <Button 
+              variant="subtle" 
+              size="sm"
+              theme="gray"
+              :disabled="isCreating"
+              @click="closeDialog()"
+            >
+              Cancel
+            </Button>
+            
+            <Button 
+              variant="solid" 
+              size="sm"
+              :loading="isCreating"
+              :disabled="isCreating"
+              @click="handleSubmit()"
+            >
+              {{ isCreateMode ? 'Create' : 'Update' }}
+            </Button>
+          </template>
+        </div>
       </div>
     </template>
   </Dialog>
@@ -1406,6 +1425,15 @@ const handleSubmit = async () => {
 const editAppointment = () => {
   // Switch to edit mode - handled by parent component
   emit('editAppointment')
+}
+
+const backToViewMode = () => {
+  // Switch back to view mode with current appointment data
+  emit('modeChanged', 'view', {
+    'Patient Appointment': appointment['Patient Appointment'],
+    'Patient': appointment['Patient'],
+    'Healthcare Insurance Subscription': appointment['Healthcare Insurance Subscription']
+  })
 }
 
 const closeDialog = () => {
