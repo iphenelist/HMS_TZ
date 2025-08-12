@@ -35,7 +35,7 @@ def update_appointment(
     """
     
     has_changed = False
-    appointment_doc = frappe.get_doc("Patient Appointment", appointment_id)
+    appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_id)
     if appointment_doc.practitioner != practitioner:
         validate_practitioner_level(
             appointment_doc.practitioner, practitioner, appointment_doc.inpatient_record
