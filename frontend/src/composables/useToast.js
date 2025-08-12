@@ -66,11 +66,11 @@ export const useToast = () => {
 
   // Appointment error messages
   const notifyError = {
-    appointmentCreateFailed: (error = '') => showError(`Failed to create appointment${error ? ': ' + error : ''}`),
-    appointmentUpdateFailed: (error = '') => showError(`Failed to update appointment${error ? ': ' + error : ''}`),
-    appointmentDeleteFailed: (error = '') => showError(`Failed to cancel appointment${error ? ': ' + error : ''}`),
-    dataLoadFailed: (error = '') => showError(`Failed to load data${error ? ': ' + error : ''}`),
-    patientCreateFailed: (error = '') => showError(`Failed to create patient${error ? ': ' + error : ''}`),
+    appointmentCreateFailed: (error = '') => showError('Failed to create appointment'),
+    appointmentUpdateFailed: (error = '') => showError('Failed to update appointment'),
+    appointmentDeleteFailed: (error = '') => showError('Failed to cancel appointment'),
+    dataLoadFailed: (error = '') => showError('Failed to load data'),
+    patientCreateFailed: (error = '') => showError('Failed to create patient'),
     validationFailed: () => showError('Please fix the form errors'),
     networkError: () => showError('Network error. Please check your connection'),
     serverError: () => showError('Server error. Please try again later')
