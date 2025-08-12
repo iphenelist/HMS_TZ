@@ -115,7 +115,7 @@
                 Edit Mode: You can modify selected fields
               </p>
               <p class="text-xs text-blue-600 mt-1">
-                Only practitioner, appointment time, and appointment type can be edited.
+                Only practitioner, and appointment time can be edited.
               </p>
             </div>
           </div>
@@ -506,7 +506,7 @@ const sections = computed(() => {
       const creationOnlyFields = ['is_new_patient', 'is_new_his']
       filteredFields = filteredFields.filter(field => !creationOnlyFields.includes(field.name))
       
-      const editableFields = ['practitioner', 'appointment_time', 'appointment_type']
+      const editableFields = ['practitioner', 'appointment_time']
       filteredFields = filteredFields.map(field => ({
         ...field,
         read_only: !editableFields.includes(field.name)
@@ -1134,69 +1134,82 @@ const validateForm = () => {
   const insuranceData = appointment["Healthcare Insurance Subscription"]
   const validationErrors = []
   
-  // Payment mode validation
-  if (!appointmentData.payment_mode) {
-    validationErrors.push('Payment Mode is required')
-  }
-  
-  // Insurance-specific validations
-  if (appointmentData.payment_mode === 'Insurance') {
-    if (!appointmentData.insurance_provider) {
-      validationErrors.push('Insurance Provider is required')
-    }
-    if (!appointmentData.card_no && !appointmentData.national_id) {
-      validationErrors.push('Card No or National ID is required')
+  // For edit mode, only validate editable fields
+  if (props.mode === 'edit') {
+    // Only validate practitioner, appointment_time, and appointment_type for edit mode
+    if (!appointmentData.practitioner) {
+      validationErrors.push('Practitioner is required')
     }
     
-    // Insurance subscription validations
-    if (appointmentData.is_new_his) {
-      if (!insuranceData.insurance_company) {
-        validationErrors.push('Insurance Company is required')
-      }
-      if (!insuranceData.healthcare_insurance_coverage_plan) {
-        validationErrors.push('Coverage Plan is required')
-      }
-    }
-  }
-  
-  // Patient validations
-  if (appointmentData.is_new_patient) {
-    if (!patientData.first_name?.trim()) {
-      validationErrors.push('First Name is required')
-    }
-    if (!patientData.last_name?.trim()) {
-      validationErrors.push('Last Name is required')
-    }
-    if (!patientData.sex) {
-      validationErrors.push('Sex is required')
-    }
-    if (!patientData.dob) {
-      validationErrors.push('Date of Birth is required')
-    }
-    if (!patientData.mobile) {
-      validationErrors.push('Mobile is required')
+    if (!appointmentData.appointment_time) {
+      validationErrors.push('Appointment Time is required')
     }
   } else {
-    if (!appointmentData.patient) {
-      validationErrors.push('Patient is required')
+    // Full validation for create mode
+    // Payment mode validation
+    if (!appointmentData.payment_mode) {
+      validationErrors.push('Payment Mode is required')
     }
-  }
-  
-  // Appointment details validations
-  if (!appointmentData.practitioner) {
-    validationErrors.push('Practitioner is required')
-  }
-  
-  if (!appointmentData.appointment_type) {
-    validationErrors.push('Appointment Type is required')
-  }
-  
-  if (!appointmentData.appointment_date) {
-    validationErrors.push('Appointment Date is required')
-  }
-  
-  if (!appointmentData.appointment_time) {
-    validationErrors.push('Appointment Time is required')
+    
+    // Insurance-specific validations
+    if (appointmentData.payment_mode === 'Insurance') {
+      if (!appointmentData.insurance_provider) {
+        validationErrors.push('Insurance Provider is required')
+      }
+      if (!appointmentData.card_no && !appointmentData.national_id) {
+        validationErrors.push('Card No or National ID is required')
+      }
+      
+      // Insurance subscription validations
+      if (appointmentData.is_new_his) {
+        if (!insuranceData.insurance_company) {
+          validationErrors.push('Insurance Company is required')
+        }
+        if (!insuranceData.healthcare_insurance_coverage_plan) {
+          validationErrors.push('Coverage Plan is required')
+        }
+      }
+    }
+    
+    // Patient validations
+    if (appointmentData.is_new_patient) {
+      if (!patientData.first_name?.trim()) {
+        validationErrors.push('First Name is required')
+      }
+      if (!patientData.last_name?.trim()) {
+        validationErrors.push('Last Name is required')
+      }
+      if (!patientData.sex) {
+        validationErrors.push('Sex is required')
+      }
+      if (!patientData.dob) {
+        validationErrors.push('Date of Birth is required')
+      }
+      if (!patientData.mobile) {
+        validationErrors.push('Mobile is required')
+      }
+    } else {
+      if (!appointmentData.patient) {
+        validationErrors.push('Patient is required')
+      }
+    }
+    
+    // Appointment details validations
+    if (!appointmentData.practitioner) {
+      validationErrors.push('Practitioner is required')
+    }
+    
+    if (!appointmentData.appointment_type) {
+      validationErrors.push('Appointment Type is required')
+    }
+    
+    if (!appointmentData.appointment_date) {
+      validationErrors.push('Appointment Date is required')
+    }
+    
+    if (!appointmentData.appointment_time) {
+      validationErrors.push('Appointment Time is required')
+    }
   }
   
   // Show validation errors as a single toast notification
@@ -1360,6 +1373,49 @@ const insurance_doc = createResource({
   }
 })
 
+// Create resource for updating appointment
+const update_appointment_doc = createResource({
+  url: 'hms_tz.api.appointment.update_appointment',
+  method: 'POST',
+  makeParams() {
+    return {
+      appointment_id: props.appointment.name || appointment['Patient Appointment'].name,
+      practitioner: appointment['Patient Appointment']['practitioner'],
+      appointment_time: appointment['Patient Appointment']['appointment_time'],
+      appointment_type: appointment['Patient Appointment']['appointment_type']
+    }
+  },
+  onSuccess: (data) => {
+    notifications.success.appointmentUpdated()
+    
+    // Reset loading state
+    isCreating.value = false
+    statusMessage.value = ''
+    loadingProgress.value = 0
+    
+    // Emit appointmentUpdated to refresh parent data
+    emit('appointmentCreated', data) // Reuse the same event for consistency
+    
+    // Switch back to view mode with updated appointment data
+    setTimeout(() => {
+      emit('modeChanged', 'view', {
+        'Patient Appointment': appointment['Patient Appointment'],
+        'Patient': appointment['Patient'],
+        'Healthcare Insurance Subscription': appointment['Healthcare Insurance Subscription']
+      })
+    }, 300)
+  },
+  onError: (err) => {
+    handleResourceError(err)
+    notifications.error.appointmentUpdateFailed(err.message)
+    
+    // Reset loading state on error
+    isCreating.value = false
+    statusMessage.value = ''
+    loadingProgress.value = 0
+  }
+})
+
 async function create_appointment_docs() {
   isCreating.value = true
   error.value = null
@@ -1432,8 +1488,42 @@ const handleSubmit = async () => {
     return
   }
   
-  // Proceed with creating appointment documents
-  await create_appointment_docs()
+  // Differentiate between create and edit modes
+  if (isCreateMode.value) {
+    // Create mode: proceed with creating appointment documents
+    await create_appointment_docs()
+  } else if (props.mode === 'edit') {
+    // Edit mode: update existing appointment
+    await update_appointment()
+  }
+}
+
+async function update_appointment() {
+  isCreating.value = true
+  error.value = null
+  loadingProgress.value = 0
+
+  try {
+    statusMessage.value = 'Updating appointment...'
+    loadingProgress.value = 50
+
+    await update_appointment_doc.submit()
+
+  } catch (err) {
+    error.value = 'Error while updating appointment'
+    statusMessage.value = 'An error occurred. Please try again.'
+    loadingProgress.value = 0
+  } finally {
+    // Keep loading for a brief moment to show completion
+    if (!error.value) {
+      statusMessage.value = 'Appointment updated successfully!'
+      loadingProgress.value = 100
+      await new Promise(resolve => setTimeout(resolve, 800))
+    }
+    
+    isCreating.value = false
+    loadingProgress.value = 0
+  }
 }
 
 const editAppointment = () => {
