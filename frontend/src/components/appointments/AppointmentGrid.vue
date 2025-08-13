@@ -220,9 +220,9 @@
 <script setup>
 import { onMounted, computed, ref, onUnmounted, nextTick, watch } from 'vue'
 // All Frappe UI components are now globally available from main.js
-import { useAppointmentStore } from '@/stores/appointment'
-import { usePractitionerStore } from '@/stores/practitioner'
-import { useDateStore } from '@/stores/date'
+import { useAppointmentStore } from '@/data/appointment'
+import { usePractitionerStore } from '@/data/practitioner'
+import { useDateStore } from '@/data/date'
 import PractitionerCard from './PractitionerCard.vue'
 import AppointmentCard from './AppointmentCard.vue'
 import AppointmentDialog from './AppointmentDialog.vue'

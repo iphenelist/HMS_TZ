@@ -304,9 +304,9 @@
 <script setup>
 import { computed, reactive, watch, ref, nextTick, onUnmounted, onMounted } from 'vue'
 import {  createResource } from 'frappe-ui'
-import { useAppointmentStore } from '@/stores/appointment'
-import { usePractitionerStore } from '@/stores/practitioner'
-import { useDateStore } from '@/stores/date'
+import { useAppointmentStore } from '@/data/appointment'
+import { usePractitionerStore } from '@/data/practitioner'
+import { useDateStore } from '@/data/date'
 import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
 import dayjs from 'dayjs'
