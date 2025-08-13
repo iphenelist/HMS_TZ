@@ -42,12 +42,13 @@
           <!-- Cancel Appointment Button in View Mode -->
           <div v-if="isViewMode" class="flex items-center">
             <Button 
-              v-if="appointment['Patient Appointment']['status'] !== 'cancelled' && canShowCancelButton"
+              v-if="appointment['Patient Appointment']['status']?.toLowerCase() !== 'cancelled' && canShowCancelButton"
               variant="subtle" 
               size="md"
               theme="red"
-              :disabled="isCreating"
-              @click="showCancelConfirmation()"
+              :disabled="isCreating || cancel_appointment_doc?.loading"
+              :loading="cancel_appointment_doc?.loading"
+              @click="showCancelConfirmation = true"
             >
               <template #prefix>
                 <FeatherIcon name="x" class="w-4 h-4" /> 
@@ -221,15 +222,15 @@
           <Button
             v-if="props.mode === 'edit'"
             variant="subtle"
-            size="md"
-            theme="black"
+            size="lg"
+            theme="gray"
             :disabled="isCreating"
             @click="backToViewMode()"
             class="font-medium inline-flex items-center"
             title="Back to previous page"
           >
             <template #prefix>
-              <FeatherIcon name="arrow-left" class="w-4 h-4 mr-1" />
+              <FeatherIcon name="arrow-left" class="w-6 h-4 mr-1" />
             </template>
             Back
           </Button>
@@ -239,7 +240,7 @@
         <div class="flex gap-2">
           <template v-if="isViewMode">
             <Button 
-              variant="outline" 
+              variant="subtle" 
               size="lg"
               :disabled="isCreating"
               @click="closeDialog()"
@@ -252,7 +253,7 @@
             
             <Button 
               v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
-              variant="outline" 
+              variant="subtle" 
               size="lg"
               theme="gray"
               :disabled="isCreating"
@@ -276,7 +277,7 @@
               <template #prefix>
                 <FeatherIcon name="x" class="w-4 h-4 mr-1" />
               </template>
-              Cancel
+              Close
             </Button>
             
             <Button 
@@ -297,6 +298,76 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- Cancel Appointment Confirmation Dialog -->
+  <Dialog
+    :model-value="showCancelConfirmation"
+    @update:model-value="showCancelConfirmation = $event"
+    :options="{
+      title: 'Confirm',
+      size: 'md',
+      icon: {
+        name: 'alert-triangle',
+        appearance: 'blue',
+      },
+    }"
+    class="cancel-confirmation-dialog z-[1100]"
+  >
+    <template #body-content>
+      <div class="p-6">
+        <div class="flex items-start space-x-4">
+          <div class="flex-shrink-0">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+              <FeatherIcon name="help-circle" class="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-blue-900 mb-2 font-semibold">
+              Are you sure you want to cancel this appointment?
+            </h3>
+              <!-- - This action cannot be undone and Patient will need to book a new appointment. -->
+            <p class="text-sm text-red-800">
+              - This action cannot be undone
+            </p>
+            <p class="text-sm text-red-800">
+              - Patient will need to book a new appointment.
+            </p>
+          </div>
+        </div>
+      </div>
+    </template>
+    
+    <template #actions>
+      <div class="flex gap-3 justify-end">
+        <Button 
+          variant="outline" 
+          size="md"
+          theme="gray"
+          :disabled="cancel_appointment_doc?.loading"
+          @click="showCancelConfirmation = false"
+        >
+          <template #prefix>
+            <FeatherIcon name="x" class="w-4 h-4" />
+          </template>
+          No, Keep It
+        </Button>
+        
+        <Button 
+          variant="solid" 
+          size="md"
+          theme="red"
+          :loading="cancel_appointment_doc?.loading"
+          :disabled="cancel_appointment_doc?.loading"
+          @click="confirmCancelAppointment()"
+        >
+          <template #prefix>
+            <FeatherIcon name="check" class="w-4 h-4" />
+          </template>
+          Yes, Cancel
+        </Button>
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 
@@ -310,6 +381,7 @@ import { useDateStore } from '@/data/date'
 import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
 import dayjs from 'dayjs'
+import FeatherIcon from 'frappe-ui/src/components/FeatherIcon.vue'
 
 // Props for v-model approach
 const props = defineProps({
@@ -1548,26 +1620,49 @@ const closeDialog = () => {
   updateDialogState(false)
 }
 
-const showCancelConfirmation = () => {
-  if (confirm('Are you sure you want to cancel this appointment?')) {
-    cancelAppointment()
+const showCancelConfirmation = ref(false)
+
+// Create resource for cancelling appointment 
+const cancel_appointment_doc = createResource({
+  url: 'hms_tz.api.appointment.cancel_appointment',
+  method: 'POST',
+  makeParams() {
+    return {
+      appointment_id: props.appointment?.name || props.appointment?.id || appointment['Patient Appointment']['name']
+    }
+  },
+  onSuccess: (data) => {
+    // Show success notification
+    notifications.success.appointmentCancelled()
+    
+    // Update local appointment status to match frontend format
+    if (appointment['Patient Appointment']) {
+      appointment['Patient Appointment']['status'] = 'cancelled' // Use lowercase for consistency
+    }
+    
+    // Emit event to refresh parent data
+    emit('appointmentCreated', { status: 'cancelled' })
+    
+    // Close dialog automatically
+    closeDialog()
+  },
+  onError: (err) => {
+    handleResourceError(err)
+    notifications.error.appointmentUpdateFailed(err.message || 'Failed to cancel appointment')
   }
-}
+})
 
 const cancelAppointment = async () => {
+  showCancelConfirmation.value = true
+}
+
+const confirmCancelAppointment = async () => {
+  showCancelConfirmation.value = false
   try {
-    const appointmentId = props.appointment?.id
-    const result = await appointmentStore.cancelAppointment(appointmentId)
-    
-    if (result?.success) {
-      notifications.success.appointmentCancelled()
-      closeDialog()
-    } else {
-      notifications.error.appointmentUpdateFailed('Failed to cancel appointment')
-    }
+    await cancel_appointment_doc.submit()
   } catch (error) {
-    notifications.error.appointmentUpdateFailed('Error cancelling appointment')
-    console.error(error)
+    // Error handling is already done in the resource onError callback
+    console.error('Error cancelling appointment:', error)
   }
 }
 
@@ -1685,6 +1780,32 @@ onMounted(() => {
 /* Base dialog wrapper styling */
 .appointment-dialog-overlay {
   z-index: 1050 !important;
+}
+
+/* Cancel confirmation dialog should appear above main appointment dialog */
+.cancel-confirmation-dialog {
+  z-index: 1100 !important;
+}
+
+/* Ensure cancel confirmation dialog elements have proper layering */
+:deep(.cancel-confirmation-dialog .dialog) {
+  z-index: 1100 !important;
+}
+
+:deep(.cancel-confirmation-dialog .dialog-wrapper) {
+  z-index: 1100 !important;
+}
+
+:deep(.cancel-confirmation-dialog .dialog-content) {
+  z-index: 1105 !important;
+}
+
+:deep(.cancel-confirmation-dialog .dialog-overlay) {
+  z-index: 1095 !important;
+}
+
+:deep(.cancel-confirmation-dialog [role="dialog"]) {
+  z-index: 1105 !important;
 }
 
 /* Custom actions styling */
