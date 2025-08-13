@@ -1,6 +1,6 @@
 import frappe
-from frappe.query_builder import DocType
 from frappe.utils import get_time
+from frappe.query_builder import DocType
 
 
 @frappe.whitelist()
@@ -60,6 +60,35 @@ def update_appointment(
         return True
     
     return False
+
+
+
+@frappe.whitelist()
+def cancel_appointment(appointment_id):
+    """
+    Cancel an existing appointment.
+    """
+    
+    appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_id)
+    if appointment_doc.status == "Cancelled":
+        frappe.throw(f"Appointment {appointment_id} is already cancelled.")
+    
+    appointment_doc.status = "Cancelled"
+    appointment_doc.save(ignore_permissions=True)
+    appointment_doc.reload()
+    
+    # If the appointment has an associated event, update the event status
+    if appointment_doc.get("event"):
+        event_doc = frappe.get_doc("Event", appointment_doc.event)
+        event_doc.status = "Cancelled"
+        event_doc.save(ignore_permissions=True)
+
+    # cancel fee validity
+    fee_validity = frappe.db.get_value("Fee Validity", {"patient_appointment": appointment_doc.name})
+    if fee_validity:
+        frappe.db.set_value("Fee Validity", fee_validity, "status", "Cancelled")
+
+    return True
 
 
 def get_mode_of_payment():
