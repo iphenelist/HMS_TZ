@@ -186,9 +186,6 @@ export const useAppointmentStore = defineStore('appointments', {
       }
     },
 
-    async cancelAppointment(appointmentId) {
-      return this.updateAppointment(appointmentId, { status: 'cancelled' })
-    },
 
     async fetchUserRoles() {
       this.rolesLoading = true
