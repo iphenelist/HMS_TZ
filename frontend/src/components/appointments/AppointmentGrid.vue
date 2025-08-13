@@ -130,7 +130,6 @@
                   v-if="getAppointment(slot.time, practitioner.name)"
                   :appointment="getAppointment(slot.time, practitioner.name)"
                   @click="viewAppointment"
-                  @cancel="handleCancelAppointment"
                 />
                 
                 <!-- Break Time Slot -->
@@ -208,12 +207,6 @@
       @mode-changed="handleModeChanged"
     />
     
-    <!-- Confirmation Dialog -->
-    <Dialog v-model="showConfirmDialog" :options="confirmDialogOptions">
-      <template #body-content>
-        <p class="text-gray-600">{{ confirmMessage }}</p>
-      </template>
-    </Dialog>
   </div>
 </template>
 
@@ -243,9 +236,6 @@ const timeSlots = ref(null)
 
 // State
 const isRefreshing = ref(false)
-const showConfirmDialog = ref(false)
-const confirmMessage = ref('')
-const confirmAction = ref(null)
 const searchQuery = ref('')
 const selectedCompany = ref('')
 const selectedDateForPicker = ref('')
@@ -272,27 +262,6 @@ onMounted(() => {
   }
 })
 
-// Computed properties
-const confirmDialogOptions = computed(() => ({
-  title: 'Confirm Action',
-  actions: [
-    {
-      label: 'Cancel',
-      variant: 'outline'
-    },
-    {
-      label: 'Confirm',
-      variant: 'solid',
-      theme: 'red',
-      handler: () => {
-        if (confirmAction.value) {
-          confirmAction.value()
-        }
-        showConfirmDialog.value = false
-      }
-    }
-  ]
-}))
 
 // Initialize data
 onMounted(async () => {
@@ -592,26 +561,6 @@ const closeAppointmentDialog = () => {
   selectedPractitioner.value = null
   selectedAppointmentData.value = {}
   dialogMode.value = 'create'
-}
-
-const handleCancelAppointment = (appointment) => {
-  confirmMessage.value = `Cancel appointment with ${appointment.patient_name}?`
-  confirmAction.value = () => cancelAppointment(appointment)
-  showConfirmDialog.value = true
-}
-
-const cancelAppointment = async (appointment) => {
-  try {
-    const result = await appointmentStore.cancelAppointment(appointment.name)
-    if (result.success) {
-      notifications.success.appointmentCancelled()
-    } else {
-      notifications.error.appointmentUpdateFailed(result.error || 'Unknown error')
-    }
-  } catch (error) {
-    notifications.error.appointmentUpdateFailed('Error cancelling appointment')
-    console.error(error)
-  }
 }
 
 const refreshData = async () => {
