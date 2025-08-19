@@ -18,8 +18,11 @@
           {{ practitioner.name }}
         </h3>
         <p class="text-xs font-semibold text-gray-700 truncate leading-tight">
-          {{ practitioner.specialty }}
+          {{ practitioner.department || 'General' }}
         </p>
+        <!-- <p class="text-xs font-semibold text-gray-700 truncate leading-tight">
+          {{ practitioner.billing_item }}
+        </p> -->
       </div>
     </div>
   </div>
