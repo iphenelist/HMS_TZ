@@ -539,6 +539,11 @@ const appointment = reactive({
 // Computed property to reorder sections with "Initial Data" first
 const sections = computed(() => {
   const paymentMode = appointment['Patient Appointment']['payment_mode']
+  const insuranceFields = [
+    'insurance_provider', 'card_no', 'national_id', 
+    'insurance_company', 'healthcare_insurance_coverage_plan',
+    'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
+  ]
   const currentMode = props.mode
   
   // Helper function to filter fields based on payment mode and dialog mode
@@ -552,22 +557,24 @@ const sections = computed(() => {
         filteredFields = fields.filter(field => field.name === 'payment_mode')
       } else if (paymentMode === 'Cash') {
         // Hide insurance-related fields when payment mode is Cash in create mode
-        const insuranceFields = [
-          'insurance_provider', 'card_no', 'national_id', 
-          'insurance_company', 'healthcare_insurance_coverage_plan',
-          'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
-        ]
         filteredFields = fields.filter(field => !insuranceFields.includes(field.name))
       }
+
+      const nonCreationFields = [
+        "patient_sex", "department", "billing_item", "paid_amount",
+        "has_no_consultation_charges"
+      ]
+      filteredFields = filteredFields.filter(field => !nonCreationFields.includes(field.name))
     }
+
+
     // In view/edit mode, show ALL fields - don't filter by payment mode
-    
     // Then filter by dialog mode
     if (currentMode === 'view') {
       // In view mode, hide fields that are only relevant during creation
-      const creationOnlyFields = ['is_new_patient', 'is_new_his']
-      filteredFields = filteredFields.filter(field => !creationOnlyFields.includes(field.name))
-      
+      const excludeFields = ['is_new_patient', 'is_new_his'].concat(insuranceFields)
+      filteredFields = filteredFields.filter(field => !excludeFields.includes(field.name))
+
       // Make all fields read-only in view mode
       filteredFields = filteredFields.map(field => ({
         ...field,
@@ -575,9 +582,9 @@ const sections = computed(() => {
       }))
     } else if (currentMode === 'edit') {
       // In edit mode, hide creation-only fields and make most fields read-only except specific editable ones
-      const creationOnlyFields = ['is_new_patient', 'is_new_his']
-      filteredFields = filteredFields.filter(field => !creationOnlyFields.includes(field.name))
-      
+      const excludeFields = ['is_new_patient', 'is_new_his'].concat(insuranceFields)
+      filteredFields = filteredFields.filter(field => !excludeFields.includes(field.name))
+
       const editableFields = ['practitioner', 'appointment_time']
       filteredFields = filteredFields.map(field => ({
         ...field,
@@ -635,6 +642,7 @@ const sections = computed(() => {
       "columns": 2,
       "hideLabel": true,
     },
+
     // Other sections
     {
         "label":"Patient Details",
@@ -737,17 +745,47 @@ const sections = computed(() => {
         "hideLabel":false,
         "hideBorder":false
     },
+
+    // Check box fields
+    {
+      "label": "",
+      "doctype": "Patient Appointment",
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "is_new_patient",
+          "label": "Is New Patient",
+          "type": "Check",
+          "reqd": false
+        },
+        {
+          "name": "is_new_his",
+          "label": "Is New HIS",
+          "type": "Check",
+          "reqd": false
+        },
+        {
+          "name": "follow_up",
+          "label": "Follow Up",
+          "type": "Check",
+          "placeholder": "Follow Up",
+          "reqd": false
+        },
+        {
+          "name": "has_no_consultation_charges",
+          "label": "Has No Consultation Charges",
+          "type": "Check", 
+          "placeholder": "Has No Consultation Charges",
+          "reqd": false
+        },
+      ], "Patient Appointment"),
+      "columns": 2,
+      "hideLabel": true,
+    },
+
     {
         "label":"Appointment Details",
         "doctype":"Patient Appointment",
         "fields": filterFieldsByPaymentMode([
-            {
-              "name": "is_new_patient",
-              "label": "Is New Patient",
-              "type": "Check",
-              "placeholder": "Is New Patient",
-              "reqd": false
-            },
             {
               "name": "patient",
               "label": "Patient",
@@ -809,20 +847,6 @@ const sections = computed(() => {
               "reqd": true
             },
             {
-              "name": "follow_up",
-              "label": "Follow Up",
-              "type": "Check",
-              "placeholder": "Follow Up",
-              "reqd": false
-            },
-            {
-              "name": "has_no_consultation_charges",
-              "label": "Has No Consultation Charges",
-              "type": "Check", 
-              "placeholder": "Has No Consultation Charges",
-              "reqd": false
-            },
-            {
               "name": "billing_item",
               "label": "Billing Item",
               "type": "Link",
@@ -835,13 +859,6 @@ const sections = computed(() => {
               "label": "Paid Amount",
               "type": "Currency",
               "placeholder": "Paid Amount",
-              "reqd": false
-            },
-            {
-              "name": "is_new_his",
-              "label": "Is New HIS",
-              "type": "Check",
-              "placeholder": "Is New HIS",
               "reqd": false
             },
             {
