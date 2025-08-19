@@ -20,7 +20,6 @@ export const usePractitionerStore = defineStore('practitioners', {
       if (state.searchQuery) {
         filtered = filtered.filter(practitioner =>
           practitioner.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-          practitioner.specialty.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
           practitioner.department.toLowerCase().includes(state.searchQuery.toLowerCase())
         )
       }
@@ -51,7 +50,7 @@ export const usePractitionerStore = defineStore('practitioners', {
       try {        
         // Call the backend API
         const resource = createResource({
-          url: 'hms_tz.api.practitioner.get_practitioners',
+          url: 'hms_tz.api.practitioner.get_practioner_list',
           params: {
             company: company || this.company,
             date: currentDate
