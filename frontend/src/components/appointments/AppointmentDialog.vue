@@ -541,8 +541,11 @@ const sections = computed(() => {
   const paymentMode = appointment['Patient Appointment']['payment_mode']
   const insuranceFields = [
     'insurance_provider', 'card_no', 'national_id', 
-    'insurance_company', 'healthcare_insurance_coverage_plan',
-    'is_new_his', 'insurance_subscription', 'referral_no', 'remarks'
+    'insurance_company', 'coverage_plan', 'is_new_his', 
+    'insurance_subscription', 'referral_no', 'remarks',
+    'require_fingerprint', 'require_facial_recognation',
+    'biometric_method', 'fpcode', 'poc_reference_no',
+    'authorization_number'
   ]
   const currentMode = props.mode
   
@@ -562,7 +565,7 @@ const sections = computed(() => {
 
       const nonCreationFields = [
         "patient_sex", "department", "billing_item", "paid_amount",
-        "has_no_consultation_charges"
+        "has_no_consultation_charges", "mode_of_payment", "ref_sales_invoice",
       ]
       filteredFields = filteredFields.filter(field => !nonCreationFields.includes(field.name))
     }
@@ -573,6 +576,11 @@ const sections = computed(() => {
     if (currentMode === 'view') {
       // In view mode, hide fields that are only relevant during creation
       const excludeFields = ['is_new_patient', 'is_new_his'].concat(insuranceFields)
+      
+      if (!appointment['Patient Appointment']['ref_sales_invoice']) {
+        excludeFields.push('ref_sales_invoice')
+      }
+
       filteredFields = filteredFields.filter(field => !excludeFields.includes(field.name))
 
       // Make all fields read-only in view mode
@@ -583,6 +591,11 @@ const sections = computed(() => {
     } else if (currentMode === 'edit') {
       // In edit mode, hide creation-only fields and make most fields read-only except specific editable ones
       const excludeFields = ['is_new_patient', 'is_new_his'].concat(insuranceFields)
+      
+      if (!appointment['Patient Appointment']['ref_sales_invoice']) {
+        excludeFields.push('ref_sales_invoice')
+      }
+
       filteredFields = filteredFields.filter(field => !excludeFields.includes(field.name))
 
       const editableFields = ['practitioner', 'appointment_time']
@@ -643,107 +656,109 @@ const sections = computed(() => {
       "hideLabel": true,
     },
 
-    // Other sections
+    // Patient
     {
-        "label":"Patient Details",
-        "doctype":"Patient",
-        "fields": filterFieldsByPaymentMode([
-            {
-              "name": "first_name",
-              "label": "First Name",
-              "type": "Data",
-              "placeholder": "First Name",
-              "reqd": true
-            },
-            {
-              "name": "middle_name",
-              "label": "Middle Name",
-              "type": "Data",
-              "placeholder": "Middle Name",
-              "reqd": false
-            },
-            {
-              "name": "last_name",
-              "label": "Last Name",
-              "type": "Data",
-              "placeholder": "Last Name",
-              "reqd": true
-            },
-            {
-              "name": "sex",
-              "label": "Gender",
-              "type": "Select",
-              "placeholder": "Gender",
-              "options": [
-                {"label": "Male", "value": "Male"},
-                {"label": "Female", "value": "Female"},
-              ],
-              "reqd": true
-            },
-            {
-              "name": "dob",
-              "label": "Date of Birth",
-              "type": "Date",
-              "placeholder": "Date of Birth",
-              "reqd": true
-            },
-            {
-              "name": "mobile",
-              "label": "Mobile",
-              "type": "Int",
-              "placeholder": "Mobile",
-              "reqd": true
-            },
-            {
-              "name": "next_to_kin_name",
-              "label": "Next of Kin Name",
-              "type": "Data",
-              "placeholder": "Next of Kin Name",
-              "reqd": false
-            },
-            {
-              "name": "next_to_kin_mobile_no",
-              "label": "Next of Kin Mobile",
-              "type": "Data",
-              "placeholder": "Next of Kin Mobile",
-              "reqd": false
-            },
-            {
-              "name": "next_to_kin_relationship",
-              "label": "Next of Kin Relationship",
-              "type": "Data",
-              "placeholder": "Next of Kin Relationship",
-              "reqd": false
-            },
-        ], "Patient"),
-        "columns": 3,
-        "hideLabel":false,
-        "hideBorder":false
+      "label":"Patient Details",
+      "doctype":"Patient",
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "first_name",
+          "label": "First Name",
+          "type": "Data",
+          "placeholder": "First Name",
+          "reqd": true
+        },
+        {
+          "name": "middle_name",
+          "label": "Middle Name",
+          "type": "Data",
+          "placeholder": "Middle Name",
+          "reqd": false
+        },
+        {
+          "name": "last_name",
+          "label": "Last Name",
+          "type": "Data",
+          "placeholder": "Last Name",
+          "reqd": true
+        },
+        {
+          "name": "sex",
+          "label": "Gender",
+          "type": "Select",
+          "placeholder": "Gender",
+          "options": [
+            {"label": "Male", "value": "Male"},
+            {"label": "Female", "value": "Female"},
+          ],
+          "reqd": true
+        },
+        {
+          "name": "dob",
+          "label": "Date of Birth",
+          "type": "Date",
+          "placeholder": "Date of Birth",
+          "reqd": true
+        },
+        {
+          "name": "mobile",
+          "label": "Mobile",
+          "type": "Int",
+          "placeholder": "Mobile",
+          "reqd": true
+        },
+        {
+          "name": "next_to_kin_name",
+          "label": "Next of Kin Name",
+          "type": "Data",
+          "placeholder": "Next of Kin Name",
+          "reqd": false
+        },
+        {
+          "name": "next_to_kin_mobile_no",
+          "label": "Next of Kin Mobile",
+          "type": "Data",
+          "placeholder": "Next of Kin Mobile",
+          "reqd": false
+        },
+        {
+          "name": "next_to_kin_relationship",
+          "label": "Next of Kin Relationship",
+          "type": "Data",
+          "placeholder": "Next of Kin Relationship",
+          "reqd": false
+        },
+      ], "Patient"),
+      "columns": 3,
+      "hideLabel":false,
+      "hideBorder":false
     },
+
+    // Healthcare Insurance Subscription
     {
-        "label":"Healthcare Insurance Subscription",
-        "doctype":"Healthcare Insurance Subscription", 
-        "fields": filterFieldsByPaymentMode([
-            {
-              "name": "insurance_company",
-              "label": "Insurance Company",
-              "type": "Link",
-              "placeholder": "Insurance Company",
-              "options": "Healthcare Insurance Company",
-              "reqd": true
-            },
-            {
-              "name": "healthcare_insurance_coverage_plan",
-              "label": "Coverage Plan",
-              "type": "Link",
-              "placeholder": "Coverage Plan",
-              "options": "Healthcare Insurance Coverage Plan",
-              "reqd": true
-            },
-        ], "Healthcare Insurance Subscription"),
-        "columns": 2,
-        "hideLabel":false,
-        "hideBorder":false
+      "label":"Healthcare Insurance Subscription",
+      "doctype":"Healthcare Insurance Subscription", 
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "insurance_company",
+          "label": "Insurance Company",
+          "type": "Link",
+          "placeholder": "Insurance Company",
+          "options": "Healthcare Insurance Company",
+          "reqd": true
+        },
+        {
+          "name": "healthcare_insurance_coverage_plan",
+          "label": "Coverage Plan",
+          "type": "Link",
+          "placeholder": "Coverage Plan",
+          "options": "Healthcare Insurance Coverage Plan",
+          "reqd": true
+        },
+      ], "Healthcare Insurance Subscription"),
+      "columns": 2,
+      "hideLabel":false,
+      "hideBorder":false
     },
 
     // Check box fields
@@ -777,117 +792,200 @@ const sections = computed(() => {
           "placeholder": "Has No Consultation Charges",
           "reqd": false
         },
+        {
+          "name": "require_fingerprint",
+          "label": "Require Fingerprint",
+          "type": "Check",
+          "placeholder": "Require Fingerprint",
+          "reqd": false
+        },
+        {
+          "name": "require_facial_recognation",
+          "label": "Require Facial Recognition",
+          "type": "Check",
+          "placeholder": "Require Facial Recognition",
+          "reqd": false
+        }
       ], "Patient Appointment"),
       "columns": 2,
       "hideLabel": true,
     },
 
     {
-        "label":"Appointment Details",
-        "doctype":"Patient Appointment",
-        "fields": filterFieldsByPaymentMode([
-            {
-              "name": "patient",
-              "label": "Patient",
-              "type": "Link",
-              "placeholder": "Patient",
-              "options": "Patient",
-              "reqd": true
-            },
-            {
-              "name": "patient_name",
-              "label": "Patient Name",
-              "type": "Data",
-              "placeholder": "Patient Name",
-              "reqd": false
-            },
-            {
-              "name": "patient_sex", 
-              "label": "Gender",
-              "type": "Data",
-              "placeholder": "Gender",
-              "reqd": false
-            },
-            {
-              "name": "practitioner",
-              "label": "Practitioner",
-              "type": "Link",
-              "placeholder": "Practitioner",
-              "options": "Healthcare Practitioner",
-              "reqd": true
-            },
-            {
-              "name": "department",
-              "label": "Department",
-              "type": "Link",
-              "placeholder": "Department",
-              "options": "Medical Department",
-              "reqd": false
-            },
-            {
-              "name": "appointment_type",
-              "label": "Appointment Type",
-              "type": "Link",
-              "placeholder": "Appointment Type",
-              "options": "Appointment Type",
-              "reqd": true
-            },
-            {
-              "name": "appointment_date",
-              "label": "Appointment Date",
-              "type": "Date",
-              "placeholder": "Appointment Date",
-              "reqd": true
-            },
-            {
-              "name": "appointment_time",
-              "label": "Appointment Time",
-              "type": "Time",
-              "placeholder": "Appointment Time",
-              "reqd": true
-            },
-            {
-              "name": "billing_item",
-              "label": "Billing Item",
-              "type": "Link",
-              "placeholder": "Billing Item",
-              "options": "Item",
-              "reqd": false
-            },
-            {
-              "name": "paid_amount",
-              "label": "Paid Amount",
-              "type": "Currency",
-              "placeholder": "Paid Amount",
-              "reqd": false
-            },
-            {
-              "name": "insurance_subscription",
-              "label": "Insurance Subscription",
-              "type": "Link",
-              "placeholder": "Insurance Subscription",
-              "options": "Healthcare Insurance Subscription",
-              "reqd": false
-            },
-            {
-              "name": "referral_no",
-              "label": "Referral No",
-              "type": "Data",
-              "placeholder": "Referral No",
-              "reqd": false
-            },
-            {
-              "name": "remarks",
-              "label": "Remarks",
-              "type": "Small Text",
-              "placeholder": "Remarks",
-              "reqd": false
-            }
-        ], "Patient Appointment"),
-        "columns": 3,
-        "hideLabel": ['view', 'edit'].includes(currentMode), // Hide label in view mode since it duplicates dialog title
-        "hideBorder":false
-    }
+      "label":"Appointment Details",
+      "doctype":"Patient Appointment",
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "patient",
+          "label": "Patient",
+          "type": "Link",
+          "placeholder": "Patient",
+          "options": "Patient",
+          "reqd": true
+        },
+        {
+          "name": "patient_name",
+          "label": "Patient Name",
+          "type": "Data",
+          "placeholder": "Patient Name",
+          "reqd": false
+        },
+        {
+          "name": "patient_sex", 
+          "label": "Gender",
+          "type": "Data",
+          "placeholder": "Gender",
+          "reqd": false
+        },
+        {
+          "name": "practitioner",
+          "label": "Practitioner",
+          "type": "Link",
+          "placeholder": "Practitioner",
+          "options": "Healthcare Practitioner",
+          "reqd": true
+        },
+        {
+          "name": "department",
+          "label": "Department",
+          "type": "Link",
+          "placeholder": "Department",
+          "options": "Medical Department",
+          "reqd": false
+        },
+        {
+          "name": "appointment_type",
+          "label": "Appointment Type",
+          "type": "Link",
+          "placeholder": "Appointment Type",
+          "options": "Appointment Type",
+          "reqd": true
+        },
+        {
+          "name": "appointment_date",
+          "label": "Appointment Date",
+          "type": "Date",
+          "placeholder": "Appointment Date",
+          "reqd": true
+        },
+        {
+          "name": "appointment_time",
+          "label": "Appointment Time",
+          "type": "Time",
+          "placeholder": "Appointment Time",
+          "reqd": true
+        },
+      ], "Patient Appointment"),
+      "columns": 3,
+      "hideLabel": ['view', 'edit'].includes(currentMode), // Hide label in view mode since it duplicates dialog title
+      "hideBorder":false
+    },
+
+    // insurance based appointment fields
+    {
+      "label": "Insurance Details",
+      "doctype": "Patient Appointment",
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "insurance_subscription",
+          "label": "Insurance Subscription",
+          "type": "Link",
+          "placeholder": "Insurance Subscription",
+          "options": "Healthcare Insurance Subscription",
+          "reqd": false
+        },
+        {
+          "name": "insurance_company",
+          "label": "Insurance Company",
+          "type": "Data",
+          "placeholder": "Insurance Company",
+          "reqd": false
+        },
+        {
+          "name": "coverage_plan",
+          "label": "Coverage Plan",
+          "type": "Data",
+          "placeholder": "Coverage Plan",
+          "reqd": false
+        },
+        {
+          "name": "referral_no",
+          "label": "Referral No",
+          "type": "Data",
+          "placeholder": "Referral No",
+          "reqd": false
+        },
+        {
+          "name": "remarks",
+          "label": "Remarks",
+          "type": "Small Text",
+          "placeholder": "Remarks",
+          "reqd": false
+        },
+        {
+          "name": "biometric_method",
+          "label": "Biometric Method",
+          "type": "Select",
+          "placeholder": "Biometric Method",
+          "options": [
+            { "value": "FINGERPRINT", "label": "FINGERPRINT" },
+            { "value": "FACIAL", "label": "FACIAL" },
+            { "value": "NONE", "label": "NONE" }
+          ],
+          "reqd": false
+        },
+        {
+          "name": "authorization_number",
+          "label": "Authorization Number",
+          "type": "Data",
+          "placeholder": "Authorization Number",
+          "reqd": false
+        },
+      ], "Patient Appointment"),
+      "columns": 3,
+      "hideLabel": ['view', 'edit'].includes(currentMode),
+      "hideBorder": false
+    },
+
+    // Revenue based appointment fields
+    {
+      "label": "",
+      "doctype": "Patient Appointment",
+      "fields": filterFieldsByPaymentMode([
+        {
+          "name": "mode_of_payment",
+          "label": "Mode of Payment",
+          "type": "Data",
+          "placeholder": "Mode of Payment",
+          "reqd": false
+        },
+        {
+          "name": "billing_item",
+          "label": "Billing Item",
+          "type": "Link",
+          "placeholder": "Billing Item",
+          "options": "Item",
+          "reqd": false
+        },
+        {
+          "name": "paid_amount",
+          "label": "Paid Amount",
+          "type": "Currency",
+          "placeholder": "Paid Amount",
+          "reqd": false
+        },
+        {
+          "name": "ref_sales_invoice",
+          "label": "Sales Invoice",
+          "type": "Data",
+          "placeholder": "Sales Invoice",
+          "reqd": false
+        }
+      ], "Patient Appointment"),
+      "columns": 3,
+      "hideLabel": ['view', 'edit'].includes(currentMode),
+      "hideBorder": false
+    },
   ]
   
   // Filter sections based on payment mode and dialog mode
@@ -900,7 +998,7 @@ const sections = computed(() => {
     
     if (paymentMode === 'Cash') {
       // For Cash payment mode in create mode, hide Healthcare Insurance Subscription section
-      return allSections.filter(section => section.doctype !== "Healthcare Insurance Subscription")
+      return allSections.filter(section => section.doctype !== "Healthcare Insurance Subscription" && section.label !== "Insurance Details")
     }
     
     // For Insurance payment mode in create mode, show all sections
