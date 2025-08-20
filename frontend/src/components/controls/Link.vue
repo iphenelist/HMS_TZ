@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-1.5" v-if="!attrs.disabled">
+  <div class="space-y-1.5 link-field-container" v-if="!attrs.disabled">
     <label class="block" :class="labelClasses" v-if="attrs.label">
       {{ attrs.label }}
     </label>
@@ -11,6 +11,10 @@
       :variant="attrs.variant"
       :placeholder="attrs.placeholder"
       :filterable="false"
+      :class="hideMe ? 'pointer-events-none' : ''"
+      :disabled="hideMe"
+      class="z-high-popover"
+      @update:query="reload"
     >
       <template #target="{ open, togglePopover }">
         <slot name="target" v-bind="{ open, togglePopover }" />
@@ -73,6 +77,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+	filters: {
+		type: Object,
+		default: {},
+	},
   hideMe: {
     type: Boolean,
     default: false,
@@ -122,6 +130,7 @@ const options = createResource({
   params: {
     txt: text.value,
     doctype: props.doctype,
+    filters: props.filters,
   },
   transform: (data) => {
     let allData = data.map((option) => {
@@ -152,6 +161,7 @@ function reload(val) {
     params: {
       txt: val,
       doctype: props.doctype,
+      filters: props.filters,
     },
   })
   options.reload()
@@ -172,3 +182,15 @@ const labelClasses = computed(() => {
   ]
 })
 </script>
+
+<style scoped>
+/* Ensure link field dropdowns appear above dialogs */
+.link-field-container {
+  position: relative;
+}
+
+/* Target the autocomplete dropdown within this component */
+:deep(.z-high-popover) {
+  z-index: 1080 !important;
+}
+</style>

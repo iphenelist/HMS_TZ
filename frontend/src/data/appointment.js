@@ -1,45 +1,33 @@
 import { defineStore } from 'pinia'
-import { createListResource } from 'frappe-ui'
+import { createListResource, createResource } from 'frappe-ui'
 import dayjs from 'dayjs'
+import { useToast } from '../composables/useToast'
 
 export const useAppointmentStore = defineStore('appointments', {
   state: () => ({
     appointments: [],
     selectedDate: dayjs().format('YYYY-MM-DD'),
     selectedCompany: '',
-    selectedAppointment: null,
     isLoading: false,
     error: null,
-    showAppointmentDialog: false,
-    dialogMode: 'create', // 'create', 'edit', 'view'
-    appointmentsResource: null
+    appointmentsResource: null,
+    userRoles: [],
+    rolesLoading: false
   }),
 
   getters: {
-    appointmentsByPractitioner: (state) => {
-      const grouped = {}
-      state.appointments.forEach(appointment => {
-        if (!grouped[appointment.practitioner_id]) {
-          grouped[appointment.practitioner_id] = []
-        }
-        grouped[appointment.practitioner_id].push(appointment)
-      })
-      return grouped
-    },
-
     appointmentsByTimeSlot: (state) => {
       const grouped = {}
       state.appointments.forEach(appointment => {
-        const key = `${appointment.time_slot}-${appointment.practitioner_id}`
+        const key = `${appointment.appointment_time}-${appointment.practitioner}`
         grouped[key] = appointment
       })
       return grouped
     },
 
-    todaysAppointments: (state) => {
-      return state.appointments.filter(
-        appointment => appointment.date === state.selectedDate
-      )
+    canCancelAppointment: (state) => {
+      const allowedRoles = ['System Manager', 'Healthcare Administrator', 'Healthcare Head Receptionist']
+      return state.userRoles.some(role => allowedRoles.includes(role))
     }
   },
 
@@ -52,6 +40,7 @@ export const useAppointmentStore = defineStore('appointments', {
             'name',
             'patient',
             'patient_name',
+            'patient_sex',
             'practitioner',
             'appointment_time',
             'appointment_date',
@@ -63,7 +52,19 @@ export const useAppointmentStore = defineStore('appointments', {
             'mode_of_payment',
             'billing_item',
             'paid_amount',
-            'invoiced'
+            'invoiced',
+            'referral_no',
+            'remarks',
+            'coverage_plan_name',
+            'nhif_employer_name',
+            'daily_limit',
+            'apply_fasttrack_charge',
+            'authorization_number',
+            'poc_reference_no',
+            'require_fingerprint',
+            'require_facial_recognation',
+            'biometric_method',
+            'fpcode'
           ],
           filters: {},
           orderBy: 'appointment_time asc',
@@ -83,18 +84,6 @@ export const useAppointmentStore = defineStore('appointments', {
     setSelectedCompany(company) {
       this.selectedCompany = company
       this.fetchAppointments()
-    },
-
-    openAppointmentDialog(mode = 'create', appointment = null) {
-      this.dialogMode = mode
-      this.selectedAppointment = appointment
-      this.showAppointmentDialog = true
-    },
-
-    closeAppointmentDialog() {
-      this.showAppointmentDialog = false
-      this.selectedAppointment = null
-      this.dialogMode = 'create'
     },
 
     async fetchAppointments() {
@@ -125,85 +114,43 @@ export const useAppointmentStore = defineStore('appointments', {
         this.appointments = (this.appointmentsResource.data || []).map(appointment => ({
           id: appointment.name,
           name: appointment.name,
+          patient: appointment.patient,
           patient_name: appointment.patient_name,
-          patient_id: appointment.patient,
-          practitioner_id: appointment.practitioner,
-          time_slot: dayjs(`2024-01-01 ${appointment.appointment_time}`).format('HH:mm'), // Normalize to HH:mm format
-          date: appointment.appointment_date,
+          patient_sex: appointment.patient_sex,
+          practitioner: appointment.practitioner,
+          appointment_time: dayjs(`2024-01-01 ${appointment.appointment_time}`).format('HH:mm'), // Normalize to HH:mm format
+          appointment_date: appointment.appointment_date,
           status: appointment.status?.toLowerCase() || 'scheduled',
           appointment_type: appointment.appointment_type,
           department: appointment.department,
           company: appointment.company,
           insurance_company: appointment.insurance_company || 'Cash',
+          insurance_subscription: appointment.insurance_subscription,
           billing_item: appointment.billing_item,
           paid_amount: appointment.paid_amount || 0,
-          item_rate: appointment.paid_amount || 0,
           mode_of_payment: appointment.mode_of_payment,
           invoiced: appointment.invoiced,
+          referral_no: appointment.referral_no,
+          remarks: appointment.remarks,
+          coverage_plan_name: appointment.coverage_plan_name,
+          nhif_employer_name: appointment.nhif_employer_name,
+          daily_limit: appointment.daily_limit,
+          apply_fasttrack_charge: appointment.apply_fasttrack_charge,
+          authorization_number: appointment.authorization_number,
+          poc_reference_no: appointment.poc_reference_no,
+          require_fingerprint: appointment.require_fingerprint,
+          require_facial_recognation: appointment.require_facial_recognation,
+          biometric_method: appointment.biometric_method,
+          fpcode: appointment.fpcode,
         }))
-
-        console.log('✅ Appointments loaded:', this.appointments.length)
-        console.log('✅ Transformed appointments:', this.appointments)
-        console.log('✅ Appointments by time slot keys:', Object.keys(this.appointmentsByTimeSlot))
 
       } catch (error) {
         this.error = error.message || 'Failed to fetch appointments'
         console.error('❌ Error fetching appointments:', error)
+        const { notifications } = useToast()
+        notifications.error.dataLoadFailed(error.message || 'appointments')
         this.appointments = []
         throw error
-      } finally {
-        this.isLoading = false
-      }
-    },
-
-    async createAppointment(appointmentData) {
-      this.isLoading = true
-      this.error = null
-
-      try {
-        // Validate required fields
-        if (!appointmentData.patient_name || !appointmentData.contact || !appointmentData.time_slot) {
-          throw new Error('Missing required fields')
-        }
-
-        // TODO: Replace with actual API call
-        /*
-        const createResource = createResource({
-          url: 'hms_tz.api.appointments.create_appointment',
-          params: {
-            ...appointmentData,
-            date: this.selectedDate
-          },
-          auto: false
-        })
-        
-        const response = await createResource.fetch()
-        const newAppointment = response.message
-        */
-
-        // Create new appointment - sample implementation
-        const newAppointment = {
-          id: Date.now(), // Temporary ID generation
-          ...appointmentData,
-          date: this.selectedDate,
-          status: 'scheduled',
-          created_at: new Date().toISOString(),
-          modified_at: new Date().toISOString(),
-          created_by: 'Reception',
-          patient_id: `PAT-${String(Date.now()).slice(-3)}`
-        }
-
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        this.appointments.push(newAppointment)
-        this.closeAppointmentDialog()
-
-        return { success: true, data: newAppointment }
-      } catch (error) {
-        this.error = error.message || 'Failed to create appointment'
-        console.error('Error creating appointment:', error)
-        return { success: false, error: error.message }
       } finally {
         this.isLoading = false
       }
@@ -229,7 +176,6 @@ export const useAppointmentStore = defineStore('appointments', {
           }
         }
 
-        this.closeAppointmentDialog()
         return { success: true }
       } catch (error) {
         this.error = error.message
@@ -240,34 +186,31 @@ export const useAppointmentStore = defineStore('appointments', {
       }
     },
 
-    async deleteAppointment(appointmentId) {
-      this.isLoading = true
+
+    async fetchUserRoles() {
+      this.rolesLoading = true
       this.error = null
 
       try {
-        // TODO: Replace with actual API call
-        // const response = await createResource({
-        //   url: 'hms_tz.api.appointments.delete_appointment',
-        //   params: { id: appointmentId }
-        // }).fetch()
+        const userRolesResource = createResource({
+          url: 'hms_tz.api.appointment.get_user_roles',
+          auto: false
+        })
 
-        this.appointments = this.appointments.filter(app => app.id !== appointmentId)
-        return { success: true }
+        const roles = await userRolesResource.fetch()
+        this.userRoles = roles || []
+        
+        return { success: true, roles: this.userRoles }
       } catch (error) {
-        this.error = error.message
-        console.error('Error deleting appointment:', error)
+        this.error = error.message || 'Failed to fetch user roles'
+        console.error('❌ Error fetching user roles:', error)
+        const { notifications } = useToast()
+        notifications.error.dataLoadFailed(error.message || 'user roles')
+        this.userRoles = []
         return { success: false, error: error.message }
       } finally {
-        this.isLoading = false
+        this.rolesLoading = false
       }
-    },
-
-    async cancelAppointment(appointmentId) {
-      return this.updateAppointment(appointmentId, { status: 'cancelled' })
-    },
-
-    async completeAppointment(appointmentId) {
-      return this.updateAppointment(appointmentId, { status: 'completed' })
     }
   }
 })

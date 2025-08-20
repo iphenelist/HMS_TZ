@@ -1,5 +1,8 @@
 import { createApp } from "vue"
 import { createPinia } from "pinia"
+import Toast from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
+import './assets/toast.css'
 
 import App from "./App.vue"
 import router from "./router"
@@ -75,6 +78,28 @@ app.use(pinia)
 app.use(router)
 app.use(resourcesPlugin)
 app.use(pageMetaPlugin)
+app.use(Toast, {
+  position: "bottom-right",
+  timeout: 6000,
+  closeOnClick: true,
+  pauseOnFocusLoss: true,
+  pauseOnHover: true,
+  draggable: true,
+  draggablePercent: 0.6,
+  showCloseButtonOnHover: false,
+  hideProgressBar: true,
+  closeButton: "button",
+  icon: true,
+  rtl: false,
+  newestOnTop: true,
+  filterBeforeCreate: (toast, toasts) => {
+    // Prevent duplicate toasts
+    if (toasts.filter(t => t.content === toast.content).length !== 0) {
+      return false;
+    }
+    return toast;
+  }
+})
 
 const socket = initSocket()
 app.config.globalProperties.$socket = socket

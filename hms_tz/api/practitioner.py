@@ -2,12 +2,12 @@ import frappe
 import datetime
 from frappe import _
 from frappe.query_builder import DocType
-from frappe.utils import getdate, nowdate, get_time, time_diff_in_seconds
+from frappe.utils import getdate, nowdate, get_time, get_abbr
 from erpnext.setup.doctype.employee.employee import is_holiday
 
 
 @frappe.whitelist()
-def get_practitioners(company=None, date=None):
+def get_practioner_list(company, date=None):
     """
     Get all available practitioners for a company on a specific date
     Filters out practitioners who are:
@@ -17,194 +17,126 @@ def get_practitioners(company=None, date=None):
     
     Returns practitioners with their availability data
     """
+    
     if not date:
         date = nowdate()
     
     date = getdate(date)
     weekday = date.strftime("%A")
+
+    available_practitioners = []
     
-    try:
-        # Base query for practitioners
-        practitioners_query = f"""
-            SELECT 
-                hp.name,
-                hp.practitioner_name,
-                hp.first_name,
-                hp.middle_name,
-                hp.last_name,
-                hp.department,
-                hp.mobile_phone,
-                hp.op_consulting_charge,
-                hp.inpatient_visit_charge,
-                hp.image,
-                hp.status,
-                hp.hms_tz_company,
-                hp.healthcare_practitioner_type,
-                md.department as department_name
-            FROM `tabHealthcare Practitioner` hp
-            LEFT JOIN `tabMedical Department` md ON hp.department = md.name
-            WHERE hp.status = 'Active'
-        """
-        
-        # Add company filter if provided
-        if company:
-            practitioners_query += f" AND hp.hms_tz_company = '{company}'"
-            
-        practitioners_query += " ORDER BY hp.practitioner_name"
-        
-        practitioners = frappe.db.sql(practitioners_query, as_dict=True)
-        
-        available_practitioners = []
-        
-        for practitioner in practitioners:
-            try:
-                # Check if practitioner has schedules
-                if not has_practitioner_schedules(practitioner.name):
-                    continue
-                
-                # Check employee availability (holidays, leaves)
-                if not check_practitioner_employee_availability(practitioner.name, date):
-                    continue
-                
-                # Check practitioner availability based on schedules
-                availability_data = get_practitioner_availability(practitioner.name, date, weekday)
-                
-                if not availability_data or not availability_data.get('available_slots'):
-                    continue
-                
-                # Transform practitioner data to match frontend schema
-                practitioner_data = {
-                    'name': practitioner.name,
-                    'department': practitioner.department_name or 'General',
-                    'avatar': get_practitioner_avatar(practitioner.practitioner_name or practitioner.first_name),
-                    'is_available': True,
-                    'mobile_phone': practitioner.mobile_phone,
-                    'image': practitioner.image,
-                    'timeslots': availability_data.get('available_slots', []),
-                    'present_events': availability_data.get('present_events', []),
-                }
-                
-                available_practitioners.append(practitioner_data)
-                
-            except Exception as e:
+    practitioners = get_practitioners(company)
+
+    for practitioner in practitioners:
+        try:            
+            # Check employee availability (holidays, leaves)
+            if not check_practitioner_employee_availability(
+                practitioner.name,
+                date,
+                employee=practitioner.employee,
+                user_id=practitioner.user_id
+            ):
                 continue
-        
-        return {
-            'practitioners': available_practitioners,
-            'total_count': len(available_practitioners),
-            'date': date,
-            'company': company
-        }
-        
-    except Exception as e:
-        pass
-
-
-def has_practitioner_schedules(practitioner):
-    """Check if practitioner has any schedules configured"""
-    schedules = frappe.db.sql("""
-        SELECT COUNT(*) as count
-        FROM `tabPractitioner Service Unit Schedule`
-        WHERE parent = %s AND parenttype = 'Healthcare Practitioner'
-    """, (practitioner,), as_dict=True)
+                        
+            # Transform practitioner data to match frontend schema
+            practitioner_data = {
+                'name': practitioner.name,
+                'department': practitioner.department or 'General',
+                'billing_item': practitioner.op_consulting_charge_item,
+                'avatar': get_abbr(practitioner.practitioner_name) or 'P',
+                # get_practitioner_avatar(practitioner.practitioner_name),
+                'is_available': True,
+                'mobile_phone': practitioner.mobile_phone,
+                'image': practitioner.image,
+                # 'timeslots': [],
+                # 'present_events': [],
+            }
+            
+            available_practitioners.append(practitioner_data)
+            
+        except Exception as e:
+            continue
     
-    return schedules[0].count > 0 if schedules else False
+    return {
+        'practitioners': available_practitioners,
+        'total_count': len(available_practitioners),
+        'date': date,
+        'company': company
+    }
 
 
-def check_practitioner_employee_availability(practitioner, date):
+def get_practitioners(company):
+    """
+    Get all practitioners for a company, filtering by date and availability
+    """
+
+    hp = DocType("Healthcare Practitioner")
+    
+    # Base query for practitioners
+    practitioners = (
+        frappe.qb.from_(hp)
+        .select(
+            hp.name,
+            hp.practitioner_name,
+            hp.department,
+            hp.op_consulting_charge_item,
+            hp.inpatient_visit_charge_item,
+            hp.mobile_phone,
+            hp.image,
+            hp.status,
+            hp.employee,
+            hp.user_id
+        )
+        .where(
+            (hp.status == 'Active')
+            & (hp.hms_tz_company == company)
+        )
+        .orderby(hp.name)
+    ).run(as_dict=True)
+
+    # TODO: check for schedules if configured on the practitioner master
+    # use  inner join with Practitioner Schedule if needed
+
+    return practitioners
+
+
+def check_practitioner_employee_availability(practitioner, date, employee=None, user_id=None):
     """
     Check if practitioner is available based on employee status
     Returns False if on holiday or leave
     """
     try:
-        practitioner_doc = frappe.get_cached_doc("Healthcare Practitioner", practitioner)
+        if not employee:
+            employee = frappe.get_cached_value("Employee", {"user_id": user_id}, "name")
+
+        if not employee:
+            return True
+    
+        # Check holiday
+        if is_holiday(employee, date):
+            return False
         
-        employee = None
-        if practitioner_doc.employee:
-            employee = practitioner_doc.employee
-        elif practitioner_doc.user_id:
-            employee = frappe.get_cached_value("Employee", {"user_id": practitioner_doc.user_id}, "name")
-        
-        if employee:
-            # Check holiday
-            if is_holiday(employee, date):
-                return False
+        # Check leave status
+        if "hrms" in frappe.get_installed_apps():
+            la = DocType("Leave Application")
+
+            leave_records = (
+                frappe.qb.from_(la)
+                .select(la.name)
+                .where(
+                    (la.employee == employee) &
+                    (la.docstatus == 1) &
+                    (la.from_date <= date) &
+                    (la.to_date >= date)
+                )
+            ).run(as_dict=True)
             
-            # Check leave status
-            if "hrms" in frappe.get_installed_apps():
-                leave_record = frappe.db.sql("""
-                    SELECT half_day 
-                    FROM `tabLeave Application`
-                    WHERE employee = %s 
-                    AND %s BETWEEN from_date AND to_date
-                    AND docstatus = 1
-                """, (employee, date), as_dict=True)
-                
-                if leave_record:
-                    return False
-        
-        return True
+            if len(leave_records) > 0:
+                return False
         
     except Exception as e:
         return False
-
-
-def get_practitioner_availability(practitioner, date, weekday):
-    """
-    Get detailed availability data for a practitioner on a specific date
-    """
-    try:
-        practitioner_doc = frappe.get_cached_doc("Healthcare Practitioner", practitioner)
-        
-        # Get present events from Practitioner Availability
-        present_events = get_present_events(practitioner, date)
-        
-        # Get scheduled slots
-        slot_details = get_scheduled_slots(practitioner_doc, date, weekday)
-        
-        # Process present events into slots
-        present_event_slots = process_present_event_slots(present_events, date, practitioner)
-        
-        # Combine all available slots
-        all_slots = slot_details + present_event_slots
-        
-        # Remove duplicate slots and sort
-        unique_slots = remove_duplicate_slots(all_slots)
-        
-        return {
-            'available_slots': unique_slots,
-            'present_events': present_events,
-            'total_slots': len(unique_slots)
-        }
-        
-    except Exception as e:
-        return {'available_slots': [], 'present_events': []}
-
-
-def get_present_events(practitioner, date):
-    """Get present events from Practitioner Availability"""
-    try:
-        date = getdate(date)
-        present_events = frappe.db.sql(f"""
-            SELECT
-                name, availability, from_time, to_time, from_date, to_date, 
-                duration, service_unit, repeat_this_event, repeat_on, repeat_till,
-                monday, tuesday, wednesday, thursday, friday, saturday, sunday
-            FROM `tabPractitioner Availability`
-            WHERE practitioner = '{practitioner}' 
-            AND present = 1 
-            AND (
-                (repeat_this_event = 1 AND (from_date <= '{date}' AND IFNULL(repeat_till, '3000-01-01') >= '{date}'))
-                OR
-                (repeat_this_event != 1 AND (from_date <= '{date}' AND to_date >= '{date}'))
-            )
-            ORDER BY from_date, from_time
-        """, as_dict=True)
-        
-        return present_events if present_events else []
-        
-    except Exception as e:
-        return []
 
 
 def get_scheduled_slots(practitioner_doc, date, weekday):
@@ -230,39 +162,7 @@ def get_scheduled_slots(practitioner_doc, date, weekday):
             if not available_slots:
                 continue
             
-            # Get existing appointments for this schedule/service unit
-            appointments = get_existing_appointments(practitioner_doc.name, date, schedule_entry)
-            
-            # Generate available time slots
-            for slot in available_slots:
-                slot_times = generate_slot_times(slot, appointments, schedule_entry)
-                slot_details.extend(slot_times)
-        
         return slot_details
-        
-    except Exception as e:
-        return []
-
-
-def get_existing_appointments(practitioner, date, schedule_entry):
-    """Get existing appointments for a practitioner on a specific date"""
-    try:
-        filters = {
-            "practitioner": practitioner,
-            "appointment_date": date,
-            "status": ["not in", ["Cancelled"]]
-        }
-        
-        if schedule_entry.service_unit:
-            filters["service_unit"] = schedule_entry.service_unit
-        
-        appointments = frappe.get_all(
-            "Patient Appointment",
-            filters=filters,
-            fields=["name", "appointment_time", "duration", "status"]
-        )
-        
-        return appointments
         
     except Exception as e:
         return []
@@ -316,146 +216,3 @@ def generate_slot_times(time_slot, appointments, schedule_entry):
     except Exception as e:
         return []
 
-
-def process_present_event_slots(present_events, date, practitioner):
-    """Process present events into available slots"""
-    try:
-        slots = []
-        
-        if not present_events:
-            return slots
-        
-        # Filter events based on repeat settings
-        filtered_events = filter_events_by_repeat(present_events, date)
-        
-        for event in filtered_events:
-            if not event.from_time or not event.to_time:
-                continue
-            
-            # Generate slots for this event
-            event_slots = generate_event_slots(event, date, practitioner)
-            slots.extend(event_slots)
-        
-        return slots
-        
-    except Exception as e:
-        return []
-
-
-def filter_events_by_repeat(events, date):
-    """Filter events based on repeat settings and weekday"""
-    try:
-        filtered_events = []
-        weekday = date.strftime("%A").lower()
-        
-        for event in events:
-            if event.repeat_this_event:
-                # Check if event repeats on this weekday
-                if hasattr(event, weekday) and getattr(event, weekday):
-                    filtered_events.append(event)
-            else:
-                # Non-repeating event, check date range
-                if event.from_date <= date <= event.to_date:
-                    filtered_events.append(event)
-        
-        return filtered_events
-        
-    except Exception as e:
-        return events
-
-
-def generate_event_slots(event, date, practitioner):
-    """Generate time slots from a practitioner availability event"""
-    try:
-        slots = []
-        
-        start_time = get_time(event.from_time)
-        end_time = get_time(event.to_time)
-        duration = event.duration or 15
-        
-        current_time = datetime.datetime.combine(date, start_time)
-        end_datetime = datetime.datetime.combine(date, end_time)
-        
-        while current_time < end_datetime:
-            slots.append({
-                'time': current_time.time().strftime('%H:%M'),
-                'display': current_time.time().strftime('%H:%M'),
-                'available': True,
-                'service_unit': event.service_unit,
-                'event': event.name
-            })
-            
-            current_time += datetime.timedelta(minutes=duration)
-        
-        return slots
-        
-    except Exception as e:
-        return []
-
-
-def remove_duplicate_slots(slots):
-    """Remove duplicate slots and sort by time"""
-    try:
-        unique_slots = {}
-        
-        for slot in slots:
-            slot_key = slot['time']
-            if slot_key not in unique_slots:
-                unique_slots[slot_key] = slot
-        
-        # Sort by time
-        sorted_slots = sorted(unique_slots.values(), key=lambda x: x['time'])
-        
-        return sorted_slots
-        
-    except Exception as e:
-        return slots
-
-
-def get_practitioner_avatar(name):
-    """Generate avatar initials from practitioner name"""
-    if not name:
-        return "P"
-    
-    parts = name.split()
-    if len(parts) >= 2:
-        return f"{parts[0][0]}{parts[1][0]}".upper()
-    elif len(parts) == 1:
-        return parts[0][:2].upper()
-    else:
-        return "P"
-
-
-@frappe.whitelist()
-def get_practitioner_availability_summary(practitioner, date=None):
-    """
-    Get availability summary for a specific practitioner
-    """
-    if not date:
-        date = nowdate()
-    
-    date = getdate(date)
-    weekday = date.strftime("%A")
-    
-    try:
-        availability_data = get_practitioner_availability(practitioner, date, weekday)
-        employee_available = check_practitioner_employee_availability(practitioner, date)
-        
-        return {
-            'practitioner': practitioner,
-            'date': date,
-            'is_available': employee_available and len(availability_data.get('available_slots', [])) > 0,
-            'total_slots': len(availability_data.get('available_slots', [])),
-            'available_slots': availability_data.get('available_slots', []),
-            'employee_available': employee_available
-        }
-        
-    except Exception as e:
-        return {
-            'practitioner': practitioner,
-            'date': date,
-            'is_available': False,
-            'total_slots': 0,
-            'available_slots': [],
-            'employee_available': False
-        }

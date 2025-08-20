@@ -18,22 +18,6 @@ export const useDateStore = defineStore('date', {
   getters: {
     isToday: (state) => {
       return state.selectedDate === dayjs().format('YYYY-MM-DD')
-    },
-
-    isPastDate: (state) => {
-      return dayjs(state.selectedDate).isBefore(dayjs(), 'day')
-    },
-
-    isFutureDate: (state) => {
-      return dayjs(state.selectedDate).isAfter(dayjs(), 'day')
-    },
-
-    formattedSelectedDate: (state) => {
-      return dayjs(state.selectedDate).format('dddd, MMMM D, YYYY')
-    },
-
-    currentTimeSlots: (state) => {
-      return state.timeSlots
     }
   },
 
@@ -51,10 +35,6 @@ export const useDateStore = defineStore('date', {
     goToNextDay() {
       const nextDay = dayjs(this.selectedDate).add(1, 'day')
       this.setSelectedDate(nextDay)
-    },
-
-    goToToday() {
-      this.setSelectedDate(dayjs())
     },
 
     generateTimeSlots() {
@@ -92,17 +72,6 @@ export const useDateStore = defineStore('date', {
       // Allow booking only if the slot time is equal to or greater than current time
       // This prevents backdated appointments while allowing all future slots
       return slotDateTime.isAfter(currentTime) || slotDateTime.isSame(currentTime, 'minute')
-    },
-
-    setWorkingHours(start, end) {
-      this.workingHours.start = start
-      this.workingHours.end = end
-      this.generateTimeSlots()
-    },
-
-    setSlotDuration(duration) {
-      this.slotDuration = duration
-      this.generateTimeSlots()
     }
   }
 })

@@ -1,7 +1,7 @@
 <template>
   <div class="appointment-grid-container min-h-screen bg-gray-100">
     <!-- Header with Date Controls -->
-    <div class="sticky top-0 z-20 bg-white border-b border-gray-300 shadow-sm">
+    <div class="sticky top-0 z-10 bg-white border-b border-gray-300 shadow-sm">
       <div class="px-6 py-4">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center space-x-6">
@@ -54,12 +54,6 @@
             </Button>
           </div>
         </div>
-        
-        <div class="py-2">
-          <div class="text-sm text-gray-500">
-            {{ formattedDate }}
-          </div>
-        </div>
       </div>
     </div>
 
@@ -69,7 +63,7 @@
       <div class="time-column">
         <!-- Time Slots Header -->
         <div class="time-header">
-          <div class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-40">
+          <div class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-10">
             <span class="text-sm font-semibold text-gray-600">Time Slots</span>
           </div>
         </div>
@@ -136,8 +130,6 @@
                   v-if="getAppointment(slot.time, practitioner.name)"
                   :appointment="getAppointment(slot.time, practitioner.name)"
                   @click="viewAppointment"
-                  @complete="handleCompleteAppointment"
-                  @cancel="handleCancelAppointment"
                 />
                 
                 <!-- Break Time Slot -->
@@ -151,8 +143,8 @@
                 
                 <!-- Empty Slot with Add Button -->
                 <div
-                  v-else-if="canAddAppointment(slot, practitioner)"
-                  class="add-appointment-button group"
+                  v-else-if="!slot.isPast && practitioner.is_available"
+                  class="add-appointment-button group cursor-pointer"
                   @click="createAppointment(slot.time, practitioner)"
                   :title="`Create appointment for ${practitioner.name} at ${slot.display}`"
                 >
@@ -178,10 +170,10 @@
     </div>
 
     <!-- Bottom Scroll Controls -->
-    <div class="bottom-scroll-controls">
+    <div class="bottom-scroll-controls" :class="{ 'hidden': showAppointmentDialog }">
       <!-- Left Scroll Button -->
       <button
-        v-if="canScrollLeft"
+        v-if="canScrollLeft && !showAppointmentDialog"
         @click="scrollHorizontally('left')"
         class="scroll-control scroll-control-left"
         :disabled="!canScrollLeft"
@@ -192,7 +184,7 @@
 
       <!-- Right Scroll Button -->
       <button
-        v-if="canScrollRight"
+        v-if="canScrollRight && !showAppointmentDialog"
         @click="scrollHorizontally('right')"
         class="scroll-control scroll-control-right"
         :disabled="!canScrollRight"
@@ -202,37 +194,41 @@
       </button>
     </div>
 
-    <!-- Appointment Dialog -->
-    <AppointmentDialog />
+    <!-- Appointment Dialog with v-model approach -->
+    <AppointmentDialog 
+      v-model:show-dialog="showAppointmentDialog"
+      :time-slot="selectedTimeSlot"
+      :practitioner-data="selectedPractitioner"
+      :mode="dialogMode"
+      :appointment="selectedAppointmentData"
+      @appointment-created="handleAppointmentCreated"
+      @close-dialog="closeAppointmentDialog"
+      @edit-appointment="handleEditAppointment"
+      @mode-changed="handleModeChanged"
+    />
     
-    <!-- Confirmation Dialog -->
-    <Dialog v-model="showConfirmDialog" :options="confirmDialogOptions">
-      <template #body-content>
-        <p class="text-gray-600">{{ confirmMessage }}</p>
-      </template>
-    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { onMounted, computed, ref, onUnmounted, nextTick, watch } from 'vue'
 // All Frappe UI components are now globally available from main.js
-import { useAppointmentStore } from '@/stores/appointment'
-import { usePractitionerStore } from '@/stores/practitioner'
-import { useDateStore } from '@/stores/date'
+import { useAppointmentStore } from '@/data/appointment'
+import { usePractitionerStore } from '@/data/practitioner'
+import { useDateStore } from '@/data/date'
 import PractitionerCard from './PractitionerCard.vue'
 import AppointmentCard from './AppointmentCard.vue'
 import AppointmentDialog from './AppointmentDialog.vue'
 import Link from '../controls/Link.vue'
-import { notifications } from '@/utils/notifications'
+import { useToast } from '@/composables/useToast'
 import dayjs from 'dayjs'
 
 const appointmentStore = useAppointmentStore()
 const practitionerStore = usePractitionerStore()
 const dateStore = useDateStore()
+const { notifications } = useToast()
 
 // Refs for DOM elements
-const gridContainer = ref(null)
 const practitionersArea = ref(null)
 const practitionersHeader = ref(null)
 const appointmentsGrid = ref(null)
@@ -240,13 +236,17 @@ const timeSlots = ref(null)
 
 // State
 const isRefreshing = ref(false)
-const showConfirmDialog = ref(false)
-const confirmMessage = ref('')
-const confirmAction = ref(null)
 const searchQuery = ref('')
 const selectedCompany = ref('')
 const selectedDateForPicker = ref('')
 const userCompanies = ref([])
+
+// Simple appointment dialog state
+const showAppointmentDialog = ref(false)
+const selectedTimeSlot = ref('')
+const selectedPractitioner = ref(null)
+const dialogMode = ref('create')
+const selectedAppointmentData = ref({})
 
 // Horizontal scroll control state
 const canScrollLeft = ref(false)
@@ -262,41 +262,6 @@ onMounted(() => {
   }
 })
 
-// Company options for Select component  
-const companyOptions = computed(() => {
-  return userCompanies.value.map(company => ({
-    label: company.name,
-    value: company.name
-  }))
-})
-
-// Computed properties
-const appointments = computed(() => appointmentStore.todaysAppointments)
-
-const formattedDate = computed(() => {
-  return dayjs(dateStore.selectedDate).format('dddd, MMMM D, YYYY')
-})
-
-const confirmDialogOptions = computed(() => ({
-  title: 'Confirm Action',
-  actions: [
-    {
-      label: 'Cancel',
-      variant: 'outline'
-    },
-    {
-      label: 'Confirm',
-      variant: 'solid',
-      theme: 'red',
-      handler: () => {
-        if (confirmAction.value) {
-          confirmAction.value()
-        }
-        showConfirmDialog.value = false
-      }
-    }
-  ]
-}))
 
 // Initialize data
 onMounted(async () => {
@@ -484,15 +449,6 @@ const getAppointment = (timeSlot, practitionerId) => {
   return appointment
 }
 
-const canAddAppointment = (slot, practitioner) => {
-  return (
-    practitioner.is_available &&
-    !slot.isPast &&
-    dateStore.canBookAppointment(slot.time) &&
-    !getAppointment(slot.time, practitioner.name)
-  )
-}
-
 const isCurrentTimeSlot = (slot) => {
   if (!dateStore.isToday) return false
   
@@ -564,8 +520,8 @@ const fetchUserCompanies = async () => {
   try {
     // Mock data for now - replace with actual API call
     userCompanies.value = [
-      // { name: 'Nephro One Dialysis Clinic' },
-      { name: 'Shree Hindu Mandal Hospital - Mwanza' },
+      { name: 'Nephro One Dialysis Clinic' },
+      // { name: 'Shree Hindu Mandal Hospital - Mwanza' },
     ]
     
     // Set default company if none selected
@@ -581,55 +537,30 @@ const fetchUserCompanies = async () => {
 
 // Event handlers
 const createAppointment = (timeSlot, practitioner) => {
-  appointmentStore.openAppointmentDialog('create', {
-    time_slot: timeSlot,
-    practitioner_id: practitioner.name,
-    practitioner_name: practitioner.name
+  // Immediate state update for fast dialog opening
+  selectedTimeSlot.value = timeSlot
+  selectedPractitioner.value = practitioner
+  dialogMode.value = 'create'
+  selectedAppointmentData.value = {}
+  
+  // Use nextTick for immediate UI update
+  nextTick(() => {
+    showAppointmentDialog.value = true
   })
 }
 
 const viewAppointment = (appointment) => {
-  appointmentStore.openAppointmentDialog('view', appointment)
+  selectedAppointmentData.value = appointment
+  dialogMode.value = 'view'
+  showAppointmentDialog.value = true
 }
 
-const handleCompleteAppointment = (appointment) => {
-  confirmMessage.value = `Mark appointment with ${appointment.patient_name} as completed?`
-  confirmAction.value = () => completeAppointment(appointment)
-  showConfirmDialog.value = true
-}
-
-const handleCancelAppointment = (appointment) => {
-  confirmMessage.value = `Cancel appointment with ${appointment.patient_name}?`
-  confirmAction.value = () => cancelAppointment(appointment)
-  showConfirmDialog.value = true
-}
-
-const completeAppointment = async (appointment) => {
-  try {
-    const result = await appointmentStore.completeAppointment(appointment.name)
-    if (result.success) {
-      notifications.success.appointmentCompleted()
-    } else {
-      notifications.error.appointmentUpdateFailed(result.error || 'Unknown error')
-    }
-  } catch (error) {
-    notifications.error.appointmentUpdateFailed('Error completing appointment')
-    console.error(error)
-  }
-}
-
-const cancelAppointment = async (appointment) => {
-  try {
-    const result = await appointmentStore.cancelAppointment(appointment.name)
-    if (result.success) {
-      notifications.success.appointmentCancelled()
-    } else {
-      notifications.error.appointmentUpdateFailed(result.error || 'Unknown error')
-    }
-  } catch (error) {
-    notifications.error.appointmentUpdateFailed('Error cancelling appointment')
-    console.error(error)
-  }
+const closeAppointmentDialog = () => {
+  showAppointmentDialog.value = false
+  selectedTimeSlot.value = ''
+  selectedPractitioner.value = null
+  selectedAppointmentData.value = {}
+  dialogMode.value = 'create'
 }
 
 const refreshData = async () => {
@@ -650,6 +581,26 @@ const refreshData = async () => {
     isRefreshing.value = false
   }
 }
+
+const handleAppointmentCreated = async (data) => {
+  // Refresh appointments after creating new one
+  if (selectedCompany.value && selectedCompany.value.trim()) {
+    await appointmentStore.fetchAppointments()
+  }
+}
+
+const handleModeChanged = (newMode, appointmentData) => {
+  // Update dialog mode and appointment data
+  dialogMode.value = newMode
+  if (appointmentData) {
+    selectedAppointmentData.value = appointmentData
+  }
+}
+
+const handleEditAppointment = () => {
+  // Switch from view mode to edit mode
+  dialogMode.value = 'edit'
+}
 </script>
 
 
@@ -662,6 +613,7 @@ const refreshData = async () => {
   position: relative;
   min-height: calc(80vh - 80px);
   height: calc(100vh - 100px);
+  z-index: 1; /* Lower z-index for the grid */
 }
 
 .time-column {
@@ -677,7 +629,7 @@ const refreshData = async () => {
 .time-header {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 15; /* Lower z-index to be below dialog */
   background-color: #f9fafb;
   flex-shrink: 0;
 }
@@ -689,7 +641,7 @@ const refreshData = async () => {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 20; /* Lower z-index to be below dialog */
   flex-shrink: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -729,7 +681,7 @@ const refreshData = async () => {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
   background-color: #f9fafb;
-  height: 96px; /* Match grid cell height + margin */
+  height: 108px; /* Match grid cell height + margin */
   min-height: 96px;
 }
 
@@ -834,7 +786,8 @@ const refreshData = async () => {
 }
 
 .practitioners-header-fixed {
-  @apply bg-white h-24;
+  background-color: white;
+  height: 6rem; /* h-24 equivalent */
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
@@ -900,10 +853,6 @@ const refreshData = async () => {
   background-color: #6b7280;
 }
 
-.grid-content {
-  /* space-y-0 equivalent: direct children have no vertical spacing */
-}
-
 .grid-row {
   display: flex;
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
@@ -927,11 +876,11 @@ const refreshData = async () => {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
   background-color: white;
-  height: 88px;
-  min-height: 88px;
+  height: 100px;
+  min-height: 100px;
   margin-bottom: 8px; /* Add space between cards to show bottom borders */
-  border-right: 1px dotted #d1d5db;
-  border-bottom: 1px dotted #d1d5db;
+  /* border-right: 1px dotted #d1d5db; */
+  /* border-bottom: 1px dotted #d1d5db; */
 }
 
 .grid-cell:hover {
@@ -1064,7 +1013,7 @@ const refreshData = async () => {
   justify-content: center;
   align-items: center;
   gap: 20px;
-  z-index: 1000;
+  z-index: 30; /* Lower z-index to be below dialog */
   pointer-events: none; /* Allow clicks to pass through the container */
 }
 
