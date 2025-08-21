@@ -368,6 +368,14 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- Payment Dialog -->
+  <PaymentDialog
+    :show-dialog="showPaymentDialog"
+    @update:show-dialog="showPaymentDialog = $event"
+    :appointment-data="appointment['Patient Appointment']"
+    @payment-completed="handlePaymentCompleted"
+  />
 </template>
 
 
@@ -380,6 +388,7 @@ import { usePractitionerStore } from '@/data/practitioner'
 import { useDateStore } from '@/data/date'
 import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
+import PaymentDialog from '@/components/appointments/PaymentDialog.vue'
 import dayjs from 'dayjs'
 import FeatherIcon from 'frappe-ui/src/components/FeatherIcon.vue'
 
@@ -422,6 +431,9 @@ const statusMessage = ref('')
 const error = ref('')
 const loadingProgress = ref(0)
 const justCreated = ref(false)
+const showCancelConfirmation = ref(false)
+const showPaymentDialog = ref(false)
+
 
 // Form validation errors
 const errors = reactive({})
@@ -1735,8 +1747,6 @@ const closeDialog = () => {
   updateDialogState(false)
 }
 
-const showCancelConfirmation = ref(false)
-
 // Create resource for cancelling appointment 
 const cancel_appointment_doc = createResource({
   url: 'hms_tz.api.appointment.cancel_appointment',
@@ -1783,32 +1793,53 @@ const confirmCancelAppointment = async () => {
 
 const createSalesInvoice = () => {
   try {
-    const appointmentName = appointment['Patient Appointment']['name']
+    // const appointmentName = appointment['Patient Appointment']['name']
+    // const patientName = appointment['Patient Appointment']['patient_name'] || appointment['Patient Appointment']['patient']
+    
+    // if (!appointmentName) {
+    //   notifications.error.appointmentUpdateFailed('Appointment ID not found')
+    //   return
+    // }
+    
+    // Show the payment dialog instead of opening sales invoice directly
+    showPaymentDialog.value = true
+    
+  } catch (error) {
+    console.error('Error opening payment dialog:', error)
+    notifications.error.appointmentUpdateFailed('Error opening Payment Dialog')
+  }
+}
+
+// Handle payment completion
+const handlePaymentCompleted = (paymentData) => {
+  try {
+    console.log('Payment completed:', paymentData)
+    
+    // Show success message
     const patientName = appointment['Patient Appointment']['patient_name'] || appointment['Patient Appointment']['patient']
+    notifications.success.generic(`Payment processed successfully for ${patientName}`)
     
-    if (!appointmentName) {
-      notifications.error.appointmentUpdateFailed('Appointment ID not found')
-      return
-    }
+    // Here you can add additional logic like:
+    // - Creating a sales invoice
+    // - Updating appointment status
+    // - Refreshing appointment data
     
-    // Construct the sales invoice URL
+    // For now, we'll construct the sales invoice URL and open it
+    const appointmentName = appointment['Patient Appointment']['name']
     const baseUrl = window.location.origin
     const salesInvoiceUrl = `${baseUrl}/app/sales-invoice/new-sales-invoice-1?patient_appointment=${encodeURIComponent(appointmentName)}`
     
-    // Show success message
-    notifications.success.generic(`Opening Sales Invoice for ${patientName}`)
-    
-    // Open in new tab
+    // Open sales invoice in new tab
     window.open(salesInvoiceUrl, '_blank', 'noopener,noreferrer')
     
-    // Optionally close the dialog after a short delay
+    // Optionally close the appointment dialog after a delay
     setTimeout(() => {
       closeDialog()
-    }, 1000)
+    }, 1500)
     
   } catch (error) {
-    console.error('Error creating sales invoice:', error)
-    notifications.error.appointmentUpdateFailed('Error opening Sales Invoice')
+    console.error('Error handling payment completion:', error)
+    notifications.error.generic('Error processing payment completion')
   }
 }
 
