@@ -15,6 +15,7 @@ declare module 'vue' {
     FieldMap: typeof import('./src/components/controls/FieldMap.vue')['default']
     Fields: typeof import('./src/components/controls/Fields.vue')['default']
     Link: typeof import('./src/components/controls/Link.vue')['default']
+    PaymentDialog: typeof import('./src/components/appointments/PaymentDialog.vue')['default']
     PractitionerCard: typeof import('./src/components/appointments/PractitionerCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
