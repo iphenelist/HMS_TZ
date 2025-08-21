@@ -14,9 +14,9 @@ def create_appointment(appointment_data):
     appointment_doc.update(appointment_data)
 
     if appointment_data.get("payment_mode") == "Cash":
-        mode_of_payment = get_mode_of_payment()
-        appointment_doc.mode_of_payment = mode_of_payment
-    
+        mops = get_mode_of_payment()
+        appointment_doc.mode_of_payment = mops[0].mode_of_payment
+
     appointment_doc.save(ignore_permissions=True)
     appointment_doc.reload()
 
@@ -62,7 +62,6 @@ def update_appointment(
     return False
 
 
-
 @frappe.whitelist()
 def cancel_appointment(appointment_id):
     """
@@ -91,6 +90,7 @@ def cancel_appointment(appointment_id):
     return True
 
 
+@frappe.whitelist()
 def get_mode_of_payment():
     """
     Fetch mode of payment using user id from user permission
@@ -108,14 +108,14 @@ def get_mode_of_payment():
         .where(
             (up.user == user) 
             & (up.allow == "Mode of Payment")
-            & (mp.type == "Cash")
+            # & (mp.type == "Cash")
         )
     ).run(as_dict=True)
 
     if len(mp_data) == 0:
         frappe.throw(f"No mode of payment found for user: {user}")
 
-    return mp_data[0].get("mode_of_payment", "")
+    return mp_data
 
 
 @frappe.whitelist()
