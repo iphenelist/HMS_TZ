@@ -239,20 +239,22 @@
             </template>
             Reset
           </Button>
-          
-          <Button
-            variant="subtle"
-            size="lg"
-            theme="blue"
-            :loading="isProcessingPayment"
-            :disabled="!canProcessPayment"
-            @click="processPayment()"
-          >
-            <template v-if="!isProcessingPayment" #prefix>
-              <FeatherIcon name="credit-card" class="w-4 h-4" />
-            </template>
-            {{ isProcessingPayment ? 'Processing...' : 'Create Invoice' }}
-          </Button>
+
+          <div v-if="canProcessPayment">
+            <Button
+              variant="subtle"
+              size="lg"
+              theme="blue"
+              :loading="isProcessingPayment"
+              @click="processPayment()"
+            >
+              <template v-if="!isProcessingPayment" #prefix>
+                <FeatherIcon name="credit-card" class="w-4 h-4" />
+              </template>
+              {{ isProcessingPayment ? 'Processing...' : 'Create Invoice' }}
+            </Button>
+
+          </div>
         </div>
       </div>
     </template>
