@@ -373,7 +373,7 @@
   <PaymentDialog
     :show-dialog="showPaymentDialog"
     @update:show-dialog="showPaymentDialog = $event"
-    :appointment-data="appointment['Patient Appointment']"
+    :appointment-data="appData"
     @payment-completed="handlePaymentCompleted"
   />
 </template>
