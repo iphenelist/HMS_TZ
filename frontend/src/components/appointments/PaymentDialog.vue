@@ -49,8 +49,8 @@
               <FeatherIcon name="x-circle" class="h-4 w-4 text-red-600" />
             </div>
             <div>
-              <h3 class="text-sm font-medium text-red-800">Error loading payment methods</h3>
-              <p class="text-sm text-red-700 mt-1">{{ modeOfPaymentError }}</p>
+              <p class="text-sm text-red-700">Error loading payment methods</p>
+              <h3 class="text-base font-medium text-red-800 mt-1">{{ modeOfPaymentError }}</h3>
             </div>
           </div>
           <div class="mt-4">
@@ -303,8 +303,7 @@ const modeOfPaymentResource = createResource({
     modeOfPaymentError.value = ''
   },
   onError: (error) => {
-    console.error('Error fetching mode of payments:', error)
-    modeOfPaymentError.value = error.message || 'Failed to load payment methods'
+    modeOfPaymentError.value = error.messages[0] || 'Failed to load payment methods'
     isLoadingModeOfPayments.value = false
     modeOfPayments.value = []
   }
