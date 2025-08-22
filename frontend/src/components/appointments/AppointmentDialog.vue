@@ -66,7 +66,7 @@
               size="lg"
               theme="blue"
               :disabled="isCreating"
-              @click="createSalesInvoice()"
+              @click="showPaymentDialog = true"
               class="font-semibold inline-flex items-center"
               title="Create Sales Invoice for Cash Payment Appointment"
             >
@@ -1787,25 +1787,6 @@ const confirmCancelAppointment = async () => {
   } catch (error) {
     // Error handling is already done in the resource onError callback
     console.error('Error cancelling appointment:', error)
-  }
-}
-
-const createSalesInvoice = () => {
-  try {
-    // const appointmentName = appointment['Patient Appointment']['name']
-    // const patientName = appointment['Patient Appointment']['patient_name'] || appointment['Patient Appointment']['patient']
-    
-    // if (!appointmentName) {
-    //   notifications.error.appointmentUpdateFailed('Appointment ID not found')
-    //   return
-    // }
-    
-    // Show the payment dialog instead of opening sales invoice directly
-    showPaymentDialog.value = true
-    
-  } catch (error) {
-    console.error('Error opening payment dialog:', error)
-    notifications.error.appointmentUpdateFailed('Error opening Payment Dialog')
   }
 }
 
