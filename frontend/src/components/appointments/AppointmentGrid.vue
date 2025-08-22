@@ -200,7 +200,7 @@
       :time-slot="selectedTimeSlot"
       :practitioner-data="selectedPractitioner"
       :mode="dialogMode"
-      :appointment="selectedAppointmentData"
+      :app-data="selectedAppointmentData"
       @appointment-created="handleAppointmentCreated"
       @close-dialog="closeAppointmentDialog"
       @edit-appointment="handleEditAppointment"

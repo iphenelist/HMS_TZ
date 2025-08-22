@@ -409,7 +409,7 @@ const props = defineProps({
     type: String,
     default: 'create' // 'create', 'edit', 'view'
   },
-  appointment: {
+  appData: {
     type: Object,
     default: () => ({})
   }
@@ -1140,9 +1140,9 @@ watch(() => props.showDialog, (newVal, oldVal) => {
       nextTick(() => {
         resetAppointment()
         error.value = ''
-        if (props.appointment && Object.keys(props.appointment).length > 0) {
+        if (props.appData && Object.keys(props.appData).length > 0) {
           // Load existing appointment data for view/edit mode
-          loadAppointmentData(props.appointment)
+          loadAppointmentData(props.appData)
         } else if (isCreateMode.value) {
           // Pre-fill data for create mode
           appointment['Patient Appointment']['appointment_time'] = props.timeSlot
@@ -1158,7 +1158,7 @@ watch(() => props.showDialog, (newVal, oldVal) => {
 }, { immediate: false })
 
 // Watch for appointment prop changes (for view/edit mode updates from parent)
-watch(() => props.appointment, (newAppointment) => {
+watch(() => props.appData, (newAppointment) => {
   if (newAppointment && Object.keys(newAppointment).length > 0 && (isViewMode.value || props.mode === 'edit')) {
     loadAppointmentData(newAppointment)
   }
@@ -1167,8 +1167,8 @@ watch(() => props.appointment, (newAppointment) => {
 // Watch for mode changes to ensure sections are recalculated
 watch(() => props.mode, (newMode) => {
   // Force reactivity update by triggering the computed property
-  if ((newMode === 'view' || newMode === 'edit') && props.appointment && Object.keys(props.appointment).length > 0) {
-    loadAppointmentData(props.appointment)
+  if ((newMode === 'view' || newMode === 'edit') && props.appData && Object.keys(props.appData).length > 0) {
+    loadAppointmentData(props.appData)
   }
 }, { immediate: true })
 
@@ -1577,7 +1577,7 @@ const update_appointment_doc = createResource({
   method: 'POST',
   makeParams() {
     return {
-      appointment_id: props.appointment.name || appointment['Patient Appointment'].name,
+      appointment_id: props.appData.name || appointment['Patient Appointment'].name,
       practitioner: appointment['Patient Appointment']['practitioner'],
       appointment_time: appointment['Patient Appointment']['appointment_time'],
       appointment_type: appointment['Patient Appointment']['appointment_type']
@@ -1752,7 +1752,7 @@ const cancel_appointment_doc = createResource({
   method: 'POST',
   makeParams() {
     return {
-      appointment_id: props.appointment?.name || props.appointment?.id || appointment['Patient Appointment']['name']
+      appointment_id: props.appData?.name || props.appData?.id || appointment['Patient Appointment']['name']
     }
   },
   onSuccess: (data) => {
