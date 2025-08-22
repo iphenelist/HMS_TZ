@@ -144,20 +144,18 @@
                   </td>
 
                   <!-- Payment Reference -->
-                   <!-- :placeholder="isCashPayment(payment.mode_of_payment) ? 'Optional' : 'Payment reference is required'" -->
-
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="relative">
                       <input
-                        v-model="payment.reference"
+                        v-model="payment.payment_reference"
                         type="text"
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        :class="{ 'border-red-300 ring-red-500': errors[`reference_${index}`] }"
+                        :class="{ 'border-red-300 ring-red-500': errors[`payment_reference_${index}`] }"
                         :required="!isCashPayment(payment.mode_of_payment) && payment.amount > 0"
                         @input="validatePaymentEntry(index)"
                       />
-                      <p v-if="errors[`reference_${index}`]" class="mt-1 text-xs text-red-600">
-                        {{ errors[`reference_${index}`] }}
+                      <p v-if="errors[`payment_reference_${index}`]" class="mt-1 text-xs text-red-600">
+                        {{ errors[`payment_reference_${index}`] }}
                       </p>
                     </div>
                   </td>
@@ -320,7 +318,7 @@ const initializePaymentEntries = () => {
     mode_of_payment: mop.mode_of_payment,
     type: mop.type,
     amount: 0,
-    reference: ''
+    payment_reference: ''
   }))
 }
 
@@ -373,7 +371,7 @@ const validatePaymentEntry = (index) => {
   
   // Clear previous errors for this entry
   delete errors[`amount_${index}`]
-  delete errors[`reference_${index}`]
+  delete errors[`payment_reference_${index}`]
   
   // Validate amount
   if (entry.amount < 0) {
@@ -381,8 +379,8 @@ const validatePaymentEntry = (index) => {
   }
   
   // Validate payment reference for non-cash payments
-  if (!isCashPayment(entry.mode_of_payment) && entry.amount > 0 && !entry.reference.trim()) {
-    errors[`reference_${index}`] = 'Payment reference is required'
+  if (!isCashPayment(entry.mode_of_payment) && entry.amount > 0 && !entry.payment_reference.trim()) {
+    errors[`payment_reference_${index}`] = 'Payment reference is required'
   }
 }
 
@@ -460,7 +458,7 @@ const processPayment = () => {
     payments: activePayments.map(entry => ({
       mode_of_payment: entry.mode_of_payment,
       amount: entry.amount,
-      reference: entry.reference || null
+      payment_reference: entry.payment_reference || null
     }))
   }
   
@@ -478,7 +476,7 @@ const processPayment = () => {
 const resetPayments = () => {
   paymentEntries.value.forEach(entry => {
     entry.amount = 0
-    entry.reference = ''
+    entry.payment_reference = ''
   })
   Object.keys(errors).forEach(key => delete errors[key])
 }
