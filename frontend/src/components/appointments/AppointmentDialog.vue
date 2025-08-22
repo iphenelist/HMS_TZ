@@ -390,7 +390,6 @@ import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
 import PaymentDialog from '@/components/appointments/PaymentDialog.vue'
 import dayjs from 'dayjs'
-import FeatherIcon from 'frappe-ui/src/components/FeatherIcon.vue'
 
 // Props for v-model approach
 const props = defineProps({
