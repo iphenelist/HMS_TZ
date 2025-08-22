@@ -263,7 +263,6 @@
 import { computed, reactive, watch, ref, onMounted } from 'vue'
 import { createResource } from 'frappe-ui'
 import { useToast } from '@/composables/useToast'
-import FeatherIcon from 'frappe-ui/src/components/FeatherIcon.vue'
 
 // Props
 const props = defineProps({
