@@ -73,7 +73,8 @@ export const useToast = () => {
     patientCreateFailed: (error = '') => showError('Failed to create patient'),
     validationFailed: () => showError('Please fix the form errors'),
     networkError: () => showError('Network error. Please check your connection'),
-    serverError: () => showError('Server error. Please try again later')
+    serverError: () => showError('Server error. Please try again later'),
+    generic: (message) => showError(message)
   };
 
   // Appointment warning messages
