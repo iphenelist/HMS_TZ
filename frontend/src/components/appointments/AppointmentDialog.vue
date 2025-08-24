@@ -58,7 +58,8 @@
           </div>
           
           <!-- Sales Invoice Button for Cash Appointments in View Mode -->
-          <div v-if="isViewMode" class="flex items-center">
+          <div v-if="isViewMode" class="flex items-center gap-2">
+            <!-- Make Payment Button - Only show if invoice not created -->
             <Button 
               v-if="appointment['Patient Appointment']['payment_mode'] === 'Cash' && 
                     !appointment['Patient Appointment']['ref_sales_invoice']"
@@ -74,6 +75,23 @@
                 <FeatherIcon name="dollar-sign" class="w-4 h-4" />
               </template>
               Make Payment
+            </Button>
+            
+            <!-- Print Button - Only show if invoice has been created -->
+            <Button 
+              v-if="appointment['Patient Appointment']['ref_sales_invoice']"
+              variant="subtle" 
+              size="lg"
+              theme="green"
+              :disabled="isCreating"
+              @click="printInvoice()"
+              class="font-semibold inline-flex items-center"
+              title="Print Tax Invoice"
+            >
+              <template #prefix>
+                <FeatherIcon name="printer" class="w-4 h-4" />
+              </template>
+              Print
             </Button>
           </div>
         </div>
@@ -1793,33 +1811,47 @@ const confirmCancelAppointment = async () => {
 // Handle payment completion
 const handlePaymentCompleted = (paymentData) => {
   try {
-    console.log('Payment completed:', paymentData)
-    
-    // Show success message
-    const patientName = appointment['Patient Appointment']['patient_name'] || appointment['Patient Appointment']['patient']
-    notifications.success.generic(`Payment processed successfully for ${patientName}`)
-    
-    // Here you can add additional logic like:
-    // - Creating a sales invoice
-    // - Updating appointment status
-    // - Refreshing appointment data
-    
-    // For now, we'll construct the sales invoice URL and open it
-    const appointmentName = appointment['Patient Appointment']['name']
-    const baseUrl = window.location.origin
-    const salesInvoiceUrl = `${baseUrl}/app/sales-invoice/new-sales-invoice-1?patient_appointment=${encodeURIComponent(appointmentName)}`
-    
-    // Open sales invoice in new tab
-    window.open(salesInvoiceUrl, '_blank', 'noopener,noreferrer')
-    
-    // Optionally close the appointment dialog after a delay
-    setTimeout(() => {
-      closeDialog()
-    }, 1500)
+    loadAppointmentData(paymentData)
+    // Close payment dialog
+    showPaymentDialog.value = false
     
   } catch (error) {
     console.error('Error handling payment completion:', error)
-    notifications.error.generic('Error processing payment completion')
+    notifications.error.generic('Error during processing payment')
+  }
+}
+
+// Print invoice function
+const printInvoice = () => {
+  try {
+    const invoiceName = appointment['Patient Appointment']['ref_sales_invoice']
+    if (!invoiceName) {
+      notifications.error.generic('No invoice found to print')
+      return
+    }
+    
+    // Use Frappe's built-in print functionality
+    const printUrl = `/printview?doctype=Sales Invoice&name=${encodeURIComponent(invoiceName)}&format=Standard&no_letterhead=0&letterhead=No%20Letterhead&settings=%7B%7D&_lang=en`
+    
+    // Open print preview in new window
+    const printWindow = window.open(printUrl, '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes')
+    
+    if (!printWindow) {
+      // Fallback if popup blocked
+      notifications.error.generic('Please allow popups to print the invoice')
+      return
+    }
+    
+    // Optional: Auto-print when the window loads
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
+    }
+    
+  } catch (error) {
+    console.error('Error printing invoice:', error)
+    notifications.error.generic('Error opening print dialog')
   }
 }
 
