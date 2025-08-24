@@ -236,12 +236,13 @@
             Reset
           </Button>
 
-          <div v-if="canProcessPayment">
+          <div v-if="getRemainingAmount() === 0">
             <Button
               variant="subtle"
               size="lg"
               theme="blue"
               :loading="isProcessingPayment"
+              :disabled="!canProcessPayment"
               @click="processPayment()"
             >
               <template v-if="!isProcessingPayment" #prefix>
@@ -306,6 +307,27 @@ const modeOfPaymentResource = createResource({
     modeOfPaymentError.value = error.messages[0] || 'Failed to load payment methods'
     isLoadingModeOfPayments.value = false
     modeOfPayments.value = []
+  }
+})
+
+// Resource to create invoice with payments
+const salesInvoiceResource = createResource({
+  url: 'hms_tz.nhif.api.patient_appointment.invoice_appointment',
+  method: 'POST',
+  auto: false,
+  onSuccess: (data) => {
+    notifications.success.generic('Payment processed successfully!')
+    emit('paymentCompleted', {
+      paymentData: data,
+    })
+    closeDialog()
+      
+    isProcessingPayment.value = false
+  },
+  onError: (error) => {
+    const errorMessage = error.messages ? error.messages[0] : 'Failed to create invoice'
+    notifications.error.generic(errorMessage)
+    isProcessingPayment.value = false
   }
 })
 
@@ -423,7 +445,7 @@ const canProcessPayment = computed(() => {
          !isLoadingModeOfPayments.value && 
          modeOfPayments.value.length > 0 &&
          totalAmountToPay.value > 0 &&
-         getRemainingAmount() === 0 &&
+        //  getRemainingAmount() === 0 &&
          paymentEntries.value.some(entry => entry.amount > 0)
 })
 
@@ -449,24 +471,17 @@ const processPayment = () => {
   // Get only entries with amounts > 0
   const activePayments = paymentEntries.value.filter(entry => entry.amount > 0)
   
-  const paymentData = {
-    appointment_id: props.appointmentData.name,
-    total_amount: totalAmountToPay.value,
-    payments: activePayments.map(entry => ({
-      mode_of_payment: entry.mode_of_payment,
-      amount: entry.amount,
-      payment_reference: entry.payment_reference || null
-    }))
-  }
+  const paymentMethods = activePayments.map(entry => ({
+    mode_of_payment: entry.mode_of_payment,
+    amount: entry.amount,
+    payment_reference: entry.payment_reference || null
+  }))
   
-  // Here you would typically make an API call to process the payment
-  // For now, we'll simulate the process
-  setTimeout(() => {
-    isProcessingPayment.value = false
-    notifications.success.generic('Payment processed successfully!')
-    emit('paymentCompleted', paymentData)
-    closeDialog()
-  }, 2000)
+  // Call the API to create 
+  salesInvoiceResource.submit({
+    name: props.appointmentData.name || props.appointmentData.id,
+    mops: paymentMethods
+  })
 }
 
 // Reset payments
