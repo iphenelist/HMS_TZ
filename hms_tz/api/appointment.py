@@ -15,12 +15,17 @@ def create_appointment(appointment_data):
 
     if appointment_data.get("payment_mode") == "Cash":
         mops = get_mode_of_payment()
-        appointment_doc.mode_of_payment = mops[0].mode_of_payment
+
+        cash_mop = next((mop for mop in mops if mop.type == "Cash"), None)
+        appointment_doc.mode_of_payment = cash_mop.mode_of_payment if cash_mop else mops[0].mode_of_payment
 
     appointment_doc.save(ignore_permissions=True)
     appointment_doc.reload()
 
-    return appointment_doc.reload()
+    appointment_doc.notes = ''
+    appointment_doc.save(ignore_permissions=True)
+
+    return appointment_doc.as_dict()
 
 
 @frappe.whitelist()
@@ -116,6 +121,44 @@ def get_mode_of_payment():
         frappe.throw(f"No mode of payment found for user: {user}")
 
     return mp_data
+
+
+@frappe.whitelist()
+def get_appointment_details(appointment_id):
+    """
+    Fetch details of a specific appointment with related patient and insurance data.
+    """
+    appointment_doc = frappe.get_doc("Patient Appointment", appointment_id)
+    if not appointment_doc:
+        frappe.throw(f"Appointment {appointment_id} not found.")
+
+    # Get appointment data
+    appointment_data = appointment_doc.as_dict()
+    
+    # Prepare the response structure
+    response_data = {
+        "Patient Appointment": appointment_data,
+        "Patient": {},
+        "Healthcare Insurance Subscription": {}
+    }
+    
+    # Get patient data if patient is linked
+    if appointment_data.get("patient"):
+        try:
+            patient_doc = frappe.get_doc("Patient", appointment_data["patient"])
+            response_data["Patient"] = patient_doc.as_dict()
+        except Exception as e:
+            frappe.log_error(f"Error fetching patient data: {str(e)}")
+            
+    # Get insurance subscription data if linked
+    if appointment_data.get("insurance_subscription"):
+        try:
+            insurance_doc = frappe.get_doc("Healthcare Insurance Subscription", appointment_data["insurance_subscription"])
+            response_data["Healthcare Insurance Subscription"] = insurance_doc.as_dict()
+        except Exception as e:
+            frappe.log_error(f"Error fetching insurance subscription data: {str(e)}")
+
+    return response_data
 
 
 @frappe.whitelist()
