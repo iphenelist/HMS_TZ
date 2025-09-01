@@ -317,9 +317,7 @@ const salesInvoiceResource = createResource({
   auto: false,
   onSuccess: (data) => {
     notifications.success.generic('Payment processed successfully!')
-    emit('paymentCompleted', {
-      paymentData: data,
-    })
+    emit('paymentCompleted', {paymentData: data})
     closeDialog()
       
     isProcessingPayment.value = false
