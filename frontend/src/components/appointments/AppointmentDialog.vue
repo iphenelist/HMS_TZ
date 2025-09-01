@@ -69,7 +69,7 @@
               :disabled="isCreating"
               @click="showPaymentDialog = true"
               class="font-semibold inline-flex items-center"
-              title="Create Sales Invoice for Cash Payment Appointment"
+              title="Create Sales Invoice for Cash Appointment"
             >
               <template #prefix>
                 <FeatherIcon name="dollar-sign" class="w-4 h-4" />
@@ -391,7 +391,7 @@
     :show-dialog="showPaymentDialog"
     @update:show-dialog="showPaymentDialog = $event"
     :appointment-data="appData"
-    @payment-completed="handlePaymentCompleted"
+    @paymentCompleted="handlePaymentCompleted"
   />
 </template>
 
@@ -1463,20 +1463,16 @@ const appointment_doc = createResource({
       appointment_data: appointment['Patient Appointment'],
     }
   },
-  onSuccess: (data) => {
+  onSuccess: async (data) => {
     notifications.success.appointmentCreated()
+    
+    appointment['Patient Appointment'].name = data.name
+    
+    // Fetch latest appointment data after successful creation
+    await fetchLatestAppointmentData(data.name)
     
     // For cash appointments, automatically switch to view mode
     if (appointment['Patient Appointment']['payment_mode'] === 'Cash') {
-      // Update the appointment data with the response from server
-      const updatedAppointment = {
-        ...appointment['Patient Appointment'],
-        name: data.name || data.appointment_name,
-        status: data.status || 'scheduled',
-        ...data
-      }
-      appointment['Patient Appointment'] = updatedAppointment
-      
       // Reset loading state
       isCreating.value = false
       statusMessage.value = ''
@@ -1484,9 +1480,6 @@ const appointment_doc = createResource({
       
       // Set flag to show success banner
       justCreated.value = true
-      
-      // Emit appointmentCreated to refresh parent data
-      emit('appointmentCreated', data)
       
       // Small delay to let the UI update, then emit mode change with complete appointment data
       setTimeout(() => {
@@ -1501,7 +1494,6 @@ const appointment_doc = createResource({
       // For insurance appointments, just close and reset as before
       closeDialog()
       resetAppointment()
-      emit('appointmentCreated', data)
     }
   },
   onError: (err) => {
@@ -1589,6 +1581,49 @@ const insurance_doc = createResource({
   }
 })
 
+// Create resource for fetching latest appointment details
+const get_appointment_details_doc = createResource({
+  url: 'hms_tz.api.appointment.get_appointment_details',
+  method: 'GET',
+  makeParams() {
+    return {
+      appointment_id: props.appData?.name || appointment['Patient Appointment']?.name
+    }
+  },
+  onSuccess: (data) => {
+    console.log('Latest appointment data fetched:', data)
+    // Load the latest appointment data
+    loadAppointmentData(data)
+    // Emit event to refresh parent component data
+    emit('appointmentCreated', data)
+  },
+  onError: (err) => {
+    console.error('Error fetching latest appointment data:', err)
+    // Don't show toast notification for this as it's a background operation
+    // handleResourceError(err)
+  }
+})
+
+// Function to fetch latest appointment data
+const fetchLatestAppointmentData = async (appointmentId) => {
+  try {
+    if (!appointmentId) {
+      console.warn('No appointment ID provided for fetching latest data')
+      return
+    }
+    
+    console.log('Fetching latest data for appointment:', appointmentId)
+    
+    // Update the appointment ID in the resource params
+    get_appointment_details_doc.params = { appointment_id: appointmentId }
+    
+    await get_appointment_details_doc.submit()
+  } catch (error) {
+    console.error('Error fetching latest appointment data:', error)
+    // Don't show error notification here as it's handled by the resource onError
+  }
+}
+
 // Create resource for updating appointment
 const update_appointment_doc = createResource({
   url: 'hms_tz.api.appointment.update_appointment',
@@ -1601,7 +1636,7 @@ const update_appointment_doc = createResource({
       appointment_type: appointment['Patient Appointment']['appointment_type']
     }
   },
-  onSuccess: (data) => {
+  onSuccess: async (data) => {
     notifications.success.appointmentUpdated()
     
     // Reset loading state
@@ -1609,8 +1644,11 @@ const update_appointment_doc = createResource({
     statusMessage.value = ''
     loadingProgress.value = 0
     
-    // Emit appointmentUpdated to refresh parent data
-    emit('appointmentCreated', data) // Reuse the same event for consistency
+    // Fetch latest appointment data after successful update
+    const appointmentId = props.appData.name || appointment['Patient Appointment'].name
+    if (appointmentId) {
+      await fetchLatestAppointmentData(appointmentId)
+    }
     
     // Switch back to view mode with updated appointment data
     setTimeout(() => {
@@ -1809,11 +1847,22 @@ const confirmCancelAppointment = async () => {
 }
 
 // Handle payment completion
-const handlePaymentCompleted = (paymentData) => {
+const handlePaymentCompleted = async (event) => {
   try {
-    loadAppointmentData(paymentData)
     // Close payment dialog
     showPaymentDialog.value = false
+    
+    // Extract payment data from event
+    const paymentData = event?.paymentData
+    
+    // If we have appointment ID, fetch the latest appointment data
+    const appointmentId = props.appData?.name || appointment['Patient Appointment']?.name
+    if (appointmentId) {
+      await fetchLatestAppointmentData(appointmentId)
+    } else if (paymentData) {
+      // Fallback to using payment data if no appointment ID
+      loadAppointmentData(paymentData)
+    }
     
   } catch (error) {
     console.error('Error handling payment completion:', error)
