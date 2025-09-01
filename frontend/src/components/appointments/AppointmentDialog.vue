@@ -58,7 +58,8 @@
           </div>
           
           <!-- Sales Invoice Button for Cash Appointments in View Mode -->
-          <div v-if="isViewMode" class="flex items-center">
+          <div v-if="isViewMode" class="flex items-center gap-2">
+            <!-- Make Payment Button - Only show if invoice not created -->
             <Button 
               v-if="appointment['Patient Appointment']['payment_mode'] === 'Cash' && 
                     !appointment['Patient Appointment']['ref_sales_invoice']"
@@ -66,7 +67,7 @@
               size="lg"
               theme="blue"
               :disabled="isCreating"
-              @click="createSalesInvoice()"
+              @click="showPaymentDialog = true"
               class="font-semibold inline-flex items-center"
               title="Create Sales Invoice for Cash Payment Appointment"
             >
@@ -75,6 +76,22 @@
               </template>
               Make Payment
             </Button>
+            
+            <!-- Print Button - Only show if invoice has been created -->
+            <Print
+              v-if="appointment['Patient Appointment']['ref_sales_invoice']"
+              doctype="Sales Invoice"
+              :docname="appointment['Patient Appointment']['ref_sales_invoice']"
+              variant="subtle"
+              size="lg"
+              theme="green"
+              :disabled="isCreating"
+              label="Print"
+              title="Print Tax Invoice"
+              class="font-semibold inline-flex items-center"
+              @print-success="handlePrintSuccess"
+              @print-error="handlePrintError"
+            />
           </div>
         </div>
 
@@ -368,6 +385,14 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- Payment Dialog -->
+  <PaymentDialog
+    :show-dialog="showPaymentDialog"
+    @update:show-dialog="showPaymentDialog = $event"
+    :appointment-data="appData"
+    @payment-completed="handlePaymentCompleted"
+  />
 </template>
 
 
@@ -380,8 +405,9 @@ import { usePractitionerStore } from '@/data/practitioner'
 import { useDateStore } from '@/data/date'
 import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
+import PaymentDialog from '@/components/appointments/PaymentDialog.vue'
+import Print from '@/components/controls/Print.vue'
 import dayjs from 'dayjs'
-import FeatherIcon from 'frappe-ui/src/components/FeatherIcon.vue'
 
 // Props for v-model approach
 const props = defineProps({
@@ -401,7 +427,7 @@ const props = defineProps({
     type: String,
     default: 'create' // 'create', 'edit', 'view'
   },
-  appointment: {
+  appData: {
     type: Object,
     default: () => ({})
   }
@@ -422,6 +448,9 @@ const statusMessage = ref('')
 const error = ref('')
 const loadingProgress = ref(0)
 const justCreated = ref(false)
+const showCancelConfirmation = ref(false)
+const showPaymentDialog = ref(false)
+
 
 // Form validation errors
 const errors = reactive({})
@@ -1129,9 +1158,9 @@ watch(() => props.showDialog, (newVal, oldVal) => {
       nextTick(() => {
         resetAppointment()
         error.value = ''
-        if (props.appointment && Object.keys(props.appointment).length > 0) {
+        if (props.appData && Object.keys(props.appData).length > 0) {
           // Load existing appointment data for view/edit mode
-          loadAppointmentData(props.appointment)
+          loadAppointmentData(props.appData)
         } else if (isCreateMode.value) {
           // Pre-fill data for create mode
           appointment['Patient Appointment']['appointment_time'] = props.timeSlot
@@ -1147,7 +1176,7 @@ watch(() => props.showDialog, (newVal, oldVal) => {
 }, { immediate: false })
 
 // Watch for appointment prop changes (for view/edit mode updates from parent)
-watch(() => props.appointment, (newAppointment) => {
+watch(() => props.appData, (newAppointment) => {
   if (newAppointment && Object.keys(newAppointment).length > 0 && (isViewMode.value || props.mode === 'edit')) {
     loadAppointmentData(newAppointment)
   }
@@ -1156,8 +1185,8 @@ watch(() => props.appointment, (newAppointment) => {
 // Watch for mode changes to ensure sections are recalculated
 watch(() => props.mode, (newMode) => {
   // Force reactivity update by triggering the computed property
-  if ((newMode === 'view' || newMode === 'edit') && props.appointment && Object.keys(props.appointment).length > 0) {
-    loadAppointmentData(props.appointment)
+  if ((newMode === 'view' || newMode === 'edit') && props.appData && Object.keys(props.appData).length > 0) {
+    loadAppointmentData(props.appData)
   }
 }, { immediate: true })
 
@@ -1566,7 +1595,7 @@ const update_appointment_doc = createResource({
   method: 'POST',
   makeParams() {
     return {
-      appointment_id: props.appointment.name || appointment['Patient Appointment'].name,
+      appointment_id: props.appData.name || appointment['Patient Appointment'].name,
       practitioner: appointment['Patient Appointment']['practitioner'],
       appointment_time: appointment['Patient Appointment']['appointment_time'],
       appointment_type: appointment['Patient Appointment']['appointment_type']
@@ -1735,15 +1764,13 @@ const closeDialog = () => {
   updateDialogState(false)
 }
 
-const showCancelConfirmation = ref(false)
-
 // Create resource for cancelling appointment 
 const cancel_appointment_doc = createResource({
   url: 'hms_tz.api.appointment.cancel_appointment',
   method: 'POST',
   makeParams() {
     return {
-      appointment_id: props.appointment?.name || props.appointment?.id || appointment['Patient Appointment']['name']
+      appointment_id: props.appData?.name || props.appData?.id || appointment['Patient Appointment']['name']
     }
   },
   onSuccess: (data) => {
@@ -1781,35 +1808,26 @@ const confirmCancelAppointment = async () => {
   }
 }
 
-const createSalesInvoice = () => {
+// Handle payment completion
+const handlePaymentCompleted = (paymentData) => {
   try {
-    const appointmentName = appointment['Patient Appointment']['name']
-    const patientName = appointment['Patient Appointment']['patient_name'] || appointment['Patient Appointment']['patient']
-    
-    if (!appointmentName) {
-      notifications.error.appointmentUpdateFailed('Appointment ID not found')
-      return
-    }
-    
-    // Construct the sales invoice URL
-    const baseUrl = window.location.origin
-    const salesInvoiceUrl = `${baseUrl}/app/sales-invoice/new-sales-invoice-1?patient_appointment=${encodeURIComponent(appointmentName)}`
-    
-    // Show success message
-    notifications.success.generic(`Opening Sales Invoice for ${patientName}`)
-    
-    // Open in new tab
-    window.open(salesInvoiceUrl, '_blank', 'noopener,noreferrer')
-    
-    // Optionally close the dialog after a short delay
-    setTimeout(() => {
-      closeDialog()
-    }, 1000)
+    loadAppointmentData(paymentData)
+    // Close payment dialog
+    showPaymentDialog.value = false
     
   } catch (error) {
-    console.error('Error creating sales invoice:', error)
-    notifications.error.appointmentUpdateFailed('Error opening Sales Invoice')
+    console.error('Error handling payment completion:', error)
+    notifications.error.generic('Error during processing payment')
   }
+}
+
+// Print handlers for Print component
+const handlePrintSuccess = (printData) => {
+  // You can add any additional logic here, like tracking analytics
+}
+
+const handlePrintError = (error) => {
+  // You can add additional error handling here if needed
 }
 
 // Cleanup on component unmount

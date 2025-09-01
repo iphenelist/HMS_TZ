@@ -67,7 +67,14 @@ def get_cash_amount(
 
 
 @frappe.whitelist()
-def invoice_appointment(name):
+def invoice_appointment(name, mops=[]):
+    """create sales invoice for appointment
+
+    args:
+        name (str): The name of the appointment.
+        mops (list): List of mode of payments.
+    """
+
     appointment_doc = frappe.get_cached_doc("Patient Appointment", name)
     if appointment_doc.billing_item:
         if appointment_doc.mode_of_payment:
@@ -93,6 +100,8 @@ def invoice_appointment(name):
 
         appointment_doc.save()
         appointment_doc.reload()
+        appointment_doc.clear_cache()
+    
     set_follow_up(appointment_doc, "invoice_appointment")
     automate_invoicing = frappe.db.get_single_value("Healthcare Settings", "automate_appointment_invoicing")
 
@@ -123,9 +132,24 @@ def invoice_appointment(name):
         # invoice as Unpaid
         if appointment_doc.mode_of_payment and appointment_doc.paid_amount:
             sales_invoice.is_pos = 1
-            payment = sales_invoice.append("payments", {})
-            payment.mode_of_payment = appointment_doc.mode_of_payment
-            payment.amount = appointment_doc.paid_amount
+
+            if len(mops) > 0:
+                for mop in mops:
+                    if mop.get("amount", 0) > 0:
+                        new_row = {
+                            "mode_of_payment": mop.get("mode_of_payment"),
+                            "amount": mop.get("amount")
+                        }
+
+                        if mop.get("payment_reference"):
+                            new_row["payment_reference"] = mop.get("payment_reference")
+                        
+                        sales_invoice.append("payments", new_row)
+
+            else:
+                payment = sales_invoice.append("payments", {})
+                payment.mode_of_payment = appointment_doc.mode_of_payment
+                payment.amount = appointment_doc.paid_amount
 
         sales_invoice.set_taxes()
         sales_invoice.set_missing_values(for_validate=True)
@@ -134,11 +158,26 @@ def invoice_appointment(name):
         sales_invoice.calculate_taxes_and_totals()
         sales_invoice.submit()
         frappe.msgprint(_(f"Sales Invoice {sales_invoice.name} created"))
-        appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_doc.name)
+
         appointment_doc.ref_sales_invoice = sales_invoice.name
         appointment_doc.invoiced = 1
+
+        if (
+            len(mops) > 0 and 
+            appointment_doc.mode_of_payment != mops[0].get("mode_of_payment")
+        ):
+            appointment_doc.mode_of_payment = mops[0].get("mode_of_payment")
+        
         appointment_doc.db_update()
+
+        appointment_doc.reload()
+        appointment_doc.clear_cache()
         make_next_doc(appointment_doc, "validate", from_hook=False)
+
+        # If there are multiple modes of payment, return the appointment details
+        if len(mops) > 0:
+            return appointment_doc.as_dict()
+
         return "true"
 
 
