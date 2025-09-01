@@ -78,21 +78,20 @@
             </Button>
             
             <!-- Print Button - Only show if invoice has been created -->
-            <Button 
+            <Print
               v-if="appointment['Patient Appointment']['ref_sales_invoice']"
-              variant="subtle" 
+              doctype="Sales Invoice"
+              :docname="appointment['Patient Appointment']['ref_sales_invoice']"
+              variant="subtle"
               size="lg"
               theme="green"
               :disabled="isCreating"
-              @click="printInvoice()"
-              class="font-semibold inline-flex items-center"
+              label="Print"
               title="Print Tax Invoice"
-            >
-              <template #prefix>
-                <FeatherIcon name="printer" class="w-4 h-4" />
-              </template>
-              Print
-            </Button>
+              class="font-semibold inline-flex items-center"
+              @print-success="handlePrintSuccess"
+              @print-error="handlePrintError"
+            />
           </div>
         </div>
 
@@ -407,6 +406,7 @@ import { useDateStore } from '@/data/date'
 import { useToast } from '@/composables/useToast'
 import FieldMap from '@/components/controls/FieldMap.vue'
 import PaymentDialog from '@/components/appointments/PaymentDialog.vue'
+import Print from '@/components/controls/Print.vue'
 import dayjs from 'dayjs'
 
 // Props for v-model approach
@@ -1821,38 +1821,13 @@ const handlePaymentCompleted = (paymentData) => {
   }
 }
 
-// Print invoice function
-const printInvoice = () => {
-  try {
-    const invoiceName = appointment['Patient Appointment']['ref_sales_invoice']
-    if (!invoiceName) {
-      notifications.error.generic('No invoice found to print')
-      return
-    }
-    
-    // Use Frappe's built-in print functionality
-    const printUrl = `/printview?doctype=Sales Invoice&name=${encodeURIComponent(invoiceName)}&format=Standard&no_letterhead=0&letterhead=No%20Letterhead&settings=%7B%7D&_lang=en`
-    
-    // Open print preview in new window
-    const printWindow = window.open(printUrl, '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes')
-    
-    if (!printWindow) {
-      // Fallback if popup blocked
-      notifications.error.generic('Please allow popups to print the invoice')
-      return
-    }
-    
-    // Optional: Auto-print when the window loads
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-      }, 500)
-    }
-    
-  } catch (error) {
-    console.error('Error printing invoice:', error)
-    notifications.error.generic('Error opening print dialog')
-  }
+// Print handlers for Print component
+const handlePrintSuccess = (printData) => {
+  // You can add any additional logic here, like tracking analytics
+}
+
+const handlePrintError = (error) => {
+  // You can add additional error handling here if needed
 }
 
 // Cleanup on component unmount
