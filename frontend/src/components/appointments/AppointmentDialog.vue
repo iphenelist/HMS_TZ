@@ -430,6 +430,10 @@ const props = defineProps({
   appData: {
     type: Object,
     default: () => ({})
+  },
+  company: {
+    type: String,
+    default: ''
   }
 })
 
@@ -537,7 +541,8 @@ const appointment = reactive({
       "poc_reference_no": "",
       "mode_of_payment": "",
       "ref_sales_invoice": "",
-      "status": ""
+      "status": "",
+      "company": ""
     },
     "Patient": {
       "first_name": "",
@@ -1225,7 +1230,8 @@ const resetAppointment = () => {
     "poc_reference_no": "",
     "mode_of_payment": "",
     "ref_sales_invoice": "",
-    "status": ""
+    "status": "",
+    "company": ""
   }
 
   appointment["Patient"] = {
@@ -1686,6 +1692,10 @@ async function create_appointment_docs() {
     
     if (appointment['Patient Appointment']['is_new_his']) {
       totalSteps++
+    }
+
+    if (!appointment['Patient Appointment']['company'] && props.company) {
+      appointment['Patient Appointment']['company'] = props.company
     }
 
     // Step 1: Create patient if needed

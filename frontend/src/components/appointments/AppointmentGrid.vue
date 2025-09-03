@@ -201,6 +201,7 @@
       :practitioner-data="selectedPractitioner"
       :mode="dialogMode"
       :app-data="selectedAppointmentData"
+      :company="selectedCompany"
       @appointment-created="handleAppointmentCreated"
       @close-dialog="closeAppointmentDialog"
       @edit-appointment="handleEditAppointment"
