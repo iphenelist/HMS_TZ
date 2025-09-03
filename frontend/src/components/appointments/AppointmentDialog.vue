@@ -232,10 +232,23 @@
       </div>
     </template>
     
+    <!-- Action buttons -->
     <template #actions>
       <div class="flex gap-2 justify-between">
-        <!-- Back button for edit mode -->
         <div class="flex items-center">
+          <Button 
+            v-if="isViewMode"
+            variant="subtle" 
+            size="lg"
+            :disabled="isCreating"
+            @click="closeDialog()"
+          >
+            <template #prefix>
+              <FeatherIcon name="x" class="w-4 h-4 mr-1" />
+            </template>
+            Close
+          </Button>
+
           <Button
             v-if="props.mode === 'edit'"
             variant="subtle"
@@ -253,21 +266,8 @@
           </Button>
         </div>
 
-        <!-- Action buttons -->
         <div class="flex gap-2">
           <template v-if="isViewMode">
-            <Button 
-              variant="subtle" 
-              size="lg"
-              :disabled="isCreating"
-              @click="closeDialog()"
-            >
-              <template #prefix>
-                <FeatherIcon name="x" class="w-4 h-4 mr-1" />
-              </template>
-              Close
-            </Button>
-            
             <Button 
               v-if="appointment['Patient Appointment']['status'] !== 'cancelled'"
               variant="subtle" 
