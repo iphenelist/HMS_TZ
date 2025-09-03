@@ -1,6 +1,10 @@
 import frappe
 from frappe.utils import get_time
 from frappe.query_builder import DocType
+from hms_tz.nhif.api.patient_appointment import (
+    get_cash_amount,
+    get_consulting_charge_item
+)
 
 
 @frappe.whitelist()
@@ -13,17 +17,28 @@ def create_appointment(appointment_data):
     appointment_doc = frappe.new_doc("Patient Appointment")
     appointment_doc.update(appointment_data)
 
+    billing_item = get_consulting_charge_item(
+        appointment_data.get("appointment_type"),
+        appointment_data.get("practitioner"),
+    )
+    appointment_doc.billing_item = billing_item
+
     if appointment_data.get("payment_mode") == "Cash":
         mops = get_mode_of_payment()
 
         cash_mop = next((mop for mop in mops if mop.type == "Cash"), None)
-        appointment_doc.mode_of_payment = cash_mop.mode_of_payment if cash_mop else mops[0].mode_of_payment
+        mode_of_payment = cash_mop.mode_of_payment if cash_mop else mops[0].mode_of_payment
+        appointment_doc.mode_of_payment = mode_of_payment
+
+        appointment_doc.paid_amount = get_cash_amount(
+            billing_item,
+            mop=mode_of_payment,
+            company=appointment_data.get("company"),
+            patient=appointment_data.get("patient"),
+        )
 
     appointment_doc.save(ignore_permissions=True)
     appointment_doc.reload()
-
-    appointment_doc.notes = ''
-    appointment_doc.save(ignore_permissions=True)
 
     return appointment_doc.as_dict()
 
