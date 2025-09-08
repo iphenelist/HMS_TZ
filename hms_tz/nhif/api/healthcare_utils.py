@@ -870,7 +870,11 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
             )
             return
 
-        if not enc_doc.insurance_subscription and not enc_doc.inpatient_record:
+        if (
+            not enc_doc.insurance_subscription
+            and not enc_doc.inpatient_record
+            and not enc_doc.healthcare_package_order
+        ):
             return
 
         patient_encounter_docs.append(enc_doc)
@@ -951,9 +955,7 @@ def create_plan(patient_encounter_docs, therapies):
             for entry in therapies:
                 if entry.parent == encounter_doc.name:
                     entry.therapy_plan_created = 1
-                    entry.delivered_quantity = (
-                        entry.no_of_sessions - entry.sessions_cancelled
-                    )
+                    entry.delivered_quantity = entry.no_of_sessions - entry.sessions_cancelled
                     entry.db_update()
 
             frappe.msgprint(

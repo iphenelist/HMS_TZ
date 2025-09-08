@@ -725,16 +725,18 @@ def on_submit(doc, method):
                 doc.company,
             )
         inpatient_billing(doc, method)
-    else:  # insurance patient
+    
+    elif not doc.healthcare_package_order:
+        # insurance patient
         on_submit_validation(doc, method)
         create_healthcare_docs(doc, method)
         create_delivery_note(doc, method)
 
     if (
         doc.healthcare_package_order
-        # and not doc.insurance_subscription
         and not doc.inpatient_record
     ):
+        # for cash and insurance patient with healthcare package order
         create_items_from_healthcare_package_orders(doc, method)
 
     if doc.inpatient_record:

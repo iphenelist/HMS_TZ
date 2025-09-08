@@ -157,9 +157,11 @@ def create_single_appointment(doc, row, appointment_type, is_pratictioner_consul
 	if doc.payment_type == "Insurance":
 		appointment.insurance_subscription = doc.insurance_subscription
 		appointment.authorization_number = doc.authorization_number
+		appointment.mode_of_payment = None
 	if doc.payment_type == "Cash":
 		appointment.mode_of_payment = doc.mode_of_payment
 		appointment.invoiced = 1
+		appointment.insurance_subscription = None
 	appointment.department = row.department
 	appointment.billing_item = row.consultation_item
 	if is_pratictioner_consultation:
@@ -200,7 +202,7 @@ def update_encounter_items(encounter_doc, package_doc, has_items):
 				if row.healthcare_service_type == d["template"]:
 					new_row =  {
 						d["field"]: row.healthcare_service,
-						"prescribe": 1 if encounter_doc.mode_of_payment else 0,
+						"prescribe": 0 if encounter_doc.insurance_subscription else 1,
 						"medical_code": str("ICD-10 R69") + "\n " + str("Illness, unspecified"),
 						"amount": row.service_price,
 					}
@@ -216,6 +218,7 @@ def update_encounter_items(encounter_doc, package_doc, has_items):
 					
 					if row.healthcare_service_type == "Therapy Type":
 						new_row["no_of_sessions"] = 1
+						new_row["sessions_cancelled"] = 0
 					
 					encounter_doc.append(d["table"], new_row)
 	item_table += "</p>"
