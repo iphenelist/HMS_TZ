@@ -74,7 +74,7 @@ def after_insert(doc, method):
 
     if doc.company and doc.mode_of_payment:
         pharmacy_details = frappe.get_cached_value(
-            "Company",
+            "HMS TZ Setting",
             doc.company,
             [
                 "auto_set_pharmacy_on_patient_encounter",
@@ -389,7 +389,7 @@ def mark_item_not_covered(
         if (
             company
             and frappe.get_cached_value(
-                "Company",
+                "HMS TZ Setting",
                 company,
                 "auto_prescribe_items_on_patient_encounter",
             )
@@ -1113,8 +1113,8 @@ def validate_patient_balance_vs_patient_costs(
         return inpatient_cost, cash_limit
 
     cash_limit_details = frappe.get_cached_value(
-        "Company",
-        {"name": company, "hms_tz_has_cash_limit_alert": 1},
+        "HMS TZ Setting",
+        {"company": company, "hms_tz_has_cash_limit_alert": 1},
         [
             "hms_tz_minimum_cash_limit_percent",
             "hms_tz_limit_exceed_action",
@@ -1584,7 +1584,7 @@ def validate_medication_class(company, encounter, patient, drug_item, caller="Ba
         caller (str, optional): excute location. Defaults to "Backend".
     """
 
-    validate_medication_class = frappe.get_cached_value("Company", company, "validate_medication_class")
+    validate_medication_class = frappe.get_cached_value("HMS TZ Setting", company, "validate_medication_class")
     if int(validate_medication_class) == 0:
         return
 

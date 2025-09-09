@@ -29,7 +29,7 @@ def create_sales_order(doc, method):
         return
 
     company_details = frappe.get_cached_value(
-        "Company",
+        "HMS TZ Setting",
         doc.company,
         [
             "auto_create_sales_order_from_encounter",
