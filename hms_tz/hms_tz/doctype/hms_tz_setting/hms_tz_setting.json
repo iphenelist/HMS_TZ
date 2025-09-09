@@ -7,33 +7,38 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "column_break_8xkci",
   "company",
+  "column_break_zmnx",
   "facility_code",
   "hms_tz_settings_section",
-  "hms_tz_has_cash_limit_alert",
-  "hms_tz_minimum_cash_limit_percent",
+  "auto_finalize_patient_encounter",
+  "valid_days_to_auto_finalize_encounter",
+  "stop_change_of_lrpmt_items_after_claim_submission",
   "column_break_qsun",
-  "hms_tz_limit_under_minimum_percent_action",
-  "hms_tz_limit_exceed_action",
-  "validate_medication_class",
   "auto_set_pharmacy_on_patient_encounter",
   "opd_cash_pharmacy",
   "opd_insurance_pharmacy",
   "ipd_cash_pharmacy",
   "ipd_insurance_pharmacy",
-  "auto_finalize_patient_encounter",
-  "valid_days_to_auto_finalize_encounter",
-  "allow_send_sms_for_multiple_labs",
-  "lab_result_sms_template",
+  "allow_filtered_medication_on_patient_encounter",
+  "column_break_yois",
+  "auto_prescribe_items_on_patient_encounter",
+  "validate_medication_class",
   "auto_create_sales_order_from_encounter",
   "sales_order_opd_pharmacy",
   "sales_order_ipd_pharmacy",
-  "auto_prescribe_items_on_patient_encounter",
-  "allow_filtered_medication_on_patient_encounter",
-  "stop_change_of_lrpmt_items_after_claim_submission",
+  "lab_test_conf_section",
+  "allow_send_sms_for_multiple_labs",
+  "column_break_zsbe",
+  "lab_result_sms_template",
+  "ipd_conf_section",
   "allow_discharge_patient_with_pending_unbilled_invoices",
-  "parent_company",
+  "column_break_kkzg",
+  "hms_tz_has_cash_limit_alert",
+  "hms_tz_limit_under_minimum_percent_action",
+  "column_break_finc",
+  "hms_tz_minimum_cash_limit_percent",
+  "hms_tz_limit_exceed_action",
   "nhif_tab",
   "nhif_user",
   "nhif_client_secret",
@@ -66,10 +71,6 @@
   "submit_claim_year"
  ],
  "fields": [
-  {
-   "fieldname": "column_break_8xkci",
-   "fieldtype": "Column Break"
-  },
   {
    "fieldname": "company",
    "fieldtype": "Link",
@@ -293,17 +294,20 @@
    "search_index": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "hms_tz_settings_section",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Patient Encounter Conf"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "hms_tz_has_cash_limit_alert",
    "fieldtype": "Check",
    "label": "Has Cash Limit Alert"
   },
   {
    "default": "10",
+   "depends_on": "eval: doc.hms_tz_has_cash_limit_alert == 1",
    "description": "Minimum cash limit percent to warn/stop doctor.",
    "fieldname": "hms_tz_minimum_cash_limit_percent",
    "fieldtype": "Int",
@@ -316,6 +320,7 @@
   },
   {
    "default": "Warn",
+   "depends_on": "eval:doc.hms_tz_has_cash_limit_alert == 1",
    "description": "Action to take on doctor level when cash limit is under minimum percent.",
    "fieldname": "hms_tz_limit_under_minimum_percent_action",
    "fieldtype": "Select",
@@ -326,6 +331,7 @@
   },
   {
    "default": "Stop",
+   "depends_on": "eval:doc.hms_tz_has_cash_limit_alert == 1",
    "description": "Action to take on doctor level when cash limit is exceeded.",
    "fieldname": "hms_tz_limit_exceed_action",
    "fieldtype": "Select",
@@ -349,6 +355,7 @@
    "label": "Auto Set Pharmacy on Patient Encounter"
   },
   {
+   "depends_on": "eval: doc.auto_set_pharmacy_on_patient_encounter == 1",
    "fieldname": "opd_cash_pharmacy",
    "fieldtype": "Link",
    "label": "OPD Cash Pharmacy",
@@ -356,6 +363,7 @@
    "options": "Healthcare Service Unit"
   },
   {
+   "depends_on": "eval: doc.auto_set_pharmacy_on_patient_encounter == 1",
    "fieldname": "opd_insurance_pharmacy",
    "fieldtype": "Link",
    "label": "OPD Insurance Pharmacy",
@@ -433,7 +441,7 @@
    "options": "Warehouse"
   },
   {
-   "default": "0",
+   "default": "1",
    "description": "If ticked, Uncovered items will be marked as prescribed and required to be paid in cash on patient encounter",
    "fieldname": "auto_prescribe_items_on_patient_encounter",
    "fieldtype": "Check",
@@ -447,7 +455,7 @@
    "label": "Allow Filtered Medication on Patient Encounter"
   },
   {
-   "default": "0",
+   "default": "1",
    "description": "If checked, user will not be able to Change/Cancel/Return LRPMT items after NHIF Claim submission.",
    "fieldname": "stop_change_of_lrpmt_items_after_claim_submission",
    "fieldtype": "Check",
@@ -461,16 +469,41 @@
    "label": "Allow Discharge Patient With Pending Unbilled Invoices"
   },
   {
-   "fieldname": "parent_company",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Parent Company",
-   "options": "Company"
+   "fieldname": "column_break_zmnx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_yois",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "lab_test_conf_section",
+   "fieldtype": "Section Break",
+   "label": "Lab Test Conf"
+  },
+  {
+   "fieldname": "column_break_zsbe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "ipd_conf_section",
+   "fieldtype": "Section Break",
+   "label": "Inpatient Record Conf"
+  },
+  {
+   "fieldname": "column_break_finc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_kkzg",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-09 10:55:13.988649",
+ "modified": "2025-09-09 16:08:19.181448",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
