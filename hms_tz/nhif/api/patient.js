@@ -37,18 +37,10 @@ frappe.ui.form.on("Patient", {
     });
   },
   insurance_provider: function (frm) {
-    if (
-      frm.doc.card_no &&
-      frm.doc.insurance_provider &&
-      frm.doc.insurance_provider == "NHIF"
-    ) {
-      get_patient_info(frm, "card_no");
-    } else if (
-      frm.doc.national_id &&
-      frm.doc.insurance_provider &&
-      frm.doc.insurance_provider == "NHIF"
-    ) {
-      get_patient_info(frm, "national_id");
+    let field_name = frm.doc.card_no ? "card_no" : "national_id";
+
+    if (frm.doc.insurance_provider && frm.doc[field_name]) {
+      get_patient_info(frm, field_name);
     }
   },
   mobile: function (frm) {
@@ -173,6 +165,8 @@ async function get_patient_info(frm, caller) {
   if (frm.doc.insurance_provider && (frm.doc.card_no || frm.doc.national_id)) {
     if (frm.doc.insurance_provider == "NHIF") {
       get_nhif_patient_info(frm, caller);
+    } else if (frm.doc.insurance_provider == "Jubilee") {
+      get_jubilee_patient_info(frm);
     }
   }
 }
@@ -352,4 +346,122 @@ function update_nhif_patient_info(frm, patient_data) {
     },
     10
   );
+}
+
+
+function get_jubilee_patient_info(frm) {
+    frappe.call({
+      method: 'hms_tz.jubilee.api.api.get_member_card_detials',
+      args: {
+          'card_no': frm.doc.card_no,
+          // TODO: Impplement National ID search for Jubilee, if API supports it
+          'insurance_provider': frm.doc.insurance_provider
+      },
+      freeze: true,
+      freeze_message: __("Please Wait..."),
+      callback: function (data) {
+          if (data.message && data.message !== "Error") {
+            frappe.utils.play_sound("submit");
+
+            const cardinfo = data.message["Description"];
+            if (!frm.is_new()) {
+                const d = new frappe.ui.Dialog({
+                    title: "Patient's information",
+                    primary_action_label: 'Submit',
+                    primary_action(values) {
+                        update_jubilee_patient_info(frm, cardinfo);
+                        d.hide();
+                    }
+                });
+                $(`<div class="modal-body ui-front">
+                  <table class="table table-bordered">
+                    <thead>
+                      <tr>
+                          <th>Field Name</th>
+                          <th>Current Values</th>
+                          <th>New Values</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                          <td>First Name</td>
+                          <td>${frm.doc.first_name}</td>
+                          <td>${cardinfo.FirstName}</td>
+                      </tr>
+                      <tr>
+                          <td>Last Name</td>
+                          <td>${frm.doc.middle_name}</td>
+                          <td>${cardinfo.MiddleName}</td>
+                      </tr>
+                      <tr>
+                          <td>Last Name</td>
+                          <td>${frm.doc.last_name}</td>
+                          <td>${cardinfo.LastName}</td>
+                      </tr>
+                      <tr>
+                          <td>Full Name</td>
+                          <td>${frm.doc.patient_name}</td>
+                          <td>${cardinfo.MemberName}</td>
+                      </tr>
+                      <tr>
+                          <td>Mobile</td>
+                          <td>${frm.doc.mobile}</td>
+                          <td>${cardinfo.Phone}</td>
+                      </tr>
+                      <tr> 
+                          <td>Gender</td>
+                          <td>${frm.doc.sex}</td>
+                          <td>${cardinfo.Gender}</td>
+                      </tr>
+                        <tr>
+                          <td>Date of birth</td>
+                          <td>${frm.doc.dob}</td>
+                          <td>${cardinfo.Dob.slice(0, 10)}</td>
+                      </tr>
+                      <tr>
+                          <td>Membership No</td>
+                          <td>${frm.doc.membership_no}</td>
+                          <td>${cardinfo.PrincipleMemberNo}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>`).appendTo(d.body);
+                d.show();
+            }
+            else {
+                update_jubilee_patient_info(frm, cardinfo);
+            }
+          } else {
+              frappe.utils.play_sound("error");
+              frappe.show_alert({
+                  message: __("Failed to get patient's information"),
+                  indicator: 'red'
+              }, 10);
+          }
+      },
+      onerror: function (data) {
+          frappe.utils.play_sound("error");
+          frappe.show_alert({
+              message: __("Failed to get patient's information"),
+              indicator: 'red'
+          }, 10);
+      }
+    });
+}
+
+function update_jubilee_patient_info(frm, cardinfo) {
+    frm.set_value("first_name", cardinfo.FirstName);
+    frm.set_value("middle_name", cardinfo.MiddleName);
+    frm.set_value("last_name", cardinfo.LastName);
+    frm.set_value("patient_name", cardinfo.MemberName);
+    frm.set_value("sex", cardinfo.Gender);
+    frm.set_value("dob", cardinfo.Dob);
+    frm.set_value("nhif_employername", cardinfo.Company);
+    frm.set_value("membership_no", cardinfo.PrincipleMemberNo);
+    frm.set_value("mobile", cardinfo.Phone);
+    frm.save();
+    frappe.show_alert({
+        message: __("Patient's information is updated"),
+        indicator: 'green'
+    }, 10);
 }
