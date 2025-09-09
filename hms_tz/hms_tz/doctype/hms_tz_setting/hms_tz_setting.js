@@ -2,7 +2,19 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('HMS TZ Setting', {
+	setup: (frm) => {
+		frm.trigger("set_filters");
+	},
+
 	refresh(frm) {
+		frm.trigger("set_filters");
+	},
+
+	onload: (frm) => {
+		frm.trigger("set_filters");
+	},
+	
+	set_filters: (frm) => {
 		frm.set_query("opd_cash_pharmacy", () => {
 			return {
 				filters: {
