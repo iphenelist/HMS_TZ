@@ -68,7 +68,19 @@
   "section_break_16",
   "submit_claim_month",
   "column_break_10",
-  "submit_claim_year"
+  "submit_claim_year",
+  "jubilee_tab",
+  "jubilee_user",
+  "jubilee_password",
+  "column_break_pspm",
+  "jubilee_provider_id",
+  "jubilee_url",
+  "column_break_ubwd",
+  "enable_jubilee_api",
+  "get_jubilee_token",
+  "jubilee_token_expiry",
+  "section_break_jifg",
+  "jubilee_token"
  ],
  "fields": [
   {
@@ -499,11 +511,81 @@
   {
    "fieldname": "column_break_kkzg",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "jubilee_tab",
+   "fieldtype": "Tab Break",
+   "label": "Jubilee"
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "jubilee_user",
+   "fieldtype": "Data",
+   "label": "Jubilee User",
+   "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1"
+  },
+  {
+   "fieldname": "column_break_ubwd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "jubilee_token",
+   "fieldtype": "Small Text",
+   "label": "Jubilee Token",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "get_jubilee_token",
+   "fieldtype": "Button",
+   "label": "Get Jubilee Token"
+  },
+  {
+   "fieldname": "section_break_jifg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "jubilee_token_expiry",
+   "fieldtype": "Datetime",
+   "label": "Jubilee Token Expiry"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_jubilee_api",
+   "fieldtype": "Check",
+   "label": "Enable Jubilee API"
+  },
+  {
+   "fieldname": "column_break_pspm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "jubilee_url",
+   "fieldtype": "Data",
+   "label": "Jubilee URL",
+   "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1"
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "jubilee_password",
+   "fieldtype": "Password",
+   "label": "Jubilee Password",
+   "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1"
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "fieldname": "jubilee_provider_id",
+   "fieldtype": "Data",
+   "label": "Jubilee Provider ID",
+   "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-09 16:08:19.181448",
+ "modified": "2025-09-09 17:13:01.266242",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
