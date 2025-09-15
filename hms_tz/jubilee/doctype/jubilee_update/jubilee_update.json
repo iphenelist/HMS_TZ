@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2025-09-15 22:17:27.888412",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "current_log",
+  "column_break_kzgx",
+  "timestamp",
+  "previous_log",
+  "user_id",
+  "section_break_rfsv",
+  "price_package"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "current_log",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Current Log",
+   "options": "Jubilee Response Log",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_kzgx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Timestamp",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "previous_log",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Previous Log",
+   "options": "Jubilee Response Log",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_rfsv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "price_package",
+   "fieldtype": "Table",
+   "label": "Price Packages",
+   "options": "Jubilee Update Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Data",
+   "label": "User ID",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-15 22:51:30.039650",
+ "modified_by": "Administrator",
+ "module": "Jubilee",
+ "name": "Jubilee Update",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
