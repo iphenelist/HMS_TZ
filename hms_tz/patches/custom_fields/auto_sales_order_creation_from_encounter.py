@@ -28,32 +28,6 @@ def execute():
 
 def get_fields():
     return {
-        "Company": [
-            {
-                "fieldname": "auto_create_sales_order_from_encounter",
-                "fieldtype": "Check",
-                "label": "Auto Create Sales Order from Encounter",
-                "insert_after": "hms_tz_settings_sb",
-            },
-            {
-                "fieldname": "sales_order_opd_pharmacy",
-                "fieldtype": "Link",
-                "options": "Warehouse",
-                "label": "Sales Order OPD Pharmacy",
-                "insert_after": "auto_create_sales_order_from_encounter",
-                "depends_on": "eval: doc.auto_create_sales_order_from_encounter == 1",
-                "mandatory_depends_on": "eval: doc.auto_create_sales_order_from_encounter == 1",
-            },
-            {
-                "fieldname": "sales_order_ipd_pharmacy",
-                "fieldtype": "Link",
-                "options": "Warehouse",
-                "label": "Sales Order IPD Pharmacy",
-                "insert_after": "sales_order_opd_pharmacy",
-                "depends_on": "eval: doc.auto_create_sales_order_from_encounter == 1",
-                "mandatory_depends_on": "eval: doc.auto_create_sales_order_from_encounter == 1",
-            },
-        ],
         "Sales Invoice Item": [
             {
                 "fieldname": "dosage_info",
