@@ -280,12 +280,30 @@ def get_items_for_price_list(
             & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
             # & (it.disabled == 0)
         )
-        .groupby(icd.ref_code, icd.parent)
+        # .groupby(icd.ref_code, icd.parent)
     )
     if doctype_name == "NHIF Price Package":
-        item_query = item_query.select(pp.unitprice.as_("unitprice"))
+        item_query = item_query.select(
+            pp.unitprice.as_("unitprice"),
+            pp.schemeid,
+        )
+
+        item_query
     elif doctype_name == "Jubilee Price Package":
-        item_query = item_query.select(pp.itemprice.as_("unitprice"))
+        item_query = item_query.select(
+            pp.itemprice.as_("unitprice"),
+        )
+
+        # pp.itemcode,
+        # pp.itemname,
+        # pp.schemeid,
+        # pp.packageid,
+        # pp.pricecode,
+        # pp.unitprice,
+        # pp.isrestricted,
+        # pp.hascopayment,
+        # pp.strength,
+        # pp.dosage,
     
     if item:
         item_query = item_query.where(icd.parent == item)
