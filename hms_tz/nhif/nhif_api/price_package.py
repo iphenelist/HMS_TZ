@@ -350,8 +350,8 @@ def process_nhif_prices(company, facility_code, item_code=None):
 
     item_list = get_items_for_price_list("NHIF Price Package", company, "NHIF", item_code)
 
-    for records in create_batch(item_list, 1000):
-        for item in records:
+    for batch in create_batch(item_list, 1000):
+        for item in batch:
             if not item.get("schemeid"):
                 continue
 
