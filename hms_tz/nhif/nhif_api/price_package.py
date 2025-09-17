@@ -3,14 +3,14 @@ from time import sleep
 
 import frappe
 import requests
-from frappe.model.naming import make_autoname
 from frappe.query_builder import DocType
-from frappe.utils import cint, flt, now_datetime, nowdate
+from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
-from pypika.terms import ValueWrapper
-
-from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
+from frappe.query_builder.terms import ValueWrapper
+from frappe.utils import cint, flt, now_datetime, nowdate
+from hms_tz.api.insurance import get_insurance_items
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
 
 
 @frappe.whitelist()
@@ -237,7 +237,6 @@ def set_package_diff(company):
     new_price_packages = [item for code, item in current_items.items() if code not in previous_items]
     deleted_price_packages = [item for code, item in previous_items.items() if code not in current_items]
 
-    changed_price_packages = []
     for key, current_item in current_items.items():
         if key in previous_items:
             previous_item = previous_items[key]
@@ -381,8 +380,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
                 if len(item_price_list) > 0:
                     for price in item_price_list:
                         if flt(price.price_list_rate) != flt(package.unitprice):
-                            # delete Item Price if no package.unitprice or it
-                            # is 0
+                            # delete Item Price if no package.unitprice or it is 0
                             if not flt(package.unitprice) or flt(package.unitprice) == 0:
                                 frappe.delete_doc("Item Price", price.name)
                                 print(f"Deleted the item {item.get('service_name')}")
@@ -570,146 +568,6 @@ def get_price_package_map(company, facility_code, for_prices=False):
         return schemes, price_package_map
 
     return price_package_map
-
-
-def get_insurance_items(for_prices=False):
-    services = []
-    consultation_items = []
-
-    it = DocType("Item")
-    icd = DocType("Item Customer Detail")
-    at = DocType("Appointment Type")
-    hp = DocType("Healthcare Practitioner")
-    ltt = DocType("Lab Test Template")
-    ret = DocType("Radiology Examination Template")
-    cpt = DocType("Clinical Procedure Template")
-    med = DocType("Medication")
-    tt = DocType("Therapy Type")
-    hsut = DocType("Healthcare Service Unit Type")
-
-    if for_prices:
-        practitioner_services = (
-            frappe.qb.from_(hp).select(hp.op_consulting_charge_item, hp.inpatient_visit_charge_item).distinct()
-        ).run(as_dict=True)
-
-        for row in practitioner_services:
-            for field in row:
-                if row[field]:
-                    consultation_items.append(row[field])
-
-        appointment_services = (
-            frappe.qb.from_(at)
-            .select(
-                at.assistant_md_followup_item,
-                at.gp_followup_item,
-                at.specialist_followup_item,
-                at.super_specialist_followup_item,
-                at.assistant_md_fasttrack_item,
-                at.gp_fasttrack_item,
-                at.specialist_fasttrack_item,
-                at.super_specialist_fasttrack_item,
-            )
-            .distinct()
-        ).run(as_dict=True)
-
-        for row in appointment_services:
-            for field in row:
-                if row[field]:
-                    consultation_items.append(row[field])
-
-        services += (
-            frappe.qb.from_(icd)
-            .inner_join(it)
-            .on(icd.parent == it.name)
-            .select(
-                icd.ref_code,
-                it.name.as_("service_name"),
-                ValueWrapper("Consulation Charges").as_("service_type"),
-            )
-            .where(
-                (icd.customer_name == "NHIF")
-                & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
-                & (it.name.isin(consultation_items))
-            )
-        ).run(as_dict=True)
-
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(ltt)
-        .on(icd.parent == ltt.item)
-        .select(
-            icd.ref_code,
-            ltt.name.as_("service_name"),
-            ValueWrapper("Lab Test Template").as_("service_type"),
-        )
-        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
-    ).run(as_dict=True)
-
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(ret)
-        .on(icd.parent == ret.item)
-        .select(
-            icd.ref_code,
-            ret.name.as_("service_name"),
-            ValueWrapper("Radiology Examination Template").as_("service_type"),
-        )
-        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
-    ).run(as_dict=True)
-
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(cpt)
-        .on(icd.parent == cpt.item)
-        .select(
-            icd.ref_code,
-            cpt.name.as_("service_name"),
-            ValueWrapper("Clinical Procedure Template").as_("service_type"),
-        )
-        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
-    ).run(as_dict=True)
-
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(med)
-        .on(icd.parent == med.item)
-        .select(
-            icd.ref_code,
-            med.name.as_("service_name"),
-            ValueWrapper("Medication").as_("service_type"),
-        )
-        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
-    ).run(as_dict=True)
-
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(tt)
-        .on(icd.parent == tt.item)
-        .select(
-            icd.ref_code,
-            tt.name.as_("service_name"),
-            ValueWrapper("Therapy Type").as_("service_type"),
-        )
-        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
-    ).run(as_dict=True)
-
-    services += (
-        frappe.qb.from_(icd)
-        .inner_join(hsut)
-        .on(icd.parent == hsut.item)
-        .select(
-            icd.ref_code,
-            hsut.name.as_("service_name"),
-            ValueWrapper("Healthcare Service Unit Type").as_("service_type"),
-        )
-        .where((icd.customer_name == "NHIF") & ((icd.ref_code.isnotnull()) & (icd.ref_code != "")))
-    ).run(as_dict=True)
-
-    service_map = {}
-    for service in services:
-        service_map[service["ref_code"]] = service
-
-    return service_map
 
 
 def get_nhif_copayment_items(company):
