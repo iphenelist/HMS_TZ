@@ -252,7 +252,7 @@ def set_package_diff(company):
                 changed_price_packages.append(new_row)
 
     if len(changed_price_packages) > 0 or len(new_price_packages) > 0 or len(deleted_price_packages) > 0:
-        service_map = get_insurance_items(for_prices=True)
+        service_map = get_insurance_items("NHIF", for_prices=True)
 
         doc = frappe.new_doc("NHIF Update")
 
@@ -340,7 +340,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
                     }
                 ).insert(ignore_permissions=True)
 
-    service_map = get_insurance_items(for_prices=True)
+    service_map = get_insurance_items("NHIF", for_prices=True)
 
     for itemcode, item in service_map.items():
         for i, package in price_package_map.items():
@@ -431,7 +431,7 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
         "start_date",
         "end_date",
     ]
-    service_map = get_insurance_items()
+    service_map = get_insurance_items("NHIF")
     price_package_map = get_price_package_map(company, facility_code)
 
     filters = {
@@ -620,7 +620,7 @@ def sync_copayment_items(data):
         "percentcovered",
     ]
 
-    service_map = get_insurance_items(for_prices=True)
+    service_map = get_insurance_items("NHIF", for_prices=True)
 
     for row in data:
         ncs_name = make_autoname(key="hash")
