@@ -6,6 +6,7 @@ from time import sleep
 from frappe.query_builder import DocType
 from frappe.utils import flt, now_datetime
 from frappe.model.naming import make_autoname
+from frappe.utils.background_jobs import enqueue
 from hms_tz.api.insurance import get_insurance_items
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
@@ -51,7 +52,6 @@ def get_jubilee_price_packages(company):
         sync_price_package(packages, company, log_name)
 
 
-
 def sync_price_package(
     packages,
     company,
@@ -66,7 +66,14 @@ def sync_price_package(
     create_price_package(packages, company, log_name)
 
     sleep(30)
-    set_package_diff(company)
+    enqueue(
+        method=set_package_diff,
+        job_name="set_jubilee_diff_records",
+        queue="long",
+        timeout=3600,
+        is_async=True,
+        company=company,
+    )
 
 
 def delete_price_package(company):
@@ -177,7 +184,7 @@ def set_package_diff(company):
         or len(deleted_price_packages) > 0
     ):
         service_map = get_insurance_items(for_prices=True)
-        
+
         doc = frappe.new_doc("Jubilee Update")
 
         add_price_packages_records(doc, changed_price_packages, "Changed", service_map)
