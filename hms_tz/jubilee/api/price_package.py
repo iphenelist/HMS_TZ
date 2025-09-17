@@ -4,12 +4,17 @@ import requests
 from frappe import _
 from time import sleep
 from frappe.query_builder import DocType
-from frappe.utils import flt, now_datetime
 from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
-from hms_tz.api.insurance import get_insurance_items, delete_price_package
+from frappe.utils import flt, now_datetime, create_batch
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
-
+from hms_tz.api.insurance import (
+    get_insurance_items,
+    delete_price_package,
+    delete_hsic_data,
+    get_items_for_price_list,
+    handle_insurance_prices
+)
 
 
 def get_jubilee_price_packages(company):
@@ -178,7 +183,7 @@ def set_package_diff(company):
         or len(new_price_packages) > 0
         or len(deleted_price_packages) > 0
     ):
-        service_map = get_insurance_items(for_prices=True)
+        service_map = get_insurance_items("The Jubilee Insurance (T) Ltd", for_prices=True)
 
         doc = frappe.new_doc("Jubilee Update")
 
@@ -214,3 +219,31 @@ def add_price_packages_records(doc, rec, type, service_map):
         # price_row.record = json.dumps(e)
         price_row.fields_changed = json.dumps(e.get("fields_changed"))
         price_row.previous_item = json.dumps(e.get("previous_item"))
+
+
+def process_jubilee_prices(company, item=None):
+    itp = DocType("Item Price")
+
+    company_info = frappe.get_cached_value(
+        "Company", company, ["abbr", "default_currency"], as_dict=True
+    )
+
+    default_currency = company_info.default_currency
+    price_list_name = f"Jubilee {company_info.abbr}"
+
+    if not frappe.db.exists("Price List", price_list_name):
+        price_list_doc = frappe.new_doc("Price List")
+        price_list_doc.price_list_name = price_list_name
+        price_list_doc.currency = default_currency
+        price_list_doc.buying = 0
+        price_list_doc.selling = 1
+        price_list_doc.save(ignore_permissions=True)
+
+    item_list = get_items_for_price_list(company, item)
+
+    for batch in create_batch(item_list, 1000):
+        for item in batch:
+            handle_insurance_prices(itp, item, price_list_name, default_currency)
+
+        frappe.db.commit()
+
