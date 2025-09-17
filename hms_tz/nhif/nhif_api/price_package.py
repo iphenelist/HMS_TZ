@@ -8,8 +8,8 @@ from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
 from frappe.query_builder.terms import ValueWrapper
 from frappe.utils import cint, flt, now_datetime, nowdate
-from hms_tz.api.insurance import get_insurance_items, delete_price_package
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.api.insurance import get_insurance_items, delete_price_package, delete_hsic_data
 from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
 
 
@@ -512,14 +512,6 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
     )
     frappe.db.commit()
     return True
-
-
-def delete_hsic_data(coverage_plans):
-    if len(coverage_plans) == 0:
-        return
-
-    hsic = DocType("Healthcare Service Insurance Coverage")
-    frappe.qb.from_(hsic).delete().where(hsic.healthcare_insurance_coverage_plan.isin(coverage_plans)).run()
 
 
 def get_price_package_map(company, facility_code, for_prices=False):

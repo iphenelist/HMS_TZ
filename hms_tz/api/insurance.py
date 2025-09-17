@@ -9,6 +9,14 @@ def delete_price_package(doctype_name, company):
     frappe.qb.from_(jpp).delete().where(jpp.company == company).run()
 
 
+def delete_hsic_data(coverage_plans):
+    if len(coverage_plans) == 0:
+        return
+
+    hsic = DocType("Healthcare Service Insurance Coverage")
+    frappe.qb.from_(hsic).delete().where(hsic.healthcare_insurance_coverage_plan.isin(coverage_plans)).run()
+
+
 def get_insurance_items(insurance_customer_name, for_prices=False):
     services = []
 
