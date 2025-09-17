@@ -3,6 +3,12 @@ from frappe import _
 from frappe.query_builder import DocType
 from frappe.query_builder.terms import ValueWrapper
 
+
+def delete_price_package(doctype_name, company):
+    jpp = DocType(doctype_name)
+    frappe.qb.from_(jpp).delete().where(jpp.company == company).run()
+
+
 def get_insurance_items(insurance_customer_name, for_prices=False):
     services = []
 

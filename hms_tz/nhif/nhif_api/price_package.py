@@ -8,7 +8,7 @@ from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
 from frappe.query_builder.terms import ValueWrapper
 from frappe.utils import cint, flt, now_datetime, nowdate
-from hms_tz.api.insurance import get_insurance_items
+from hms_tz.api.insurance import get_insurance_items, delete_price_package
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
 
@@ -119,7 +119,7 @@ def sync_price_package(company, facility_code, packages, log_name):
     if len(packages) == 0:
         return
 
-    delete_price_package(company)
+    delete_price_package("NHIF Price Package", company)
 
     sleep(30)
     create_price_package(company, facility_code, packages, log_name)
@@ -133,11 +133,6 @@ def sync_price_package(company, facility_code, packages, log_name):
         is_async=True,
         company=company,
     )
-
-
-def delete_price_package(company):
-    npp = DocType("NHIF Price Package")
-    frappe.qb.from_(npp).delete().where(npp.company == company).run()
 
 
 def create_price_package(company, facility_code, packages, log_name):

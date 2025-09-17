@@ -7,7 +7,7 @@ from frappe.query_builder import DocType
 from frappe.utils import flt, now_datetime
 from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
-from hms_tz.api.insurance import get_insurance_items
+from hms_tz.api.insurance import get_insurance_items, delete_price_package
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
 
@@ -59,8 +59,8 @@ def sync_price_package(
 ):
     if len(packages) == 0:
         return
-    
-    delete_price_package(company)
+
+    delete_price_package("Jubilee Price Package", company)
 
     sleep(30)
     create_price_package(packages, company, log_name)
@@ -74,11 +74,6 @@ def sync_price_package(
         is_async=True,
         company=company,
     )
-
-
-def delete_price_package(company):
-    jpp = DocType("Jubilee Price Package")
-    frappe.qb.from_(jpp).delete().where(jpp.company == company).run()
 
 
 def create_price_package(packages, company, log_name):
