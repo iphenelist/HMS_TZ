@@ -7,17 +7,17 @@
  "engine": "InnoDB",
  "field_order": [
   "change_type",
+  "column_break_ntmu",
   "service_type",
   "service_name",
-  "column_break_ntmu",
-  "itemcode",
-  "strength",
-  "dosage",
   "column_break_lryy",
+  "itemcode",
   "itemprice",
-  "itemname",
+  "column_break_cbhc",
+  "dosage",
+  "strength",
   "section_break_sdpi",
-  "record",
+  "itemname",
   "column_break_dpzf",
   "cleanname",
   "section_break_bbfp",
@@ -78,11 +78,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "record",
-   "fieldtype": "Small Text",
-   "label": "Record"
-  },
-  {
    "fieldname": "column_break_dpzf",
    "fieldtype": "Column Break"
   },
@@ -124,13 +119,17 @@
    "fieldname": "previous_item",
    "fieldtype": "Small Text",
    "label": "Previous Item"
+  },
+  {
+   "fieldname": "column_break_cbhc",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-15 22:55:49.140429",
+ "modified": "2025-09-17 14:28:58.885868",
  "modified_by": "Administrator",
  "module": "Jubilee",
  "name": "Jubilee Update Item",
