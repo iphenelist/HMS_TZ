@@ -311,3 +311,70 @@ def get_items_for_price_list(
     item_data = item_query.run(as_dict=True)
 
     return item_data
+
+
+def handle_insurance_prices(itp, package, price_list, currency):
+    item_price_list = fetch_item_prices(itp, price_list, package, currency)
+
+    if len(item_price_list) > 0:
+        for price in item_price_list:
+            if flt(price.price_list_rate) != flt(package.unitprice):
+                # delete Item Price if no package.unitprice or it is 0
+                if not flt(package.unitprice) or flt(package.unitprice) == 0:
+                    frappe.qb.from_(itp).delete().where(itp.name == price.name).run()
+                    print(f"Deleted the item {package.get('erp_item')} from {price_list}")
+                else:
+                    # update Item Price with the new price
+                    frappe.qb.update(itp).set(
+                        itp.price_list_rate, flt(package.unitprice)
+                    ).where(itp.name == price.name).run()
+                    
+                    out = frappe.get_doc(
+                        {
+                            "doctype": "Comment",
+                            "comment_type": "Comment",
+                            "comment_email": frappe.session.user,
+                            "comment_by": frappe.session.user,
+                            "content": f"Updated Item Price for <b>{package.get('erp_item')}</b> for \
+                                <b>{price_list}</b> from <b>{price.price_list_rate}</b> to \
+                                    <b>{flt(package.unitprice)}</b>",
+                            "reference_doctype": "Item Price",
+                            "reference_name": price.name,
+                        }
+                    ).insert(ignore_permissions=True)
+
+                    print(f"Updated the item {package.get('erp_item')} from {price_list}")
+    else:
+        item_price_doc = frappe.new_doc("Item Price")
+        item_price_doc.update(
+            {
+                "item_code": package.get("erp_item"),
+                "price_list": price_list,
+                "currency": currency,
+                "price_list_rate": flt(package.unitprice),
+                "buying": 0,
+                "selling": 1,
+            }
+        )
+        item_price_doc.insert(ignore_permissions=True)
+
+        print(f"Create item price for {package.get('erp_item')} for {price_list}")
+
+
+def fetch_item_prices(itp, price_list, package, currency):
+    item_prices = (
+        frappe.qb.from_(itp)
+        .select(
+            itp.name,
+            itp.item_code,
+            itp.price_list_rate
+        )
+        .where(
+            (itp.selling == 1)
+            & (itp.price_list == price_list)
+            & (itp.item_code == package.get("erp_item"))
+            & (itp.currency == currency)
+        )
+    ).run(as_dict=True)
+
+    return item_prices
