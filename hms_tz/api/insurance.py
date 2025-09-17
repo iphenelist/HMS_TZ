@@ -248,3 +248,44 @@ def get_service_unit_types(insurance_customer_name):
     service_unit_data = service_unit_query.run(as_dict=True)
 
     return service_unit_data
+
+
+
+def get_items_for_price_list(
+    doctype_name,
+    company,
+    insurance_customer_name,
+    item=None
+):
+    # it = DocType("Item")
+    jpp = DocType(doctype_name)
+    icd = DocType("Item Customer Detail")
+
+    item_query = (
+        frappe.qb.from_(icd)
+        # .inner_join(it)
+        # .on(icd.parent == it.name)
+        .inner_join(jpp)
+        .on(icd.ref_code == jpp.itemcode)
+        .select(
+            icd.ref_code,
+            icd.parent.as_("item_code"),
+            jpp.itemcode,
+            jpp.itemname,
+            jpp.cleanname,
+            jpp.itemprice,
+        )
+        .where(
+            (jpp.company == company)
+            & (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (it.disabled == 0)
+        )
+        .groupby(icd.ref_code, icd.parent)
+    )
+    if item:
+        item_query = item_query.where(icd.parent == item)
+
+    item_data = item_query.run(as_dict=True)
+
+    return item_data
