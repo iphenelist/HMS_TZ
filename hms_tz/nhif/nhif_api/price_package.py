@@ -7,10 +7,16 @@ from frappe.query_builder import DocType
 from frappe.model.naming import make_autoname
 from frappe.utils.background_jobs import enqueue
 from frappe.query_builder.terms import ValueWrapper
-from frappe.utils import cint, flt, now_datetime, nowdate
+from frappe.utils import cint, flt, now_datetime, nowdate, create_batch
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-from hms_tz.api.insurance import get_insurance_items, delete_price_package, delete_hsic_data
 from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
+from hms_tz.api.insurance import (
+    get_insurance_items,
+    delete_price_package,
+    delete_hsic_data,
+    get_items_for_price_list,
+    handle_insurance_prices
+)
 
 
 @frappe.whitelist()
@@ -300,7 +306,9 @@ def add_price_packages_records(doc, rec, type, service_map):
 
 
 def process_nhif_prices(company, facility_code, item_code=None):
-    currency = frappe.get_cached_value("Company", company, "default_currency")
+    itp = DocType("Item Price")
+
+    default_currency = frappe.get_cached_value("Company", company, "default_currency")
 
     schemes, price_package_map = get_price_package_map(company, facility_code, for_prices=True)
 
@@ -310,7 +318,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
         if not frappe.db.exists("Price List", price_list_name):
             price_list_doc = frappe.new_doc("Price List")
             price_list_doc.price_list_name = price_list_name
-            price_list_doc.currency = currency
+            price_list_doc.currency = default_currency
             price_list_doc.buying = 0
             price_list_doc.selling = 1
             price_list_doc.save(ignore_permissions=True)
@@ -340,68 +348,16 @@ def process_nhif_prices(company, facility_code, item_code=None):
                     }
                 ).insert(ignore_permissions=True)
 
-    service_map = get_insurance_items("NHIF", for_prices=True)
+    item_list = get_items_for_price_list("NHIF Price Package", company, "NHIF", item_code)
 
-    for itemcode, item in service_map.items():
-        for i, package in price_package_map.items():
-            if itemcode != i[2]:
+    for records in create_batch(item_list, 1000):
+        for item in records:
+            if not item.get("schemeid"):
                 continue
 
-            price_list_name = "NHIF-" + i[1] + "-" + facility_code
-            if package:
-                erp_item = None
-                if item.get("service_type") == "Consulation Charges":
-                    erp_item = item.get("service_name")
-                else:
-                    erp_item = frappe.get_cached_value(
-                        item.get("service_type"),
-                        item.get("service_name"),
-                        "item",
-                    )
-
-                if not erp_item:
-                    continue
-
-                item_price_list = frappe.db.get_all(
-                    "Item Price",
-                    filters={
-                        "price_list": price_list_name,
-                        "item_code": erp_item,
-                        "currency": currency,
-                        "selling": 1,
-                    },
-                    fields=["name", "item_code", "price_list_rate"],
-                )
-                if len(item_price_list) > 0:
-                    for price in item_price_list:
-                        if flt(price.price_list_rate) != flt(package.unitprice):
-                            # delete Item Price if no package.unitprice or it is 0
-                            if not flt(package.unitprice) or flt(package.unitprice) == 0:
-                                frappe.delete_doc("Item Price", price.name)
-                                print(f"Deleted the item {item.get('service_name')}")
-                            else:
-                                print(f"Updated the item {item.get('service_name')}")
-                                frappe.set_value(
-                                    "Item Price",
-                                    price.name,
-                                    "price_list_rate",
-                                    flt(package.unitprice),
-                                )
-
-                else:
-                    print(f"Create item price for {item.get('service_name')} for {price_list_name}")
-                    item_price_doc = frappe.new_doc("Item Price")
-                    item_price_doc.update(
-                        {
-                            "item_code": erp_item,
-                            "price_list": price_list_name,
-                            "currency": currency,
-                            "price_list_rate": flt(package.unitprice),
-                            "buying": 0,
-                            "selling": 1,
-                        }
-                    )
-                    item_price_doc.save(ignore_permissions=True)
+            price_list_name = "NHIF-" + item.get("schemeid") + "-" + facility_code
+            handle_insurance_prices(itp, item, price_list_name, default_currency)
+        
         frappe.db.commit()
 
 
@@ -534,8 +490,10 @@ def get_price_package_map(company, facility_code, for_prices=False):
             npp.maximumquantityoutpatient,
             npp.maximumquantityinpatient,
         )
-        .where(npp.company == company)
-        .where(npp.facilitycode == facility_code)
+        .where(
+            (npp.company == company)
+            & (npp.facilitycode == facility_code)
+        )
     ).run(as_dict=True)
 
     schemes = []
