@@ -15,7 +15,8 @@ from hms_tz.api.insurance import (
     delete_price_package,
     delete_hsic_data,
     get_items_for_price_list,
-    handle_insurance_prices
+    create_insurance_price_list,
+    handle_insurance_prices,
 )
 
 
@@ -314,39 +315,9 @@ def process_nhif_prices(company, facility_code, item_code=None):
 
     for scheme in schemes:
         price_list_name = "NHIF-" + scheme + "-" + facility_code
-
+        
         if not frappe.db.exists("Price List", price_list_name):
-            price_list_doc = frappe.new_doc("Price List")
-            price_list_doc.price_list_name = price_list_name
-            price_list_doc.currency = default_currency
-            price_list_doc.buying = 0
-            price_list_doc.selling = 1
-            price_list_doc.save(ignore_permissions=True)
-
-            # set price list to a coverage plan
-            plan_name = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan",
-                {"nhif_scheme_id": scheme, "company": company},
-                "name",
-            )
-            if plan_name:
-                frappe.db.set_value(
-                    "Healthcare Insurance Coverage Plan",
-                    plan_name,
-                    "price_list",
-                    price_list_name,
-                )
-                out = frappe.get_doc(
-                    {
-                        "doctype": "Comment",
-                        "comment_type": "Comment",
-                        "comment_email": frappe.session.user,
-                        "comment_by": frappe.session.user,
-                        "content": f"Created Price List {price_list_name} for {scheme}",
-                        "reference_doctype": "Healthcare Insurance Coverage Plan",
-                        "reference_name": plan_name,
-                    }
-                ).insert(ignore_permissions=True)
+            create_insurance_price_list(company, price_list_name, default_currency, "NHIF", scheme)
 
     item_list = get_items_for_price_list("NHIF Price Package", company, "NHIF", item_code)
 

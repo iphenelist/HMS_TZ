@@ -13,6 +13,7 @@ from hms_tz.api.insurance import (
     delete_price_package,
     delete_hsic_data,
     get_items_for_price_list,
+    create_insurance_price_list,
     handle_insurance_prices
 )
 
@@ -232,12 +233,7 @@ def process_jubilee_prices(company, item=None):
     price_list_name = f"Jubilee {company_info.abbr}"
 
     if not frappe.db.exists("Price List", price_list_name):
-        price_list_doc = frappe.new_doc("Price List")
-        price_list_doc.price_list_name = price_list_name
-        price_list_doc.currency = default_currency
-        price_list_doc.buying = 0
-        price_list_doc.selling = 1
-        price_list_doc.save(ignore_permissions=True)
+        create_insurance_price_list(company, price_list_name, default_currency, "Jubilee")
 
     item_list = get_items_for_price_list(company, item)
 
