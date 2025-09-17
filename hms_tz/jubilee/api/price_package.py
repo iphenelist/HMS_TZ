@@ -5,6 +5,8 @@ from frappe import _
 from time import sleep
 from frappe.query_builder import DocType
 from frappe.utils import flt, now_datetime
+from frappe.model.naming import make_autoname
+from hms_tz.api.insurance import get_insurance_items
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
 
@@ -53,8 +55,7 @@ def get_jubilee_price_packages(company):
 def sync_price_package(
     packages,
     company,
-    log_name,
-    # insurance_provider="Jubilee"
+    log_name
 ):
     if len(packages) == 0:
         return
@@ -64,8 +65,8 @@ def sync_price_package(
     sleep(30)
     create_price_package(packages, company, log_name)
 
-    # sleep(30)
-    # set_package_diff(company)
+    sleep(30)
+    set_package_diff(company)
 
 
 def delete_price_package(company):
@@ -81,8 +82,8 @@ def create_price_package(packages, company, log_name):
         "company",
         "providerid",
         "itemcode",
-        # "strength",
-        # "dosage",
+        "strength",
+        "dosage",
         "itemprice",
         "itemname",
         "cleanname"
@@ -91,7 +92,7 @@ def create_price_package(packages, company, log_name):
     data = []
     timestamp = now_datetime()
     for row in packages:
-        jpp_name = frappe.generate_hash(length=10)
+        jpp_name = make_autoname(key="hash")
 
         data.append(
             (
@@ -101,8 +102,8 @@ def create_price_package(packages, company, log_name):
                 company,
                 row.get("ProviderID"),
                 row.get("ItemCode"),
-                # row.get("Strength"),
-                # row.get("Dosage"),
+                row.get("Strength"),
+                row.get("Dosage"),
                 row.get("ItemPrice"),
                 row.get("ItemName"),
                 row.get("CleanName"),
@@ -110,7 +111,10 @@ def create_price_package(packages, company, log_name):
         )
     
     frappe.db.bulk_insert(
-        "Jubilee Price Package", fields=fields, values=data, chunk_size=1000
+        "Jubilee Price Package",
+        fields=fields,
+        values=data,
+        ignore_duplicates=True
     )
     frappe.db.commit()
     return True
@@ -172,11 +176,13 @@ def set_package_diff(company):
         or len(new_price_packages) > 0
         or len(deleted_price_packages) > 0
     ):
+        service_map = get_insurance_items(for_prices=True)
+        
         doc = frappe.new_doc("Jubilee Update")
 
-        add_price_packages_records(doc, changed_price_packages, "Changed")
-        add_price_packages_records(doc, new_price_packages, "New")
-        add_price_packages_records(doc, deleted_price_packages, "Deleted")
+        add_price_packages_records(doc, changed_price_packages, "Changed", service_map)
+        add_price_packages_records(doc, new_price_packages, "New", service_map)
+        add_price_packages_records(doc, deleted_price_packages, "Deleted", service_map)
 
         if doc.get("price_package") and len(doc.price_package) > 0:
             doc.company = company
@@ -185,17 +191,24 @@ def set_package_diff(company):
             doc.save(ignore_permissions=True)
 
 
-def add_price_packages_records(doc, rec, type):
+def add_price_packages_records(doc, rec, type, service_map):
     if len(rec) == 0:
         return
 
     for e in rec:
         price_row = doc.append("price_package", {})
-        price_row.itemcode = e.get("ItemCode")
         price_row.type = type
-        price_row.olditemcode = e.get("OldItemCode")
+
+        if service_map.get(e.get("ItemCode")):
+            price_row.service_type = service_map.get(e.get("ItemCode")).get("service_type")
+            price_row.service_name = service_map.get(e.get("ItemCode")).get("service_name")
+
+        price_row.itemcode = e.get("ItemCode")
+        # price_row.olditemcode = e.get("OldItemCode")
         price_row.itemname = e.get("ItemName")
         price_row.strength = e.get("Strength")
         price_row.dosage = e.get("Dosage")
         price_row.unitprice = e.get("UnitPrice")
-        price_row.record = json.dumps(e)
+        # price_row.record = json.dumps(e)
+        price_row.fields_changed = json.dumps(e.get("fields_changed"))
+        price_row.previous_item = json.dumps(e.get("previous_item"))
