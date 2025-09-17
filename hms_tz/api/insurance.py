@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import flt
 from frappe.query_builder import DocType
 from frappe.query_builder.terms import ValueWrapper
 
@@ -258,31 +259,34 @@ def get_items_for_price_list(
     item=None
 ):
     # it = DocType("Item")
-    jpp = DocType(doctype_name)
+    pp = DocType(doctype_name)
     icd = DocType("Item Customer Detail")
 
     item_query = (
         frappe.qb.from_(icd)
         # .inner_join(it)
         # .on(icd.parent == it.name)
-        .inner_join(jpp)
-        .on(icd.ref_code == jpp.itemcode)
+        .inner_join(pp)
+        .on(icd.ref_code == pp.itemcode)
         .select(
             icd.ref_code,
-            icd.parent.as_("item_code"),
-            jpp.itemcode,
-            jpp.itemname,
-            jpp.cleanname,
-            jpp.itemprice,
+            icd.parent.as_("erp_item"),
+            pp.itemcode,
+            pp.itemname,
         )
         .where(
-            (jpp.company == company)
+            (pp.company == company)
             & (icd.customer_name == insurance_customer_name)
             & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
             # & (it.disabled == 0)
         )
         .groupby(icd.ref_code, icd.parent)
     )
+    if doctype_name == "NHIF Price Package":
+        item_query = item_query.select(pp.unitprice.as_("unitprice"))
+    elif doctype_name == "Jubilee Price Package":
+        item_query = item_query.select(pp.itemprice.as_("unitprice"))
+    
     if item:
         item_query = item_query.where(icd.parent == item)
 
