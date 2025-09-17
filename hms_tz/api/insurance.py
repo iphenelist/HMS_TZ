@@ -1,0 +1,236 @@
+import frappe
+from frappe import _
+from frappe.query_builder import DocType
+from frappe.query_builder.terms import ValueWrapper
+
+def get_insurance_items(insurance_customer_name, for_prices=False):
+    services = []
+
+    if for_prices:
+        services += get_consultations(insurance_customer_name)
+    
+    services += get_labs(insurance_customer_name)
+    services += get_radiologies(insurance_customer_name)
+    services += get_procedure(insurance_customer_name)
+    services += get_medications(insurance_customer_name)
+    services += get_therapy_types(insurance_customer_name)
+    services += get_service_unit_types(insurance_customer_name)
+
+    service_map = {}
+    for service in services:
+        service_map[service["ref_code"]] = service
+
+    return service_map
+
+
+def get_consultations(insurance_customer_name):
+    consultation_items = []
+
+    it = DocType("Item")
+    icd = DocType("Item Customer Detail")
+    at = DocType("Appointment Type")
+    hp = DocType("Healthcare Practitioner")
+
+    practitioner_services = (
+        frappe.qb.from_(hp)
+        .select(
+            hp.op_consulting_charge_item,
+            hp.inpatient_visit_charge_item
+        )
+        .distinct()
+    ).run(as_dict=True)
+
+    for row in practitioner_services:
+        for field in row:
+            if row[field]:
+                consultation_items.append(row[field])
+
+    appointment_services = (
+        frappe.qb.from_(at)
+        .select(
+            at.assistant_md_followup_item,
+            at.gp_followup_item,
+            at.specialist_followup_item,
+            at.super_specialist_followup_item,
+            at.assistant_md_fasttrack_item,
+            at.gp_fasttrack_item,
+            at.specialist_fasttrack_item,
+            at.super_specialist_fasttrack_item,
+        )
+        .distinct()
+    ).run(as_dict=True)
+
+    for row in appointment_services:
+        for field in row:
+            if row[field]:
+                consultation_items.append(row[field])
+
+    consultation_query = (
+        frappe.qb.from_(icd)
+        .inner_join(it)
+        .on(icd.parent == it.name)
+        .select(
+            icd.ref_code,
+            it.name.as_("service_name"),
+            ValueWrapper("Consulation Charges").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            & (it.name.isin(consultation_items))
+            # & (it.disabled == 0)
+        )
+    )
+
+    consultation_data = consultation_query.run(as_dict=True)
+
+    return consultation_data
+
+
+def get_labs(insurance_customer_name):
+    icd = DocType("Item Customer Detail")
+    ltt = DocType("Lab Test Template")
+
+    lab_query = (
+        frappe.qb.from_(icd)
+        .inner_join(ltt)
+        .on(icd.parent == ltt.item)
+        .select(
+            icd.ref_code,
+            ltt.name.as_("service_name"),
+            ValueWrapper("Lab Test Template").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (ltt.disabled == 0)
+        )
+    )
+    lab_data = lab_query.run(as_dict=True)
+
+    return lab_data
+
+
+def get_radiologies(insurance_customer_name):
+    icd = DocType("Item Customer Detail")
+    ret = DocType("Radiology Examination Template")
+
+    rad_query = (
+        frappe.qb.from_(icd)
+        .inner_join(ret)
+        .on(icd.parent == ret.item)
+        .select(
+            icd.ref_code,
+            ret.name.as_("service_name"),
+            ValueWrapper("Radiology Examination Template").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (ret.disabled == 0)
+        )
+    )
+
+    rad_data = rad_query.run(as_dict=True)
+
+    return rad_data
+
+
+def get_procedure(insurance_customer_name):
+    icd = DocType("Item Customer Detail")
+    cpt = DocType("Clinical Procedure Template")
+
+    procedure_query = (
+        frappe.qb.from_(icd)
+        .inner_join(cpt)
+        .on(icd.parent == cpt.item)
+        .select(
+            icd.ref_code,
+            cpt.name.as_("service_name"),
+            ValueWrapper("Clinical Procedure Template").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (cpt.disabled == 0)
+        )
+    )
+
+    procedure_data = procedure_query.run(as_dict=True)
+
+    return procedure_data
+
+
+def get_medications(insurance_customer_name):
+    icd = DocType("Item Customer Detail")
+    med = DocType("Medication")
+
+    medication_query = (
+        frappe.qb.from_(icd)
+        .inner_join(med)
+        .on(icd.parent == med.item)
+        .select(
+            icd.ref_code,
+            med.name.as_("service_name"),
+            ValueWrapper("Medication").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (med.disabled == 0)
+        )
+    )
+
+    medication_data = medication_query.run(as_dict=True)
+
+    return medication_data
+
+
+def get_therapy_types(insurance_customer_name):
+    icd = DocType("Item Customer Detail")
+    tt = DocType("Therapy Type")
+
+    therapy_query = (
+        frappe.qb.from_(icd)
+        .inner_join(tt)
+        .on(icd.parent == tt.item)
+        .select(
+            icd.ref_code,
+            tt.name.as_("service_name"),
+            ValueWrapper("Therapy Type").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (tt.disabled == 0)
+        )
+    )
+
+    therapy_data = therapy_query.run(as_dict=True)
+
+    return therapy_data
+
+
+def get_service_unit_types(insurance_customer_name):
+    icd = DocType("Item Customer Detail")
+    hsut = DocType("Healthcare Service Unit Type")
+
+    service_unit_query = (
+        frappe.qb.from_(icd)
+        .inner_join(hsut)
+        .on(icd.parent == hsut.item)
+        .select(
+            icd.ref_code,
+            hsut.name.as_("service_name"),
+            ValueWrapper("Healthcare Service Unit Type").as_("service_type"),
+        )
+        .where(
+            (icd.customer_name == insurance_customer_name)
+            & ((icd.ref_code.isnotnull()) & (icd.ref_code != ""))
+            # & (hsut.disabled == 0)
+        )
+    )
+
+    service_unit_data = service_unit_query.run(as_dict=True)
+
+    return service_unit_data
