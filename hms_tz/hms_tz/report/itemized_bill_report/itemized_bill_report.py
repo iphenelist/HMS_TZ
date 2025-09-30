@@ -497,8 +497,8 @@ def get_appointment_consultancy(filters):
 			it.item_group AS category,
 			pa.billing_item AS description,
 			1 AS quantity,
-			pa.paid_amount AS rate,
-			pa.paid_amount AS amount,
+			COALESCE(hpoc.consultation_fee, pa.paid_amount) AS rate,
+			COALESCE(hpoc.consultation_fee, pa.paid_amount) AS amount,
 			pa.patient AS patient,
 			pa.patient_name AS patient_name,
 			pa.appointment_type AS appointment_type,
@@ -511,6 +511,7 @@ def get_appointment_consultancy(filters):
 		FROM `tabPatient Appointment` pa
 			INNER JOIN `tabItem` it ON pa.billing_item = it.item_name
 			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment
+			LEFT JOIN `tabHealthcare Package Order Consultation` hpoc ON pa.name = hpoc.appointment
 		WHERE pa.status = "Closed"
 		AND pa.follow_up = 0 {conditions}
 	""".format(
