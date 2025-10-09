@@ -256,13 +256,29 @@ def on_submit_validation(doc, method):
                 and row.doctype == "Drug Prescription"
             ):
                 if (
-                    doc.insurance_subscription
+                    row.prescribe == 0
+                    and doc.insurance_subscription
+                    and "NHIF" in doc.insurance_company
                     and healthcare_doc.medication_category == "Category S Medication"
                 ):
-                    frappe.msgprint(
-                        f"Item: {row.get(child.get('item'))} is Category S Medication",
-                        alert=True,
+                    validate_category_s_medication = frappe.get_cached_value(
+                        "Company",
+                        doc.company,
+                        "validate_category_s_medication"
                     )
+                    if validate_category_s_medication == 1:
+                        practition_level = frappe.get_cached_value(
+                            "Healthcare Practitioner",
+                            {"user_id": frappe.session.user},
+                            "op_consulting_charge_item"
+                        )
+                        if "General Practitioner" in str(practition_level):
+                            msgThrow(
+                                _(
+                                    f"Category S: <b>{row.get(child.get('item'))}</b> not covered by Prescriber level. <br>Please tick on Prescribe to proceed as Cash"
+                                ),
+                                method,
+                        )
 
                 # auto calculating quantity
                 if not row.quantity:
