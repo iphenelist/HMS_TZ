@@ -197,7 +197,7 @@ class NHIFPatientClaim(Document):
         self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
         # rock: 173
-        practitioners = [d.practitioner for d in self.final_patient_encounter]
+        practitioners = list(set([d.practitioner for d in self.patient_encounters]))
         practitioner_details = frappe.get_all(
             "Healthcare Practitioner",
             {"name": ["in", practitioners]},
@@ -338,7 +338,7 @@ class NHIFPatientClaim(Document):
                 "appointment": patient_appointment,
                 "docstatus": 1,
             },
-            fields={"name", "encounter_date"},
+            fields=["name", "encounter_date", "practitioner"],
             order_by="`creation` ASC",
         )
         return patient_encounters
