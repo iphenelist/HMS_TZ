@@ -309,10 +309,14 @@ def on_submit_validation(doc, method):
                 or row.is_not_available_inhouse
             ):
                 row.prescribe = 1
+                if row.is_restricted == 1:
+                    row.is_restricted = 0
+                
                 prescribed_list += "-  <b>" + row.get(value) + "</b><BR>"
                 if row.is_not_available_inhouse:
                     prescribed_list += " - THIS ITEM IS NOT AVAILABLE INHOUSE "
                 prescribed_list += "<BR>"
+            
             elif not row.prescribe:
                 if row.get("no_of_sessions") and doc.insurance_subscription:
                     if row.no_of_sessions != 1:
@@ -324,6 +328,7 @@ def on_submit_validation(doc, method):
                             ).format(row.get(value)),
                             alert=True,
                         )
+            
             if not row.is_not_available_inhouse:
                 old_method = method
                 if doc.insurance_subscription and not row.prescribe:
@@ -376,13 +381,16 @@ def on_submit_validation(doc, method):
 
     if not doc.healthcare_service_unit and not doc.healthcare_package_order:
         frappe.throw(_("Healthcare Service Unit not set"))
+    
     healthcare_insurance_coverage_plan = frappe.get_cached_value(
         "Healthcare Insurance Subscription",
         insurance_subscription,
         "healthcare_insurance_coverage_plan",
     )
+
     if not healthcare_insurance_coverage_plan:
         frappe.throw(_("Healthcare Insurance Coverage Plan is Not defiend"))
+    
     today = nowdate()
     healthcare_service_templates = {}
     for key, value in child_tables.items():
@@ -434,9 +442,11 @@ def validate_item_coverage(
 ):
     for template in healthcare_service_templates:
         """
-        If the value of "is_exclusions" is 1, it means the template should not be listed in the "hsic_map". This is because when "is_exclusions" is 1, it indicates that the template which is in "hsic_map" is not covered.
+        If the value of "is_exclusions" is 1, it means the template should not be listed in the "hsic_map".
+        This is because when "is_exclusions" is 1, it indicates that the template which is in "hsic_map" is not covered.
 
-        However, there's an exception to this rule. If the "approval_mandatory_for_claim" for that template is also 1, it means the template is covered but needs extra authorization for approval.
+        However, there's an exception to this rule. If the "approval_mandatory_for_claim" for that template is also 1,
+        it means the template is covered but needs extra authorization for approval.
 
         This apply for NHIF and Non NHIF Insurance
         """
@@ -460,12 +470,19 @@ def validate_item_coverage(
             ):
                 set_is_restricted(template, healthcare_service_templates, hsic_map)
 
+            elif (
+                template in hsic_map
+                and hsic_map[template].approval_mandatory_for_claim == 0
+            ):
+                reset_is_restricted(template, healthcare_service_templates)
+
         else:
             """
             If the value of "is_exclusions" is 0, it means the template must be listed in the "hsic_map" for it to be covered.
             This is because when "is_exclusions" is 0, it indicates that the template which is in "hsic_map" is covered.
 
-            No need to check for "approval_mandatory_for_claim" on this part because if the template is not listed in the "hsic_map" means the template is completely not covered.
+            No need to check for "approval_mandatory_for_claim" on this part because if the template is not listed in the "hsic_map"
+            means the template is completely not covered.
 
             This apply for NHIF and Non NHIF Insurance.
             """
@@ -477,12 +494,18 @@ def validate_item_coverage(
                     healthcare_service_templates,
                     method,
                 )
-
             elif (
                 template in hsic_map
                 and hsic_map[template].approval_mandatory_for_claim == 1
             ):
                 set_is_restricted(template, healthcare_service_templates, hsic_map)
+            
+            elif (
+                template in hsic_map
+                and hsic_map[template].approval_mandatory_for_claim == 0
+            ):
+                reset_is_restricted(template, healthcare_service_templates)
+
 
 
 def mark_item_not_covered(
@@ -510,6 +533,7 @@ def mark_item_not_covered(
 
 
 def set_is_restricted(template, healthcare_service_templates, hsic_map):
+    """This is to Set is restricted flag on services that are covered but need extra/additional authorization"""
     coverage_info = hsic_map[template]
     for row in healthcare_service_templates[template]:
         row.is_restricted = coverage_info.approval_mandatory_for_claim
@@ -520,6 +544,12 @@ def set_is_restricted(template, healthcare_service_templates, hsic_map):
                 ),
                 alert=True,
             )
+
+
+def reset_is_restricted(template, healthcare_service_templates):
+    """This is to Unset/Reset is restricted flag on services that are covered but do not need extra/additional authorization"""
+    for row in healthcare_service_templates[template]:
+        row.is_restricted = 0
 
 
 def checkـforـduplicate(doc, method):
