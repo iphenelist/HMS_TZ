@@ -255,30 +255,7 @@ def on_submit_validation(doc, method):
                 child.get("doctype") == "Medication"
                 and row.doctype == "Drug Prescription"
             ):
-                if (
-                    row.prescribe == 0
-                    and doc.insurance_subscription
-                    and "NHIF" in doc.insurance_company
-                    and healthcare_doc.medication_category == "Category S Medication"
-                ):
-                    validate_category_s_medication = frappe.get_cached_value(
-                        "Company",
-                        doc.company,
-                        "validate_category_s_medication"
-                    )
-                    if validate_category_s_medication == 1:
-                        practition_level = frappe.get_cached_value(
-                            "Healthcare Practitioner",
-                            {"user_id": frappe.session.user},
-                            "op_consulting_charge_item"
-                        )
-                        if "General Practitioner" in str(practition_level):
-                            msgThrow(
-                                _(
-                                    f"Category S: <b>{row.get(child.get('item'))}</b> not covered by Prescriber level. <br>Please tick on Prescribe to proceed as Cash"
-                                ),
-                                method,
-                        )
+                validate_category_s_medication(doc, row, healthcare_doc, child, method)
 
                 # auto calculating quantity
                 if not row.quantity:
@@ -550,6 +527,47 @@ def reset_is_restricted(template, healthcare_service_templates):
     """This is to Unset/Reset is restricted flag on services that are covered but do not need extra/additional authorization"""
     for row in healthcare_service_templates[template]:
         row.is_restricted = 0
+
+
+def validate_category_s_medication(doc, row, template_doc, child, method):
+    if (
+        row.prescribe == 1
+        or row.is_cancelled == 1
+        or row.is_not_available_inhouse == 1
+        or not doc.insurance_subscription
+        or "NHIF" not in doc.insurance_company
+    ):
+        return
+    
+    practition_level = frappe.get_cached_value(
+        "Healthcare Practitioner",
+        {"user_id": frappe.session.user},
+        "op_consulting_charge_item"
+    )
+    if "General Practitioner" not in str(practition_level):
+        return
+    
+    if template_doc.medication_category == "Category S Medication":
+        check_category_s_medication = frappe.get_cached_value(
+            "Company",
+            doc.company,
+            "validate_category_s_medication"
+        )
+        if check_category_s_medication == 1:
+            msgThrow(
+                _(
+                    f"Category S: <b>{row.get(child.get('item'))}</b> not covered by Prescriber level. <br>Please tick on Prescribe to proceed as Cash"
+                ),
+                method,
+            )
+    
+    if template_doc.medication_category in ["S Category Emergency", "Category S Emergency"]:
+        frappe.msgprint(
+            title=_("<h4 class='text-danger font-bold'>Category S Emergency Medication</h4>"),
+            msg=_(
+                f"<b>{template_doc.name}:</b> This is a Category S Medication Only for Prescriber Level in Emergency Conditions"
+            ),
+        )
 
 
 def checkـforـduplicate(doc, method):
