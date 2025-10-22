@@ -1732,6 +1732,7 @@ def inpatient_billing(patient_encounter_doc, method):
 def show_last_prescribed(doc, method):
     if doc.is_new():
         return
+    
     if method == "validate":
         msg = None
         valid_days_msg = ""
@@ -1784,7 +1785,7 @@ def show_last_prescribed(doc, method):
                 )
 
         if valid_days_msg:
-            frappe.msgprint(
+            frappe.throw(
                 _(
                     "These Items should not be prescribed, because days are below minimum prescription days:<br>"
                     + valid_days_msg
@@ -2031,8 +2032,10 @@ def show_last_prescribed_for_lrpt(doc, method):
             msg_print = ""
             for entry in doc.get(child.get("table")):
                 conditions = {
+                    "docstatus": 1,
                     "patient": doc.patient,
                     child.get("field_name"): entry.get(child.get("item")),
+                    "workflow_state": ["!=", "Submitted but Not Serviced"],
                 }
 
                 item_doc = frappe.get_all(
@@ -2047,9 +2050,7 @@ def show_last_prescribed_for_lrpt(doc, method):
                     date = item_doc[0]["creation"].strftime("%Y-%m-%d")
 
                     msg_print += _(
-                        "{0} prescribed last on: {1}".format(
-                            frappe.bold(entry.get(child.get("item"))), frappe.bold(date)
-                        )
+                        f"{frappe.bold(entry.get(child.get('item')))} prescribed last on: {frappe.bold(date)}"
                         + "<br>"
                     )
 
@@ -2063,10 +2064,14 @@ def show_last_prescribed_for_lrpt(doc, method):
 
         for plan in doc.therapies:
             items = frappe.db.sql(
-                """ 
-                SELECT tpd.therapy_type, Date(tpd.creation) AS date FROM `tabTherapy Plan Detail` tpd
-                INNER JOIN `tabTherapy Plan` tp ON tpd.parent = tp.name WHERE tp.patient = %s 
-                AND tpd.therapy_type = %s """
+                """
+                SELECT tpd.therapy_type, Date(tpd.creation) AS date
+                FROM `tabTherapy Plan Detail` tpd
+                INNER JOIN `tabTherapy Plan` tp ON tpd.parent = tp.name
+                WHERE tp.patient = %s
+                AND tpd.therapy_type = %s
+                AND tpd.sessions_cancelled = 0
+            """
                 % (frappe.db.escape(doc.patient), frappe.db.escape(plan.therapy_type)),
                 as_dict=1,
             )
@@ -2074,10 +2079,7 @@ def show_last_prescribed_for_lrpt(doc, method):
             if items:
                 msg = _(
                     msg
-                    + "{0} prescribed last on: {1}".format(
-                        frappe.bold(items[0]["therapy_type"]),
-                        frappe.bold(items[0]["date"]),
-                    )
+                    + f"{frappe.bold(items[0]['therapy_type'])} prescribed last on: {frappe.bold(items[0]['date'])}"
                     + "<br>"
                 )
                 val_msg = validate_prescribe_days(
@@ -2516,7 +2518,7 @@ def validate_medical_code(doc, method):
                 "procedure_prescription",
                 "drug_prescription",
                 "therapies",
-                "diet_recommendation",
+                # "diet_recommendation",
             ],
         }
 
