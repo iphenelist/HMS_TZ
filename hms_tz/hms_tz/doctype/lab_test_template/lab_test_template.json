@@ -44,8 +44,8 @@
   "column_break_33",
   "sample_details",
   "medical_coding_section",
-  "medical_code",
   "medical_code_standard",
+  "medical_code",
   "worksheet_section",
   "worksheet_instructions",
   "result_legend_section",
@@ -350,7 +350,7 @@
   }
  ],
  "links": [],
- "modified": "2025-06-06 18:05:06.987347",
+ "modified": "2025-11-18 15:04:47.365077",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Lab Test Template",

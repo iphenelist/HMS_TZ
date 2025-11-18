@@ -80,14 +80,14 @@
    "fieldname": "medical_code_standard",
    "fieldtype": "Link",
    "label": "Medical Code Standard",
-   "options": "Medical Code Standard"
+   "options": "Code System"
   },
   {
    "depends_on": "medical_code_standard",
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Medical Code"
+   "options": "Code Value"
   },
   {
    "fieldname": "column_break_9",
@@ -178,9 +178,10 @@
    "options": "Healthcare Points of Care"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-06 18:34:23.733527",
+ "modified": "2025-11-18 14:57:33.782497",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Radiology Examination Template",
@@ -201,6 +202,8 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
