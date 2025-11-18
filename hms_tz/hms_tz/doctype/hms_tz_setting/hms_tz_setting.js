@@ -2,7 +2,19 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('HMS TZ Setting', {
+	setup: (frm) => {
+		frm.trigger("set_filters");
+	},
+
 	refresh(frm) {
+		frm.trigger("set_filters");
+	},
+
+	onload: (frm) => {
+		frm.trigger("set_filters");
+	},
+	
+	set_filters: (frm) => {
 		frm.set_query("opd_cash_pharmacy", () => {
 			return {
 				filters: {
@@ -68,6 +80,25 @@ frappe.ui.form.on('HMS TZ Setting', {
 		}
 
 		frm.call("get_nhif_token").then(
+			frm.reload_doc(),
+			frappe.show_alert({
+				message: __("Token Successful fetched...!!"),
+				indicator: 'green'
+			})
+		)
+	},
+
+	get_jubilee_token: (frm) => {
+		if (frm.is_dirty()) {
+			frm.save();
+		}
+
+		if (frm.doc.enable_jubilee_api === 0) {
+			frappe.msgprint(__("Please Enable Jubilee API to proceed.."));
+			return
+		}
+
+		frm.call("get_jubilee_token").then(
 			frm.reload_doc(),
 			frappe.show_alert({
 				message: __("Token Successful fetched...!!"),
