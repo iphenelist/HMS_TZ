@@ -92,7 +92,7 @@ def get_service_preapproval(
             ref_docname=ref_docname,
         )
 
-        doc.add_comment(
+        source_doc.add_comment(
             comment_type="Comment",
             text=f"Pre-approval request Failed..!<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
         )
