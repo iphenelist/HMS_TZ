@@ -133,7 +133,7 @@ frappe.ui.form.on("Patient Appointment", {
     // https://support.aakvatech.com/helpdesk/tickets/239
     frm.trigger("apply_fasttrack");
 
-    if (frm.doc.appointment_type.toLowerCase().includes("referral")) {
+    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("referral")) {
       if (frm.doc.insurance_subscription) {
         frm.toggle_display(["referral_no"], true);
         frm.toggle_reqd("referral_no", true);
@@ -156,7 +156,7 @@ frappe.ui.form.on("Patient Appointment", {
       frm.toggle_enable("referring_practitioner", false);
     }
 
-    if (frm.doc.appointment_type.toLowerCase().includes("emergency")) {
+    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("emergency")) {
       if (frm.doc.insurance_subscription) {
         frm.toggle_display(["remarks"], true);
         frm.toggle_reqd("remarks", true);
@@ -167,7 +167,7 @@ frappe.ui.form.on("Patient Appointment", {
       frm.toggle_enable(["remarks"], true);
     }
 
-    if (frm.doc.appointment_type.toLowerCase().includes("follow")) {
+    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("follow")) {
       if (frm.doc.insurance_subscription) {
         frm.toggle_display(["referral_no"], true);
         frm.toggle_reqd("referral_no", true);
