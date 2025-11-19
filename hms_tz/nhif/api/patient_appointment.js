@@ -612,10 +612,13 @@ frappe.ui.form.on("Patient Appointment", {
       return
     }
 
-    await frappe.call('hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups', {
-      insurance_subscription: frm.doc.insurance_subscription,
-      appointment_type: frm.doc.appointment_type,
-      apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
+    frappe.call({
+        method: 'hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups',
+        args: {
+            insurance_subscription: frm.doc.insurance_subscription,
+            appointment_type: frm.doc.appointment_type,
+            apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
+        }
     })
       .then(r => {
         if (r.message) {
