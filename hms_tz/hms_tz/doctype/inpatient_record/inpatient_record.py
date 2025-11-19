@@ -142,7 +142,7 @@ def schedule_inpatient(args):
     inpatient_record.mobile = patient.mobile
     inpatient_record.email = patient.email
     inpatient_record.phone = patient.phone
-    inpatient_record.scheduled_date = today()
+    inpatient_record.scheduled_date = admission_order["admission_ordered_for"]
 
     # Set encounter detials
     encounter = frappe.get_cached_doc("Patient Encounter", admission_order["admission_encounter"])
@@ -247,9 +247,9 @@ def check_out_inpatient(inpatient_record):
             if inpatient_occupancy.left != 1:
                 inpatient_occupancy.left = True
                 inpatient_occupancy.check_out = now_datetime()
-                hsu = frappe.get_cached_doc("Healthcare Service Unit", inpatient_occupancy.service_unit)
-                hsu.occupancy_status = "Vacant"
-                hsu.save(ignore_permissions=True)
+                frappe.db.set_value(
+					"Healthcare Service Unit", inpatient_occupancy.service_unit, "occupancy_status", "Vacant"
+				)
 
 
 def discharge_patient(inpatient_record):
