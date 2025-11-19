@@ -42,17 +42,10 @@
   "nhif_tab",
   "nhif_user",
   "nhif_client_secret",
+  "column_break_xexyf",
   "nhif_grant_type",
   "nhif_scope",
-  "nhif_biometric_actions_column",
-  "enable_biometric_for_lab",
-  "enable_biometric_for_radiology",
-  "enable_biometric_for_procedure",
-  "enable_biometric_for_medication",
-  "enable_biometric_for_therapy",
-  "enable_biometric_for_encounter",
-  "enable_biometric_for_admission",
-  "column_break_xexyf",
+  "column_break_mlpi",
   "enable_nhif_api",
   "check_patient_info_on_his",
   "enable_auto_submit_of_claims",
@@ -244,66 +237,6 @@
    "fieldname": "get_nhif_token",
    "fieldtype": "Button",
    "label": "Get NHIF Token"
-  },
-  {
-   "fieldname": "nhif_biometric_actions_column",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_lab",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Lab (POC)",
-   "search_index": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_radiology",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Radiology (POC)",
-   "search_index": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_procedure",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Procedure (POC)",
-   "search_index": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_medication",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Medication (POC)",
-   "search_index": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_therapy",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Therapy (POC)",
-   "search_index": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_encounter",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Encounter (POC)",
-   "search_index": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval: doc.enable_nhif_api == 1",
-   "fieldname": "enable_biometric_for_admission",
-   "fieldtype": "Check",
-   "label": "Enable Biometric Verification for Admission (POC)",
-   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -581,11 +514,15 @@
    "fieldtype": "Data",
    "label": "Jubilee Provider ID",
    "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1"
+  },
+  {
+   "fieldname": "column_break_mlpi",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-09 17:13:01.266242",
+ "modified": "2025-11-18 15:49:28.728366",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
