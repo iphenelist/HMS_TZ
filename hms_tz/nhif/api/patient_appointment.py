@@ -9,7 +9,7 @@ import json
 import frappe
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, date_diff, getdate, nowdate
+from frappe.utils import cint, date_diff, getdate, nowdate, nowtime
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_receivable_account
 
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
@@ -18,6 +18,8 @@ from hms_tz.nhif.api.healthcare_utils import get_discount_percent, get_item_rate
 
 
 def before_insert(doc, method):
+    validate_disabled_patient(doc.patient, doc.patient_name)
+
     if doc.inpatient_record:
         frappe.throw(
             _("You cannot create an appointment for a patient already admitted.<br>First <b>discharge the patient</b> and then create the appointment."))
@@ -25,6 +27,15 @@ def before_insert(doc, method):
     patient_doc = frappe.get_cached_doc("Patient", doc.patient)
     if not patient_doc.customer:
         create_customer(patient_doc)
+
+
+def validate_disabled_patient(patient, patient_name):
+    if frappe.get_cached_value("Patient", patient, "status") == "Disabled":
+        frappe.throw(
+            _(
+                f"The patient <b>{patient}-{patient_name}</b> is disabled. Cannot proceed further."
+            )
+        )
 
 
 @frappe.whitelist()
@@ -117,7 +128,9 @@ def invoice_appointment(name, mops=[]):
         sales_invoice.patient = appointment_doc.patient
         sales_invoice.customer = frappe.get_cached_value("Patient", appointment_doc.patient, "customer")
         sales_invoice.appointment = appointment_doc.name
-        sales_invoice.due_date = getdate()
+        sales_invoice.set_posting_time = 1
+        sales_invoice.posting_date = appointment_doc.appointment_date
+        sales_invoice.due_date = appointment_doc.appointment_date
         sales_invoice.company = appointment_doc.company
         sales_invoice.debit_to = get_receivable_account(appointment_doc.company)
         sales_invoice.healthcare_service_unit = appointment_doc.service_unit
@@ -303,12 +316,16 @@ def make_vital(appointment_doc, method):
 def make_encounter(doc, method):
     if doc.is_new():
         return
+    
+    _date = ""
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
             return
         if frappe.get_cached_value("Patient Appointment", doc.appointment, "status") == "Cancelled":
             frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
+        _date = doc.signs_date
+
     elif doc.doctype == "Patient Appointment":
         if (
             (not doc.authorization_number and not doc.mode_of_payment)
@@ -329,6 +346,7 @@ def make_encounter(doc, method):
                 doc.hms_tz_is_discount_applied = 1
 
         source_name = doc.name
+        _date = doc.appointment_date
 
     target_doc = None
     encounter_doc = get_mapped_doc(
@@ -352,6 +370,8 @@ def make_encounter(doc, method):
         target_doc,
         ignore_permissions=True,
     )
+    encounter_doc.encounter_date = _date
+    encounter_doc.encounter_time = nowtime()
     encounter_doc.encounter_category = "Appointment"
 
     encounter_doc.save(ignore_permissions=True)
@@ -479,6 +499,7 @@ def set_follow_up(appointment_doc, method):
 
 
 def make_next_doc(doc, method, from_hook=True):
+    validate_disabled_patient(doc.patient, doc.patient_name)
     validate_insurance_subscription(doc)
     check_multiple_appointments(doc)
     if doc.is_new():
