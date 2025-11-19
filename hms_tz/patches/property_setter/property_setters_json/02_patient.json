@@ -762,5 +762,27 @@
         "property_type": "Text",
         "value": "HLC-PAT-",
         "doctype": "Property Setter"
+    },
+    {
+        "name": "Patient-status-read_only",
+        "owner": "Administrator",
+        "creation": "2025-11-19 16:22:30.569138",
+        "modified": "2025-11-19 16:22:30.569138",
+        "modified_by": "Administrator",
+        "docstatus": 0,
+        "idx": 0,
+        "module_def": null,
+        "is_system_generated": 0,
+        "doctype_or_field": "DocField",
+        "doc_type": "Patient",
+        "field_name": "status",
+        "row_name": null,
+        "module": null,
+        "property": "read_only",
+        "property_type": "Check",
+        "value": "0",
+        "default_value": null,
+        "doctype": "Property Setter",
+        "__last_sync_on": "2025-11-19T13:22:30.714Z"
     }
 ]
