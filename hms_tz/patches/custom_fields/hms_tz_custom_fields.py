@@ -2072,14 +2072,6 @@ def execute():
         "Patient": [
             {
                 "fieldtype": "Data",
-                "label": "Area Old",
-                "fieldname": "area",
-                "insert_after": "nida_card_number",
-                "hidden": 1,
-                "translatable": 1,
-            },
-            {
-                "fieldtype": "Data",
                 "label": "Card No",
                 "fieldname": "card_no",
                 "insert_after": "insurance_details",
@@ -2207,13 +2199,6 @@ def execute():
                 "fieldname": "next_to_kin_relationship",
                 "insert_after": "next_to_kid_column_break",
                 "options": "\nFather\nMother\nSpouse\nSiblings\nFamily\nOther",
-                "translatable": 1,
-            },
-            {
-                "fieldtype": "Data",
-                "label": "NIDA Card Number",
-                "fieldname": "nida_card_number",
-                "insert_after": "report_preference",
                 "translatable": 1,
             },
             {
