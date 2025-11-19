@@ -18,6 +18,8 @@ from hms_tz.nhif.api.healthcare_utils import get_discount_percent, get_item_rate
 
 
 def before_insert(doc, method):
+    validate_disabled_patient(doc.patient, doc.patient_name)
+
     if doc.inpatient_record:
         frappe.throw(
             _("You cannot create an appointment for a patient already admitted.<br>First <b>discharge the patient</b> and then create the appointment."))
@@ -25,6 +27,15 @@ def before_insert(doc, method):
     patient_doc = frappe.get_cached_doc("Patient", doc.patient)
     if not patient_doc.customer:
         create_customer(patient_doc)
+
+
+def validate_disabled_patient(patient, patient_name):
+    if frappe.get_cached_value("Patient", patient, "status") == "Disabled":
+        frappe.throw(
+            _(
+                f"The patient <b>{patient}-{patient_name}</b> is disabled. Cannot proceed further."
+            )
+        )
 
 
 @frappe.whitelist()
@@ -479,6 +490,7 @@ def set_follow_up(appointment_doc, method):
 
 
 def make_next_doc(doc, method, from_hook=True):
+    validate_disabled_patient(doc.patient, doc.patient_name)
     validate_insurance_subscription(doc)
     check_multiple_appointments(doc)
     if doc.is_new():
