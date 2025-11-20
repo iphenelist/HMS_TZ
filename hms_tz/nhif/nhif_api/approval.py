@@ -498,7 +498,7 @@ def get_authorized_items(
             "description": service_name,
             "quantityRequested": qty,
             "unitPrice": item_rate or 0,
-            "percentCovered": percent_covered,
+            "percentCovered": percent_covered or 100,
             "createdBy": practitioner,
             "dateCreated": str(doc.creation.isoformat()),
         }
