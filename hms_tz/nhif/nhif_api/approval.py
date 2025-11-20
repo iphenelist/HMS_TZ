@@ -286,8 +286,13 @@ def issue_approved_service(
         item_rate = rate
     else:
         item = frappe.get_cached_value(service_type, service_name, "item")
-        item_rate = get_item_rate(item, doc.company, doc.insurance_subscription, doc.insurance_company)
-    
+        
+        insurance_subscription = doc.get("insurance_subscription")
+        if not insurance_subscription:
+            appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
+            insurance_subscription = frappe.get_cached_value("Patient Appointment", appointment, "insurance_subscription")
+        
+        item_rate = get_item_rate(item, doc.company, insurance_subscription, doc.insurance_company)
     # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
     # image_data = fingerprint.replace("-", "+").replace("_", "/")
