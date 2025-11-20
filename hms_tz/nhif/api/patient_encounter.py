@@ -1650,7 +1650,15 @@ def set_practitioner_name(doc, method):
             not practitioner_info.date_loggedin_to_nhif
             or getdate(practitioner_info.date_loggedin_to_nhif) != getdate(nowdate())
         ):
-            if method not in ("before_insert", "validate", "before_save"):
+            validate_nhif_attendance = frappe.get_cached_value(
+                "HMS TZ Setting",
+                doc.company,
+                "validate_nhif_practitioner_attendance",
+            )
+            if (
+                validate_nhif_attendance == 1 and 
+                method not in ("before_insert", "validate", "before_save")
+            ):
                 frappe.throw("Please Login to NHIF, to proceed attending NHIF Patients..")
 
     elif (
