@@ -175,6 +175,11 @@ def validate_point_of_care(doc):
         return
     
     if not doc.get("poc_reference_no"):
-        frappe.throw(
-            f"POC reference no is not set for this document, Please get POC reference no from NHIF."
-        )
+        if frappe.get_cached_value(
+            "HMS TZ Setting",
+            doc.company,
+            "validate_poc_at_encounter"
+        ):
+            frappe.throw(
+                f"<b>POC reference</b> no is not set for this document, Please get POC reference no from NHIF."
+            )
