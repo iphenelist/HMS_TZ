@@ -100,8 +100,7 @@ def get_service_preapproval(
 
         frappe.throw(
             title="NHIF API Error",
-            msg=f"Pre-approval failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>",
-            indicator="red",
+            msg=f"Pre-approval failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}<b>"
         )
     else:
         data = json.loads(r.text)
