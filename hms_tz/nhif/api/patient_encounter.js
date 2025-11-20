@@ -1976,7 +1976,9 @@ var nhif_btns = (frm) => {
   frappe.call({
     method:
       "hms_tz.nhif.api.healthcare_practitioner.get_nhif_practitioner_login_status",
-    args: {},
+    args: {
+      company: frm.doc.company,
+    },
     callback: (r) => {
       if (r.message) {
         logout_from_nhif(frm);
