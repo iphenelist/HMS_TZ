@@ -62,6 +62,8 @@
   "submit_claim_month",
   "column_break_10",
   "submit_claim_year",
+  "biometrics_section",
+  "validate_poc_at_encounter",
   "jubilee_tab",
   "jubilee_user",
   "jubilee_password",
@@ -518,11 +520,22 @@
   {
    "fieldname": "column_break_mlpi",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "biometrics_section",
+   "fieldtype": "Section Break",
+   "label": "Biometrics"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_poc_at_encounter",
+   "fieldtype": "Check",
+   "label": "Validate POC at encounter"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-18 15:49:28.728366",
+ "modified": "2025-11-20 23:56:35.373571",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
