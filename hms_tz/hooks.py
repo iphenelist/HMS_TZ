@@ -98,6 +98,12 @@ after_migrate = [
     "hms_tz.patches.property_setter.create_property_setters.execute",
 ]
 
+
+# Login
+# -----
+on_login = "hms_tz.api.login.before_login"
+
+
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config
