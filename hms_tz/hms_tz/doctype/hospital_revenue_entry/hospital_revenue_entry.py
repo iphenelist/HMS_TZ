@@ -163,7 +163,7 @@ def get_entry_from_appointment(doc):
         "patient_name": doc.patient_name,
         "customer": frappe.get_cached_value("Patient", doc.patient, "customer"),
         "appointment": doc.name,
-        "posting_date": nowdate(),
+        "posting_date": doc.appointment_date,
         "created_by": get_fullname(frappe.session.user),
         "company": doc.company,
         "qty": 1,

@@ -35,6 +35,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
 )
 from hms_tz.nhif.utils import validate_point_of_care
 from hms_tz.nhif.api.patient_appointment import calculate_patient_age
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 
 
 def on_trash(doc, method):
@@ -121,6 +122,10 @@ def after_insert(doc, method):
                 doc.default_healthcare_service_unit = pharmacy_details.opd_insurance_pharmacy
     set_price_list(doc)
     doc.save()
+
+    if doc.appointment:
+        appointmet_doc = frappe.get_cached_doc("Patient Appointment", doc.appointment)
+        create_revenue_entry(appointmet_doc, doc)
 
 
 def set_price_list(doc):
