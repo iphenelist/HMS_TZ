@@ -6,6 +6,7 @@ import json
 
 import frappe
 from frappe import bold
+from frappe.query_builder import DocType
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
 from frappe.utils import cint, flt, get_fullname, nowdate, nowtime, unique
@@ -89,7 +90,7 @@ class LRPMTReturns(Document):
                 frappe.throw(title="Notification"(msg=msg).with_traceback(exc="Frappe.ValidationError"))
 
     def validate_duplicates(self):
-        dt = frappe.qb.DocType("LRPMT Returns")
+        dt = DocType("LRPMT Returns")
         lrpmts = (
             frappe.qb.from_(dt)
             .select(dt.name.as_("lrpmt_docname"))
