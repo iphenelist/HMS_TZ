@@ -123,9 +123,9 @@ def after_insert(doc, method):
     set_price_list(doc)
     doc.save()
 
-    if doc.appointment:
-        appointmet_doc = frappe.get_cached_doc("Patient Appointment", doc.appointment)
-        create_revenue_entry(appointmet_doc, doc)
+    if doc.appointment and doc.encounter_type == "Initial":
+        appointment_doc = frappe.get_cached_doc("Patient Appointment", doc.appointment)
+        create_revenue_entry(appointment_doc)
 
 
 def set_price_list(doc):
