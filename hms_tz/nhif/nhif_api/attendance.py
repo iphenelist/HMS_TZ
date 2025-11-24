@@ -4,20 +4,23 @@ import json
 import frappe
 import requests
 from frappe.utils import nowdate
-
+from erpnext import get_default_company
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 @frappe.whitelist()
-def login_practitioner(fingerprint, fpcode, settings_doc=None):
+def login_practitioner(fingerprint, fpcode, settings_doc=None, company=None):
     # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
     # image_data = fingerprint.replace("-", "+").replace("_", "/")
 
+    if not company:
+        company = get_default_company()
+
     practitioner = frappe.get_cached_value(
         "Healthcare Practitioner",
-        {"user_id": frappe.session.user},
-        ["tz_mct_code", "national_id", "hms_tz_company", "name"],
+        {"hms_tz_company": company, "user_id": frappe.session.user},
+        ["tz_mct_code", "national_id", "name"],
         as_dict=True,
     )
     if not practitioner:
@@ -39,7 +42,7 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
     payload = json.dumps(payload)
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Setting", practitioner.hms_tz_company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     url = f"{settings_doc.nhifservice_url}/api/Attendance/LoginPractitioner"
 
@@ -95,11 +98,14 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
 
 
 @frappe.whitelist()
-def logout_practitioner(settings_doc=None):
+def logout_practitioner(settings_doc=None, company=None):
+    if not company:
+        company = get_default_company()
+    
     practitioner = frappe.get_cached_value(
         "Healthcare Practitioner",
-        {"user_id": frappe.session.user},
-        ["tz_mct_code", "national_id", "hms_tz_company", "name"],
+        {"hms_tz_company": company, "user_id": frappe.session.user},
+        ["tz_mct_code", "national_id", "name"],
         as_dict=True,
     )
     if not practitioner:
@@ -111,7 +117,7 @@ def logout_practitioner(settings_doc=None):
         frappe.throw(f"Please set National ID for a practitioner: <b>{practitioner.name}</b>")
 
     if not settings_doc:
-        settings_doc = frappe.get_cached_doc("HMS TZ Setting", practitioner.hms_tz_company)
+        settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     payload = {
         "practitionerNo": practitioner.tz_mct_code,

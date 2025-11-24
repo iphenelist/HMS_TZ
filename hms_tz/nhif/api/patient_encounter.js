@@ -1980,13 +1980,19 @@ var nhif_btns = (frm) => {
       company: frm.doc.company,
     },
     callback: (r) => {
-      if (r.message) {
+      let data = r.message;
+      if (data.show_login) {
+        login_to_nhif(frm);
+      }
+
+      if (data.show_logout) {
         logout_from_nhif(frm);
+      }
+
+      if (!data.show_login && !data.show_logout) {
         pre_approval_btn(frm);
         cancel_pre_approval_btn(frm);
         confirm_poc_btn(frm);
-      } else {
-        login_to_nhif(frm);
       }
     },
   });
@@ -2015,6 +2021,7 @@ var login_to_nhif = (frm) => {
             args: {
               fingerprint: fingerprint.Data,
               fpcode: fingerprint.fpCode,
+              company: frm.doc.company,
             },
             async: true,
             freeze: true,
@@ -2046,7 +2053,9 @@ var logout_from_nhif = (frm) => {
         click: function () {
           frappe.call({
             method: "hms_tz.nhif.nhif_api.attendance.logout_practitioner",
-            args: {},
+            args: {
+              company: frm.doc.company,
+            },
             async: true,
             freeze: true,
             freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
