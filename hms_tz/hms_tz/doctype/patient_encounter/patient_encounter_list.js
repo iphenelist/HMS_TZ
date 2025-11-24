@@ -30,10 +30,14 @@ var nhif_btns = (listview) => {
       "hms_tz.nhif.api.healthcare_practitioner.get_nhif_practitioner_login_status",
     args: {},
     callback: (r) => {
-      if (r.message) {
-        logout_from_nhif(listview);
-      } else {
+      let data = r.message;
+      
+      if (data.show_login) {
         login_to_nhif(listview);
+      }
+
+      if (data.show_logout) {
+        logout_from_nhif(listview);
       }
     },
   });
