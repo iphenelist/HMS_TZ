@@ -536,48 +536,50 @@
    "label": "Biometrics"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_poc_at_encounter",
    "fieldtype": "Check",
-   "label": "Validate POC at encounter"
+   "label": "Validate POC at encounter",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_emev",
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_nhif_practitioner_attendance",
    "fieldtype": "Check",
-   "label": "Validate NHIF Practitioner Attendance"
+   "label": "Validate NHIF Practitioner Attendance",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_rzfa",
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_poc_at_radiology",
    "fieldtype": "Check",
    "label": "Validate POC at Radiology",
    "search_index": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_poc_at_therapy",
    "fieldtype": "Check",
    "label": "Validate POC at Therapy",
    "search_index": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_poc_at_procedure",
    "fieldtype": "Check",
    "label": "Validate POC at Procedure",
    "search_index": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_poc_at_pharmacy",
    "fieldtype": "Check",
    "label": "Validate POC at Pharmacy",
@@ -588,7 +590,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "validate_poc_at_laboratory",
    "fieldtype": "Check",
    "label": "Validate POC at Laboratory",
@@ -597,7 +599,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-26 21:51:02.663460",
+ "modified": "2025-11-26 22:01:34.920382",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
