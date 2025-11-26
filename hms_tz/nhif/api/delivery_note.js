@@ -70,7 +70,7 @@ frappe.ui.form.on("Delivery Note", {
     });
   },
   get_poc_reference_no: async (frm) => {
-    if (!frm.doc.insurance_company.includes("NHIF")) {
+    if (!frm.doc.customer.includes("NHIF")) {
       frappe.show_alert(
         {
           message: __("This feature is only applicable for NHIF insurance"),
@@ -149,7 +149,7 @@ frappe.ui.form.on("Delivery Note", {
     });
   },
   issue_service: async (frm) => {
-    if (!frm.doc.insurance_company.includes("NHIF")) {
+    if (!frm.doc.customer.includes("NHIF")) {
       frappe.show_alert(
         {
           message: __("This feature is only applicable for NHIF insurance"),
@@ -216,18 +216,13 @@ frappe.ui.form.on("Delivery Note", {
       freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
       callback: function (r) {
         if (r.message) {
-          if (r.message) {
-            frappe.utils.play_sound("submit");
-            let data = r.message;
-            if (data.ReferenceNo) {
-              frm.set_value("poc_reference_no", data.ReferenceNo);
-              frm.save().then(() => {
-                frm.reload_doc();
-              });
-            } else {
-              frappe.utils.play_sound("error");
-            }
-          }
+          frappe.utils.play_sound("submit");
+          let data = r.message;
+          // if (data.ReferenceNo) {
+          //   frm.save().then(() => {
+          //     frm.reload_doc();
+          //   });
+          // } 
         } else {
           frappe.utils.play_sound("error");
         }
