@@ -37,6 +37,9 @@
   "send_confirmation_code",
   "confirmation_code_sent",
   "confirmation_code",
+  "column_break_wqsh",
+  "sign_folio",
+  "folio_signed",
   "column_break_7xkjq",
   "get_receipt",
   "receipt_no",
@@ -64,7 +67,6 @@
   "patient_file",
   "claim_file_section",
   "claim_file",
-  "section_break_40",
   "clinical_notes_section",
   "clinical_notes",
   "attending_practitioner_section",
@@ -417,10 +419,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "section_break_40",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "clinical_notes",
    "fieldtype": "Long Text",
    "label": "Clinical Notes",
@@ -653,12 +651,30 @@
    "label": "Receipt No",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wqsh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sign_folio",
+   "fieldtype": "Button",
+   "label": "Sign Folio"
+  },
+  {
+   "default": "0",
+   "fieldname": "folio_signed",
+   "fieldtype": "Check",
+   "label": "Folio Signed",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-20 07:24:27.657862",
+ "modified": "2025-11-27 02:31:24.971322",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
@@ -693,6 +709,8 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

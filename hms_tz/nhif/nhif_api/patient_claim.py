@@ -7,6 +7,105 @@ from frappe.utils import flt, get_fullname, now_datetime, get_datetime
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
+@frappe.whitelist()
+def sign_folio(
+    ref_doctype,
+    ref_docname,
+    signature_method="signature",
+    fingerprint=None,
+    fpcode=None
+):
+    """
+    Sign folio before submission to NHIF
+    """
+
+    doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+
+    if signature_method == "signature" and not doc.patient_signature:
+        frappe.throw("Patient signature is required before signing the folio.")
+    
+    if signature_method == "fingerprint":
+        if not fingerprint or not fpcode:
+            frappe.throw("Fingerprint is required for biometric signature.")
+        
+        if not fpcode:
+            frappe.throw("FPCode is required for biometric signature.")
+
+    payload = {
+        "CardNo": doc.cardno.strip(),
+        "AuthorizationNo": doc.authorization_no,
+        "AmountClaimed": sum([flt(item.amount_claimed) for item in doc.nhif_patient_claim_item]),
+    }
+
+    if signature_method == "signature":
+        payload["SignatureData"] = doc.patient_signature
+        payload["SignatureMethod"] = "signature"
+        payload["FpCode"] = ""
+    else:
+        payload["SignatureData"] = fingerprint
+        payload["SignatureMethod"] = "fingerprint"
+        payload["FpCode"] = fpcode
+    
+    payload = json.dumps(payload)
+
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
+    token = settings_doc.get_nhif_token()
+    url = f"{settings_doc.nhif_claim_url}/api/Claims/SignFolio"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+
+    r = requests.request("Post", url, data=payload, headers=headers, timeout=300)
+    if r.status_code != 200:
+        add_log(
+            request_type="SignFolio",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???"),
+            status_code=(r.status_code if str(r) else "NO STATUS CODE"),
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name,
+        )
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Failed to sign folio!<br><br><b>Message from NHIF:</b><br>{r.text}",
+        )
+        frappe.db.commit()
+
+        frappe.msgprint(
+            f"NHIF responded with HTTP status code: {r.status_code}\
+                <br><br><b>Message from NHIF:</b><br>{r.text}"
+        )
+        return 'Error'
+    
+    else:
+        data = json.loads(r.text)
+        add_log(
+            request_type="SignFolio",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=settings_doc.name,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name,
+        )
+
+        doc.db_set("folio_signed", 1)
+
+        doc.add_comment(
+            comment_type="Comment",
+            text=f"Folio signed successfully!<br><br><b>Message from NHIF:</b><br>{data.get('Message')}",
+        )
+
+    frappe.msgprint("Folio signed successfully", alert=True)
+    return True
+
+
 def submit_folio(doc):
     """
     Submit a patient claim to NHIF
@@ -347,7 +446,6 @@ def submit_monthly_claim(doc):
         doc.date_submitted = get_datetime(data.get("DateSubmitted"))
 
         return True
-
 
 
 @frappe.whitelist()
