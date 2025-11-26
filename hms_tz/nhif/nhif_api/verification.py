@@ -686,7 +686,10 @@ def get_poc_reference_no(
 
     r = requests.request("Post", url, headers=headers, data=payload, timeout=60)
     if r.status_code != 200:
-        data = json.loads(r.text)
+        data = {}
+        if r.text:
+            data = json.loads(r.text)
+        
         add_log(
             request_type="GeneratePOCReferenceNo",
             request_url=url,
