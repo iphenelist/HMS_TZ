@@ -8,6 +8,13 @@ def get_nhif_practitioner_login_status(company=None):
     if not company:
         company = get_default_company()
 
+        if not company:
+            company = frappe.get_cached_value(
+                "Healthcare Practitioner",
+                {"user_id": frappe.session.user},
+                "hms_tz_company",
+            )
+
     validate_nhif_attandance = frappe.get_cached_value(
         "HMS TZ Setting",
         company,
