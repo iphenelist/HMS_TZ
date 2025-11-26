@@ -321,9 +321,16 @@ frappe.ui.form.on("Patient Appointment", {
       return;
     }
     if (!frm.doc.biometric_method) {
-      frappe.msgprint("Please select a Biomatric Method");
+      frappe.msgprint("Please select a Biometric Method");
+      return;
+    } else if (frm.doc.biometric_method == "NONE" && !frm.doc.remarks ) {
+      frappe.msgprint({
+        title: __("Remarks Missing"),
+        message: __("Please provide remarks for the selected Biometric Method")
+      });
       return;
     }
+
     if (frm.is_dirty()) {
       frm.save();
     }
@@ -663,6 +670,9 @@ frappe.ui.form.on("Patient Appointment", {
     if (frm.doc.biometric_method == "NONE") {
       frm.toggle_display(["remarks"], true);
       frm.toggle_reqd("remarks", true);
+    } else {
+      frm.toggle_display(["remarks"], false);
+      frm.toggle_reqd("remarks", false);
     }
   }
 });
