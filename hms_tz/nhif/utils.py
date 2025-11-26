@@ -6,11 +6,6 @@ from hms_tz.nhif.nhif_api.approval import issue_approved_service
 
 
 @frappe.whitelist()
-def is_issuance_biometric_verification_enabled(doc_type, company, field):
-    return frappe.get_cached_value("HMS TZ Setting", company, field)
-
-
-@frappe.whitelist()
 def get_poc_reference_no_for_lrpmt(
     ref_doctype,
     ref_docname,
