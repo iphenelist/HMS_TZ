@@ -487,7 +487,8 @@ def authorize_patient(
 
     # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
     # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    image_data = fingerprint.replace("-", "+").replace("_", "/")
+    # image_data = fingerprint.replace("-", "+").replace("_", "/")
+    image_data = fingerprint
 
     visit_type_id = frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")
 
