@@ -156,7 +156,7 @@ def get_entry_from_appointment(doc):
         doc: Source document
 
     Returns:
-        dict: Entry dictionary
+        list: List containing entry dictionary
     """
     entry_dict = {
         "patient": doc.patient,
@@ -169,22 +169,23 @@ def get_entry_from_appointment(doc):
         "qty": 1,
         "rate": doc.paid_amount,
         "amount": doc.paid_amount,
+        "percent_covered": 100,
         "source_doctype": doc.doctype,
         "source_docname": doc.name,
         "service_type": "Consultation Charges",
-        "service_name": doc.get("billing_item"),
+        "service_name": doc.billing_item,
         "currency": frappe.get_cached_value("Company", doc.company, "default_currency"),
         "payment_type": "Insurance" if doc.insurance_subscription else "Cash",
         "insurance_subscription": doc.insurance_subscription,
         "insurance_company": doc.insurance_company,
-        "insurance_coverage_plan": doc.insurance_coverage_plan,
+        "insurance_coverage_plan": doc.coverage_plan_name,
         "mode_of_payment": doc.mode_of_payment,
         "sales_invoice": doc.ref_sales_invoice,
         "department": doc.department,
         "healthcare_service_unit": doc.service_unit,
         "healthcare_practitioner": doc.practitioner,
     }
-    return entry_dict
+    return [entry_dict]
 
 
 def get_entry_from_lrp_docs(doc):
