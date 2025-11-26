@@ -147,25 +147,6 @@ class NHIFPatientClaim(Document):
             frappe.qb.update(pa).set(pa.nhif_patient_claim, "").where(pa.name == self.patient_appointment).run()
 
     def before_submit(self):
-        try:
-            if len(self.nhif_patient_claim_disease) == 0:
-                frappe.throw(
-                    _("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>Please add at least one disease code, before submitting this claim<h4>"))
-            if len(self.nhif_patient_claim_item) == 0:
-                frappe.throw(
-                    _("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>Please add at least one item, before submitting this claim<h4>"))
-
-            if self.total_amount != sum([item.amount_claimed for item in self.nhif_patient_claim_item]):
-                frappe.throw(
-                    _("<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>Total amount does not match with the total of the items<h4>"))
-        except Exception as e:
-            self.add_comment(
-                comment_type="Comment",
-                text=str(e),
-            )
-            frappe.db.commit()
-            frappe.throw("")
-
         start_datetime = get_datetime()
 
         self.validate_multiple_appointments_per_authorization_no()
