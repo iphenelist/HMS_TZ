@@ -298,7 +298,7 @@ def get_services(doc, preapproval_no=None):
                     "itemCode": ref_code,
                     "usage": "",
                     "effectiveDate": str(effective_date),
-                    "endDate": str(add_days(effective_date, 1)),
+                    "endDate": str(effective_date),
                     "quantityRequested": row.get("quantity") or 1,
                     "remarks": "",
                 }
