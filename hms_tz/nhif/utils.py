@@ -89,7 +89,7 @@ def issue_nhif_service(
     if doc.doctype == "Delivery Note":
         approval_items = []
         for row in doc.items:
-            if row.is_resctricted == 1:
+            if row.is_restricted == 1:
                 if row.approval_number:
                     approval_items.append(row)
                 else:
@@ -111,6 +111,7 @@ def issue_nhif_service(
 
             if service_data:
                 data.update(service_data)
+                create_issued_service_log(row)
 
     else:
         if not doc.approval_number:
@@ -132,6 +133,7 @@ def issue_nhif_service(
 
         if service_data:
             data.update(service_data)
+            create_issued_service_log(doc)
 
     return data
 
@@ -178,3 +180,20 @@ def validate_point_of_care(doc, field):
             frappe.throw(
                 f"<b>POC reference</b> no is not set for this document, Please get POC reference no from NHIF."
             )
+
+
+def create_issued_service_log(
+    doc
+):
+    """
+    Create a log entry for issued NHIF services.
+    """
+
+    log_doc = frappe.get_doc({
+        "doctype": "Issued Service Log",
+        "ref_doctype": doc.doctype,
+        "ref_docname": doc.name,
+        "approval_number": doc.approval_number,
+    })
+
+    log_doc.insert(ignore_permissions=True)
