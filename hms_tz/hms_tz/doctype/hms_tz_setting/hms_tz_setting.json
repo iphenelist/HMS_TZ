@@ -50,22 +50,29 @@
   "check_patient_info_on_his",
   "enable_auto_submit_of_claims",
   "auto_submit_patient_claim",
-  "get_nhif_token",
   "section_break_5",
   "nhif_token_url",
   "nhifservice_url",
   "nhif_claim_url",
-  "nhif_token_expiry",
   "column_break_hcbi3",
+  "get_nhif_token",
+  "nhif_token_expiry",
+  "section_break_mbni",
   "nhif_token",
   "section_break_16",
   "submit_claim_month",
   "column_break_10",
   "submit_claim_year",
   "biometrics_section",
-  "validate_poc_at_encounter",
-  "column_break_emev",
   "validate_nhif_practitioner_attendance",
+  "validate_poc_at_laboratory",
+  "validate_poc_at_therapy",
+  "column_break_emev",
+  "validate_poc_at_encounter",
+  "validate_poc_at_radiology",
+  "column_break_rzfa",
+  "validate_poc_at_procedure",
+  "validate_poc_at_pharmacy",
   "jubilee_tab",
   "jubilee_user",
   "jubilee_password",
@@ -543,11 +550,54 @@
    "fieldname": "validate_nhif_practitioner_attendance",
    "fieldtype": "Check",
    "label": "Validate NHIF Practitioner Attendance"
+  },
+  {
+   "fieldname": "column_break_rzfa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_poc_at_radiology",
+   "fieldtype": "Check",
+   "label": "Validate POC at Radiology",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_poc_at_therapy",
+   "fieldtype": "Check",
+   "label": "Validate POC at Therapy",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_poc_at_procedure",
+   "fieldtype": "Check",
+   "label": "Validate POC at Procedure",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_poc_at_pharmacy",
+   "fieldtype": "Check",
+   "label": "Validate POC at Pharmacy",
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_mbni",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_poc_at_laboratory",
+   "fieldtype": "Check",
+   "label": "Validate POC at Laboratory",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-21 00:08:52.092819",
+ "modified": "2025-11-26 21:51:02.663460",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
