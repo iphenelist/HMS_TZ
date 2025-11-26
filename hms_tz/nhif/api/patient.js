@@ -23,16 +23,32 @@ frappe.ui.form.on("Patient", {
   card_no: function (frm) {
     if (!frm.doc.insurance_provider) return;
 
-    frm.fields_dict.card_no.$input.focusout(function () {
-      get_patient_info(frm, "card_no");
+    frm.fields_dict.card_no.$input.off("focusout.card_no_handler").on("focusout.card_no_handler", function () {
+      if (frm._card_no_api_in_progress) return;
+      if (frm._national_id_api_in_progress) return;
+
+      frm._card_no_api_in_progress = true;
+      frm._national_id_api_in_progress = true;
+      get_patient_info(frm, "card_no").finally(() => {
+        frm._card_no_api_in_progress = false;
+        frm._national_id_api_in_progress = false;
+      });
       frm.set_df_property("card_no", "read_only", 1);
     });
   },
   national_id: function (frm) {
     if (!frm.doc.insurance_provider) return;
 
-    frm.fields_dict.national_id.$input.focusout(function () {
-      get_patient_info(frm, "national_id");
+    frm.fields_dict.national_id.$input.off("focusout.national_id_handler").on("focusout.national_id_handler", function () {
+      if (frm._card_no_api_in_progress) return;
+      if (frm._national_id_api_in_progress) return;
+      
+      frm._card_no_api_in_progress = true;
+      frm._national_id_api_in_progress = true;
+      get_patient_info(frm, "national_id").finally(() => {
+        frm._card_no_api_in_progress = false;
+        frm._national_id_api_in_progress = false;
+      });
       frm.set_df_property("national_id", "read_only", 1);
     });
   },
