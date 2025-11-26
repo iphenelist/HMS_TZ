@@ -10,9 +10,9 @@ from frappe import _
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 from frappe.query_builder import DocType
 from frappe.utils import get_fullname, getdate
-from hms_tz.nhif.utils import validate_point_of_care
 
 from hms_tz.nhif.api.healthcare_utils import create_delivery_note_from_LRPT
+from hms_tz.nhif.utils import validate_point_of_care, validate_issued_services
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
     create_revenue_entry,
     update_revenue_entry
@@ -42,9 +42,11 @@ def after_insert(doc, method):
 def before_submit(doc, method):
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(
-            _(f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number."))
+            _(f"Approval number is required for <b>{doc.radiology_examination_template}</b>. Please set the Approval Number.")
+        )
 
     validate_point_of_care(doc, "validate_poc_at_laboratory")
+    validate_issued_services(doc.doctype, doc.name, is_restricted=doc.is_restricted)
     
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user

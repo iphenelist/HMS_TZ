@@ -111,7 +111,7 @@ def issue_nhif_service(
 
             if service_data:
                 data.update(service_data)
-                create_issued_service_log(row)
+                create_issued_service_log(d)
 
     else:
         if not doc.approval_number:
@@ -197,3 +197,29 @@ def create_issued_service_log(
     })
 
     log_doc.insert(ignore_permissions=True)
+
+
+def validate_issued_services(
+    ref_doctype,
+    ref_docname,
+    is_restricted=False
+):
+    """
+    Validate if there are issued services for the given document.
+    """
+
+    if not is_restricted:
+        return
+
+    issued_services = frappe.db.get_all(
+        "Issued Service Log",
+        filters={
+            "ref_doctype": ref_doctype,
+            "ref_docname": ref_docname,
+        },
+    )
+
+    if len(issued_services) == 0:
+        frappe.throw(
+            f"No issued services found. Please issue NHIF services before proceeding."
+        )
