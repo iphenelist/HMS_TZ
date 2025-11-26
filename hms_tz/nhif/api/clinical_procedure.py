@@ -50,7 +50,7 @@ def before_submit(doc, method):
             _(f"Approval number is required for <b>{doc.procedure_template}</b>. Please set the Approval Number.")
         )
 
-    validate_point_of_care(doc)
+    validate_point_of_care(doc,"validate_poc_at_procedure")
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user

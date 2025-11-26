@@ -226,7 +226,7 @@ def before_submit(doc, method):
             frappe.throw(
                 _(f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number."))
 
-    validate_point_of_care(doc)
+    validate_point_of_care(doc, "validate_poc_at_pharmacy")
 
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user

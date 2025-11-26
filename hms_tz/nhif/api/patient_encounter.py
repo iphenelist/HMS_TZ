@@ -874,8 +874,8 @@ def before_submit(doc, method):
             doc.insurance_company,
         )
 
-    validate_point_of_care(doc)
     validate_preapproval_services(doc)
+    validate_point_of_care(doc, "validate_poc_at_encounter")
 
     if not doc.healthcare_package_order:
         set_amounts(doc)

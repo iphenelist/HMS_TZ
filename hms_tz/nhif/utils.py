@@ -166,7 +166,7 @@ def get_patient_care_name(service_type, service_name):
     return points_of_care
 
 
-def validate_point_of_care(doc):
+def validate_point_of_care(doc, field):
     """
     Validate that the point of care is set for the given document.
     """
@@ -178,7 +178,7 @@ def validate_point_of_care(doc):
         if frappe.get_cached_value(
             "HMS TZ Setting",
             doc.company,
-            "validate_poc_at_encounter"
+            field
         ):
             frappe.throw(
                 f"<b>POC reference</b> no is not set for this document, Please get POC reference no from NHIF."
