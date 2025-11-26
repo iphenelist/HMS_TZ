@@ -22,7 +22,7 @@ frappe.ui.form.on("Patient Encounter", {
     add_btn_final(frm);
     // duplicate(frm);
     set_btn_properties(frm);
-    set_empty_row_on_all_child_tables(frm);
+    // set_empty_row_on_all_child_tables(frm);
     validate_healthcare_package_order_items(frm);
   },
   refresh: function (frm) {
