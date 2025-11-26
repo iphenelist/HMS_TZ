@@ -143,4 +143,26 @@ frappe.ui.form.on("NHIF Patient Claim", {
       },
     });
   },
+
+  sign_folio: (frm) => {
+    frappe.call({
+      method: "hms_tz.nhif.nhif_api.patient_claim.sign_folio",
+      args: {
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
+      },
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      callback: function (r) {
+        if (r.message && r.message !== "Error") {
+          frappe.utils.play_sound("submit");
+          frm.reload_doc();
+
+
+        } else {
+          frappe.utils.play_sound("error");
+        }
+      },
+    });
+  },
 });
