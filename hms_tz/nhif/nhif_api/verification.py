@@ -270,7 +270,10 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
             ref_docname=ref_docname,
             card_no=card_no,
         )
-        data = json.loads(r.text)
+        data = {}
+        if r.text:
+            data = json.loads(r.text)
+        
         frappe.msgprint(
             title="NHIF API Error",
             msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('reasonPhrase')}<b>",
