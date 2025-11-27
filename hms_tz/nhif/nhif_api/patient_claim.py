@@ -205,6 +205,17 @@ def get_payload(doc):
     items = []
     diseases = []
     attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
+    appointment_type = frappe.get_cached_value(
+        "Patient Appointment",
+        doc.patient_appointment,
+        "appointment_type"
+    )
+
+    visit_type_id = frappe.get_cached_value(
+        "Appointment Type",
+        appointment_type,
+        "visit_type_id"
+    )
 
     for disease in doc.nhif_patient_claim_disease:
         created_date = get_datetime(disease.date_created)
@@ -234,7 +245,7 @@ def get_payload(doc):
             "DateCreated": created_date.isoformat(),
             "LastModifiedBy": item.item_crt_by,
             "LastModified": created_date.isoformat(),
-            "OtherDetails": "",
+            "OtherDetails": "Treated",
         }
         items.append(item_dict)
 
@@ -276,10 +287,14 @@ def get_payload(doc):
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
         "AttendanceDate": attendance_datetime.isoformat(),
+        "VisitTypeID": visit_type_id,
         "PatientTypeCode": doc.patient_type_code,
         "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
         "LateSubmissionReason": doc.delayreason,
         "AmountClaimed": doc.total_amount,
+        "MainDiagnosisCode": ", ".join(
+            d.get("DiseaseCode") for d in diseases if d.get("Status") == "Final" and d.get("DiseaseCode")
+        ),
         "ConfirmationCode": doc.confirmation_code or "",
         "FolioDiseases": diseases,
         "FolioItems": items,
