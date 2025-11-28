@@ -168,6 +168,13 @@ def validate_point_of_care(doc, field):
     Validate that the point of care is set for the given document.
     """
 
+    insurance_field = "insurance_company"
+    if doc.doctype == "Delivery Note":
+        insurance_field = "customer"
+
+    if not doc.get(insurance_field) or "NHIF" not in doc.get(insurance_field, ""):
+        return
+
     if not doc.get("insurance_company") or "NHIF" not in doc.get("insurance_company", ""):
         return
     
