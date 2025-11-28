@@ -35,15 +35,16 @@ def sign_folio(
         "CardNo": doc.cardno.strip(),
         "AuthorizationNo": doc.authorization_no,
         "AmountClaimed": sum([flt(item.amount_claimed) for item in doc.nhif_patient_claim_item]),
+        "SignedBy": doc.first_name + " " + doc.last_name,
     }
 
     if signature_method == "signature":
-        payload["SignatureData"] = doc.patient_signature
-        payload["SignatureMethod"] = "signature"
+        payload["SignatureData"] = str(doc.patient_signature).replace("data:image/png;base64,", "")
+        payload["SignatureMethod"] = "SIGNATURE"
         payload["FpCode"] = ""
     else:
         payload["SignatureData"] = fingerprint
-        payload["SignatureMethod"] = "fingerprint"
+        payload["SignatureMethod"] = "FINGERPRINT"
         payload["FpCode"] = fpcode
     
     payload = json.dumps(payload)
