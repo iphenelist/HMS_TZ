@@ -302,7 +302,7 @@ export class Fingerprint {
       this.updateDeviceConnectedStatus(`<div style="color: orange; padding: 5px;">${__("Scanning for devices...")}</div>`);
       this.updateDeviceDisconnectedStatus("");
     } else if (hasDevices) {
-      this.updateDeviceConnectedStatus(`<div style="color: green; padding: 5px;">${__("Device Connected")}</div>`);
+      this.updateDeviceConnectedStatus(`<div style="color: green; padding: 2px;">${__("Device Connected")}</div>`);
       this.updateDeviceDisconnectedStatus("");
     } else {
       this.updateDeviceConnectedStatus("");
@@ -321,14 +321,13 @@ export class Fingerprint {
                     style='color: blue; font-weight: bold;'>Download Mantra MFS100 Driver & Client</a>
                   </li>
                   <li style="margin: 5px 0;">
-                    <a href="https://download.mantratecapp.com/Forms/Download.aspx" target="_blank"
-                    style='color: blue; font-weight: bold;'>Download Mantra MFS500 Driver (MorFinAuth)</a>
+                    <a href="https://drive.google.com/drive/folders/163DCRd3tkYwIQQHT8tPXMgXWFCVUTGZ-?usp=drive_link" target="_blank"
+                    style='color: blue; font-weight: bold;'>Download Mantra MFS500 Driver(v1.4) & MorFinAuthClient</a>
                   </li>
                 </ul>
               </div>
               <div style="padding: 0 15px 15px; font-size: 12px; color: #666;">
                 After installation, restart your browser and ensure services are running.<br>
-                <strong>MFS500:</strong> Install MorFin_Driver and MorFinAuthClientService.
               </div>`);
     }
   };
