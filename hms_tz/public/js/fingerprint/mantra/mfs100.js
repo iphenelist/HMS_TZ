@@ -1,4 +1,4 @@
-export class Mantra {
+export class MFS100 {
   constructor() {
     this.samples = null;
     this.fingerprintAcquired = false;
@@ -36,25 +36,25 @@ export class Mantra {
       }
 
       const data = await response.json();
-      console.log("Mantra device info:", data);
+      console.log("MFS100 device info:", data);
       
       if (data && data.ErrorCode == "0") {
         return [{
           name: `${data.DeviceInfo.Make} ${data.DeviceInfo.Model}`,
-          type: 'mantra',
+          type: 'mfs100',
           originalDevice: {
             name: `${data.DeviceInfo.Make} ${data.DeviceInfo.Model}`,
             status: data.ErrorDescription,
           }
         }];
       } else if (data && data.ErrorCode && data.ErrorCode != "0") {
-        console.warn("Mantra device error:", data.ErrorDescription || `Error code: ${data.ErrorCode}`);
+        console.warn("MFS100 device error:", data.ErrorDescription || `Error code: ${data.ErrorCode}`);
         return [];
       }
       
       return [];
     } catch (error) {
-      console.error("Error checking Mantra devices:", error);
+      console.error("Error checking MFS100 devices:", error);
       return [];
     }
   }
@@ -90,7 +90,7 @@ export class Mantra {
         this.fingerprintAcquired = true;
         
         if (this.onSamplesAcquired) {
-          this.onSamplesAcquired(this.samples, 'mantra');
+          this.onSamplesAcquired(this.samples, 'mfs100');
         }
       } else {
         const errorMsg = data.ErrorDescription || `Error code: ${data.ErrorCode}`;
@@ -100,15 +100,15 @@ export class Mantra {
     } catch (error) {
       // Don't show error if scan was intentionally cancelled
       if (error.name === 'AbortError') {
-        console.log("Mantra scan cancelled");
+        console.log("MFS100 scan cancelled");
         return;
       }
       
-      console.error("Mantra capture error:", error);
+      console.error("MFS100 capture error:", error);
       
       let errorMessage;
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = __("Mantra service is not running. Please ensure the Mantra RD Service is installed and running on port 8003.");
+        errorMessage = __("MFS100 service is not running. Please ensure the Mantra RD Service is installed and running on port 8003.");
       } else if (error.message.includes('timeout')) {
         errorMessage = __("Fingerprint capture timeout. Please try again.");
       } else {
@@ -124,21 +124,21 @@ export class Mantra {
   }
 
   async cancelScan() {
-    console.log("Cancelling Mantra scan operation...");
+    console.log("Cancelling MFS100 scan operation...");
     
     // Abort the current fetch request if active
     if (this.isScanning && this.currentScanController) {
       this.currentScanController.abort();
-      console.log("Mantra scan request aborted");
+      console.log("MFS100 scan request aborted");
     }
     
     // Reset scan state immediately
     this.isScanning = false;
     this.currentScanController = null;
     
-    // Note: Mantra MFS100 service doesn't provide an uninit endpoint
+    // Note: MFS100 service doesn't provide an uninit endpoint
     // The device will automatically reset when the capture request is aborted
-    console.log("Mantra scan cancelled - device will reset automatically");
+    console.log("MFS100 scan cancelled - device will reset automatically");
   }
 
   formatFingerprintImage(sample) {
@@ -146,19 +146,19 @@ export class Mantra {
   }
 
   async resetDeviceState() {
-    // For Mantra, no specific reset needed as it's stateless
-    console.log("Mantra device reset - no action needed (stateless)");
+    // For MFS100, no specific reset needed as it's stateless
+    console.log("MFS100 device reset - no action needed (stateless)");
   }
 
   async destroy() {
-    console.log("Destroying Mantra fingerprint connection...");
+    console.log("Destroying MFS100 fingerprint connection...");
     
     try {
       await this.cancelScan();
       
-      console.log("Mantra manager destroyed and device connection terminated");
+      console.log("MFS100 manager destroyed and device connection terminated");
     } catch (error) {
-      console.warn("Error during Mantra device cleanup:", error);
+      console.warn("Error during MFS100 device cleanup:", error);
       // Don't throw the error as destroy should be non-blocking
     }
     

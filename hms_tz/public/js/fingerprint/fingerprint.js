@@ -1,6 +1,6 @@
 import { loadDigitalPersonaSDK } from "./../utils";
 import { DigitalPersona } from "./digitalPersona/digitalpersona.js";
-import { Mantra } from "./mantra/mantra.js";
+import { MFS100 } from "./mantra/mfs100.js";
 import { MFS500 } from "./mantra/mfs500.js";
 
 // Load DigitalPersona SDK
@@ -19,7 +19,7 @@ export class Fingerprint {
     this.label = opts.label || "Send Request";
     
     this.mfs500 = new MFS500();
-    this.mantra = new Mantra();
+    this.mfs100 = new MFS100();
     this.digitalPersona = new DigitalPersona();
     
     // Device management
@@ -98,7 +98,7 @@ export class Fingerprint {
     };
 
     this.mfs500.initializeEventHandlers(callbacks);
-    this.mantra.initializeEventHandlers(callbacks);
+    this.mfs100.initializeEventHandlers(callbacks);
     this.digitalPersona.initializeEventHandlers(callbacks);
   }
 
@@ -117,10 +117,10 @@ export class Fingerprint {
     // Priority 2: MFS100 (Mantra RD Service)
     if (!this.allDevices.length) {
       try {
-        const mantraDevices = await this.mantra.enumerateDevices();
-        this.allDevices.push(...mantraDevices);
+        const mfs100Devices = await this.mfs100.enumerateDevices();
+        this.allDevices.push(...mfs100Devices);
       } catch (error) {
-        console.warn("Mantra MFS100 devices not available:", error.message);
+        console.warn("MFS100 devices not available:", error.message);
       }
     }
 
@@ -144,8 +144,8 @@ export class Fingerprint {
     try {
       if (this.currentDeviceType === 'digitalpersona') {
         await this.digitalPersona.resetDeviceState();
-      } else if (this.currentDeviceType === 'mantra') {
-        await this.mantra.resetDeviceState();
+      } else if (this.currentDeviceType === 'mfs100') {
+        await this.mfs100.resetDeviceState();
       } else if (this.currentDeviceType === 'mfs500') {
         await this.mfs500.resetDeviceState();
       }
@@ -161,7 +161,7 @@ export class Fingerprint {
     try {
       await Promise.all([
         this.mfs500.destroy(),
-        this.mantra.destroy(),
+        this.mfs100.destroy(),
         this.digitalPersona.destroy()
       ]);
     } catch (error) {
@@ -387,8 +387,8 @@ export class Fingerprint {
       
       if (this.currentDeviceType === 'mfs500') {
         imageSrc = this.mfs500.formatFingerprintImage(sample);
-      } else if (this.currentDeviceType === 'mantra') {
-        imageSrc = this.mantra.formatFingerprintImage(sample);
+      } else if (this.currentDeviceType === 'mfs100') {
+        imageSrc = this.mfs100.formatFingerprintImage(sample);
       } else {
         imageSrc = this.digitalPersona.formatFingerprintImage(sample);
       }
@@ -432,8 +432,8 @@ export class Fingerprint {
         await this.mfs500.startScan(selectedDeviceInfo);
       } else if (selectedDeviceInfo.type === 'digitalpersona') {
         await this.digitalPersona.startScan(selectedDeviceInfo.originalDevice);
-      } else if (selectedDeviceInfo.type === 'mantra') {
-        await this.mantra.startScan();
+      } else if (selectedDeviceInfo.type === 'mfs100') {
+        await this.mfs100.startScan();
       }
     } catch (error) {
       this.handleError(error, "startScan");
