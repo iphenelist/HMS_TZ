@@ -1,6 +1,7 @@
 import { loadDigitalPersonaSDK } from "./../utils";
 import { DigitalPersona } from "./digitalPersona/digitalpersona.js";
 import { Mantra } from "./mantra/mantra.js";
+import { MFS500 } from "./mantra/mfs500.js";
 
 // Load DigitalPersona SDK
 loadDigitalPersonaSDK(
@@ -17,9 +18,9 @@ export class Fingerprint {
   constructor(opts) {
     this.label = opts.label || "Send Request";
     
-    // Initialize device handlers
-    this.digitalPersona = new DigitalPersona();
+    this.mfs500 = new MFS500();
     this.mantra = new Mantra();
+    this.digitalPersona = new DigitalPersona();
     
     // Device management
     this.allDevices = [];
@@ -27,7 +28,7 @@ export class Fingerprint {
     this.selectedFinger = null;
     this.samples = null;
     this.fingerprintAcquired = false;
-    this.currentDeviceType = null; // 'digitalpersona' or 'mantra'
+    this.currentDeviceType = null; // 'mfs500', 'mantra', or 'digitalpersona'
     this.deviceScanningComplete = false;
     this.onChangeTrigger = false; // Flag to prevent multiple onchange triggers
 
@@ -96,6 +97,7 @@ export class Fingerprint {
       }
     };
 
+    this.mfs500.initializeEventHandlers(callbacks);
     this.mantra.initializeEventHandlers(callbacks);
     this.digitalPersona.initializeEventHandlers(callbacks);
   }
@@ -103,13 +105,26 @@ export class Fingerprint {
   async enumerateAllDevices() {
     this.allDevices = [];
 
+    // Priority 1: MFS500 (Mantra MorFinAuth) - highest priority
     try {
-      const mantraDevices = await this.mantra.enumerateDevices();
-      this.allDevices.push(...mantraDevices);
+      const mfs500Devices = await this.mfs500.enumerateDevices();
+      console.log("MFS500 Devices:", mfs500Devices);
+      this.allDevices.push(...mfs500Devices);
     } catch (error) {
-      console.warn("Mantra devices not available:", error.message);
+      console.warn("MFS500 devices not available:", error.message);
     }
 
+    // Priority 2: MFS100 (Mantra RD Service)
+    if (!this.allDevices.length) {
+      try {
+        const mantraDevices = await this.mantra.enumerateDevices();
+        this.allDevices.push(...mantraDevices);
+      } catch (error) {
+        console.warn("Mantra MFS100 devices not available:", error.message);
+      }
+    }
+
+    // Priority 3: DigitalPersona
     if (!this.allDevices.length) {
       try {
         const dpDevices = await this.digitalPersona.enumerateDevices();
@@ -131,6 +146,8 @@ export class Fingerprint {
         await this.digitalPersona.resetDeviceState();
       } else if (this.currentDeviceType === 'mantra') {
         await this.mantra.resetDeviceState();
+      } else if (this.currentDeviceType === 'mfs500') {
+        await this.mfs500.resetDeviceState();
       }
     } catch (error) {
       console.error("Error resetting device state:", error);
@@ -140,11 +157,12 @@ export class Fingerprint {
   destroy = async () => {    
     this.dialog.hide();
     
-    // Cleanup both device handlers
+    // Cleanup all device handlers
     try {
       await Promise.all([
-        this.digitalPersona.destroy(),
-        this.mantra.destroy()
+        this.mfs500.destroy(),
+        this.mantra.destroy(),
+        this.digitalPersona.destroy()
       ]);
     } catch (error) {
       console.warn("Error during device cleanup:", error);
@@ -284,7 +302,7 @@ export class Fingerprint {
       this.updateDeviceConnectedStatus(`<div style="color: orange; padding: 5px;">${__("Scanning for devices...")}</div>`);
       this.updateDeviceDisconnectedStatus("");
     } else if (hasDevices) {
-      this.updateDeviceConnectedStatus(`<div style="color: green; padding: 5px;">${__("Device Connected")}</div>`);
+      this.updateDeviceConnectedStatus(`<div style="color: green; padding: 2px;">${__("Device Connected")}</div>`);
       this.updateDeviceDisconnectedStatus("");
     } else {
       this.updateDeviceConnectedStatus("");
@@ -300,12 +318,16 @@ export class Fingerprint {
                   </li>
                   <li style="margin: 5px 0;">
                     <a href="https://drive.google.com/drive/folders/1FSDt1e2dLTJaQHmVU7WuOZmWwwM5zy37?usp=drive_link" target="_blank"
-                    style='color: blue; font-weight: bold;'>Download Mantra Driver & MFSClient</a>
+                    style='color: blue; font-weight: bold;'>Download Mantra MFS100 Driver & Client</a>
+                  </li>
+                  <li style="margin: 5px 0;">
+                    <a href="https://drive.google.com/drive/folders/163DCRd3tkYwIQQHT8tPXMgXWFCVUTGZ-?usp=drive_link" target="_blank"
+                    style='color: blue; font-weight: bold;'>Download Mantra MFS500 Driver(v1.4) & MorFinAuthClient</a>
                   </li>
                 </ul>
               </div>
               <div style="padding: 0 15px 15px; font-size: 12px; color: #666;">
-                After installation, restart your browser and ensure services are running.
+                After installation, restart your browser and ensure services are running.<br>
               </div>`);
     }
   };
@@ -363,7 +385,9 @@ export class Fingerprint {
     if (sample) {
       let imageSrc;
       
-      if (this.currentDeviceType === 'mantra') {
+      if (this.currentDeviceType === 'mfs500') {
+        imageSrc = this.mfs500.formatFingerprintImage(sample);
+      } else if (this.currentDeviceType === 'mantra') {
         imageSrc = this.mantra.formatFingerprintImage(sample);
       } else {
         imageSrc = this.digitalPersona.formatFingerprintImage(sample);
@@ -404,7 +428,9 @@ export class Fingerprint {
     this.currentDeviceType = selectedDeviceInfo.type;
 
     try {
-      if (selectedDeviceInfo.type === 'digitalpersona') {
+      if (selectedDeviceInfo.type === 'mfs500') {
+        await this.mfs500.startScan(selectedDeviceInfo);
+      } else if (selectedDeviceInfo.type === 'digitalpersona') {
         await this.digitalPersona.startScan(selectedDeviceInfo.originalDevice);
       } else if (selectedDeviceInfo.type === 'mantra') {
         await this.mantra.startScan();
