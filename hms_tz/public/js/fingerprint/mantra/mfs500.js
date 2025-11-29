@@ -287,7 +287,7 @@ export class MFS500 {
       if (data && (data.ErrorCode === "0" || data.ErrorCode === 0)) {
         let wsqImage = null;
 
-        const imageResult = await this.getImage(0); // 0 = WSQ format
+        const imageResult = await this.getImage(2); // 0 = WSQ format
         
         if (imageResult.httpStatus && imageResult.data) {
           wsqImage = imageResult.data.ImgData;
