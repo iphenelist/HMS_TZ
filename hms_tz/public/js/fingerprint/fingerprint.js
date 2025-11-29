@@ -358,8 +358,17 @@ export class Fingerprint {
     }
 
     if (this.fingerprintPromiseResolve) {
+      let fData;
+      if (this.currentDeviceType === 'digitalpersona') {
+        console.log("this.samples:", this.samples);
+        fData = this.samples[0].Data
+      } else {
+        fData = this.samples[0];
+      }
+      console.log("fData: ", fData);
+
       const data = {
-        Data: this.samples[0],
+        Data: fData,
         fpCode: this.selectedFinger,
       };
       
