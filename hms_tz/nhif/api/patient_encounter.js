@@ -2075,7 +2075,7 @@ var pre_approval_btn = (frm) => {
   if (!frm.page.fields_dict.pre_approval_btn) {
     frm.page
       .add_field({
-        label: __("Request Pre-Approval"),
+        label: __("Get PreApproval"),
         fieldname: "pre_approval_btn",
         fieldtype: "Button",
         click: function () {
@@ -2125,7 +2125,7 @@ var cancel_pre_approval_btn = (frm) => {
   if (!frm.page.fields_dict.cancel_pre_approval_btn) {
     frm.page
       .add_field({
-        label: __("Cancel Pre-Approval"),
+        label: __("Cancel PreApproval"),
         fieldname: "cancel_pre_approval_btn",
         fieldtype: "Button",
         click: function () {
@@ -2198,7 +2198,7 @@ var confirm_poc_btn = (frm) => {
   if (!frm.page.fields_dict.confirm_poc_btn && !frm.doc.poc_reference_no) {
     frm.page
       .add_field({
-        label: __("Confirm Point of Care"),
+        label: __("Confirm POC"),
         fieldname: "confirm_poc_btn",
         fieldtype: "Button",
         click: async function () {
