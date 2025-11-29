@@ -12,6 +12,7 @@ def sign_folio(
     ref_doctype,
     ref_docname,
     signature_method="signature",
+    signature=None,
     fingerprint=None,
     fpcode=None
 ):
@@ -21,11 +22,11 @@ def sign_folio(
 
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
-    if signature_method == "signature" and not doc.patient_signature:
+    if signature_method == "signature" and not signature:
         frappe.throw("Patient signature is required before signing the folio.")
     
     if signature_method == "fingerprint":
-        if not fingerprint or not fpcode:
+        if not fingerprint:
             frappe.throw("Fingerprint is required for biometric signature.")
         
         if not fpcode:
@@ -39,9 +40,9 @@ def sign_folio(
     }
 
     if signature_method == "signature":
-        payload["SignatureData"] = str(doc.patient_signature).replace("data:image/png;base64,", "")
+        payload["SignatureData"] = signature #.replace("data:image/png;base64,", "")
         payload["SignatureMethod"] = "SIGNATURE"
-        payload["FpCode"] = ""
+        payload["FpCode"] = "R1"
     else:
         payload["SignatureData"] = fingerprint
         payload["SignatureMethod"] = "FINGERPRINT"
@@ -64,8 +65,8 @@ def sign_folio(
             request_url=url,
             request_header=headers,
             request_body=payload,
-            response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???"),
-            status_code=(r.status_code if str(r) else "NO STATUS CODE"),
+            response_data=r.text,
+            status_code=r.status_code,
             company=settings_doc.name,
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
