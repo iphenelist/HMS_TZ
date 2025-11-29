@@ -174,8 +174,12 @@ def validate_point_of_care(doc, field):
 
     if not doc.get(insurance_field) or "NHIF" not in doc.get(insurance_field, ""):
         return
-
-    if not doc.get("insurance_company") or "NHIF" not in doc.get("insurance_company", ""):
+    
+    if not frappe.get_cached_value(
+        "HMS TZ Setting",
+        doc.company,
+        "enable_nhif_api"
+    ):
         return
     
     if not doc.get("poc_reference_no"):
