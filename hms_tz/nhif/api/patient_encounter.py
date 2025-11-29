@@ -1832,6 +1832,13 @@ def set_admission_service_type(doc):
 def validate_preapproval_services(doc):
     if not doc.insurance_company or "NHIF" not in doc.insurance_company:
         return
+        
+    if not frappe.get_cached_value(
+        "HMS TZ Setting",
+        doc.company,
+        "enable_nhif_api"
+    ):
+        return
 
     eligible_pre_approval_services = []
     for child in get_childs_map():
