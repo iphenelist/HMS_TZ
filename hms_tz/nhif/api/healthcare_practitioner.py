@@ -22,10 +22,10 @@ def get_nhif_practitioner_login_status():
     )
 
     if not hms_tz_details.enable_nhif_api:
-        return {"show_login": False, "show_logout": False}
+        return {"show_login": False, "show_logout": False, "show_poc": False}
 
     if not hms_tz_details.validate_nhif_practitioner_attendance:
-        return {"show_login": False, "show_logout": False}
+        return {"show_login": False, "show_logout": False, "show_poc": True}
 
     if (
         not practitioner_details.date_loggedin_to_nhif or 
@@ -33,10 +33,10 @@ def get_nhif_practitioner_login_status():
             getdate(practitioner_details.date_loggedin_to_nhif) != getdate(nowdate())
         )
     ):
-        return {"show_login": True, "show_logout": False}
+        return {"show_login": True, "show_logout": False, "show_poc": False}
     
     elif (
         practitioner_details.date_loggedin_to_nhif and 
         (getdate(practitioner_details.date_loggedin_to_nhif) == getdate(nowdate()))
     ):
-        return {"show_login": False, "show_logout": True}
+        return {"show_login": False, "show_logout": True, "show_poc": True}

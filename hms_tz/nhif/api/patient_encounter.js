@@ -1987,7 +1987,7 @@ var nhif_btns = (frm) => {
         logout_from_nhif(frm);
       }
 
-      if (!data.show_login && !data.show_logout) {
+      if (data.show_poc) {
         pre_approval_btn(frm);
         cancel_pre_approval_btn(frm);
         confirm_poc_btn(frm);
@@ -2202,50 +2202,103 @@ var confirm_poc_btn = (frm) => {
         fieldname: "confirm_poc_btn",
         fieldtype: "Button",
         click: async function () {
-          let fingerprint = await new Fingerprint({
-            label: "Confirm Point of Care",
-          });
-          if (!fingerprint) {
-            frappe.msgprint(
-              __("Fingerprint capture failed. Please try again.")
-            );
-            return;
-          }
-          frappe.call({
-            method: "hms_tz.nhif.nhif_api.verification.get_poc_reference_no",
-            args: {
-              point_of_care: "Consultation",
-              practitioner: frm.doc.practitioner,
-              fingerprint: fingerprint.Data,
-              fpcode: fingerprint.fpCode,
-              biometric_method: "FINGERPRINT",
-              company: frm.doc.company,
-              appointment_id: frm.doc.appointment,
-              ref_doctype: frm.doc.doctype,
-              ref_docname: frm.doc.name,
-            },
-            async: true,
-            freeze: true,
-            freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-            callback: function (r) {
-              if (r.message && r.message !== "Error") {
-                frappe.utils.play_sound("submit");
-
-                const data = r.message;
-                frappe.model.set_value(
-                  frm.doc.doctype,
-                  frm.doc.name,
-                  "poc_reference_no",
-                  data.ReferenceNo
-                );
-              } else {
-                frappe.utils.play_sound("error");
+          let dialog = new frappe.ui.Dialog({
+            title: __("<h4>Point of Care Confirmation</h4>"),
+            // width: 150,
+            fields: [
+              {
+                fieldtype: "Select",
+                label: "Biometric Method",
+                fieldname: "biometric_method",
+                options: [
+                  { value: "FINGERPRINT", label: __("FINGERPRINT") },
+                  { value: "FACIAL", label: __("FACIAL") },
+                  { value: "NONE", label: __("NONE") },
+                ],
+                default: "FINGERPRINT",
+                reqd: 1
               }
-            },
-            onerror: function (data) {
-              frappe.utils.play_sound("error");
-            },
+            ],
+            size: "small",
+            primary_action_label: __("Next") ,
+            primary_action: async () => {
+              let biometricData;
+              let values = dialog.get_values();
+              dialog.hide();
+
+              if (values.biometric_method === "FACIAL") {
+                biometricData = await new FacialRecognition({ label: "Confirm POC" });
+                if (!biometricData) {
+                  frappe.msgprint(__("Face capture failed. Please try again."));
+                  return;
+                }
+              } else if (values.biometric_method === "FINGERPRINT") {
+                biometricData = await new Fingerprint({ label: "Confirm POC" });
+                if (!biometricData) {
+                  frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+                  return;
+                }
+              } else {
+                const confirmed = await new Promise((resolve) => {
+                  frappe.confirm(
+                    __(`
+                      <div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">
+                      <p class="text-center"><i>Biometric Method: <b>${values.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
+                      </div>
+                      <br>
+                      <p class="text-center"><i>Are you sure you want to continue?</i></p>`
+                    ),
+                    () => resolve(true),
+                    () => resolve(false)
+                  );
+                });
+                
+                if (!confirmed) {
+                  return;
+                }
+
+                biometricData = {Data: "", fpCode: ""};
+              }
+              
+              frappe.call({
+                method: "hms_tz.nhif.nhif_api.verification.get_poc_reference_no",
+                args: {
+                  point_of_care: "Consultation",
+                  practitioner: frm.doc.practitioner,
+                  fingerprint: biometricData.Data,
+                  fpcode: biometricData.fpCode,
+                  biometric_method: values.biometric_method,
+                  company: frm.doc.company,
+                  appointment_id: frm.doc.appointment,
+                  ref_doctype: frm.doc.doctype,
+                  ref_docname: frm.doc.name,
+                },
+                async: true,
+                freeze: true,
+                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                callback: function (r) {
+                  if (r.message && r.message !== "Error") {
+                    frappe.utils.play_sound("submit");
+
+                    const data = r.message;
+                    frappe.model.set_value(
+                      frm.doc.doctype,
+                      frm.doc.name,
+                      "poc_reference_no",
+                      data.ReferenceNo
+                    );
+                  } else {
+                    frappe.utils.play_sound("error");
+                  }
+                },
+                onerror: function (data) {
+                  frappe.utils.play_sound("error");
+                },
+              });
+            }
           });
+
+          dialog.show();
         },
       })
       .$input.addClass("btn-sm");
