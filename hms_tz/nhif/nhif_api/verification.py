@@ -658,14 +658,6 @@ def get_poc_reference_no(
             "authorization_number",
         )
 
-    # image_data = None
-    # if ref_doctype == "Patient Appointment":
-    #     image_data = fingerprint
-    # else:
-        # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-        # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-        # image_data = fingerprint.replace("-", "+").replace("_", "/")
-
     payload = {
         "pointOfCareID": point_of_care_id,
         "authorizationNo": authorization_no,
