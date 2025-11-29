@@ -1976,9 +1976,7 @@ var nhif_btns = (frm) => {
   frappe.call({
     method:
       "hms_tz.nhif.api.healthcare_practitioner.get_nhif_practitioner_login_status",
-    args: {
-      company: frm.doc.company,
-    },
+    args: {},
     callback: (r) => {
       let data = r.message;
       if (data.show_login) {
@@ -2020,8 +2018,7 @@ var login_to_nhif = (frm) => {
             method: "hms_tz.nhif.nhif_api.attendance.login_practitioner",
             args: {
               fingerprint: fingerprint.Data,
-              fpcode: fingerprint.fpCode,
-              company: frm.doc.company,
+              fpcode: fingerprint.fpCode
             },
             async: true,
             freeze: true,
@@ -2053,9 +2050,7 @@ var logout_from_nhif = (frm) => {
         click: function () {
           frappe.call({
             method: "hms_tz.nhif.nhif_api.attendance.logout_practitioner",
-            args: {
-              company: frm.doc.company,
-            },
+            args: {},
             async: true,
             freeze: true,
             freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
