@@ -89,6 +89,7 @@ class InpatientRecord(Document):
         service_unit,
         check_in,
         admission_no=None,
+        admission_type=None,
         poc_reference_no=None,
         expected_discharge=None
     ):
@@ -97,13 +98,14 @@ class InpatientRecord(Document):
             service_unit,
             check_in,
             admission_no,
+            admission_type,
             poc_reference_no,
             expected_discharge
         )
 
     @frappe.whitelist()
-    def discharge(self):
-        discharge_patient(self)
+    def discharge(self, discharge_type=None):
+        discharge_patient(self, discharge_type)
 
     @frappe.whitelist()
     def transfer(self, service_unit, check_in, leave_from, poc_reference_no=None):
@@ -252,11 +254,12 @@ def check_out_inpatient(inpatient_record):
 				)
 
 
-def discharge_patient(inpatient_record):
+def discharge_patient(inpatient_record, discharge_type=None):
     validate_discharge(inpatient_record)
     validate_invoiced_inpatient(inpatient_record)
     inpatient_record.discharge_date = today()
-    inpatient_record.status = "Discharged"
+    inpatient_record.status = "Discharged",
+    inpatient_record.discharge_type = discharge_type
 
     inpatient_record.save(ignore_permissions=True)
 
@@ -347,12 +350,14 @@ def admit_patient(
     service_unit,
     check_in,
     admission_no=None,
+    admission_type=None,
     poc_reference_no=None,
     expected_discharge=None
 ):
     inpatient_record.admitted_datetime = check_in
     inpatient_record.status = "Admitted"
     inpatient_record.admission_no = admission_no
+    inpatient_record.admission_type = admission_type
     inpatient_record.poc_reference_no = poc_reference_no
     inpatient_record.expected_discharge = expected_discharge
 

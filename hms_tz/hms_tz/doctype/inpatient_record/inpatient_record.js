@@ -127,25 +127,34 @@ let discharge_patient_dialog = (frm) => {
         label: "Discharge Type",
         fieldname: "discharge_type",
         options: "Healthcare Discharge Type",
-        reqd: 1,
+        reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
       },
     ],
     primary_action_label: __("Discharge"),
     primary_action: async () => {
       let discharge_type = d.get_value("discharge_type");
 
-      if (!discharge_type) {
-        frappe.msgprint({
-          title: __("Discharge Type Required"),
-          message: __("Please select a discharge type before proceeding."),
-          indicator: "red",
+      if (
+        frm.doc.insurance_company &&
+        frm.doc.insurance_company.includes("NHIF")
+      ) {
+        frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
+          if (r.enable_nhif_api) {
+            if (!discharge_type) {
+              frappe.msgprint({
+                title: __("Discharge Type Required"),
+                message: __("Please select a discharge type before proceeding."),
+                indicator: "red",
+              });
+
+              return;
+            }
+            
+            await nhif_discharge_patient(frm, discharge_type);
+          } else {
+            discharge_patient(frm, discharge_type);
+          }
         });
-
-        return;
-      }
-
-      if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
-        await nhif_discharge_patient(frm, discharge_type);
       } else {
         discharge_patient(frm, discharge_type);
       }
@@ -172,14 +181,14 @@ let nhif_discharge_patient = (frm, discharge_type) => {
       if (r.message) {
         let data = r.message;
 
-        discharge_patient(frm);
+        discharge_patient(frm, discharge_type);
       }
     },
   });
 };
 
-let discharge_patient = (frm) => {
-  frm.call("discharge", {})
+let discharge_patient = (frm, discharge_type) => {
+  frm.call("discharge", {"discharge_type": discharge_type})
   .then(r => {
       if (!r.message) {
         frappe.show_alert({
@@ -252,18 +261,27 @@ let admit_patient_dialog = (frm) => {
         return;
       }
 
-      if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
-        await nhif_admit_patient(
-          frm,
-          dialog,
-          admission_type,
-          service_unit,
-          check_in,
-          biometric_method
-        );
+      if (
+        frm.doc.insurance_company && 
+        frm.doc.insurance_company.includes("NHIF")
+      ) {
+        frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
+          if (r.enable_nhif_api) {
+            await nhif_admit_patient(
+              frm,
+              dialog,
+              admission_type,
+              service_unit,
+              check_in,
+              biometric_method
+            );
+          } else {
+            admit_patient(frm, service_unit, check_in);
+            dialog.hide();
+          }
+        });
       } else {
         admit_patient(frm, service_unit, check_in);
-        
         dialog.hide();
       }
     },
@@ -590,19 +608,28 @@ let transfer_patient_dialog = (frm) => {
         return;
       }
 
-      if (frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")) {
-        await nhif_transfer_patient(
-          frm,
-          dialog,
-          service_unit_type,
-          service_unit,
-          check_in,
-          leave_from,
-          biometric_method
-        );
+      if (
+        frm.doc.insurance_company &&
+        frm.doc.insurance_company.includes("NHIF")
+      ) {
+        frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
+          if (r.enable_nhif_api) {
+            await nhif_transfer_patient(
+              frm,
+              dialog,
+              service_unit_type,
+              service_unit,
+              check_in,
+              leave_from,
+              biometric_method
+            );
+          } else {
+            transfer_patient(frm, service_unit, check_in, leave_from);
+            dialog.hide();
+          }
+        });
       } else {
         transfer_patient(frm);
-
         dialog.hide();
       }
     },
