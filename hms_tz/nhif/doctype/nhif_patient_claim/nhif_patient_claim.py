@@ -151,16 +151,17 @@ class NHIFPatientClaim(Document):
 
         self.validate_multiple_appointments_per_authorization_no()
 
-        validate_item_status(self)
+        # validate_item_status(self)
 
         # if not self.patient_signature:
         #     get_missing_patient_signature(self)
+
         if self.folio_signed == 0:
             frappe.throw(
                 _("Please sign the folio to NHIF before submitting the claim.")
             )
 
-        validate_submit_date(self)
+        # validate_submit_date(self)
 
         submit_folio(self)
         
