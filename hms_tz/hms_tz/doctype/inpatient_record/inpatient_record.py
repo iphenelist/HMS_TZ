@@ -105,7 +105,7 @@ class InpatientRecord(Document):
 
     @frappe.whitelist()
     def discharge(self, discharge_type=None):
-        discharge_patient(self, discharge_type)
+        return discharge_patient(self, discharge_type)
 
     @frappe.whitelist()
     def transfer(self, service_unit, check_in, leave_from, poc_reference_no=None):
@@ -258,10 +258,11 @@ def discharge_patient(inpatient_record, discharge_type=None):
     validate_discharge(inpatient_record)
     validate_invoiced_inpatient(inpatient_record)
     inpatient_record.discharge_date = today()
-    inpatient_record.status = "Discharged",
+    inpatient_record.status = "Discharged"
     inpatient_record.discharge_type = discharge_type
 
     inpatient_record.save(ignore_permissions=True)
+    return True
 
 
 def validate_invoiced_inpatient(inpatient_record):

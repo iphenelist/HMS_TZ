@@ -151,16 +151,22 @@ let discharge_patient_dialog = (frm) => {
             }
             
             await nhif_discharge_patient(frm, discharge_type);
+
+            frm.refresh_fields();
+            d.hide();
           } else {
             discharge_patient(frm, discharge_type);
+            
+            frm.refresh_fields();
+            d.hide();
           }
         });
       } else {
         discharge_patient(frm, discharge_type);
+        
+        frm.refresh_fields();
+        d.hide();
       }
-
-      frm.refresh_fields();
-      d.hide();
     },
   });
 
@@ -190,7 +196,7 @@ let nhif_discharge_patient = (frm, discharge_type) => {
 let discharge_patient = (frm, discharge_type) => {
   frm.call("discharge", {"discharge_type": discharge_type})
   .then(r => {
-      if (!r.message) {
+      if (r.message) {
         frappe.show_alert({
           message: __("Patient discharged successfully"),
           indicator: "green",
@@ -276,12 +282,12 @@ let admit_patient_dialog = (frm) => {
               biometric_method
             );
           } else {
-            admit_patient(frm, service_unit, check_in);
+            admit_patient(frm, service_unit, check_in, admission_type);
             dialog.hide();
           }
         });
       } else {
-        admit_patient(frm, service_unit, check_in);
+        admit_patient(frm, service_unit, check_in, admission_type);
         dialog.hide();
       }
     },
@@ -390,12 +396,14 @@ let admit_patient = (
   service_unit,
   check_in,
   admission_no=null,
+  admission_type=null,
   poc_reference_no=null,
 ) => {
   frm.call('admit', {
     service_unit: service_unit,
     check_in: check_in,
     admission_no: admission_no,
+    admission_type: admission_type,
     poc_reference_no: poc_reference_no
   })
     .then(r => {
@@ -629,7 +637,7 @@ let transfer_patient_dialog = (frm) => {
           }
         });
       } else {
-        transfer_patient(frm);
+        transfer_patient(frm, service_unit, check_in, leave_from);
         dialog.hide();
       }
     },
