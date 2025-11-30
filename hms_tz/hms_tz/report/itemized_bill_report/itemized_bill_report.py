@@ -421,22 +421,6 @@ def get_enc_conditions(filters):
     return conditions
 
 
-def get_ipd_conditions(filters):
-    if filters.get("patient"):
-        conditions = " and ipd_rec.patient = %(patient)s"
-
-    if filters.get("patient_appointment"):
-        conditions += " and ipd_rec.patient_appointment = %(patient_appointment)s"
-
-    if filters.get("from_date"):
-        conditions += " and DATE(ipd_rec.admitted_datetime) >= %(from_date)s"
-
-    if filters.get("to_date"):
-        conditions += " and DATE(ipd_rec.admitted_datetime) <= %(to_date)s"
-
-    return conditions
-
-
 def get_appointment_consultancy(filters):
     conditions = get_conditions(filters)
 
@@ -471,82 +455,127 @@ def get_appointment_consultancy(filters):
 
 
 def get_ipd_occupancy_transactions(filters):
-    ipd_conditions = get_ipd_conditions(filters)
-    pe_conditions = get_enc_conditions(filters)
+    """
+    Fetch insurance IPD occupancy data from Inpatient Occupancy child table of Inpatient Record.
+    Uses frappe.query_builder and pypika methods.
+    """
+    ipd_occ = DocType("Inpatient Occupancy")
+    ipd_rec = DocType("Inpatient Record")
+    hsu = DocType("Healthcare Service Unit")
+    hsut = DocType("Healthcare Service Unit Type")
+    pa = DocType("Patient Appointment")
 
-    data = frappe.db.sql(
-        f"""
-		SELECT
-			DATE(ipd_occ.check_in) AS date,
-			hsut.item_group AS category,
-			ipd_occ.service_unit AS description,
-			1 AS quantity,
-			ipd_occ.amount AS rate,
-			ipd_occ.amount AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabInpatient Occupancy` ipd_occ
-			INNER JOIN `tabInpatient Record` ipd_rec ON ipd_occ.parent = ipd_rec.name
-			INNER JOIN `tabHealthcare Service Unit` hsu ON ipd_occ.service_unit = hsu.name
-			INNER JOIN `tabHealthcare Service Unit Type` hsut ON hsu.service_unit_type = hsut.name
-			INNER JOIN `tabPatient Appointment` pa ON ipd_rec.patient_appointment = pa.name
-		WHERE ipd_occ.is_confirmed = 1
-		AND ipd_rec.admission_encounter IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.docstatus = 1 {pe_conditions}
-			ORDER BY pe.creation desc
-		) {ipd_conditions}
-	""",
-        filters,
-        as_dict=1,
+    # Build the query
+    query = (
+        frappe.qb.from_(ipd_occ)
+        .inner_join(ipd_rec)
+        .on(ipd_occ.parent == ipd_rec.name)
+        .inner_join(hsu)
+        .on(ipd_occ.service_unit == hsu.name)
+        .inner_join(hsut)
+        .on(hsu.service_unit_type == hsut.name)
+        .inner_join(pa)
+        .on(ipd_rec.patient_appointment == pa.name)
+        .select(
+            fn.Date(ipd_occ.check_in).as_("date"),
+            hsut.item_group.as_("category"),
+            ipd_occ.service_unit.as_("description"),
+            ValueWrapper(1).as_("quantity"),
+            ipd_occ.amount.as_("rate"),
+            ipd_occ.amount.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (ipd_occ.is_confirmed == 1)
+            & (pa.coverage_plan_name.isnotnull())
+            & (pa.coverage_plan_name != "")
+        )
     )
+
+    # Apply filters
+    if filters.get("patient"):
+        query = query.where(ipd_rec.patient == filters.patient)
+
+    if filters.get("patient_appointment"):
+        query = query.where(ipd_rec.patient_appointment == filters.patient_appointment)
+
+    if filters.get("from_date"):
+        query = query.where(fn.Date(ipd_rec.admitted_datetime) >= filters.from_date)
+
+    if filters.get("to_date"):
+        query = query.where(fn.Date(ipd_rec.admitted_datetime) <= filters.to_date)
+
+    data = query.run(as_dict=True)
 
     return data
 
 
 def get_ipd_consultancy_transactions(filters):
-    ipd_conditions = get_ipd_conditions(filters)
-    pe_conditions = get_enc_conditions(filters)
+    """
+    Fetch insurance IPD consultancy data from Inpatient Consultancy child table of Inpatient Record.
+    Uses frappe.query_builder and pypika methods.
+    """
+    ipd_cons = DocType("Inpatient Consultancy")
+    ipd_rec = DocType("Inpatient Record")
+    pa = DocType("Patient Appointment")
+    item = DocType("Item")
 
-    data = frappe.db.sql(
-        f"""
-		SELECT
-			ipd_cons.date AS date,
-			it.item_group AS category,
-			ipd_cons.consultation_item AS description,
-			1 AS quantity,
-			ipd_cons.rate AS rate,
-			ipd_cons.rate AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabInpatient Consultancy` ipd_cons
-			INNER JOIN `tabInpatient Record` ipd_rec ON ipd_cons.parent = ipd_rec.name
-			INNER JOIN `tabPatient Appointment` pa ON ipd_rec.patient_appointment = pa.name
-			INNER JOIN `tabItem` it ON ipd_cons.consultation_item = it.item_name
-		WHERE ipd_cons.is_confirmed = 1
-		AND ipd_cons.encounter IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.docstatus = 1 {pe_conditions}
-			ORDER BY pe.creation desc
-		) {ipd_conditions}
-	""",
-        filters,
-        as_dict=1,
+    # Build the query
+    query = (
+        frappe.qb.from_(ipd_cons)
+        .inner_join(ipd_rec)
+        .on(ipd_cons.parent == ipd_rec.name)
+        .inner_join(pa)
+        .on(ipd_rec.patient_appointment == pa.name)
+        .inner_join(item)
+        .on(ipd_cons.consultation_item == item.item_name)
+        .select(
+            ipd_cons.date.as_("date"),
+            item.item_group.as_("category"),
+            ipd_cons.consultation_item.as_("description"),
+            ValueWrapper(1).as_("quantity"),
+            ipd_cons.rate.as_("rate"),
+            ipd_cons.rate.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (ipd_cons.is_confirmed == 1)
+            & (pa.coverage_plan_name.isnotnull())
+            & (pa.coverage_plan_name != "")
+        )
     )
+
+    # Apply filters
+    if filters.get("patient"):
+        query = query.where(ipd_rec.patient == filters.patient)
+
+    if filters.get("patient_appointment"):
+        query = query.where(ipd_rec.patient_appointment == filters.patient_appointment)
+
+    if filters.get("from_date"):
+        query = query.where(fn.Date(ipd_rec.admitted_datetime) >= filters.from_date)
+
+    if filters.get("to_date"):
+        query = query.where(fn.Date(ipd_rec.admitted_datetime) <= filters.to_date)
+
+    data = query.run(as_dict=True)
+
     return data
 
 
