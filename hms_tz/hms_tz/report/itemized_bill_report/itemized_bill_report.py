@@ -383,74 +383,60 @@ def get_columns(filters):
     return columns
 
 
-def get_conditions(filters):
-    if filters.get("patient"):
-        conditions = "and pa.patient = %(patient)s"
-
-    if filters.get("patient_appointment"):
-        conditions += "and pa.name = %(patient_appointment)s"
-
-    if filters.get("from_date"):
-        conditions += " and pa.appointment_date >= %(from_date)s"
-
-    if filters.get("to_date"):
-        conditions += " and pa.appointment_date <= %(to_date)s"
-
-    return conditions
-
-
-def get_enc_conditions(filters):
-    if filters.get("patient"):
-        conditions = " and pe.patient = %(patient)s"
-
-    if filters.get("patient_appointment"):
-        conditions += " and pe.appointment = %(patient_appointment)s"
-
-    if filters.get("patient_type") == "Out-Patient":
-        conditions += " and pe.inpatient_record is null "
-
-    if filters.get("patient_type") == "In-Patient":
-        conditions += " and pe.inpatient_record is not null "
-
-    if filters.get("from_date"):
-        conditions += " and pe.encounter_date >= %(from_date)s"
-
-    if filters.get("to_date"):
-        conditions += " and pe.encounter_date <= %(to_date)s"
-
-    return conditions
-
-
 def get_appointment_consultancy(filters):
-    conditions = get_conditions(filters)
+    """
+    Fetch appointment consultancy data for cash patients.
+    Uses frappe.query_builder and pypika methods.
+    """
+    pa = DocType("Patient Appointment")
+    item = DocType("Item")
+    ipd_rec = DocType("Inpatient Record")
 
-    data = frappe.db.sql(
-        f"""
-		SELECT
-			pa.appointment_date AS date,
-			it.item_group AS category,
-			pa.billing_item AS description,
-			1 AS quantity,
-			pa.paid_amount AS rate,
-			pa.paid_amount AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabPatient Appointment` pa
-			INNER JOIN `tabItem` it ON pa.billing_item = it.item_name
-			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment
-		WHERE pa.status = "Closed"
-		AND pa.follow_up = 0 {conditions}
-	""",
-        filters,
-        as_dict=1,
+    # Build the query
+    query = (
+        frappe.qb.from_(pa)
+        .inner_join(item)
+        .on(pa.billing_item == item.item_name)
+        .left_join(ipd_rec)
+        .on(pa.name == ipd_rec.patient_appointment)
+        .select(
+            pa.appointment_date.as_("date"),
+            item.item_group.as_("category"),
+            pa.billing_item.as_("description"),
+            ValueWrapper(1).as_("quantity"),
+            pa.paid_amount.as_("rate"),
+            pa.paid_amount.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (pa.status == "Closed")
+            & (pa.follow_up == 0)
+        )
     )
+
+    # Apply filters
+    if filters.get("patient"):
+        query = query.where(pa.patient == filters.patient)
+
+    if filters.get("patient_appointment"):
+        query = query.where(pa.name == filters.patient_appointment)
+
+    if filters.get("from_date"):
+        query = query.where(pa.appointment_date >= filters.from_date)
+
+    if filters.get("to_date"):
+        query = query.where(pa.appointment_date <= filters.to_date)
+
+    data = query.run(as_dict=True)
+
     return data
 
 
@@ -580,178 +566,319 @@ def get_ipd_consultancy_transactions(filters):
 
 
 def get_cash_lrpmt_transaction(filters):
-    conditions = get_enc_conditions(filters)
+    """
+    Fetch cash LRPMT transaction data for cash patients.
+    Uses frappe.query_builder and pypika methods.
+    Combines Lab, Radiology, Procedure, Drug, and Therapy prescriptions.
+    """
+    # First, get the list of valid cash encounters
+    encounters = get_cash_encounters(filters)
+    if not encounters:
+        return []
 
-    data = frappe.db.sql(
-        f"""
-		SELECT
-			DATE(lrpmt.creation) AS date,
-			item_template.lab_test_group AS category,
-			lrpmt.lab_test_name AS description,
-			1 AS quantity,
-			lrpmt.amount AS rate,
-			lrpmt.amount AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabLab Prescription` lrpmt
-			INNER JOIN `tabLab Test Template` item_template ON lrpmt.lab_test_code = item_template.name
-			INNER JOIN `tabPatient Encounter` pe ON lrpmt.parent = pe.name
-			INNER JOIN `tabPatient Appointment` pa ON pe.appointment = pa.name
-			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment AND pe.name = ipd_rec.admission_encounter
-		WHERE lrpmt.is_not_available_inhouse = 0
-		AND lrpmt.is_cancelled = 0
-		AND lrpmt.prescribe = 1
-		AND lrpmt.parent IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.mode_of_payment != ""
-			AND  pe.docstatus = 1 {conditions}
-			ORDER BY pe.creation desc
-		)
+    data = []
 
-		UNION ALL
+    # Lab Prescriptions
+    data += get_cash_lab_prescriptions(encounters, filters)
 
-		SELECT
-			DATE(lrpmt.creation) AS date,
-			item_template.item_group AS category,
-			lrpmt.radiology_procedure_name AS description,
-			1 AS quantity,
-			lrpmt.amount AS rate,
-			lrpmt.amount AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabRadiology Procedure Prescription` lrpmt
-			INNER JOIN `tabRadiology Examination Template` item_template ON lrpmt.radiology_examination_template = item_template.name
-			INNER JOIN `tabPatient Encounter` pe ON lrpmt.parent = pe.name
-			INNER JOIN `tabPatient Appointment` pa ON pe.appointment = pa.name
-			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment AND pe.name = ipd_rec.admission_encounter
-		WHERE lrpmt.is_not_available_inhouse = 0
-		AND lrpmt.is_cancelled = 0
-		AND lrpmt.prescribe = 1
-		AND lrpmt.parent IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.mode_of_payment != ""
-			AND  pe.docstatus = 1 {conditions}
-			ORDER BY pe.creation desc
-		)
+    # Radiology Prescriptions
+    data += get_cash_radiology_prescriptions(encounters, filters)
 
-		UNION ALL
+    # Procedure Prescriptions
+    data += get_cash_procedure_prescriptions(encounters, filters)
 
-		SELECT
-			DATE(lrpmt.creation) AS date,
-			item_template.item_group AS category,
-			lrpmt.procedure_name AS description,
-			1 AS quantity, lrpmt.amount AS rate,
-			lrpmt.amount AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabProcedure Prescription` lrpmt
-			INNER JOIN `tabClinical Procedure Template` item_template ON lrpmt.procedure = item_template.name
-			INNER JOIN `tabPatient Encounter` pe ON lrpmt.parent = pe.name
-			INNER JOIN `tabPatient Appointment` pa ON pe.appointment = pa.name
-			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment AND pe.name = ipd_rec.admission_encounter
-		WHERE lrpmt.is_not_available_inhouse = 0
-		AND lrpmt.is_cancelled = 0
-		AND lrpmt.prescribe = 1
-		AND lrpmt.parent IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.mode_of_payment != ""
-			AND  pe.docstatus = 1 {conditions}
-			ORDER BY pe.creation desc
-		)
+    # Drug Prescriptions
+    data += get_cash_drug_prescriptions(encounters, filters)
 
-		UNION ALL
-
-		SELECT
-			DATE(lrpmt.creation) AS date,
-			item_template.item_group AS category,
-			lrpmt.drug_name AS description,
-			(lrpmt.quantity - lrpmt.quantity_returned) AS quantity,
-			lrpmt.amount AS rate,
-			((lrpmt.quantity - lrpmt.quantity_returned) * lrpmt.amount) AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabDrug Prescription` lrpmt
-			INNER JOIN `tabMedication` item_template ON lrpmt.drug_code = item_template.name
-			INNER JOIN `tabPatient Encounter` pe ON lrpmt.parent = pe.name
-			INNER JOIN `tabPatient Appointment` pa ON pe.appointment = pa.name
-			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment AND pe.name = ipd_rec.admission_encounter
-		WHERE lrpmt.is_not_available_inhouse = 0
-		AND lrpmt.is_cancelled = 0
-		AND lrpmt.prescribe = 1
-		AND lrpmt.docstatus = 1
-		AND lrpmt.parent IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.mode_of_payment != ""
-			AND  pe.docstatus = 1 {conditions}
-			ORDER BY pe.creation desc
-		)
-
-		UNION ALL
-
-		SELECT
-			DATE(lrpmt.creation) AS date,
-			item_template.item_group AS category,
-			lrpmt.therapy_type AS description,
-			(lrpmt.no_of_sessions - lrpmt.sessions_cancelled) AS quantity,
-			lrpmt.amount AS rate,
-			((lrpmt.no_of_sessions - lrpmt.sessions_cancelled) * lrpmt.amount) AS amount,
-			pa.patient AS patient,
-			pa.patient_name AS patient_name,
-			pa.appointment_type AS appointment_type,
-			pa.insurance_company AS insurance_company,
-			pa.coverage_plan_name AS coverage_plan_name,
-			pa.authorization_number AS authorization_number,
-			pa.coverage_plan_card_number AS coverage_plan_card_number,
-			DATE(ipd_rec.admitted_datetime) as admitted_date,
-			ipd_rec.discharge_date as discharge_date
-		FROM `tabTherapy Plan Detail` lrpmt
-			INNER JOIN `tabTherapy Type` item_template ON lrpmt.therapy_type = item_template.name
-			INNER JOIN `tabPatient Encounter` pe ON lrpmt.parent = pe.name
-			INNER JOIN `tabPatient Appointment` pa ON pe.appointment = pa.name
-			LEFT JOIN `tabInpatient Record` ipd_rec ON pa.name = ipd_rec.patient_appointment AND pe.name = ipd_rec.admission_encounter
-		WHERE lrpmt.is_not_available_inhouse = 0
-		AND lrpmt.is_cancelled = 0
-		AND lrpmt.prescribe = 1
-		AND lrpmt.parent IN (
-			SELECT pe.name FROM `tabPatient Encounter` pe
-			WHERE pe.mode_of_payment != ""
-			AND  pe.docstatus = 1 {conditions}
-			ORDER BY pe.creation desc
-		)
-	""",
-        filters,
-        as_dict=1,
-    )
+    # Therapy Prescriptions
+    data += get_cash_therapy_prescriptions(encounters, filters)
 
     return data
+
+
+def get_cash_encounters(filters):
+    """
+    Get list of cash patient encounters based on filters.
+    """
+    pe = DocType("Patient Encounter")
+
+    query = (
+        frappe.qb.from_(pe)
+        .select(pe.name)
+        .where(
+            (pe.mode_of_payment.isnotnull())
+            & (pe.mode_of_payment != "")
+            & (pe.docstatus == 1)
+        )
+    )
+
+    if filters.get("patient"):
+        query = query.where(pe.patient == filters.patient)
+
+    if filters.get("patient_appointment"):
+        query = query.where(pe.appointment == filters.patient_appointment)
+
+    if filters.get("patient_type") == "Out-Patient":
+        query = query.where(
+            (pe.inpatient_record.isnull()) | (pe.inpatient_record == "")
+        )
+
+    if filters.get("patient_type") == "In-Patient":
+        query = query.where(
+            (pe.inpatient_record.isnotnull()) & (pe.inpatient_record != "")
+        )
+
+    if filters.get("from_date"):
+        query = query.where(pe.encounter_date >= filters.from_date)
+
+    if filters.get("to_date"):
+        query = query.where(pe.encounter_date <= filters.to_date)
+
+    query = query.orderby(pe.creation, order=frappe.qb.desc)
+
+    result = query.run(as_dict=True)
+    return [d.name for d in result]
+
+
+def get_cash_lab_prescriptions(encounters, filters):
+    """
+    Fetch cash lab prescriptions.
+    """
+    lab = DocType("Lab Prescription")
+    temp = DocType("Lab Test Template")
+    pe = DocType("Patient Encounter")
+    pa = DocType("Patient Appointment")
+    ipd_rec = DocType("Inpatient Record")
+
+    query = (
+        frappe.qb.from_(lab)
+        .inner_join(temp)
+        .on(lab.lab_test_code == temp.name)
+        .inner_join(pe)
+        .on(lab.parent == pe.name)
+        .inner_join(pa)
+        .on(pe.appointment == pa.name)
+        .left_join(ipd_rec)
+        .on((pa.name == ipd_rec.patient_appointment) & (pe.name == ipd_rec.admission_encounter))
+        .select(
+            fn.Date(lab.creation).as_("date"),
+            temp.lab_test_group.as_("category"),
+            lab.lab_test_name.as_("description"),
+            ValueWrapper(1).as_("quantity"),
+            lab.amount.as_("rate"),
+            lab.amount.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (lab.is_not_available_inhouse == 0)
+            & (lab.is_cancelled == 0)
+            & (lab.prescribe == 1)
+            & (lab.parent.isin(encounters))
+        )
+    )
+
+    return query.run(as_dict=True)
+
+
+def get_cash_radiology_prescriptions(encounters, filters):
+    """
+    Fetch cash radiology prescriptions.
+    """
+    rad = DocType("Radiology Procedure Prescription")
+    temp = DocType("Radiology Examination Template")
+    pe = DocType("Patient Encounter")
+    pa = DocType("Patient Appointment")
+    ipd_rec = DocType("Inpatient Record")
+
+    query = (
+        frappe.qb.from_(rad)
+        .inner_join(temp)
+        .on(rad.radiology_examination_template == temp.name)
+        .inner_join(pe)
+        .on(rad.parent == pe.name)
+        .inner_join(pa)
+        .on(pe.appointment == pa.name)
+        .left_join(ipd_rec)
+        .on((pa.name == ipd_rec.patient_appointment) & (pe.name == ipd_rec.admission_encounter))
+        .select(
+            fn.Date(rad.creation).as_("date"),
+            temp.item_group.as_("category"),
+            rad.radiology_procedure_name.as_("description"),
+            ValueWrapper(1).as_("quantity"),
+            rad.amount.as_("rate"),
+            rad.amount.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (rad.is_not_available_inhouse == 0)
+            & (rad.is_cancelled == 0)
+            & (rad.prescribe == 1)
+            & (rad.parent.isin(encounters))
+        )
+    )
+
+    return query.run(as_dict=True)
+
+
+def get_cash_procedure_prescriptions(encounters, filters):
+    """
+    Fetch cash procedure prescriptions.
+    """
+    proc = DocType("Procedure Prescription")
+    temp = DocType("Clinical Procedure Template")
+    pe = DocType("Patient Encounter")
+    pa = DocType("Patient Appointment")
+    ipd_rec = DocType("Inpatient Record")
+
+    query = (
+        frappe.qb.from_(proc)
+        .inner_join(temp)
+        .on(proc.procedure == temp.name)
+        .inner_join(pe)
+        .on(proc.parent == pe.name)
+        .inner_join(pa)
+        .on(pe.appointment == pa.name)
+        .left_join(ipd_rec)
+        .on((pa.name == ipd_rec.patient_appointment) & (pe.name == ipd_rec.admission_encounter))
+        .select(
+            fn.Date(proc.creation).as_("date"),
+            temp.item_group.as_("category"),
+            proc.procedure_name.as_("description"),
+            ValueWrapper(1).as_("quantity"),
+            proc.amount.as_("rate"),
+            proc.amount.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (proc.is_not_available_inhouse == 0)
+            & (proc.is_cancelled == 0)
+            & (proc.prescribe == 1)
+            & (proc.parent.isin(encounters))
+        )
+    )
+
+    return query.run(as_dict=True)
+
+
+def get_cash_drug_prescriptions(encounters, filters):
+    """
+    Fetch cash drug prescriptions.
+    """
+    drug = DocType("Drug Prescription")
+    temp = DocType("Medication")
+    pe = DocType("Patient Encounter")
+    pa = DocType("Patient Appointment")
+    ipd_rec = DocType("Inpatient Record")
+
+    query = (
+        frappe.qb.from_(drug)
+        .inner_join(temp)
+        .on(drug.drug_code == temp.name)
+        .inner_join(pe)
+        .on(drug.parent == pe.name)
+        .inner_join(pa)
+        .on(pe.appointment == pa.name)
+        .left_join(ipd_rec)
+        .on((pa.name == ipd_rec.patient_appointment) & (pe.name == ipd_rec.admission_encounter))
+        .select(
+            fn.Date(drug.creation).as_("date"),
+            temp.item_group.as_("category"),
+            drug.drug_name.as_("description"),
+            (drug.quantity - drug.quantity_returned).as_("quantity"),
+            drug.amount.as_("rate"),
+            ((drug.quantity - drug.quantity_returned) * drug.amount).as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (drug.is_not_available_inhouse == 0)
+            & (drug.is_cancelled == 0)
+            & (drug.prescribe == 1)
+            & (drug.docstatus == 1)
+            & (drug.parent.isin(encounters))
+        )
+    )
+
+    return query.run(as_dict=True)
+
+
+def get_cash_therapy_prescriptions(encounters, filters):
+    """
+    Fetch cash therapy prescriptions.
+    """
+    therapy = DocType("Therapy Plan Detail")
+    temp = DocType("Therapy Type")
+    pe = DocType("Patient Encounter")
+    pa = DocType("Patient Appointment")
+    ipd_rec = DocType("Inpatient Record")
+
+    query = (
+        frappe.qb.from_(therapy)
+        .inner_join(temp)
+        .on(therapy.therapy_type == temp.name)
+        .inner_join(pe)
+        .on(therapy.parent == pe.name)
+        .inner_join(pa)
+        .on(pe.appointment == pa.name)
+        .left_join(ipd_rec)
+        .on((pa.name == ipd_rec.patient_appointment) & (pe.name == ipd_rec.admission_encounter))
+        .select(
+            fn.Date(therapy.creation).as_("date"),
+            temp.item_group.as_("category"),
+            therapy.therapy_type.as_("description"),
+            (therapy.no_of_sessions - therapy.sessions_cancelled).as_("quantity"),
+            therapy.amount.as_("rate"),
+            ((therapy.no_of_sessions - therapy.sessions_cancelled) * therapy.amount).as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (therapy.is_not_available_inhouse == 0)
+            & (therapy.is_cancelled == 0)
+            & (therapy.prescribe == 1)
+            & (therapy.parent.isin(encounters))
+        )
+    )
+
+    return query.run(as_dict=True)
 
 
 def get_insurance_lrpmt_transaction(filters):
