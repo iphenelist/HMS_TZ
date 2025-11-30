@@ -1,12 +1,11 @@
 import frappe
-from erpnext.accounts.utils import get_balance_on
 from frappe.model.document import Document
+from erpnext.accounts.utils import get_balance_on
 from frappe.utils import flt, get_url_to_form, nowdate, nowtime
-
-from hms_tz.nhif.api.healthcare_utils import create_therapy_plan
 from hms_tz.nhif.api.patient_encounter import (
     validate_totals,
-    create_healthcare_docs
+    create_healthcare_docs,
+    create_service_request
 )
 
 
@@ -107,7 +106,9 @@ class LimitChangeRequest(Document):
             if len(encounters) == 0:
                 return
 
-            self.create_encounter_items(encounters)
+            self.update_cash_limit_effect_to_encounters(encounters)
+
+            self.create_insurance_items(encounters)
 
     def on_cancel(self):
         if self.is_cash_inpatient and self.inpatient_record:
@@ -181,8 +182,8 @@ class LimitChangeRequest(Document):
                 self.previous_daily_limit = encounters[0]["daily_limit"]
                 self.current_total_cost = encounters[0]["current_total"] + encounters[0]["previous_total"]
 
-    def create_encounter_items(self, encounters):
-        """Create items for the uncreate items of patient encounter after submitting the LCR"""
+    def update_cash_limit_effect_to_encounters(self, encounters):
+        """Update the cash limit effect to all encounters related to the appointment"""
 
         table_map = [
             "lab_test_prescription",
@@ -207,7 +208,12 @@ class LimitChangeRequest(Document):
 
                 encounter_doc.db_update_all()
                 encounter_doc.reload()
-        
-        encounter_ids = [encounter.name for encounter in encounters]
-        create_healthcare_docs(encounter_ids[0], encounter_ids)
+    
+
+    def create_insurance_items(self, encounters):
+        """Create insurance items for all encounters related to the appointment"""
+
+        for encounter in encounters:
+            encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
+            create_service_request(doc_obj=encounter_doc)
 
