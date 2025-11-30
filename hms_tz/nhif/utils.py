@@ -84,6 +84,10 @@ def issue_nhif_service(
 
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("NHIF API is disabled")
+        return {}
+
     data = {}
 
     if doc.doctype == "Delivery Note":
