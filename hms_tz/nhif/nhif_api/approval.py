@@ -29,6 +29,12 @@ def get_service_approval(
 
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
 
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("NHIF API is disabled")
+        return {
+            "status": "error",
+        }
+
     payload = get_request_approval_payload(
         doc,
         settings_doc.facility_code,
@@ -65,7 +71,7 @@ def get_service_approval(
             ref_docname=ref_docname,
         )
 
-        data = json.loads(r.text)
+        data = json.loads(r.text) if r.text else {}
 
         doc.add_comment(
             comment_type="Comment",
@@ -138,7 +144,15 @@ def get_service_approval(
 @frappe.whitelist()
 def get_approval_status(ref_doctype, ref_docname, dni_id=None):
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
+
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("NHIF API is disabled")
+        return {
+            "status": "error",
+        }
+    
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     authorization_no = ""
@@ -204,6 +218,11 @@ def update_service_approval(
     doc = frappe.get_cached_doc(ref_doctype, ref_docname)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
+
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("NHIF API is disabled")
+        return False
+    
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     payload = get_update_approval_payload(
@@ -671,10 +690,14 @@ def verify_approval_number(
     ref_doctype,
     ref_docname,
 ):
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
+    
+    if not settings_doc.enable_nhif_api:
+        frappe.msgprint("NHIF API is disabled")
+        return False
+    
     ref_code = get_item_refcode(service_type, service_name)
     appointment_info = get_appointment_details(appointment)
-
-    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     card_no = appointment_info.coverage_plan_card_number or appointment_info.national_id
 
