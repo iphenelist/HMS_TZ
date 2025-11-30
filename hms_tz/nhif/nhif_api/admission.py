@@ -597,7 +597,7 @@ def discharge_patient(
     if len(diagnosis_at_discharge) == 0:
         for row in discharge_encounter_doc.patient_encounter_preliminary_diagnosis:
             disease_code = get_disease_code(row.code)
-            diagnosis_at_admission.append(disease_code)
+            diagnosis_at_discharge.append(disease_code)
 
     payload = {
         "admissionNo": doc.admission_no,
