@@ -225,7 +225,7 @@ def get_payload(doc):
         disease_dict = {
             "DiseaseCode": disease.disease_code,
             "Status": disease.status,
-            "Remarks": None,
+            "Remarks": disease.description or "",
             "CreatedBy": disease.item_crt_by,
             "DateCreated": created_date.isoformat(),
             "LastModified": created_date.isoformat(),
@@ -242,7 +242,7 @@ def get_payload(doc):
             "ItemQuantity": item.item_quantity,
             "UnitPrice": item.unit_price,
             "AmountClaimed": item.amount_claimed,
-            "ApprovalRefNo": item.approval_ref_no or None,
+            "ApprovalRefNo": item.approval_ref_no or "",
             "CreatedBy": item.item_crt_by,
             "DateCreated": created_date.isoformat(),
             "LastModifiedBy": item.item_crt_by,
@@ -251,22 +251,24 @@ def get_payload(doc):
         }
         items.append(item_dict)
 
-    Signatures = [{
-        "Signatory": "Patient",
-        "SignatoryID": doc.cardno.strip(),
-        "SignatureData": doc.patient_signature,
-        "DateCreated": str(doc.posting_date),
-        "CreatedBy": doc.item_crt_by,
-        "LastModified": get_datetime(doc.modified).isoformat(),
-        "LastModifiedBy": get_fullname(doc.modified_by),
-    }]
+    Signatures = []
+    # {
+    #     "Signatory": "Patient",
+    #     "SignatoryID": doc.cardno.strip(),
+    #     "SignatureData": doc.patient_signature,
+    #     "DateCreated": str(doc.posting_date),
+    #     "CreatedBy": doc.item_crt_by,
+    #     "LastModified": get_datetime(doc.modified).isoformat(),
+    #     "LastModifiedBy": get_fullname(doc.modified_by),
+    # }
 
     for d in doc.practitioners:
         if d.mct_code:
+            signature = frappe.get_cached_value("Healthcare Practitioner", d.practitioner, "doctors_signature")
             Signatures.append({
                 "Signatory": "MCT",
                 "SignatoryID": d.mct_code,
-                "SignatureData": frappe.get_cached_value("Healthcare Practitioner", d.practitioner, "doctors_signature"),
+                "SignatureData": str(signature).replace("data:image/png;base64,", ""),
                 "DateCreated": str(doc.posting_date),
                 "CreatedBy": doc.item_crt_by,
                 "LastModified": get_datetime(doc.modified).isoformat(),
