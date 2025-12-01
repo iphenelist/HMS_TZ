@@ -204,22 +204,25 @@ def add_price_packages_records(doc, rec, type, service_map):
         return
 
     for e in rec:
-        price_row = doc.append("price_package", {})
-        price_row.type = type
+        if not service_map.get(e.get("ItemCode")):
+            continue
+    
+        services = service_map.get(e.get("ItemCode"))
+        for svc in services:
+            price_row = doc.append("price_package", {})
+            price_row.type = type
+            price_row.service_type = svc.get("service_type")
+            price_row.service_name = svc.get("service_name")
 
-        if service_map.get(e.get("ItemCode")):
-            price_row.service_type = service_map.get(e.get("ItemCode")).get("service_type")
-            price_row.service_name = service_map.get(e.get("ItemCode")).get("service_name")
-
-        price_row.itemcode = e.get("ItemCode")
-        # price_row.olditemcode = e.get("OldItemCode")
-        price_row.itemname = e.get("ItemName")
-        price_row.strength = e.get("Strength")
-        price_row.dosage = e.get("Dosage")
-        price_row.unitprice = e.get("UnitPrice")
-        # price_row.record = json.dumps(e)
-        price_row.fields_changed = json.dumps(e.get("fields_changed"))
-        price_row.previous_item = json.dumps(e.get("previous_item"))
+            price_row.itemcode = e.get("ItemCode")
+            # price_row.olditemcode = e.get("OldItemCode")
+            price_row.itemname = e.get("ItemName")
+            price_row.strength = e.get("Strength")
+            price_row.dosage = e.get("Dosage")
+            price_row.unitprice = e.get("UnitPrice")
+            # price_row.record = json.dumps(e)
+            price_row.fields_changed = json.dumps(e.get("fields_changed"))
+            price_row.previous_item = json.dumps(e.get("previous_item"))
 
 
 def process_jubilee_prices(company, item=None):
@@ -232,8 +235,7 @@ def process_jubilee_prices(company, item=None):
     default_currency = company_info.default_currency
     price_list_name = f"Jubilee {company_info.abbr}"
 
-    if not frappe.db.exists("Price List", price_list_name):
-        create_insurance_price_list(company, price_list_name, default_currency, "Jubilee")
+    create_insurance_price_list(company, price_list_name, default_currency, "Jubilee")
 
     item_list = get_items_for_price_list(company, item)
 
