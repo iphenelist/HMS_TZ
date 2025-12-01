@@ -177,6 +177,17 @@ frappe.ui.form.on("Patient Appointment", {
       }
       frm.toggle_enable(["referral_no"], true);
     }
+    
+    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("other")) {
+      if (frm.doc.insurance_subscription) {
+        frm.toggle_display(["remarks"], true);
+        frm.toggle_reqd("remarks", true);
+      } else {
+        frm.toggle_reqd("remarks", false);
+        frm.toggle_display(["remarks"], false);
+      }
+      frm.toggle_enable(["remarks"], true);
+    }
 
     if (frm.doc.source == "Referral") {
       frm.set_value("healthcare_referrer_type", "Healthcare Practitioner");

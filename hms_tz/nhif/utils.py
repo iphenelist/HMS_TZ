@@ -46,8 +46,8 @@ def get_poc_reference_no_for_lrpmt(
         records = frappe.db.get_all(
             doc.doctype,
             filters={
-                "ref_docname": doc.ref_docname,
-                "ref_doctype": doc.ref_doctype,
+                "ref_docname": doc.get("ref_docname") or doc.get("reference_name"),
+                "ref_doctype": doc.get("ref_doctype") or doc.get("reference_doctype"),
                 "name": ["!=", doc.name],
             },
         )
