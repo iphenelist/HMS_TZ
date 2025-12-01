@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import add_days
+from frappe.utils import add_days, nowdate
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_childs_map, get_item_refcode
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
@@ -291,14 +291,13 @@ def get_services(doc, preapproval_no=None):
             ):
                 continue
 
-            effective_date = doc.get("encounter_date") or doc.get("posting_date")
             ref_code = get_item_refcode(child.get("doctype"), row.get(child.get("item")))
             services.append(
                 {
                     "itemCode": ref_code,
                     "usage": "",
-                    "effectiveDate": str(effective_date),
-                    "endDate": str(effective_date),
+                    "effectiveDate": str(nowdate()),
+                    "endDate": str(nowdate()),
                     "quantityRequested": row.get("quantity") or 1,
                     "remarks": "",
                 }
