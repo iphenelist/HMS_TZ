@@ -40,9 +40,9 @@ def sign_folio(
     }
 
     if signature_method == "signature":
-        payload["SignatureData"] = signature #.replace("data:image/png;base64,", "")
+        payload["SignatureData"] = signature.replace("data:image/png;base64,", "")
         payload["SignatureMethod"] = "SIGNATURE"
-        payload["FpCode"] = "R1"
+        payload["FpCode"] = "SIGNATURE"
     else:
         payload["SignatureData"] = fingerprint
         payload["SignatureMethod"] = "FINGERPRINT"
