@@ -167,7 +167,11 @@ def on_submit_validation(doc, method):
     # shm rock: 151
     set_practitioner_name(doc, method)
 
-    if not doc.healthcare_service_unit and not doc.healthcare_package_order:
+    if (
+        not doc.healthcare_service_unit and 
+        not doc.healthcare_package_order and
+        "Direct Cash" not in doc.practitioner
+    ):
         frappe.throw(_("Healthcare Service Unit not set"))
 
     set_item_coverage(doc, method, child_tables)
