@@ -281,32 +281,31 @@ def add_price_packages_records(doc, rec, type, service_map):
         return
 
     for e in rec:
-        price_row = doc.append("price_package", {})
-        price_row.type = type
+        if not service_map.get(e.get("ItemCode")):
+            continue
 
-        if service_map.get(e.get("ItemCode")):
-            # price_row.service_type = service_map.get(e.get("ItemCode")).get("service_type")
-            # price_row.service_name = service_map.get(e.get("ItemCode")).get("service_name")
-            services = service_map.get(e.get("ItemCode"))
-            for row in services:
-                price_row.service_type = row.get("service_type")
-                price_row.service_name = row.get("service_name")
-                price_row.itemcode = e.get("ItemCode")
-                price_row.itemname = e.get("ItemName")
-                price_row.itemtypeid = e.get("ItemTypeID")
-                price_row.strength = e.get("Strength")
-                price_row.dosage = e.get("Dosage")
-                price_row.schemeid = e.get("SchemeID")
-                price_row.packageid = e.get("PackageID")
-                price_row.pricecode = e.get("PriceCode")
-                price_row.unitprice = e.get("UnitPrice")
-                price_row.isrestricted = e.get("IsRestricted")
-                price_row.hascopayment = e.get("HasCoPayment")
-                price_row.maximumquantity = e.get("MaximumQuantity")
-                price_row.maximumquantityoutpatient = e.get("MaximumQuantityOutPatient")
-                price_row.maximumquantityinpatient = e.get("MaximumQuantityInPatient")
-                price_row.fields_changed = json.dumps(e.get("fields_changed"))
-                price_row.previous_item = json.dumps(e.get("previous_item"))
+        services = service_map.get(e.get("ItemCode"))
+        for row in services:
+            price_row = doc.append("price_package", {})
+            price_row.type = type
+            price_row.service_type = row.get("service_type")
+            price_row.service_name = row.get("service_name")
+            price_row.itemcode = e.get("ItemCode")
+            price_row.itemname = e.get("ItemName")
+            price_row.itemtypeid = e.get("ItemTypeID")
+            price_row.strength = e.get("Strength")
+            price_row.dosage = e.get("Dosage")
+            price_row.schemeid = e.get("SchemeID")
+            price_row.packageid = e.get("PackageID")
+            price_row.pricecode = e.get("PriceCode")
+            price_row.unitprice = e.get("UnitPrice")
+            price_row.isrestricted = e.get("IsRestricted")
+            price_row.hascopayment = e.get("HasCoPayment")
+            price_row.maximumquantity = e.get("MaximumQuantity")
+            price_row.maximumquantityoutpatient = e.get("MaximumQuantityOutPatient")
+            price_row.maximumquantityinpatient = e.get("MaximumQuantityInPatient")
+            price_row.fields_changed = json.dumps(e.get("fields_changed"))
+            price_row.previous_item = json.dumps(e.get("previous_item"))
 
 
 def process_nhif_prices(company, facility_code, item_code=None):
