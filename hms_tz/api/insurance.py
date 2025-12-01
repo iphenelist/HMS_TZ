@@ -33,7 +33,7 @@ def get_insurance_items(insurance_customer_name, for_prices=False):
 
     service_map = {}
     for service in services:
-        service_map[service["ref_code"]] = service
+        service_map.setdefault(service["ref_code"], []).append(service)
 
     return service_map
 
@@ -381,12 +381,13 @@ def fetch_item_prices(itp, price_list, package, currency):
 
 
 def create_insurance_price_list(company, price_list, currency, insurance_provider, schemeid=None):
-    price_list_doc = frappe.new_doc("Price List")
-    price_list_doc.price_list_name = price_list
-    price_list_doc.currency = currency
-    price_list_doc.buying = 0
-    price_list_doc.selling = 1
-    price_list_doc.save(ignore_permissions=True)
+    if not frappe.db.exists("Price List", price_list):
+        price_list_doc = frappe.new_doc("Price List")
+        price_list_doc.price_list_name = price_list
+        price_list_doc.currency = currency
+        price_list_doc.buying = 0
+        price_list_doc.selling = 1
+        price_list_doc.save(ignore_permissions=True)
 
     # set price list to a coverage plan
     filters = {
@@ -397,26 +398,27 @@ def create_insurance_price_list(company, price_list, currency, insurance_provide
     elif insurance_provider == "Jubilee":
         filters["insurance_company"] = ["like", "%Jubilee%"]
     
-    plan_name = frappe.get_cached_value(
-        "Healthcare Insurance Coverage Plan", filters, "name",
+    plan_details = frappe.get_cached_value(
+        "Healthcare Insurance Coverage Plan", filters, ["name", "price_list"], as_dict=True
     )
 
-    if plan_name:
-        frappe.db.set_value(
-            "Healthcare Insurance Coverage Plan",
-            plan_name,
-            "price_list",
-            price_list,
-        )
-        
-        out = frappe.get_doc(
-            {
-                "doctype": "Comment",
-                "comment_type": "Comment",
-                "comment_email": frappe.session.user,
-                "comment_by": frappe.session.user,
-                "content": f"Created and Attached Price List {price_list} for {company}",
-                "reference_doctype": "Healthcare Insurance Coverage Plan",
-                "reference_name": plan_name,
-            }
-        ).insert(ignore_permissions=True)
+    if plan_details:
+        if plan_details.price_list != price_list:
+            frappe.db.set_value(
+                "Healthcare Insurance Coverage Plan",
+                plan_details.name,
+                "price_list",
+                price_list,
+            )
+            
+            out = frappe.get_doc(
+                {
+                    "doctype": "Comment",
+                    "comment_type": "Comment",
+                    "comment_email": frappe.session.user,
+                    "comment_by": frappe.session.user,
+                    "content": f"Created and Attached Price List {price_list} for {company}",
+                    "reference_doctype": "Healthcare Insurance Coverage Plan",
+                    "reference_name": plan_details.name,
+                }
+            ).insert(ignore_permissions=True)
