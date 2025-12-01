@@ -43,13 +43,20 @@ def get_poc_reference_no_for_lrpmt(
             text=f"POC Reference No: <strong>{data.get('ReferenceNo')}</strong> for {point_of_care} is successfully created."
         )
 
+        filters = {
+            "name": ["!=", doc.name],
+        }
+        if doc.doctype == "Delivery Note":
+            filters["reference_name"] = doc.get("reference_name")
+            filters["reference_doctype"] = doc.get("reference_doctype")
+        else:
+            filters["ref_docname"] = doc.get("ref_docname")
+            filters["ref_doctype"] = doc.get("ref_doctype")
+
+
         records = frappe.db.get_all(
             doc.doctype,
-            filters={
-                "ref_docname": doc.get("ref_docname") or doc.get("reference_name"),
-                "ref_doctype": doc.get("ref_doctype") or doc.get("reference_doctype"),
-                "name": ["!=", doc.name],
-            },
+            filters=filters,
         )
 
         for record in records:
