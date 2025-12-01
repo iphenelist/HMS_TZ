@@ -3,6 +3,8 @@ from frappe.utils import nowdate
 
 
 def execute():
+    return
+
     today = nowdate()
     encounters = frappe.get_all(
         "Patient Encounter",
