@@ -110,18 +110,15 @@ class HealthcareServiceRequest(Document):
             if not row.insurance_subscription:
                 frappe.throw("Insurance Subscription is required to get the item rate")
 
-            if row.price_list:
-                item_price_rate = get_item_price(item, row.price_list, self.company)
-            else:
-                item_price_rate, price_list = get_item_rate(
-                    item,
-                    self.company,
-                    row.insurance_subscription,
-                    row.insurance_company,
-                    for_service_request=True,
-                )
+            item_price_rate, price_list = get_item_rate(
+                item,
+                self.company,
+                row.insurance_subscription,
+                row.insurance_company,
+                for_service_request=True,
+            )
 
-                row.price_list = price_list
+            row.price_list = price_list
 
             # apply discount if it is available on Heathcare Insurance Company
             if row.insurance_company and "NHIF" not in row.insurance_company:
