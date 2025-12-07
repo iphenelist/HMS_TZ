@@ -232,7 +232,7 @@ class HealthcareServiceRequest(Document):
 
         for key, value in service_payment_map.items():
             percent_covered = 0
-            service_type, service_name = key
+            service_type, service_name, ref_docname = key
 
             for d in value:
                 if d.percent_covered:
@@ -245,7 +245,7 @@ class HealthcareServiceRequest(Document):
     def get_service_payment_map(self):
         service_payment_map = {}
         for d in self.payments:
-            service_payment_map.setdefault((d.service_type, d.service_name), []).append(d)
+            service_payment_map.setdefault((d.service_type, d.service_name, d.ref_docname), []).append(d)
 
         return service_payment_map
 
@@ -265,7 +265,7 @@ class HealthcareServiceRequest(Document):
         service_payment_map = self.get_service_payment_map()
 
         for key, values in service_payment_map.items():
-            service_type, service_name = key
+            service_type, service_name, ref_docname = key
 
             is_cancelled = False
             lrpmt_doc_created = False
