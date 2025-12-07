@@ -3,6 +3,7 @@ import json
 import frappe
 import requests
 from pypika.terms import Not
+from frappe.core.utils import html2text
 from frappe.query_builder import DocType
 from hms_tz.nhif.nhif_api.referral import get_disease_code
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
@@ -442,6 +443,7 @@ def admit_patient(
     bed_charge = get_item_rate(item_code, doc.company, doc.insurance_subscription)
 
     admission_encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.admission_encounter)
+    clinical_notes = html2text(admission_encounter_doc.examination_detail)
     
     diagnosis_at_admission = []
     for row in admission_encounter_doc.patient_encounter_final_diagnosis:
@@ -464,7 +466,7 @@ def admit_patient(
         "chargesPerDay": bed_charge,
         "practitionerNo": mct_code,
         "diagnosisAtAdmission": ", ".join(diagnosis_at_admission),
-        "practitionersRemarks": doc.admission_instruction or "",
+        "practitionersRemarks": str(clinical_notes) or "",
         "dateAdmitted": get_datetime(date_admitted).isoformat(),
         "createdBy": admission_encounter_doc.practitioner,
     }
@@ -494,6 +496,7 @@ def admit_patient(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
+        data = json.loads(r.text) if r.text else {}
         doc.add_comment(
             comment_type="Comment",
             text=f"NHIF Admission failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('message') or r.text}<b>",
@@ -588,6 +591,7 @@ def discharge_patient(
             )
 
     discharge_encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.discharge_encounter)
+    clinical_notes = html2text(discharge_encounter_doc.examination_detail)
     
     diagnosis_at_discharge = []
     for row in discharge_encounter_doc.patient_encounter_final_diagnosis:
@@ -602,7 +606,7 @@ def discharge_patient(
     payload = {
         "admissionNo": doc.admission_no,
         "practitionerNo": mct_code,
-        "practitionersRemarks": doc.discharge_instructions,
+        "practitionersRemarks": clinical_notes or "",
         "dischargeTypeID": discharge_type_id,
         "dateDischarged": get_datetime(now_datetime()).isoformat(),
         "diagnosisAtDischarge": ", ".join(diagnosis_at_discharge),
@@ -681,8 +685,9 @@ def transfer_patient(
 
     # find the last encounter to find the practitioner from the last encounter
     last_encounter = get_last_encounter(doc.patient, doc.name)
-    practitioner, clinical_notes = frappe.get_cached_value("Patient Encounter", last_encounter, ["practitioner", "examination_detail"])
+    practitioner, notes = frappe.get_cached_value("Patient Encounter", last_encounter, ["practitioner", "examination_detail"])
     mct_code = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
+    clinical_notes = html2text(notes)
 
     ward_type, item_code = frappe.get_cached_value(
         "Healthcare Service Unit Type",
