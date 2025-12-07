@@ -842,15 +842,17 @@ def get_approval_services(company=None, caller=None):
 
 
 def update_approval_status(doc, appointment, data, dni_id=None):
-    records = frappe.db.get_all(
-        doc.doctype,
-        filters={
-            "appointment": appointment,
-            "is_restricted": 1,
-            "approval_number": ("is", "not set"),
-        },
-        fields=["name", "service_authorization_id"],
-    )
+    records = []
+    if doc.doctype != "Delivery Note":
+        records = frappe.db.get_all(
+            doc.doctype,
+            filters={
+                "appointment": appointment,
+                "is_restricted": 1,
+                "approval_number": ("is", "not set"),
+            },
+            fields=["name", "service_authorization_id"],
+        )
 
     dni_reference_no = ""
     lrpt_reference_no = ""
