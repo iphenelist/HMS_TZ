@@ -179,6 +179,9 @@ def validate_point_of_care(doc, field):
     Validate that the point of care is set for the given document.
     """
 
+    if doc.doctype == "Delivery Note" and doc.is_return:
+        return
+
     insurance_field = "insurance_company"
     if doc.doctype == "Delivery Note":
         insurance_field = "customer"
@@ -224,13 +227,18 @@ def create_issued_service_log(
 def validate_issued_services(
     ref_doctype,
     ref_docname,
-    is_restricted=False
+    is_restricted=False,
+    company=None
 ):
     """
     Validate if there are issued services for the given document.
     """
 
     if not is_restricted:
+        return
+    
+    settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
+    if not settings_doc.enable_nhif_api:
         return
 
     issued_services = frappe.db.get_all(
@@ -243,5 +251,5 @@ def validate_issued_services(
 
     if len(issued_services) == 0:
         frappe.throw(
-            f"No issued services found. Please issue NHIF services before proceeding."
+            f"Service is not Issued to NHIF. Please issue NHIF services before proceeding."
         )
