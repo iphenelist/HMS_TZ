@@ -46,7 +46,7 @@ def before_submit(doc, method):
         )
 
     validate_point_of_care(doc, "validate_poc_at_laboratory")
-    validate_issued_services(doc.doctype, doc.name, is_restricted=doc.is_restricted)
+    validate_issued_services(doc.doctype, doc.name, is_restricted=doc.is_restricted, company=doc.company)
     
     doc.hms_tz_submitted_by = get_fullname(frappe.session.user)
     doc.hms_tz_user_id = frappe.session.user
