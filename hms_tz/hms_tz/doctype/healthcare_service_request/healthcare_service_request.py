@@ -145,6 +145,25 @@ class HealthcareServiceRequest(Document):
 
     @frappe.whitelist()
     def get_percent_covered(self, item_obj=None):
+        def get_percent(item, years_of_insurance):
+            scheme_id = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan",
+                item.payor_plan,
+                "nhif_scheme_id",
+            )
+
+            percent_details = frappe.get_cached_value(
+                "NHIF Co-Payment Item",
+                {
+                    "itemcode": item.item_code,
+                    "schemeid": scheme_id,
+                    "yearno": years_of_insurance,
+                },
+                ["percentcovered", "name"], as_dict=True
+            )
+
+            return percent_details
+        
         if item_obj:
             if isinstance(item_obj, str):
                 item_obj = json.loads(item_obj)
@@ -163,24 +182,12 @@ class HealthcareServiceRequest(Document):
 
             if "NHIF" not in item.insurance_company:
                 return 100
+            
+            percent_details = get_percent(item, self.years_of_insurance)
+            if not percent_details:
+                return 100
 
-            scheme_id = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan",
-                item.payor_plan,
-                "nhif_scheme_id",
-            )
-
-            percent_covered = frappe.get_cached_value(
-                "NHIF Co-Payment Item",
-                {
-                    "itemcode": item.item_code,
-                    "schemeid": scheme_id,
-                    "yearno": self.years_of_insurance,
-                },
-                "percentcovered",
-            )
-
-            return percent_covered or 0
+            return percent_details.percentcovered or 0
 
         else:
             for item in self.payments:
@@ -196,23 +203,12 @@ class HealthcareServiceRequest(Document):
                     item.percent_covered = 100
                     continue
 
-                scheme_id = frappe.get_cached_value(
-                    "Healthcare Insurance Coverage Plan",
-                    item.payor_plan,
-                    "nhif_scheme_id",
-                )
+                percent_details = get_percent(item, self.years_of_insurance)
+                if not percent_details:
+                    item.percent_covered = 100
+                    continue
 
-                percent_covered = frappe.get_cached_value(
-                    "NHIF Co-Payment Item",
-                    {
-                        "itemcode": item.item_code,
-                        "schemeid": scheme_id,
-                        "yearno": self.years_of_insurance,
-                    },
-                    "percentcovered",
-                )
-
-                item.percent_covered = percent_covered or 0
+                item.percent_covered = percent_details.percentcovered or 0
 
     def get_service_type(self, service_name, request_id=None):
         service_type = ""
