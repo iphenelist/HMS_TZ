@@ -3,8 +3,9 @@ import json
 
 import frappe
 import requests
+from frappe.core.utils import html2text
 from frappe.query_builder import DocType
-from frappe.utils import get_fullname
+from frappe.utils import get_fullname, cint
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_rate, get_item_refcode
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
@@ -312,9 +313,6 @@ def issue_approved_service(
             insurance_subscription = frappe.get_cached_value("Patient Appointment", appointment, "insurance_subscription")
         
         item_rate = get_item_rate(item, doc.company, insurance_subscription, doc.insurance_company)
-    # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-    # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    # image_data = fingerprint.replace("-", "+").replace("_", "/")
 
     payload = {
         "approvalReferenceNo": approval_number,
@@ -323,7 +321,7 @@ def issue_approved_service(
         "fpCode": fpcode,
         "imageData": fingerprint,
         "description": service_name,
-        "quantity": qty,
+        "quantity": cint(qty),
         "unitPrice": item_rate or 0,
         "createdBy": doc.get("practitioner") or doc.get("healthcare_practitioner"),
     }
@@ -395,7 +393,8 @@ def get_request_approval_payload(
     appointment_info = get_appointment_details(appointment)
 
     encounter_id = doc.get("ref_docname") or doc.get("reference_name")
-    clinical_notes = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
+    notes_html = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
+    clinical_notes = html2text(notes_html)
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
@@ -453,6 +452,16 @@ def get_approval_diseases(doc, practitioner, encounter_id):
     encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter_id)
 
     for d in encounter_doc.patient_encounter_preliminary_diagnosis:
+        diseases.append(
+            {
+                "diseaseCode": get_disease_code(d.code),
+                "notes": d.description,
+                "createdBy": practitioner,
+                "dateCreated": str(doc.creation.isoformat()),
+            }
+        )
+    
+    for d in encounter_doc.patient_encounter_final_diagnosis:
         diseases.append(
             {
                 "diseaseCode": get_disease_code(d.code),
@@ -544,7 +553,8 @@ def get_update_approval_payload(
     appointment_info = get_appointment_details(appointment)
 
     encounter_id = doc.get("ref_docname") or doc.get("reference_name")
-    clinical_notes = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
+    notes_html = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
+    clinical_notes = html2text(notes_html)
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
@@ -832,15 +842,17 @@ def get_approval_services(company=None, caller=None):
 
 
 def update_approval_status(doc, appointment, data, dni_id=None):
-    records = frappe.db.get_all(
-        doc.doctype,
-        filters={
-            "appointment": appointment,
-            "is_restricted": 1,
-            "approval_number": ("is", "not set"),
-        },
-        fields=["name", "service_authorization_id"],
-    )
+    records = []
+    if doc.doctype != "Delivery Note":
+        records = frappe.db.get_all(
+            doc.doctype,
+            filters={
+                "appointment": appointment,
+                "is_restricted": 1,
+                "approval_number": ("is", "not set"),
+            },
+            fields=["name", "service_authorization_id"],
+        )
 
     dni_reference_no = ""
     lrpt_reference_no = ""
