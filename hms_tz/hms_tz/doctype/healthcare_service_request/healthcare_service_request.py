@@ -110,18 +110,15 @@ class HealthcareServiceRequest(Document):
             if not row.insurance_subscription:
                 frappe.throw("Insurance Subscription is required to get the item rate")
 
-            if row.price_list:
-                item_price_rate = get_item_price(item, row.price_list, self.company)
-            else:
-                item_price_rate, price_list = get_item_rate(
-                    item,
-                    self.company,
-                    row.insurance_subscription,
-                    row.insurance_company,
-                    for_service_request=True,
-                )
+            item_price_rate, price_list = get_item_rate(
+                item,
+                self.company,
+                row.insurance_subscription,
+                row.insurance_company,
+                for_service_request=True,
+            )
 
-                row.price_list = price_list
+            row.price_list = price_list
 
             # apply discount if it is available on Heathcare Insurance Company
             if row.insurance_company and "NHIF" not in row.insurance_company:
@@ -145,6 +142,25 @@ class HealthcareServiceRequest(Document):
 
     @frappe.whitelist()
     def get_percent_covered(self, item_obj=None):
+        def get_percent(item, years_of_insurance):
+            scheme_id = frappe.get_cached_value(
+                "Healthcare Insurance Coverage Plan",
+                item.payor_plan,
+                "nhif_scheme_id",
+            )
+
+            percent_details = frappe.get_cached_value(
+                "NHIF Co-Payment Item",
+                {
+                    "itemcode": item.item_code,
+                    "schemeid": scheme_id,
+                    "yearno": years_of_insurance,
+                },
+                ["percentcovered", "name"], as_dict=True
+            )
+
+            return percent_details
+        
         if item_obj:
             if isinstance(item_obj, str):
                 item_obj = json.loads(item_obj)
@@ -163,24 +179,12 @@ class HealthcareServiceRequest(Document):
 
             if "NHIF" not in item.insurance_company:
                 return 100
+            
+            percent_details = get_percent(item, self.years_of_insurance)
+            if not percent_details:
+                return 100
 
-            scheme_id = frappe.get_cached_value(
-                "Healthcare Insurance Coverage Plan",
-                item.payor_plan,
-                "nhif_scheme_id",
-            )
-
-            percent_covered = frappe.get_cached_value(
-                "NHIF Co-Payment Item",
-                {
-                    "itemcode": item.item_code,
-                    "schemeid": scheme_id,
-                    "yearno": self.years_of_insurance,
-                },
-                "percentcovered",
-            )
-
-            return percent_covered or 0
+            return percent_details.percentcovered or 0
 
         else:
             for item in self.payments:
@@ -196,23 +200,12 @@ class HealthcareServiceRequest(Document):
                     item.percent_covered = 100
                     continue
 
-                scheme_id = frappe.get_cached_value(
-                    "Healthcare Insurance Coverage Plan",
-                    item.payor_plan,
-                    "nhif_scheme_id",
-                )
+                percent_details = get_percent(item, self.years_of_insurance)
+                if not percent_details:
+                    item.percent_covered = 100
+                    continue
 
-                percent_covered = frappe.get_cached_value(
-                    "NHIF Co-Payment Item",
-                    {
-                        "itemcode": item.item_code,
-                        "schemeid": scheme_id,
-                        "yearno": self.years_of_insurance,
-                    },
-                    "percentcovered",
-                )
-
-                item.percent_covered = percent_covered or 0
+                item.percent_covered = percent_details.percentcovered or 0
 
     def get_service_type(self, service_name, request_id=None):
         service_type = ""
@@ -232,7 +225,7 @@ class HealthcareServiceRequest(Document):
 
         for key, value in service_payment_map.items():
             percent_covered = 0
-            service_type, service_name = key
+            service_type, service_name, ref_docname = key
 
             for d in value:
                 if d.percent_covered:
@@ -245,7 +238,7 @@ class HealthcareServiceRequest(Document):
     def get_service_payment_map(self):
         service_payment_map = {}
         for d in self.payments:
-            service_payment_map.setdefault((d.service_type, d.service_name), []).append(d)
+            service_payment_map.setdefault((d.service_type, d.service_name, d.ref_docname), []).append(d)
 
         return service_payment_map
 
@@ -265,7 +258,7 @@ class HealthcareServiceRequest(Document):
         service_payment_map = self.get_service_payment_map()
 
         for key, values in service_payment_map.items():
-            service_type, service_name = key
+            service_type, service_name, ref_docname = key
 
             is_cancelled = False
             lrpmt_doc_created = False
@@ -449,7 +442,12 @@ def get_encounter_services(doc):
             continue
 
         for row in doc.get(child["table"]):
-            if row.prescribe == 1 or row.is_cancelled == 1 or row.is_not_available_inhouse == 1:
+            if (
+                row.prescribe == 1 or 
+                row.is_cancelled == 1 or 
+                row.is_not_available_inhouse == 1 or
+                row.get(child["service_created"]) == 1
+            ):
                 continue
 
             entry = {
@@ -509,6 +507,7 @@ def set_service_amounts(row, company, insurance_company, insurance_subscription)
 
 
 def get_item_refcode(service_type, service_name):
+    ref_code = ""
     item = frappe.get_cached_value(service_type, service_name, "item")
 
     code_list = frappe.db.get_all(
@@ -517,11 +516,10 @@ def get_item_refcode(service_type, service_name):
         fields=["ref_code"],
     )
     if len(code_list) == 0:
-        frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
+        # frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
+        return ref_code
 
     ref_code = code_list[0].ref_code
-    if not ref_code:
-        frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
 
     return ref_code
 
@@ -534,6 +532,7 @@ def get_childs_map():
             "item": "lab_test_code",
             "lrpmt_doctype": "Lab Test",
             "lrpmt_docname": "lab_test",
+            "service_created": "lab_test_created",
         },
         {
             "table": "radiology_procedure_prescription",
@@ -541,6 +540,7 @@ def get_childs_map():
             "item": "radiology_examination_template",
             "lrpmt_doctype": "Radiology Examination",
             "lrpmt_docname": "radiology_examination",
+            "service_created": "radiology_examination_created",
         },
         {
             "table": "procedure_prescription",
@@ -548,6 +548,7 @@ def get_childs_map():
             "item": "procedure",
             "lrpmt_doctype": "Clinical Procedure",
             "lrpmt_docname": "clinical_procedure",
+            "service_created": "procedure_created",
         },
         {
             "table": "drug_prescription",
@@ -555,6 +556,7 @@ def get_childs_map():
             "item": "drug_code",
             "lrpmt_doctype": "Delivery Note Item",
             "lrpmt_docname": "dn_detail",
+            "service_created": "drug_prescription_created",
         },
         {
             "table": "therapies",
@@ -562,6 +564,7 @@ def get_childs_map():
             "item": "therapy_type",
             "lrpmt_doctype": "Therapy Session",
             "lrpmt_docname": "",
+            "service_created": "therapy_plan_created",
         },
     ]
     return childs_map
