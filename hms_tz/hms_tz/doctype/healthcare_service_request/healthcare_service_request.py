@@ -514,6 +514,7 @@ def set_service_amounts(row, company, insurance_company, insurance_subscription)
 
 
 def get_item_refcode(service_type, service_name):
+    ref_code = ""
     item = frappe.get_cached_value(service_type, service_name, "item")
 
     code_list = frappe.db.get_all(
@@ -522,11 +523,10 @@ def get_item_refcode(service_type, service_name):
         fields=["ref_code"],
     )
     if len(code_list) == 0:
-        frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
+        # frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
+        return ref_code
 
     ref_code = code_list[0].ref_code
-    if not ref_code:
-        frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
 
     return ref_code
 
