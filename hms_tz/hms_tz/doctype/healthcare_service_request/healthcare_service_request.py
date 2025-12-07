@@ -449,7 +449,12 @@ def get_encounter_services(doc):
             continue
 
         for row in doc.get(child["table"]):
-            if row.prescribe == 1 or row.is_cancelled == 1 or row.is_not_available_inhouse == 1:
+            if (
+                row.prescribe == 1 or 
+                row.is_cancelled == 1 or 
+                row.is_not_available_inhouse == 1 or
+                row.get(child["service_created"]) == 1
+            ):
                 continue
 
             entry = {
@@ -534,6 +539,7 @@ def get_childs_map():
             "item": "lab_test_code",
             "lrpmt_doctype": "Lab Test",
             "lrpmt_docname": "lab_test",
+            "service_created": "lab_test_created",
         },
         {
             "table": "radiology_procedure_prescription",
@@ -541,6 +547,7 @@ def get_childs_map():
             "item": "radiology_examination_template",
             "lrpmt_doctype": "Radiology Examination",
             "lrpmt_docname": "radiology_examination",
+            "service_created": "radiology_examination_created",
         },
         {
             "table": "procedure_prescription",
@@ -548,6 +555,7 @@ def get_childs_map():
             "item": "procedure",
             "lrpmt_doctype": "Clinical Procedure",
             "lrpmt_docname": "clinical_procedure",
+            "service_created": "procedure_created",
         },
         {
             "table": "drug_prescription",
@@ -555,6 +563,7 @@ def get_childs_map():
             "item": "drug_code",
             "lrpmt_doctype": "Delivery Note Item",
             "lrpmt_docname": "dn_detail",
+            "service_created": "drug_prescription_created",
         },
         {
             "table": "therapies",
@@ -562,6 +571,7 @@ def get_childs_map():
             "item": "therapy_type",
             "lrpmt_doctype": "Therapy Session",
             "lrpmt_docname": "",
+            "service_created": "therapy_plan_created",
         },
     ]
     return childs_map
