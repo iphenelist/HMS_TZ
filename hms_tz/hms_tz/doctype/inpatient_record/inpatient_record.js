@@ -384,6 +384,7 @@ let nhif_admit_patient = async (
           service_unit,
           check_in,
           result.admission_no,
+          admission_type,
           result.poc_reference_no
         );
       }
