@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
-
+from frappe.core.utils import html2text
 from hms_tz.nhif.nhif_api.referral import create_referral
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode, get_childs_map
 
@@ -53,9 +53,11 @@ class HealthcareReferral(Document):
 
         if not self.encounter:
             return
+        
+        notes_html = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail") or ""
+        clinical_notes = html2text(notes_html)
+        self.reason_for_referral = clinical_notes
 
-        clinical_notes = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail")
-        self.reason_for_referral = clinical_notes.replace('"', " ")
 
     @frappe.whitelist()
     def get_diagnosis(self):
