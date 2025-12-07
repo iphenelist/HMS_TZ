@@ -44,7 +44,7 @@ def after_insert(doc, method):
 def before_submit(doc, method):
     validate_not_serviced(doc)
     validate_point_of_care(doc, "validate_poc_at_therapy")
-    validate_issued_services(doc.doctype, doc.name, is_restricted=doc.is_restricted)
+    validate_issued_services(doc.doctype, doc.name, is_restricted=doc.is_restricted, company=doc.company)
 
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(_(f"Approval number is required for <b>{doc.therapy_type}</b>. Please set the Approval Number."))

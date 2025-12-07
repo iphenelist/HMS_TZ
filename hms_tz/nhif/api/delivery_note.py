@@ -227,7 +227,7 @@ def before_submit(doc, method):
                 _(f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number.")
             )
         
-        validate_issued_services(item.doctype, item.name, is_restricted=item.is_restricted)
+        validate_issued_services(item.doctype, item.name, is_restricted=item.is_restricted, company=doc.company)
 
     validate_point_of_care(doc, "validate_poc_at_pharmacy")
 
