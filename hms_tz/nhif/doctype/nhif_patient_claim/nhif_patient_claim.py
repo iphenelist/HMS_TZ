@@ -57,39 +57,7 @@ class NHIFPatientClaim(Document):
         self.validate_multiple_appointments_per_authorization_no("before_insert")
 
     def after_insert(self):
-        folio_counter = frappe.db.get_all(
-            "NHIF Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-            },
-            fields=["name"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "NHIF Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
-            folio_no = cint(folio_doc.folio_no) + 1
-
-            folio_doc.folio_no += 1
-            folio_doc.posting_date = now_datetime()
-            folio_doc.db_update()
-
-        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
+        self.set_folio_count()
 
         items = []
         for row in self.nhif_patient_claim_item:
@@ -129,6 +97,7 @@ class NHIFPatientClaim(Document):
         self.calculate_totals()
 
         if not self.is_new():
+            self.set_folio_count()
             update_original_patient_claim(self)
 
             frappe.qb.update(pa).set(pa.nhif_patient_claim, self.name).where(pa.name == self.patient_appointment).run()
@@ -845,6 +814,44 @@ class NHIFPatientClaim(Document):
 
         return result
 
+    def set_folio_count(self):
+        if self.folio_no or self.folio_no != 0:
+            return
+    
+        folio_counter = frappe.db.get_all(
+            "NHIF Folio Counter",
+            filters={
+                "company": self.company,
+                "claim_year": self.claim_year,
+                "claim_month": self.claim_month,
+            },
+            fields=["name"],
+            page_length=1,
+        )
+
+        folio_no = 1
+        if len(folio_counter) == 0:
+            new_folio_doc = frappe.get_doc(
+                {
+                    "doctype": "NHIF Folio Counter",
+                    "company": self.company,
+                    "claim_year": self.claim_year,
+                    "claim_month": self.claim_month,
+                    "posting_date": now_datetime(),
+                    "folio_no": folio_no,
+                }
+            ).insert(ignore_permissions=True)
+            new_folio_doc.reload()
+        else:
+            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_no = cint(folio_doc.folio_no) + 1
+
+            folio_doc.folio_no += 1
+            folio_doc.posting_date = now_datetime()
+            folio_doc.db_update()
+            folio_doc.reload()
+
+        self.db_set("folio_no", folio_no)
 
 def get_missing_patient_signature(self):
     if self.patient:
