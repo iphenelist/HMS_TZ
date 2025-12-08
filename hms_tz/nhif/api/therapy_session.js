@@ -367,18 +367,11 @@ frappe.ui.form.on("Therapy Session", {
       freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
       callback: function (r) {
         if (r.message) {
-          if (r.message) {
-            frappe.utils.play_sound("submit");
-            let data = r.message;
-            if (data.ReferenceNo) {
-              frm.set_value("poc_reference_no", data.ReferenceNo);
-              frm.save().then(() => {
-                frm.reload_doc();
-              });
-            } else {
-              frappe.utils.play_sound("error");
-            }
-          }
+          frappe.utils.play_sound("submit");
+          let data = r.message;
+          frm.save().then(() => {
+            frm.reload_doc();
+          });
         } else {
           frappe.utils.play_sound("error");
         }

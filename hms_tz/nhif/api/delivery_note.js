@@ -212,16 +212,9 @@ frappe.ui.form.on("Delivery Note", {
         if (r.message) {
           frappe.utils.play_sound("submit");
           let data = r.message;
-          if (frm.is_dirty()) {
-            frm.save().then(() => {
-              frm.reload_doc();
-            });
-          }
-          // if (data.ReferenceNo) {
-          //   frm.save().then(() => {
-          //     frm.reload_doc();
-          //   });
-          // } 
+          frm.save().then(() => {
+            frm.reload_doc();
+          });
         } else {
           frappe.utils.play_sound("error");
         }
