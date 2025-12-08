@@ -1244,6 +1244,8 @@ def update_original_patient_claim(doc):
 
     for row in doc.nhif_patient_claim_item:
         if row.ref_docname not in ref_docnames:
+            ref_docnames.append(row.ref_docname)
+
             new_row = row.as_dict()
             for fieldname in [
                 "name",
@@ -1252,6 +1254,11 @@ def update_original_patient_claim(doc):
                 "modified",
                 "modified_by",
                 "docstatus",
+                "parent",
+                "parentfield",
+                "parenttype",
+                "idx",
             ]:
                 new_row[fieldname] = None
+
             doc.append("original_nhif_patient_claim_item", new_row)
