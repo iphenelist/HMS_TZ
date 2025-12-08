@@ -1772,12 +1772,12 @@ def msgPrint(msg, method="throw", alert=False):
 
 def get_approval_number_from_LRPMT(ref_doctype=None, ref_docname=None, dn_detail=None):
     if dn_detail:
-        return frappe.get_cached_value("Delivery Note Item", dn_detail, "approval_number")
+        return frappe.get_cached_value("Delivery Note Item", dn_detail, "service_reference_no")
 
     if not ref_doctype or not ref_docname:
         return None
 
-    return frappe.get_cached_value(ref_doctype, ref_docname, "approval_number")
+    return frappe.get_cached_value(ref_doctype, ref_docname, "service_reference_no")
 
 
 def set_uninvoiced_so_closed():
