@@ -116,6 +116,9 @@ class NHIFPatientClaim(Document):
             frappe.qb.update(pa).set(pa.nhif_patient_claim, "").where(pa.name == self.patient_appointment).run()
 
     def before_submit(self):
+        if not self.allow_changes:
+            self.db_set("allow_changes", 1)
+        
         start_datetime = get_datetime()
 
         self.validate_multiple_appointments_per_authorization_no()
