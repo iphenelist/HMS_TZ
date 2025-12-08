@@ -121,6 +121,10 @@ def after_insert(doc, method):
                         _(f"<b>Please set OPD Insurance Pharmacy in Healthcare Insurance Coverage Plan: <b>{doc.insurance_coverage_plan}</b> to allow auto set of pharmacy</b>"))
                 doc.default_healthcare_service_unit = pharmacy_details.opd_insurance_pharmacy
     set_price_list(doc)
+
+    if doc.encounter_type == "Initial":
+        doc.poc_reference_no = ""
+    
     doc.save()
 
     if doc.appointment and doc.encounter_type == "Initial":

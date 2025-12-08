@@ -373,6 +373,7 @@ def make_encounter(doc, method):
     encounter_doc.encounter_date = _date
     encounter_doc.encounter_time = nowtime()
     encounter_doc.encounter_category = "Appointment"
+    encounter_doc.poc_reference_no = ""
 
     encounter_doc.save(ignore_permissions=True)
     frappe.msgprint(_(f"Patient Encounter {encounter_doc.name} created"))
