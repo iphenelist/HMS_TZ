@@ -418,7 +418,7 @@ frappe.ui.form.on("Patient Encounter", {
         "Codification Table",
         "patient_encounter_preliminary_diagnosis"
       );
-      preliminary_row.medical_code = "ICD-10 R69";
+      preliminary_row.code_value = "ICD-10 R69";
       preliminary_row.code = "R69";
       preliminary_row.description = "Illness, unspecified";
       preliminary_row.mtuha = "Other";
@@ -428,7 +428,7 @@ frappe.ui.form.on("Patient Encounter", {
         "Codification Table",
         "patient_encounter_final_diagnosis"
       );
-      final_row.medical_code = "ICD-10 R69";
+      final_row.code_value = "ICD-10 R69";
       final_row.code = "R69";
       final_row.description = "Illness, unspecified";
       final_row.mtuha = "Other";
