@@ -8,7 +8,7 @@ from frappe import _
 from frappe.query_builder import DocType
 from frappe.query_builder.functions import Coalesce
 from frappe.query_builder import functions as fn
-from frappe.utils import flt
+from frappe.utils import flt, add_days, getdate, nowdate
 from pypika.terms import ValueWrapper  # Case, Criterion, , Not
 
 
@@ -19,218 +19,241 @@ def execute(filters=None):
     columns = get_columns(filters)
 
     data = []
-    details = frappe.get_all(
-        "Patient Appointment",
-        filters=[
-            ["patient", "=", filters.patient],
-            ["name", "=", filters.patient_appointment],
-        ],
-        fields=[
-            "docstatus",
+    details = frappe.get_cached_value(
+        "Patient Appointment", 
+        filters.patient_appointment, 
+        [
             "status",
+            "company", 
+            "appointment_date",
+            "mode_of_payment",
+            "insurance_subscription"
         ],
+        as_dict=True
     )
-    appointment_date = frappe.get_cached_value("Patient Appointment", filters.patient_appointment, "appointment_date")
+    
+    if details.status != "Closed":
+        frappe.throw(_("<b>This Appointment is not Closed..!!</b>"))
 
-    if details[0]["docstatus"] == 0 and details[0]["status"] != "Closed":
-        frappe.throw(frappe.bold("This Appointment is not Closed..!!"))
+    admitted_discharge_date = frappe.get_cached_value(
+        "Inpatient Record",
+        {"patient_appointment": filters.patient_appointment},
+        [
+            "admitted_datetime as admitted_date",
+            "discharge_date",
+            "scheduled_date",
+        ],
+        as_dict=True,
+    )
 
-    else:
-        admitted_discharge_date = frappe.get_cached_value(
-            "Inpatient Record",
-            {"patient_appointment": filters.patient_appointment},
-            [
-                "admitted_datetime as admitted_date",
-                "discharge_date",
-                "scheduled_date",
-            ],
-            as_dict=True,
+    new_api_start_date = frappe.get_cached_value(
+        "HMS TZ Setting", details.company, "start_date"
+    )
+
+    # Determine if appointment is insurance based
+    is_insurance_appointment = bool(details.insurance_subscription)
+
+    _date = ""  # Initialize _date with an empty string
+    if admitted_discharge_date:
+        if admitted_discharge_date.admitted_date:
+            _date = admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
+        else:
+            _date = admitted_discharge_date.scheduled_date
+
+    if not filters.get("patient_type"):
+        appointments_data = get_appointment_consultancy(filters)
+        if appointments_data:
+            data += appointments_data
+
+        cash_lrpmt_data = get_cash_lrpmt_transaction(filters)
+        if cash_lrpmt_data:
+            data += cash_lrpmt_data
+
+        insurance_lrpmt_data = get_insurance_lrpmt_transaction(
+            filters,
+            new_api_start_date=new_api_start_date,
+            appointment_date=details.appointment_date,
+            is_insurance_appointment=is_insurance_appointment,
         )
+        if insurance_lrpmt_data:
+            data += insurance_lrpmt_data
 
-        _date = ""  # Initialize _date with an empty string
-        if admitted_discharge_date:
-            if admitted_discharge_date.admitted_date:
-                _date = admitted_discharge_date.admitted_date.strftime("%Y-%m-%d")
-            else:
-                _date = admitted_discharge_date.scheduled_date
+        ipd_beds = get_ipd_occupancy_transactions(filters)
+        if ipd_beds:
+            data += ipd_beds
 
-        if not filters.get("patient_type"):
-            appointments_data = get_appointment_consultancy(filters)
-            if appointments_data:
-                data += appointments_data
+        ipd_cons = get_ipd_consultancy_transactions(filters)
+        if ipd_cons:
+            data += ipd_cons
 
-            cash_lrpmt_data = get_cash_lrpmt_transaction(filters)
-            if cash_lrpmt_data:
-                data += cash_lrpmt_data
+        data = sorted(data, key=lambda d: (d["category"], d["date"]))
 
-            insurance_lrpmt_data = get_insurance_lrpmt_transaction(filters)
-            if insurance_lrpmt_data:
-                data += insurance_lrpmt_data
+        if not data:
+            frappe.throw(
+                f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
+                Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
+                Please change your filters and try again..!!"
+            )
 
-            ipd_beds = get_ipd_occupancy_transactions(filters)
-            if ipd_beds:
-                data += ipd_beds
+        total_amount = 0
+        for n in range(0, len(data)):
+            total_amount += data[n]["amount"]
 
-            ipd_cons = get_ipd_consultancy_transactions(filters)
-            if ipd_cons:
-                data += ipd_cons
+        last_row = {
+            "date": "Total",
+            "category": "",
+            "description": "",
+            "quantity": "",
+            "rate": "",
+            "amount": total_amount,
+            "patient": "",
+            "patient_name": "",
+            "appointment_type": "",
+            "insurance_company": "",
+            "coverage_plan_name": "",
+            "authorization_number": "",
+            "coverage_plan_card_number": "",
+            "date_admitted": _date,
+            "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
+            "appointment_date": details.appointment_date,
+        }
 
-            data = sorted(data, key=lambda d: (d["category"], d["date"]))
+        print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
 
-            if not data:
-                frappe.throw(
-                    f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
-                    Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
-                    Please change your filters and try again..!!")
+        last_row["printed_by"] = print_person
 
-            total_amount = 0
-            for n in range(0, len(data)):
-                total_amount += data[n]["amount"]
+        exceeded_items = get_daily_limit_exceeded_items(filters)
+        if len(exceeded_items) > 0:
+            last_row["limit_exceeded_items"] = exceeded_items
+            last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
+        
+        data.append(last_row)
 
-            last_row = {
-                "date": "Total",
-                "category": "",
-                "description": "",
-                "quantity": "",
-                "rate": "",
-                "amount": total_amount,
-                "patient": "",
-                "patient_name": "",
-                "appointment_type": "",
-                "insurance_company": "",
-                "coverage_plan_name": "",
-                "authorization_number": "",
-                "coverage_plan_card_number": "",
-                "date_admitted": _date,
-                "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
-                "appointment_date": appointment_date,
-            }
+        return columns, data
 
-            print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
+    if filters.get("patient_type") == "Out-Patient":
+        appointments_data = get_appointment_consultancy(filters)
+        if appointments_data:
+            data += appointments_data
 
-            last_row["printed_by"] = print_person
+        cash_lrpmt_data = get_cash_lrpmt_transaction(filters)
+        if cash_lrpmt_data:
+            data += cash_lrpmt_data
 
-            exceeded_items = get_daily_limit_exceeded_items(filters)
-            if len(exceeded_items) > 0:
-                last_row["limit_exceeded_items"] = exceeded_items
-                last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
-            
-            data.append(last_row)
+        insurance_lrpmt_data = get_insurance_lrpmt_transaction(
+            filters,
+            new_api_start_date=new_api_start_date,
+            appointment_date=details.appointment_date,
+            is_insurance_appointment=is_insurance_appointment
+        )
+        if insurance_lrpmt_data:
+            data += insurance_lrpmt_data
 
-            return columns, data
+        data = sorted(data, key=lambda d: (d["category"], d["date"]))
 
-        if filters.get("patient_type") == "Out-Patient":
-            appointments_data = get_appointment_consultancy(filters)
-            if appointments_data:
-                data += appointments_data
+        if not data:
+            frappe.throw(
+                f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
+                Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
+                Please change your filters and try again..!!")
 
-            cash_lrpmt_data = get_cash_lrpmt_transaction(filters)
-            if cash_lrpmt_data:
-                data += cash_lrpmt_data
+        total_amount = 0
+        for n in range(0, len(data)):
+            total_amount += data[n]["amount"]
 
-            insurance_lrpmt_data = get_insurance_lrpmt_transaction(filters)
-            if insurance_lrpmt_data:
-                data += insurance_lrpmt_data
+        last_row = {
+            "date": "Total",
+            "category": "",
+            "description": "",
+            "quantity": "",
+            "rate": "",
+            "amount": total_amount,
+            "patient": "",
+            "patient_name": "",
+            "appointment_type": "",
+            "insurance_company": "",
+            "coverage_plan_name": "",
+            "authorization_number": "",
+            "coverage_plan_card_number": "",
+            "date_admitted": _date,
+            "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
+            "appointment_date": details.appointment_date,
+        }
 
-            data = sorted(data, key=lambda d: (d["category"], d["date"]))
+        print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
 
-            if not data:
-                frappe.throw(
-                    f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
-                    Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
-                    Please change your filters and try again..!!")
+        last_row["printed_by"] = print_person
 
-            total_amount = 0
-            for n in range(0, len(data)):
-                total_amount += data[n]["amount"]
+        exceeded_items = get_daily_limit_exceeded_items(filters)
+        if len(exceeded_items) > 0:
+            last_row["limit_exceeded_items"] = exceeded_items
+            last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
 
-            last_row = {
-                "date": "Total",
-                "category": "",
-                "description": "",
-                "quantity": "",
-                "rate": "",
-                "amount": total_amount,
-                "patient": "",
-                "patient_name": "",
-                "appointment_type": "",
-                "insurance_company": "",
-                "coverage_plan_name": "",
-                "authorization_number": "",
-                "coverage_plan_card_number": "",
-                "date_admitted": _date,
-                "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
-                "appointment_date": appointment_date,
-            }
+        data.append(last_row)
 
-            print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
+        return columns, data
 
-            last_row["printed_by"] = print_person
+    if filters.get("patient_type") == "In-Patient":
+        cash_lrpmt_data = get_cash_lrpmt_transaction(filters)
+        if cash_lrpmt_data:
+            data += cash_lrpmt_data
 
-            exceeded_items = get_daily_limit_exceeded_items(filters)
-            if len(exceeded_items) > 0:
-                last_row["limit_exceeded_items"] = exceeded_items
-                last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
+        insurance_lrpmt_data = get_insurance_lrpmt_transaction(
+            filters,
+            new_api_start_date=new_api_start_date,
+            appointment_date=details.appointment_date,
+            is_insurance_appointment=is_insurance_appointment
+        )
+        if insurance_lrpmt_data:
+            data += insurance_lrpmt_data
 
-            data.append(last_row)
+        ipd_beds = get_ipd_occupancy_transactions(filters)
+        if ipd_beds:
+            data += ipd_beds
 
-            return columns, data
+        ipd_cons = get_ipd_consultancy_transactions(filters)
+        if ipd_cons:
+            data += ipd_cons
 
-        if filters.get("patient_type") == "In-Patient":
-            cash_lrpmt_data = get_cash_lrpmt_transaction(filters)
-            if cash_lrpmt_data:
-                data += cash_lrpmt_data
+        data = sorted(data, key=lambda d: (d["category"], d["date"]))
+        if not data:
+            frappe.throw(
+                f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
+                Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
+                Please change your filters and try again..!!"
+            )
 
-            insurance_lrpmt_data = get_insurance_lrpmt_transaction(filters)
-            if insurance_lrpmt_data:
-                data += insurance_lrpmt_data
+        total_amount = 0
+        for n in range(0, len(data)):
+            total_amount += data[n]["amount"]
 
-            ipd_beds = get_ipd_occupancy_transactions(filters)
-            if ipd_beds:
-                data += ipd_beds
+        last_row = {
+            "date": "Total",
+            "category": "",
+            "description": "",
+            "quantity": "",
+            "rate": "",
+            "amount": total_amount,
+            "patient": "",
+            "patient_name": "",
+            "appointment_type": "",
+            "insurance_company": "",
+            "coverage_plan_name": "",
+            "authorization_number": "",
+            "coverage_plan_card_number": "",
+            "date_admitted": _date,
+            "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
+            "appointment_date": details.appointment_date,
+        }
 
-            ipd_cons = get_ipd_consultancy_transactions(filters)
-            if ipd_cons:
-                data += ipd_cons
+        print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
 
-            data = sorted(data, key=lambda d: (d["category"], d["date"]))
-            if not data:
-                frappe.throw(
-                    f"No Record found for the filters Patient: {frappe.bold(filters.patient)}, Appointment: {frappe.bold(filters.patient_appointment)},\
-                    Patient Type: {frappe.bold(filters.patient_type)} From Date: {frappe.bold(filters.from_date)} and To Date: {frappe.bold(filters.to_date)} you specified..., \
-                    Please change your filters and try again..!!")
+        last_row["printed_by"] = print_person
 
-            total_amount = 0
-            for n in range(0, len(data)):
-                total_amount += data[n]["amount"]
+        data.append(last_row)
+        # summary_view = get_report_summary(filters, total_amount)
 
-            last_row = {
-                "date": "Total",
-                "category": "",
-                "description": "",
-                "quantity": "",
-                "rate": "",
-                "amount": total_amount,
-                "patient": "",
-                "patient_name": "",
-                "appointment_type": "",
-                "insurance_company": "",
-                "coverage_plan_name": "",
-                "authorization_number": "",
-                "coverage_plan_card_number": "",
-                "date_admitted": _date,
-                "date_discharge": (admitted_discharge_date.discharge_date if admitted_discharge_date else ""),
-                "appointment_date": appointment_date,
-            }
-
-            print_person = frappe.get_cached_value("User", frappe.session.user, "full_name")
-
-            last_row["printed_by"] = print_person
-
-            data.append(last_row)
-            # summary_view = get_report_summary(filters, total_amount)
-
-            return columns, data  # , None, None, summary_view
+        return columns, data  # , None, None, summary_view
 
 
 def get_daily_limit_exceeded_items(filters):
@@ -572,77 +595,36 @@ def get_cash_lrpmt_transaction(filters):
     Combines Lab, Radiology, Procedure, Drug, and Therapy prescriptions.
     """
     # First, get the list of valid cash encounters
-    encounters = get_cash_encounters(filters)
+    encounters = get_encounters(filters, payment_type="Cash")
     if not encounters:
         return []
 
     data = []
 
     # Lab Prescriptions
-    data += get_cash_lab_prescriptions(encounters, filters)
+    data += get_lab_prescriptions(encounters, filters, payment_type="Cash")
 
     # Radiology Prescriptions
-    data += get_cash_radiology_prescriptions(encounters, filters)
+    data += get_radiology_prescriptions(encounters, filters, payment_type="Cash")
 
     # Procedure Prescriptions
-    data += get_cash_procedure_prescriptions(encounters, filters)
+    data += get_procedure_prescriptions(encounters, filters, payment_type="Cash")
 
     # Drug Prescriptions
-    data += get_cash_drug_prescriptions(encounters, filters)
+    data += get_drug_prescriptions(encounters, filters, payment_type="Cash")
 
     # Therapy Prescriptions
-    data += get_cash_therapy_prescriptions(encounters, filters)
+    data += get_therapy_prescriptions(encounters, filters, payment_type="Cash")
 
     return data
 
-
-def get_cash_encounters(filters):
+def get_lab_prescriptions(encounters, filters, payment_type="Cash"):
     """
-    Get list of cash patient encounters based on filters.
-    """
-    pe = DocType("Patient Encounter")
-
-    query = (
-        frappe.qb.from_(pe)
-        .select(pe.name)
-        .where(
-            (pe.mode_of_payment.isnotnull())
-            & (pe.mode_of_payment != "")
-            & (pe.docstatus == 1)
-        )
-    )
-
-    if filters.get("patient"):
-        query = query.where(pe.patient == filters.patient)
-
-    if filters.get("patient_appointment"):
-        query = query.where(pe.appointment == filters.patient_appointment)
-
-    if filters.get("patient_type") == "Out-Patient":
-        query = query.where(
-            (pe.inpatient_record.isnull()) | (pe.inpatient_record == "")
-        )
-
-    if filters.get("patient_type") == "In-Patient":
-        query = query.where(
-            (pe.inpatient_record.isnotnull()) & (pe.inpatient_record != "")
-        )
-
-    if filters.get("from_date"):
-        query = query.where(pe.encounter_date >= filters.from_date)
-
-    if filters.get("to_date"):
-        query = query.where(pe.encounter_date <= filters.to_date)
-
-    query = query.orderby(pe.creation, order=frappe.qb.desc)
-
-    result = query.run(as_dict=True)
-    return [d.name for d in result]
-
-
-def get_cash_lab_prescriptions(encounters, filters):
-    """
-    Fetch cash lab prescriptions.
+    Fetch lab prescriptions.
+    Args:
+        encounters: List of encounter names
+        filters: Report filters
+        payment_type: "Cash" or "Insurance" to determine prescribe field filter
     """
     lab = DocType("Lab Prescription")
     temp = DocType("Lab Test Template")
@@ -680,17 +662,26 @@ def get_cash_lab_prescriptions(encounters, filters):
         .where(
             (lab.is_not_available_inhouse == 0)
             & (lab.is_cancelled == 0)
-            & (lab.prescribe == 1)
             & (lab.parent.isin(encounters))
         )
     )
 
+    # Apply prescribe filter based on payment type
+    if payment_type == "Cash":
+        query = query.where(lab.prescribe == 1)
+    elif payment_type == "Insurance":
+        query = query.where(lab.prescribe == 0)
+
     return query.run(as_dict=True)
 
 
-def get_cash_radiology_prescriptions(encounters, filters):
+def get_radiology_prescriptions(encounters, filters, payment_type="Cash"):
     """
-    Fetch cash radiology prescriptions.
+    Fetch radiology prescriptions.
+    Args:
+        encounters: List of encounter names
+        filters: Report filters
+        payment_type: "Cash" or "Insurance" to determine prescribe field filter
     """
     rad = DocType("Radiology Procedure Prescription")
     temp = DocType("Radiology Examination Template")
@@ -728,17 +719,26 @@ def get_cash_radiology_prescriptions(encounters, filters):
         .where(
             (rad.is_not_available_inhouse == 0)
             & (rad.is_cancelled == 0)
-            & (rad.prescribe == 1)
             & (rad.parent.isin(encounters))
         )
     )
 
+    # Apply prescribe filter based on payment type
+    if payment_type == "Cash":
+        query = query.where(rad.prescribe == 1)
+    elif payment_type == "Insurance":
+        query = query.where(rad.prescribe == 0)
+
     return query.run(as_dict=True)
 
 
-def get_cash_procedure_prescriptions(encounters, filters):
+def get_procedure_prescriptions(encounters, filters, payment_type="Cash"):
     """
-    Fetch cash procedure prescriptions.
+    Fetch procedure prescriptions.
+    Args:
+        encounters: List of encounter names
+        filters: Report filters
+        payment_type: "Cash" or "Insurance" to determine prescribe field filter
     """
     proc = DocType("Procedure Prescription")
     temp = DocType("Clinical Procedure Template")
@@ -776,17 +776,26 @@ def get_cash_procedure_prescriptions(encounters, filters):
         .where(
             (proc.is_not_available_inhouse == 0)
             & (proc.is_cancelled == 0)
-            & (proc.prescribe == 1)
             & (proc.parent.isin(encounters))
         )
     )
 
+    # Apply prescribe filter based on payment type
+    if payment_type == "Cash":
+        query = query.where(proc.prescribe == 1)
+    elif payment_type == "Insurance":
+        query = query.where(proc.prescribe == 0)
+
     return query.run(as_dict=True)
 
 
-def get_cash_drug_prescriptions(encounters, filters):
+def get_drug_prescriptions(encounters, filters, payment_type="Cash"):
     """
-    Fetch cash drug prescriptions.
+    Fetch drug prescriptions.
+    Args:
+        encounters: List of encounter names
+        filters: Report filters
+        payment_type: "Cash" or "Insurance" to determine prescribe field filter
     """
     drug = DocType("Drug Prescription")
     temp = DocType("Medication")
@@ -824,18 +833,27 @@ def get_cash_drug_prescriptions(encounters, filters):
         .where(
             (drug.is_not_available_inhouse == 0)
             & (drug.is_cancelled == 0)
-            & (drug.prescribe == 1)
             & (drug.docstatus == 1)
             & (drug.parent.isin(encounters))
         )
     )
 
+    # Apply prescribe filter based on payment type
+    if payment_type == "Cash":
+        query = query.where(drug.prescribe == 1)
+    elif payment_type == "Insurance":
+        query = query.where(drug.prescribe == 0)
+
     return query.run(as_dict=True)
 
 
-def get_cash_therapy_prescriptions(encounters, filters):
+def get_therapy_prescriptions(encounters, filters, payment_type="Cash"):
     """
-    Fetch cash therapy prescriptions.
+    Fetch therapy prescriptions.
+    Args:
+        encounters: List of encounter names
+        filters: Report filters
+        payment_type: "Cash" or "Insurance" to determine prescribe field filter
     """
     therapy = DocType("Therapy Plan Detail")
     temp = DocType("Therapy Type")
@@ -873,15 +891,105 @@ def get_cash_therapy_prescriptions(encounters, filters):
         .where(
             (therapy.is_not_available_inhouse == 0)
             & (therapy.is_cancelled == 0)
-            & (therapy.prescribe == 1)
             & (therapy.parent.isin(encounters))
         )
     )
 
+    # Apply prescribe filter based on payment type
+    if payment_type == "Cash":
+        query = query.where(therapy.prescribe == 1)
+    elif payment_type == "Insurance":
+        query = query.where(therapy.prescribe == 0)
+
     return query.run(as_dict=True)
 
 
-def get_insurance_lrpmt_transaction(filters):
+def get_insurance_lrpmt_transaction(
+        filters,
+        new_api_start_date=None,
+        appointment_date=None,
+        is_insurance_appointment=False,
+):
+    """
+    Fetch insurance transaction data based on date range and new_api_start_date.
+    
+    Logic:
+    - If appointment is not insurance: return empty list
+    - If new_api_start_date is not set: use Healthcare Service Request Payment
+    - If from_date > new_api_start_date: use Healthcare Service Request Payment
+    - If to_date < new_api_start_date: use Patient Encounter tables
+    - If from_date <= new_api_start_date <= to_date: split and use both sources
+    
+    Args:
+        filters: Report filters
+        new_api_start_date: The date from which HSR Payment is used as data source
+        is_insurance_appointment: Whether the appointment has insurance subscription
+    """
+    if not is_insurance_appointment:
+        return []
+    
+    # Check date range against new_api_start_date
+    date_range_info = is_new_api_start_date_within_range(
+        filters.get("from_date"),
+        filters.get("to_date"),
+        appointment_date,
+        new_api_start_date
+    )
+    
+    data = []
+    
+    # If new_api_start_date is not set, use HSR payment
+    if date_range_info.get("use_hsr"):
+        return get_hsr_payment_data(filters)
+    
+    # Process each date range with appropriate data source
+    for date_range in date_range_info.get("date_ranges", []):
+        # Create a copy of filters with updated date range
+        range_filters = frappe._dict(filters.copy())
+        range_filters.from_date = date_range["from_date"]
+        range_filters.to_date = date_range["to_date"]
+        
+        if date_range["source"] == "encounter":
+            # Use Patient Encounter tables for dates before new_api_start_date
+            data += get_insurance_encounter_data(range_filters)
+        elif date_range["source"] == "hsr":
+            # Use Healthcare Service Request Payment for dates on/after new_api_start_date
+            data += get_hsr_payment_data(range_filters)
+    
+    return data
+
+
+def get_insurance_encounter_data(filters):
+    """
+    Fetch insurance LRPMT transaction data from Patient Encounter tables.
+    Used for dates before new_api_start_date.
+    """
+    # Get insurance encounters
+    encounters = get_encounters(filters, payment_type="Insurance")
+    if not encounters:
+        return []
+
+    data = []
+
+    # Lab Prescriptions
+    data += get_lab_prescriptions(encounters, filters, payment_type="Insurance")
+
+    # Radiology Prescriptions
+    data += get_radiology_prescriptions(encounters, filters, payment_type="Insurance")
+
+    # Procedure Prescriptions
+    data += get_procedure_prescriptions(encounters, filters, payment_type="Insurance")
+
+    # Drug Prescriptions
+    data += get_drug_prescriptions(encounters, filters, payment_type="Insurance")
+
+    # Therapy Prescriptions
+    data += get_therapy_prescriptions(encounters, filters, payment_type="Insurance")
+
+    return data
+
+
+def get_hsr_payment_data(filters):
     """
     Fetch insurance transaction data from Healthcare Service Request
     and its child table Healthcare Service Request Payment.
@@ -988,3 +1096,142 @@ def get_report_summary(filters, total_amount):
             "currency": currency,
         },
     ]
+
+
+def get_encounters(filters, payment_type="Cash"):
+    """
+    Get list of patient encounters based on filters and payment type.
+    Args:
+        filters: Report filters
+        payment_type: "Cash" or "Insurance" to filter encounters
+    """
+    pe = DocType("Patient Encounter")
+
+    query = (
+        frappe.qb.from_(pe)
+        .select(pe.name)
+        .where(pe.docstatus == 1)
+    )
+
+    # Apply payment type filter
+    if payment_type == "Cash":
+        query = query.where(
+            (pe.mode_of_payment.isnotnull())
+            & (pe.mode_of_payment != "")
+        )
+    elif payment_type == "Insurance":
+        query = query.where(
+            (pe.insurance_subscription.isnotnull())
+            & (pe.insurance_subscription != "")
+        )
+
+    if filters.get("patient"):
+        query = query.where(pe.patient == filters.patient)
+
+    if filters.get("patient_appointment"):
+        query = query.where(pe.appointment == filters.patient_appointment)
+
+    if filters.get("patient_type") == "Out-Patient":
+        query = query.where(
+            (pe.inpatient_record.isnull()) | (pe.inpatient_record == "")
+        )
+
+    if filters.get("patient_type") == "In-Patient":
+        query = query.where(
+            (pe.inpatient_record.isnotnull()) & (pe.inpatient_record != "")
+        )
+
+    if filters.get("from_date"):
+        query = query.where(pe.encounter_date >= filters.from_date)
+
+    if filters.get("to_date"):
+        query = query.where(pe.encounter_date <= filters.to_date)
+
+    query = query.orderby(pe.creation, order=frappe.qb.desc)
+
+    result = query.run(as_dict=True)
+    return [d.name for d in result]
+
+
+def is_new_api_start_date_within_range(
+    from_date,
+    to_date,
+    appointment_date,
+    new_api_start_date
+):
+    """
+    Check if new_api_start_date is within the date range of from_date and to_date.
+    If from_date and to_date are not provided, use appointment_date for both.
+    Returns a dict with:
+        - is_within: True if from_date <= new_api_start_date <= to_date
+        - is_after: True if from_date > new_api_start_date (entire range is after new_api_start_date)
+        - is_before: True if to_date < new_api_start_date (entire range is before new_api_start_date)
+        - date_ranges: List of date range dicts to use for different data sources
+    """
+    if not new_api_start_date:
+        return {
+            "is_within": False,
+            "is_after": False,
+            "is_before": False,
+            "use_hsr": True,  # If no start date set, use Healthcare Service Request
+            "date_ranges": []
+        }
+    
+    # Use appointment_date if from_date or to_date are not provided
+    from_date = getdate(from_date) if from_date else (getdate(appointment_date) if appointment_date else None)
+    to_date = getdate(to_date) if to_date else (getdate(nowdate()))
+    new_api_start_date = getdate(new_api_start_date)
+    
+    if not from_date or not to_date:
+        return {
+            "is_within": False,
+            "is_after": False,
+            "is_before": False,
+            "use_hsr": True,
+            "date_ranges": []
+        }
+    
+    is_within = from_date <= new_api_start_date <= to_date
+    is_after = from_date > new_api_start_date
+    is_before = to_date < new_api_start_date
+    
+    date_ranges = []
+    if is_within:
+        # Split the date range
+        # Range 1: from_date to day before new_api_start_date (use encounter tables)
+        # Range 2: new_api_start_date to to_date (use HSR payment)
+        day_before_start = add_days(new_api_start_date, -1)
+        if from_date <= day_before_start:
+            date_ranges.append({
+                "from_date": from_date,
+                "to_date": day_before_start,
+                "source": "encounter"
+            })
+        date_ranges.append({
+            "from_date": new_api_start_date,
+            "to_date": to_date,
+            "source": "hsr"
+        })
+    elif is_after:
+        # Entire range is after new_api_start_date, use HSR payment
+        date_ranges.append({
+            "from_date": from_date,
+            "to_date": to_date,
+            "source": "hsr"
+        })
+    elif is_before:
+        # Entire range is before new_api_start_date, use encounter tables
+        date_ranges.append({
+            "from_date": from_date,
+            "to_date": to_date,
+            "source": "encounter"
+        })
+    
+    return {
+        "is_within": is_within,
+        "is_after": is_after,
+        "is_before": is_before,
+        "use_hsr": False,  # False when new_api_start_date is set
+        "date_ranges": date_ranges
+    }
+
