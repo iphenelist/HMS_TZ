@@ -206,7 +206,10 @@ def submit_folio(doc):
 def get_payload(doc):
     items = []
     diseases = []
-    attendance_datetime = get_datetime(f"{doc.attendance_date} {doc.attendance_time}")
+
+    date_modified = get_datetime(doc.modified).isoformat(timespec='milliseconds')
+    date_created = get_datetime(f"{doc.attendance_date} {doc.attendance_time}").isoformat(timespec='milliseconds')
+    
     appointment_type = frappe.get_cached_value(
         "Patient Appointment",
         doc.patient_appointment,
@@ -220,21 +223,22 @@ def get_payload(doc):
     )
 
     for disease in doc.nhif_patient_claim_disease:
-        created_date = get_datetime(disease.date_created)
+        disease_date = get_datetime(disease.date_created).isoformat(timespec='milliseconds')
 
         disease_dict = {
             "DiseaseCode": disease.disease_code,
             "Status": disease.status,
             "Remarks": disease.description or "",
             "CreatedBy": disease.item_crt_by,
-            "DateCreated": created_date.isoformat(),
-            "LastModified": created_date.isoformat(),
+            "DateCreated": disease_date,
+            "LastModified": disease_date,
             "LastModifiedBy": disease.item_crt_by,
         }
         diseases.append(disease_dict)
 
     for item in doc.nhif_patient_claim_item:
-        created_date = get_datetime(item.date_created)
+        item_date = get_datetime(item.date_created).isoformat(timespec='milliseconds')
+
         item_dict = {
             "ItemCode": item.item_code,
             "ItemName": item.item_name,
@@ -244,35 +248,37 @@ def get_payload(doc):
             "AmountClaimed": item.amount_claimed,
             "ApprovalRefNo": item.approval_ref_no or "",
             "CreatedBy": item.item_crt_by,
-            "DateCreated": created_date.isoformat(),
+            "DateCreated": item_date,
             "LastModifiedBy": item.item_crt_by,
-            "LastModified": created_date.isoformat(),
+            "LastModified": item_date,
             "OtherDetails": "Treated",
         }
         items.append(item_dict)
 
-    Signatures = []
-    # {
-    #     "Signatory": "Patient",
-    #     "SignatoryID": doc.cardno.strip(),
-    #     "SignatureData": doc.patient_signature,
-    #     "DateCreated": str(doc.posting_date),
-    #     "CreatedBy": doc.item_crt_by,
-    #     "LastModified": get_datetime(doc.modified).isoformat(),
-    #     "LastModifiedBy": get_fullname(doc.modified_by),
-    # }
+    Signatures = [{
+        "Signatory": "PATIENT",
+        "SignatoryID": doc.cardno.strip(),
+        "SignatureData": doc.patient_signature, #str(doc.patient_signature).replace("data:image/png;base64,", ""),
+        "DateCreated": date_created,
+        "CreatedBy": doc.item_crt_by,
+        "LastModified": date_modified,
+        "LastModifiedBy": f"{doc.first_name} {doc.last_name}",
+    }]
 
     for d in doc.practitioners:
         if d.mct_code:
-            signature = frappe.get_cached_value("Healthcare Practitioner", d.practitioner, "doctors_signature")
+            signature, practitioner_name = frappe.get_cached_value(
+                "Healthcare Practitioner",
+                d.practitioner, ["doctors_signature", "practitioner_name"]
+            )
             Signatures.append({
                 "Signatory": "MCT",
                 "SignatoryID": d.mct_code,
-                "SignatureData": str(signature).replace("data:image/png;base64,", ""),
-                "DateCreated": str(doc.posting_date),
+                "SignatureData": signature, #str(signature).replace("data:image/png;base64,", ""),
+                "DateCreated": date_created,
                 "CreatedBy": doc.item_crt_by,
-                "LastModified": get_datetime(doc.modified).isoformat(),
-                "LastModifiedBy": get_fullname(doc.modified_by),
+                "LastModified": date_modified,
+                "LastModifiedBy": practitioner_name,
             })
 
     payload = {
@@ -290,7 +296,7 @@ def get_payload(doc):
         "BillNo": doc.name,
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
-        "AttendanceDate": attendance_datetime.isoformat(),
+        "AttendanceDate": date_created,
         "VisitTypeID": visit_type_id,
         "PatientTypeCode": doc.patient_type_code,
         "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
@@ -303,22 +309,21 @@ def get_payload(doc):
         "FolioDiseases": diseases,
         "FolioItems": items,
         "Signatures": Signatures,
-        "DateCreated": str(doc.posting_date),
+        "DateCreated": date_created,
         "CreatedBy": doc.item_crt_by,
-        "LastModified": get_datetime(doc.modified).isoformat(),
+        "LastModified": date_modified,
         "LastModifiedBy": get_fullname(doc.modified_by),
     }
     if doc.patient_type_code == "IN":
         admission_datetime = get_datetime(f"{doc.date_admitted} {doc.admitted_time}")
         discharge_datetime = get_datetime(f"{doc.date_discharge} {doc.discharge_time}")
 
-        payload["DateAdmitted"] = admission_datetime.isoformat()
-        payload["DateDischarged"] = discharge_datetime.isoformat()
+        payload["DateAdmitted"] = admission_datetime.isoformat(timespec='milliseconds')
+        payload["DateDischarged"] = discharge_datetime.isoformat(timespec='milliseconds')
 
     payload = json.dumps(payload)
 
     return payload
-
 
 def get_submitted_claims(doc):
     """Get submitted claims from NHIF"""
