@@ -87,7 +87,7 @@ class NHIFPatientClaim(Document):
 
             folio_doc.folio_no += 1
             folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
+            folio_doc.db_update()
 
         frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
 
@@ -151,17 +151,17 @@ class NHIFPatientClaim(Document):
 
         self.validate_multiple_appointments_per_authorization_no()
 
-        # validate_item_status(self)
+        validate_item_status(self)
 
-        # if not self.patient_signature:
-        #     get_missing_patient_signature(self)
+        if not self.patient_signature:
+            get_missing_patient_signature(self)
 
-        if self.folio_signed == 0:
-            frappe.throw(
-                _("Please sign the folio to NHIF before submitting the claim.")
-            )
+        # if self.folio_signed == 0:
+        #     frappe.throw(
+        #         _("Please sign the folio to NHIF before submitting the claim.")
+        #     )
 
-        # validate_submit_date(self)
+        validate_submit_date(self)
 
         submit_folio(self)
         
@@ -349,14 +349,19 @@ class NHIFPatientClaim(Document):
             new_row.date_created = row.modified
 
     def set_patient_claim_item(self, encounter_list):
+        service_requests = []
         self.clinical_notes = ""
-        childs_map = get_child_map()
+        # childs_map = get_child_map()
         self.nhif_patient_claim_item = []
 
         if not self.inpatient_record:
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
 
+                if d.service_request in service_requests:
+                    continue
+
+                service_requests.append(d.service_request)
                 service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
                 for row in service_request_doc.get("payments"):
                     self.add_LRPMT_claim_item(row, d)
@@ -399,6 +404,10 @@ class NHIFPatientClaim(Document):
                     if not occupancy.is_service_chargeable:
                         continue
 
+                    if d.service_request in service_requests:
+                        continue
+                    
+                    service_requests.append(d.service_request)
                     service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
                     for row in service_request_doc.get("payments"):
                         self.add_LRPMT_claim_item(row, d)
@@ -859,7 +868,7 @@ def validate_submit_date(self):
         frappe.throw(
             frappe.bold(
                 "Submit Claim Month or Submit Claim Year not found,\
-                please inform IT department to set it on Company NHIF Settings"
+                please inform IT department to set it on HMS TZ Setting"
             )
         )
 
@@ -867,7 +876,7 @@ def validate_submit_date(self):
         frappe.throw(
             f"Claim Month: {frappe.bold(calendar.month_name[self.claim_month])} or Claim Year: {frappe.bold(self.claim_year)} \
                 of this document is not same to Submit Claim Month: {frappe.bold(calendar.month_name[submit_claim_month])}\
-                or Submit Claim Year: {frappe.bold(submit_claim_year)} on Company NHIF Settings")
+                or Submit Claim Year: {frappe.bold(submit_claim_year)} on HMS TZ Setting")
 
 
 def validate_item_status(self):
@@ -1235,6 +1244,8 @@ def update_original_patient_claim(doc):
 
     for row in doc.nhif_patient_claim_item:
         if row.ref_docname not in ref_docnames:
+            ref_docnames.append(row.ref_docname)
+
             new_row = row.as_dict()
             for fieldname in [
                 "name",
@@ -1243,6 +1254,11 @@ def update_original_patient_claim(doc):
                 "modified",
                 "modified_by",
                 "docstatus",
+                "parent",
+                "parentfield",
+                "parenttype",
+                "idx",
             ]:
                 new_row[fieldname] = None
+
             doc.append("original_nhif_patient_claim_item", new_row)
