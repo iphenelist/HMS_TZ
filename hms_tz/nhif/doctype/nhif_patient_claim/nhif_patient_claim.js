@@ -97,11 +97,11 @@ frappe.ui.form.on("NHIF Patient Claim", {
 
   after_save: (frm) => {
     // if (!frm.doc.allow_changes) {
-    frm.reload_doc().then(() => {
-      if (frm.doc.docstatus === 0 && frm.doc.authorization_no && !frm.doc.folio_signed) {
-        show_signature_method_dialog(frm);
-      }
-    });
+    // frm.reload_doc().then(() => {
+    //   if (frm.doc.docstatus === 0 && frm.doc.authorization_no && !frm.doc.folio_signed) {
+    //     show_signature_method_dialog(frm);
+    //   }
+    // });
     // }
   },
 
@@ -148,11 +148,11 @@ frappe.ui.form.on("NHIF Patient Claim", {
     });
   },
 
-  sign_folio: (frm) => {
-    if (frm.doc.docstatus === 0 && frm.doc.authorization_no && !frm.doc.folio_signed) {
-      show_signature_method_dialog(frm);
-    }
-  },
+  // sign_folio: (frm) => {
+  //   if (frm.doc.docstatus === 0 && frm.doc.authorization_no && !frm.doc.folio_signed) {
+  //     show_signature_method_dialog(frm);
+  //   }
+  // },
 });
 
 /**
