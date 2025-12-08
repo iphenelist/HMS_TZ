@@ -87,7 +87,7 @@ class NHIFPatientClaim(Document):
 
             folio_doc.folio_no += 1
             folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
+            folio_doc.db_update()
 
         frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
 
