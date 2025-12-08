@@ -121,8 +121,10 @@ def issue_nhif_service(
             )
 
             if service_data:
+                d.service_reference_no = service_data.get("ServiceReferenceNo")
+                d.db_update()
+
                 data.update(service_data)
-                create_issued_service_log(d)
 
     else:
         if not doc.approval_number:
@@ -143,8 +145,9 @@ def issue_nhif_service(
         )
 
         if service_data:
+            doc.db_set("service_reference_no", service_data.get("ServiceReferenceNo"))
+
             data.update(service_data)
-            create_issued_service_log(doc)
 
     return data
 
