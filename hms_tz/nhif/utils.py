@@ -210,22 +210,6 @@ def validate_point_of_care(doc, field):
             )
 
 
-def create_issued_service_log(
-    doc
-):
-    """
-    Create a log entry for issued NHIF services.
-    """
-
-    log_doc = frappe.get_doc({
-        "doctype": "Issued Service Log",
-        "ref_doctype": doc.doctype,
-        "ref_docname": doc.name,
-        "approval_number": doc.approval_number,
-    })
-
-    log_doc.insert(ignore_permissions=True)
-
 
 def validate_issued_services(
     ref_doctype,
@@ -244,15 +228,11 @@ def validate_issued_services(
     if not settings_doc.enable_nhif_api:
         return
 
-    issued_services = frappe.db.get_all(
-        "Issued Service Log",
-        filters={
-            "ref_doctype": ref_doctype,
-            "ref_docname": ref_docname,
-        },
-    )
-
-    if len(issued_services) == 0:
+    if not frappe.get_cached_value(
+        ref_doctype,
+        ref_docname,
+        "service_reference_no"
+    ):
         frappe.throw(
             f"Service is not Issued to NHIF. Please issue NHIF services before proceeding."
         )
