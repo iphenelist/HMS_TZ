@@ -205,7 +205,7 @@ def update_encounter_items(encounter_doc, package_doc, has_items):
             encounter_doc.append(
                 field_name,
                 {
-                    "medical_code": "ICD-10 R69",
+                    "code_value": "ICD-10 R69",
                     "code": "R69",
                     "description": "Illness, unspecified",
                     "mtuha": "Other",
