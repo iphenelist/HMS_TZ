@@ -868,7 +868,7 @@ def validate_submit_date(self):
         frappe.throw(
             frappe.bold(
                 "Submit Claim Month or Submit Claim Year not found,\
-                please inform IT department to set it on Company NHIF Settings"
+                please inform IT department to set it on HMS TZ Setting"
             )
         )
 
@@ -876,7 +876,7 @@ def validate_submit_date(self):
         frappe.throw(
             f"Claim Month: {frappe.bold(calendar.month_name[self.claim_month])} or Claim Year: {frappe.bold(self.claim_year)} \
                 of this document is not same to Submit Claim Month: {frappe.bold(calendar.month_name[submit_claim_month])}\
-                or Submit Claim Year: {frappe.bold(submit_claim_year)} on Company NHIF Settings")
+                or Submit Claim Year: {frappe.bold(submit_claim_year)} on HMS TZ Setting")
 
 
 def validate_item_status(self):
