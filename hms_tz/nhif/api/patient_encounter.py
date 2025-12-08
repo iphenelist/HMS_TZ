@@ -1749,6 +1749,7 @@ def validate_medical_code(doc, method):
 
         return diagnosis_list
 
+    has_disease_code = False
     for from_table, fields in medical_code_mapping().items():
         diagnosis_list = get_diagnosis_list(doc, from_table)
 
@@ -1761,9 +1762,26 @@ def validate_medical_code(doc, method):
             for row in doc.get(fieldname):
                 if row.medical_code not in diagnosis_list:
                     msgThrow(
-                        _(f"The Medical Code in the <strong>{fieldname_label}</strong> table at line <strong>{row.idx}</strong> is empty\
-                            or does not exist in the <strong>{from_table_label}</strong> table."), method, )
+                        _(
+                            f"The Medical Code in the <strong>{fieldname_label}</strong> table at line <strong>{row.idx}</strong> is empty\
+                            or does not exist in the <strong>{from_table_label}</strong> table."
+                        ),
+                            method,
+                        )
 
+        if (
+            not has_disease_code and
+            len(doc.get(from_table)) > 0
+        ):
+            has_disease_code = True
+    
+    if not has_disease_code:
+        msgThrow(
+            _(
+                "No Preliminary or Final diagnosis found on this encounter, Please set at least one disease code"
+            ),
+            method
+        )
 
 @frappe.whitelist()
 def get_filterd_drug(doctype, txt, searchfield, start, page_len, filters):
