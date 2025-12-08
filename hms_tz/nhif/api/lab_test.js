@@ -65,11 +65,6 @@ frappe.ui.form.on("Lab Test", {
       return;
     }
 
-    if (frm.is_dirty()) {
-      frappe.msgprint("Please save the document before requesting approval");
-      return;
-    }
-
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.get_service_approval",
       args: {
@@ -85,6 +80,10 @@ frappe.ui.form.on("Lab Test", {
         if (r.message) {
           frm.refresh();
           if (r.message.status == "success") {
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+
             frappe.show_alert(
               {
                 message: __(
@@ -132,13 +131,6 @@ frappe.ui.form.on("Lab Test", {
       return;
     }
 
-    if (frm.is_dirty()) {
-      frappe.msgprint(
-        "Please save the document before requesting approval status"
-      );
-      return;
-    }
-
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
       args: {
@@ -151,6 +143,10 @@ frappe.ui.form.on("Lab Test", {
         if (r.message) {
           frm.refresh();
           if (r.message.status == "success") {
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+
             frappe.show_alert(
               {
                 message: __(
@@ -222,6 +218,10 @@ frappe.ui.form.on("Lab Test", {
           return;
         } else if (r.message) {
           frappe.utils.play_sound("submit");
+          frm.save().then(() => {
+            frm.reload_doc();
+          });
+          
           frappe.show_alert(
             {
               message: __(
@@ -257,11 +257,6 @@ frappe.ui.form.on("Lab Test", {
         },
         5
       );
-      return;
-    }
-
-    if (frm.is_dirty()) {
-      frappe.msgprint("Please save the document before issuing approved service");
       return;
     }
 
@@ -316,7 +311,10 @@ frappe.ui.form.on("Lab Test", {
       callback: function (r) {
         if (r.message) {
           if (r.message) {
-            frm.reload_doc();
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+            
             frappe.utils.play_sound("submit");
           } else {
             frappe.utils.play_sound("error");
@@ -340,11 +338,6 @@ frappe.ui.form.on("Lab Test", {
     }
     if (frm.doc.is_restricted == 1 && !frm.doc.approval_number) {
       frappe.msgprint("Approval Number is required to issue approved service");
-      return;
-    }
-
-    if (frm.is_dirty()) {
-      frappe.msgprint("Please save the document before issuing approved service");
       return;
     }
 
