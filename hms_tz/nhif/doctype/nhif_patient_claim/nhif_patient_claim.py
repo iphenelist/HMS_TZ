@@ -349,14 +349,19 @@ class NHIFPatientClaim(Document):
             new_row.date_created = row.modified
 
     def set_patient_claim_item(self, encounter_list):
+        service_requests = []
         self.clinical_notes = ""
-        childs_map = get_child_map()
+        # childs_map = get_child_map()
         self.nhif_patient_claim_item = []
 
         if not self.inpatient_record:
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
 
+                if d.service_request in service_requests:
+                    continue
+
+                service_requests.append(d.service_request)
                 service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
                 for row in service_request_doc.get("payments"):
                     self.add_LRPMT_claim_item(row, d)
@@ -399,6 +404,10 @@ class NHIFPatientClaim(Document):
                     if not occupancy.is_service_chargeable:
                         continue
 
+                    if d.service_request in service_requests:
+                        continue
+                    
+                    service_requests.append(d.service_request)
                     service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
                     for row in service_request_doc.get("payments"):
                         self.add_LRPMT_claim_item(row, d)
