@@ -81,11 +81,6 @@ frappe.ui.form.on("Delivery Note", {
       return;
     }
 
-    if (frm.is_dirty()) {
-      frappe.msgprint("Please save the document before issuing approved service");
-      return;
-    }
-
     let biometricData;
 
     if (frm.doc.biometric_method === "FACIAL") {
@@ -137,7 +132,11 @@ frappe.ui.form.on("Delivery Note", {
       callback: function (r) {
         if (r.message) {
           if (r.message) {
-            frm.reload_doc();
+            if (frm.is_dirty()) {
+              frm.save().then(() => {
+                frm.reload_doc();
+              });
+            }
             frappe.utils.play_sound("submit");
           } else {
             frappe.utils.play_sound("error");
@@ -157,11 +156,6 @@ frappe.ui.form.on("Delivery Note", {
         },
         5
       );
-      return;
-    }
-
-    if (frm.is_dirty()) {
-      frappe.msgprint("Please save the document before issuing approved service");
       return;
     }
 
@@ -218,6 +212,11 @@ frappe.ui.form.on("Delivery Note", {
         if (r.message) {
           frappe.utils.play_sound("submit");
           let data = r.message;
+          if (frm.is_dirty()) {
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+          }
           // if (data.ReferenceNo) {
           //   frm.save().then(() => {
           //     frm.reload_doc();
@@ -253,11 +252,6 @@ frappe.ui.form.on("Delivery Note Item", {
       return;
     }
 
-    if (frm.is_dirty()) {
-      frappe.msgprint("Please save the document before requesting approval");
-      return;
-    }
-
     let row = locals[cdt][cdn];
 
     frappe.call({
@@ -278,6 +272,11 @@ frappe.ui.form.on("Delivery Note Item", {
         if (r.message) {
           frm.reload_doc();
           if (r.message.status == "success") {
+            if (frm.is_dirty()) {
+              frm.save().then(() => {
+                frm.reload_doc();
+              });
+            }
             frappe.show_alert(
               {
                 message: __(
@@ -322,13 +321,6 @@ frappe.ui.form.on("Delivery Note Item", {
       return;
     }
 
-    if (frm.is_dirty()) {
-      frappe.msgprint(
-        "Please save the document before requesting approval status"
-      );
-      return;
-    }
-
     let row = locals[cdt][cdn];
 
     frappe.call({
@@ -344,6 +336,11 @@ frappe.ui.form.on("Delivery Note Item", {
         if (r.message) {
           frm.refresh();
           if (r.message.status == "success") {
+            if (frm.is_dirty()) {
+              frm.save().then(() => {
+                frm.reload_doc();
+              });
+            }
             frappe.show_alert(
               {
                 message: __(
@@ -392,12 +389,6 @@ frappe.ui.form.on("Delivery Note Item", {
       return;
     }
 
-    if (frm.is_dirty()) {
-      frappe.msgprint(
-        "Please save the document before requesting approval status"
-      );
-      return;
-    }
 
     let row = locals[cdt][cdn];
 
@@ -424,6 +415,11 @@ frappe.ui.form.on("Delivery Note Item", {
           frappe.utils.play_sound("error");
           return;
         } else if (r.message) {
+          if (frm.is_dirty()) {
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+          }
           frappe.utils.play_sound("submit");
           frappe.show_alert(
             {
