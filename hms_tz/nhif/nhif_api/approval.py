@@ -354,6 +354,11 @@ def issue_approved_service(
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+        doc.add_comment(
+            "Comment",
+            text=f"Failed to Issue Service<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>",
+        )
+        frappe.db.commit()
         
         frappe.throw(
             title="NHIF API Error",
@@ -372,6 +377,12 @@ def issue_approved_service(
             ref_doctype=doc.doctype,
             ref_docname=doc.name,
         )
+
+        doc.add_comment(
+            "Comment",
+            text=f"Service Reference No: <strong>{data.get('ServiceReferenceNo')}</strong> is successfully created."
+        )
+        frappe.db.commit()
 
         frappe.msgprint("Service Issued Successfully..!!", alert=True)
         return data
