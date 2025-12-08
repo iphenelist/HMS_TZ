@@ -39,6 +39,8 @@
   "column_break_finc",
   "hms_tz_minimum_cash_limit_percent",
   "hms_tz_limit_exceed_action",
+  "reporting_section",
+  "start_date",
   "nhif_tab",
   "nhif_user",
   "nhif_client_secret",
@@ -595,11 +597,24 @@
    "fieldtype": "Check",
    "label": "Validate POC at Laboratory",
    "search_index": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "reporting_section",
+   "fieldtype": "Section Break",
+   "label": "Reporting"
+  },
+  {
+   "description": "Start date of insurance new API",
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-26 22:01:34.920382",
+ "modified": "2025-12-08 08:39:49.296438",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
