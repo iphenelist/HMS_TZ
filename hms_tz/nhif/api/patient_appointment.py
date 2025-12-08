@@ -204,21 +204,7 @@ def get_consulting_charge_item(
     apply_fasttrack_charge=False,
 ):
     charge_item = ""
-    app_type_details = frappe.get_cached_value(
-        "Appointment Type",
-        appointment_type,
-        [
-            "assistant_md_followup_item",
-            "gp_followup_item",
-            "specialist_followup_item",
-            "super_specialist_followup_item",
-            "assistant_md_fasttrack_item",
-            "gp_fasttrack_item",
-            "specialist_fasttrack_item",
-            "super_specialist_fasttrack_item",
-        ],
-        as_dict=True,
-    )
+    app_type_details = get_visit_type_details(appointment_type)
 
     field_name = (
         "inpatient_visit_charge_item"
@@ -698,12 +684,7 @@ def validate_schemes_for_fasttrack_and_followups(
         ["healthcare_insurance_coverage_plan"],
     )
 
-    type_info = frappe.get_cached_value(
-        "Appointment Type",
-        appointment_type,
-        ["has_followup_charges", "has_fasttrack_charges"],
-        as_dict=True
-    )
+    type_info = get_visit_type_details(appointment_type)
 
     plan_info = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan", plan_name, 
@@ -717,7 +698,7 @@ def validate_schemes_for_fasttrack_and_followups(
     if (
         "follow" in appointment_type.lower()
         and plan_info.has_followup_charges
-        and type_info.has_followup_charges
+        and type_info.get("has_followup_charges")
         and not apply_fasttrack_charge
     ):
         return True
@@ -725,9 +706,18 @@ def validate_schemes_for_fasttrack_and_followups(
     elif (
         apply_fasttrack_charge
         and plan_info.has_fasttrack_charges
-        and type_info.has_fasttrack_charges
+        and type_info.get("has_fasttrack_charges")
     ):
         return True
     
     else:
         return False
+
+
+@frappe.whitelist()
+def get_visit_type_details(appointment_type):
+    type_doc =  frappe.get_cached_doc(
+        "Appointment Type", appointment_type
+    )
+
+    return type_doc.as_dict()

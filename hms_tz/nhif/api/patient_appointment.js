@@ -1,8 +1,13 @@
 frappe.ui.form.on("Patient Appointment", {
   setup: function (frm) {
+    frm.toggle_display(["referral_no"], false);
+    frm.toggle_display(["remarks"], false);
     set_filters(frm);
   },
   onload: function (frm) {
+    frm.toggle_display(["referral_no"], false);
+    frm.toggle_display(["remarks"], false);
+
     frm.trigger("mandatory_fields");
     set_filters(frm);
   },
@@ -19,7 +24,6 @@ frappe.ui.form.on("Patient Appointment", {
     }
     set_filters(frm);
     frm.trigger("update_primary_action");
-    frm.trigger("toggle_reqd_referral_no");
     add_btns(frm);
     frm.trigger("mandatory_fields");
     set_auth_number_reqd(frm);
@@ -48,7 +52,7 @@ frappe.ui.form.on("Patient Appointment", {
     frm.set_value("healthcare_referrer", frm.doc.referring_practitioner);
   },
   appointment_type: function (frm) {
-    frm.trigger("toggle_reqd_referral_no");
+    frm.trigger("set_visit_type_details");
     frm.set_value("referring_practitioner", "");
     frm.set_value("healthcare_referrer_type", "");
     frm.set_value("healthcare_referrer", "");
@@ -94,8 +98,8 @@ frappe.ui.form.on("Patient Appointment", {
     frm.trigger("get_cash_amount");
   },
   mandatory_fields: function (frm) {
+    frm.trigger("set_visit_type_details");
     frm.trigger("get_consulting_charge_item");
-    frm.trigger("toggle_reqd_referral_no");
     if (frm.doc.insurance_subscription) {
       frm.toggle_reqd("mode_of_payment", false);
     } else {
@@ -123,77 +127,94 @@ frappe.ui.form.on("Patient Appointment", {
       );
     }
   },
-  toggle_reqd_referral_no: function (frm) {
+  set_visit_type_details: (frm) => {
     frm.toggle_display(["healthcare_referrer"], false);
     frm.toggle_reqd(["healthcare_referrer"], false);
-    frm.toggle_display(["referral_no"], false);
-    frm.toggle_display(["remarks"], false);
+
+    if (frm.doc.source == "Referral") {
+      frm.set_value("healthcare_referrer_type", "Healthcare Practitioner");
+      frm.toggle_display(["healthcare_referrer"], true);
+      frm.toggle_reqd("referring_practitioner", true);
+      frm.toggle_enable("referring_practitioner", true);
+    }
+
+    let visit_type = get_visit_type_details(frm.doc.appointment_type);
+
+    if (!visit_type) {
+      return;
+    }
+
+    if (frm.doc.insurance_subscription) {
+      if (visit_type.requires_referral_no == 1) {
+        frm.toggle_display(["referral_no"], true);
+        frm.toggle_reqd("referral_no", true);
+        frm.toggle_enable(["referral_no"], true);
+
+        if (frm.doc.appointment_type.toLowerCase().includes("referral")) {
+          frm.toggle_display(["healthcare_referrer"], true);
+          frm.toggle_reqd(["healthcare_referrer"], true);
+          frm.set_value("healthcare_referrer_type", "Healthcare Facility");
+          frm.toggle_display(["referring_practitioner"], true);
+          // frm.toggle_reqd("referring_practitioner", true);
+          frm.toggle_enable("referring_practitioner", true);
+        }
+      } else {
+        frm.toggle_display(["referral_no"], false);
+        frm.toggle_reqd("referral_no", false);
+        frm.toggle_display(["healthcare_referrer"], false);
+        frm.toggle_reqd(["healthcare_referrer"], false);
+        frm.toggle_enable(["healthcare_referrer"], false);
+        frm.toggle_display(["referring_practitioner"], false);
+        // frm.toggle_reqd("referring_practitioner", false);
+        frm.toggle_enable("referring_practitioner", false);
+
+      }
+
+      if (visit_type.requires_remarks == 1) {
+        frm.toggle_display(["remarks"], true);
+        frm.toggle_reqd("remarks", true);
+        frm.toggle_enable(["remarks"], true);
+      } else {
+        if (frm.doc.biometric_method != "NONE") {
+          console.log("visit_type", visit_type);
+          frm.toggle_display(["remarks"], false);
+          frm.toggle_reqd("remarks", false);
+          frm.toggle_enable(["remarks"], false);
+        }
+      }
+
+      if (frm.doc.insurance_company && !frm.doc.insurance_company.includes("NHIF")) {
+        if (visit_type.description) {
+          // frm.set_intro(__(`${visit_type.description}`, "blue"));
+          frm.sidebar.set_intro(__(`${visit_type.description}`));
+        }
+        if (data.has_fasttrack_charges == 1) {
+          frm.toggle_display("apply_fasttrack_charge", true);
+          frm.toggle_enable("apply_fasttrack_charge", true);
+          frm.set_value("apply_fasttrack_charge", 1);
+        } else {
+          frm.toggle_display("apply_fasttrack_charge", false);
+          frm.toggle_enable("apply_fasttrack_charge", false);
+          frm.set_value("apply_fasttrack_charge", 0);
+        }
+
+        if (visit_type.has_no_consultation_charges_for_insurance == 1) {
+          frm.set_value("has_no_consultation_charges", 1);
+        } else {
+          frm.set_value("has_no_consultation_charges", 0);
+        }
+      }
+    } else {
+      if (visit_type.has_no_consultation_charges_for_cash == 1) {
+        frm.set_value("has_no_consultation_charges", 1);
+      } else {
+        frm.set_value("has_no_consultation_charges", 0);
+      }
+    }
 
     // Helpdesk: 2024-07-22
     // https://support.aakvatech.com/helpdesk/tickets/239
     frm.trigger("apply_fasttrack");
-
-    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("referral")) {
-      if (frm.doc.insurance_subscription) {
-        frm.toggle_display(["referral_no"], true);
-        frm.toggle_reqd("referral_no", true);
-        frm.toggle_display(["remarks"], true);
-        frm.toggle_reqd("remarks", true);
-      } else {
-        frm.toggle_reqd("referral_no", false);
-        frm.toggle_display(["referral_no"], false);
-        frm.toggle_display(["remarks"], true);
-        frm.toggle_reqd("remarks", true);
-      }
-      frm.toggle_enable(["referral_no"], true);
-      frm.toggle_display(["healthcare_referrer"], true);
-      frm.toggle_reqd(["healthcare_referrer"], true);
-      frm.set_value(
-        "healthcare_referrer_type",
-        "Healthcare Facility"
-      );
-      frm.toggle_reqd("referring_practitioner", false);
-      frm.toggle_enable("referring_practitioner", false);
-    }
-
-    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("emergency")) {
-      if (frm.doc.insurance_subscription) {
-        frm.toggle_display(["remarks"], true);
-        frm.toggle_reqd("remarks", true);
-      } else {
-        frm.toggle_reqd("remarks", false);
-        frm.toggle_display(["remarks"], false);
-      }
-      frm.toggle_enable(["remarks"], true);
-    }
-
-    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("follow")) {
-      if (frm.doc.insurance_subscription) {
-        frm.toggle_display(["referral_no"], true);
-        frm.toggle_reqd("referral_no", true);
-      } else {
-        frm.toggle_reqd("referral_no", false);
-        frm.toggle_display(["referral_no"], false);
-      }
-      frm.toggle_enable(["referral_no"], true);
-    }
-    
-    if (frm.doc.appointment_type && frm.doc.appointment_type.toLowerCase().includes("other")) {
-      if (frm.doc.insurance_subscription) {
-        frm.toggle_display(["remarks"], true);
-        frm.toggle_reqd("remarks", true);
-      } else {
-        frm.toggle_reqd("remarks", false);
-        frm.toggle_display(["remarks"], false);
-      }
-      frm.toggle_enable(["remarks"], true);
-    }
-
-    if (frm.doc.source == "Referral") {
-      frm.set_value("healthcare_referrer_type", "Healthcare Practitioner");
-      frm.toggle_reqd("referring_practitioner", true);
-      frm.toggle_enable("referring_practitioner", true);
-    }
   },
   get_insurance_amount: function (frm) {
     if (
@@ -334,7 +355,7 @@ frappe.ui.form.on("Patient Appointment", {
     if (!frm.doc.biometric_method) {
       frappe.msgprint("Please select a Biometric Method");
       return;
-    } else if (frm.doc.biometric_method == "NONE" && !frm.doc.remarks ) {
+    } else if (frm.doc.biometric_method == "NONE" && !frm.doc.remarks) {
       frappe.msgprint({
         title: __("Remarks Missing"),
         message: __("Please provide remarks for the selected Biometric Method")
@@ -378,12 +399,12 @@ frappe.ui.form.on("Patient Appointment", {
             () => resolve(false)
           );
         });
-        
+
         if (!confirmed) {
           return;
         }
 
-        biometricData = {Data: "", fpCode: ""};
+        biometricData = { Data: "", fpCode: "" };
       }
 
       frappe.call({
@@ -631,12 +652,12 @@ frappe.ui.form.on("Patient Appointment", {
     }
 
     frappe.call({
-        method: 'hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups',
-        args: {
-            insurance_subscription: frm.doc.insurance_subscription,
-            appointment_type: frm.doc.appointment_type,
-            apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
-        }
+      method: 'hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups',
+      args: {
+        insurance_subscription: frm.doc.insurance_subscription,
+        appointment_type: frm.doc.appointment_type,
+        apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
+      }
     })
       .then(r => {
         if (r.message) {
@@ -682,8 +703,12 @@ frappe.ui.form.on("Patient Appointment", {
       frm.toggle_display(["remarks"], true);
       frm.toggle_reqd("remarks", true);
     } else {
-      frm.toggle_display(["remarks"], false);
-      frm.toggle_reqd("remarks", false);
+
+      let visit_type = get_visit_type_details(frm.doc.appointment_type);
+      if (!visit_type || (visit_type && visit_type.requires_remarks != 1)) {
+        frm.toggle_display(["remarks"], false);
+        frm.toggle_reqd("remarks", false);
+      }
     }
   }
 });
@@ -1118,6 +1143,28 @@ const set_filters = function (frm) {
       },
     };
   });
+};
+
+const get_visit_type_details = (appointment_type) => {
+  let visit_type = null;
+  if (!appointment_type) {
+    return visit_type;
+  }
+
+  frappe.call({
+    method: "hms_tz.nhif.api.patient_appointment.get_visit_type_details",
+    args: {
+      appointment_type: appointment_type
+    },
+    async: false,
+    callback: (data) => {
+      if (data.message) {
+        visit_type = data.message;
+      }
+    }
+  });
+
+  return visit_type;
 };
 
 const load_print_page = function (invoice_name, pos_profile) {
