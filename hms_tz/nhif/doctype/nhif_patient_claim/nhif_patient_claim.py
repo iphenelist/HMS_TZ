@@ -135,7 +135,8 @@ class NHIFPatientClaim(Document):
 
         validate_submit_date(self)
 
-        submit_folio(self)
+        if self.bypass_sending_to_nhif == 0:
+            submit_folio(self)
         
         end_datetime = get_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
