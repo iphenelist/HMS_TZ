@@ -504,8 +504,6 @@ def get_ipd_occupancy_transactions(filters):
         )
         .where(
             (ipd_occ.is_confirmed == 1)
-            & (pa.coverage_plan_name.isnotnull())
-            & (pa.coverage_plan_name != "")
         )
     )
 
@@ -565,8 +563,6 @@ def get_ipd_consultancy_transactions(filters):
         )
         .where(
             (ipd_cons.is_confirmed == 1)
-            & (pa.coverage_plan_name.isnotnull())
-            & (pa.coverage_plan_name != "")
         )
     )
 
