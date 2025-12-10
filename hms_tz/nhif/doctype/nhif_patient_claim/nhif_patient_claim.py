@@ -819,7 +819,7 @@ class NHIFPatientClaim(Document):
         return result
 
     def set_folio_count(self):
-        if self.folio_no or self.folio_no != 0:
+        if cint(self.folio_no) != 0:
             return
     
         folio_counter = frappe.db.get_all(
@@ -852,9 +852,10 @@ class NHIFPatientClaim(Document):
 
             folio_doc.folio_no += 1
             folio_doc.posting_date = now_datetime()
-            folio_doc.db_update()
-            folio_doc.reload()
-
+            folio_doc.save(ignore_permissions=True)
+            # folio_doc.reload()
+        
+        self.folio_no = folio_no
         self.db_set("folio_no", folio_no)
 
 def get_missing_patient_signature(self):
