@@ -131,7 +131,7 @@ const get_final_diagnosis = (frm) => {
   if (frm.doc.patient_encounter_final_diagnosis) {
     frm.doc.patient_encounter_final_diagnosis.forEach((element) => {
       let d =
-        String(element.medical_code) + "\n " + String(element.description);
+        String(element.code_value) + "\n " + String(element.definition);
       diagnosis_list.push(d);
     });
     return diagnosis_list;
