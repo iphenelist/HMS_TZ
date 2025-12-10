@@ -183,22 +183,33 @@ def create_healthcare_docs(doc, method):
 
 
 def update_drug_prescription(doc):
-    if doc.patient and doc.enabled_auto_create_delivery_notes:
-        for item in doc.items:
-            if item.reference_dn and item.reference_dt and item.reference_dt == "Drug Prescription":
-                dn_name = frappe.get_cached_value("Delivery Note", {"form_sales_invoice": doc.name}, "name")
-                if not dn_name:
-                    return
+    if not doc.patient:
+        return
+    
+    for item in doc.items:
+        if (
+            item.reference_dn and
+            item.reference_dt and
+            item.reference_dt == "Drug Prescription"
+        ):
+            frappe.db.set_value(
+                "Drug Prescription",
+                item.reference_dn,
+                {
+                    "sales_invoice_number": doc.name,
+                    "drug_prescription_created": 1,
+                    "invoiced": 1,
+                },
+                update_modified=False,
+            )
 
+            dn_name = frappe.get_cached_value("Delivery Note", {"form_sales_invoice": doc.name}, "name")
+            if dn_name:
                 frappe.db.set_value(
                     "Drug Prescription",
                     item.reference_dn,
-                    {
-                        "sales_invoice_number": doc.name,
-                        "drug_prescription_created": 1,
-                        "invoiced": 1,
-                        "delivery_note": dn_name,
-                    },
+                    "delivery_note",
+                    dn_name,
                     update_modified=False,
                 )
 
