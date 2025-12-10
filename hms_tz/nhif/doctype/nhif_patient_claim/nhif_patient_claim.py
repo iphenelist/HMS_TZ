@@ -154,8 +154,8 @@ class NHIFPatientClaim(Document):
 
         patient_encounters = (
             frappe.qb.from_(pe)
-            .inner_join(hsr)
-            .on(hsr.appointment == pe.appointment)
+            .left_join(hsr)
+            .on((hsr.appointment == pe.appointment) & (hsr.docstatus == 1))
             .select(
                 pe.practitioner,
                 pe.encounter_date,
@@ -166,7 +166,6 @@ class NHIFPatientClaim(Document):
             )
             .where(
                 (pe.docstatus == 1)
-                & (hsr.docstatus == 1)
                 & (pe.appointment.isin(appointments))
             )
             .orderby(pe.creation)
@@ -331,6 +330,9 @@ class NHIFPatientClaim(Document):
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
 
+                if not d.service_request:
+                    continue
+
                 if d.service_request in service_requests:
                     continue
 
@@ -373,6 +375,9 @@ class NHIFPatientClaim(Document):
                     # allow clinical notes to be added to the claim even if the
                     # service is not chargeable and encounters will be ignored
                     self.set_clinical_notes(d.encounter)
+
+                    if not d.service_request:
+                        continue
 
                     if not occupancy.is_service_chargeable:
                         continue
