@@ -153,6 +153,15 @@ frappe.ui.form.on("NHIF Patient Claim", {
   //     show_signature_method_dialog(frm);
   //   }
   // },
+
+  bypass_sending_to_nhif: (frm) => {
+    if (frm.doc.bypass_sending_to_nhif == 1) {
+      frm.set_value("bypassed_by", frappe.user.full_name());
+    } else {
+      frm.set_value("bypassed_by", "");
+      frm.set_value("bypass_reason", "");
+    }
+  },
 });
 
 /**
