@@ -1645,11 +1645,11 @@ def create_delivery_notes_from_hsr(encounter_doc, medications):
 
             # Set rate and apply discount if needed
             if row.payment_type == "Cash":
-                item.rate = row.amount
-                item.price_list_rate = row.amount
+                item.rate = row.rate
+                item.price_list_rate = row.rate
             else:
-                item.rate = row.amount - (row.amount * (discount_percent / 100))
-                item.price_list_rate = row.amount
+                item.rate = row.rate - (row.rate * (discount_percent / 100))
+                item.price_list_rate = row.rate
                 if discount_percent > 0:
                     item.discount_percentage = discount_percent
                     item.hms_tz_is_discount_applied = 1
