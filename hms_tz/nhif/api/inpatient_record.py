@@ -10,7 +10,7 @@ import frappe
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 from erpnext.accounts.party import get_party_account
 from frappe import _
-from frappe.utils import get_url_to_form, nowdate, get_datetime, add_days, date_diff, create_batch
+from frappe.utils import get_url_to_form, nowdate, get_datetime, add_days, date_diff, create_batch, now_datetime
 from hms_tz.nhif.api.patient_encounter import validate_patient_balance_vs_patient_costs
 
 from hms_tz.nhif.api.healthcare_utils import (
@@ -90,7 +90,7 @@ def daily_update_inpatient_occupancies():
                 if occupancies_len > 0:
                     count = 0
                     last_check_in = get_datetime(doc.inpatient_occupancies[-1].check_in)
-                    last_check_out = doc.inpatient_occupancies[-1].check_out or last_check_in
+                    last_check_out = doc.inpatient_occupancies[-1].check_out or add_days(last_check_in, 1)
                     date_count = date_diff(nowdate(), last_check_out)
 
                     if date_count <= 0:
