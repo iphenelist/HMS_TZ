@@ -132,10 +132,17 @@ class LRPMTReturns(Document):
 
             if doc.docstatus < 2:
                 try:
+                    doc.flags.ignore_permissions = True
+                    doc.flags.ignore_mandatory = True
+
                     apply_workflow(doc, "Not Serviced")
                     if doc.meta.get_field("status"):
                         doc.status = "Not Serviced"
+
                     doc.save(ignore_permissions=True)
+                    doc.add_comment(
+                        text=f"LRPMT Return: <a href='{self.get_url()}'>{bold(self.name)}</a> is submitted"
+                    )
                     doc.reload()
 
                     if doc.workflow_state == "Not Serviced" or doc.workflow_state == "Submitted but Not Serviced":
@@ -152,10 +159,14 @@ class LRPMTReturns(Document):
                         )
                     
                 except Exception:
-                    frappe.log_error(frappe.get_traceback(), str(self.doctype))
+                    frappe.log_error(
+                        title=str(f"{self.doctype}/{item.reference_doctype}/{item.reference_docname}"),
+                        message=frappe.get_traceback(), 
+                    )
                     frappe.throw(
                         f"There was an error while cancelling the Item: {bold(item.item_name)} of ReferenceDoctype: {bold(item.reference_doctype)},\
-                             ReferenceName: {bold(item.reference_docname)},<br> Check error log for review")
+                             ReferenceName: {bold(item.reference_docname)},<br> Check error log for review"
+                    )
 
     def cancel_therapy_doc(self):
         if len(self.therapy_items) == 0:
@@ -235,8 +246,8 @@ class LRPMTReturns(Document):
 
                 except Exception:
                     frappe.log_error(
-                        frappe.get_traceback(),
-                        str(f"Error in creating return delivery note for {dn}"),
+                        title=str(f"{self.doctype}/Delivery Note/{dn}"),
+                        message=frappe.get_traceback(),
                     )
                     frappe.throw(
                         f"Error in creating return delivery note against delivery note: {bold(dn)}\
@@ -409,8 +420,8 @@ def update_therapy_plan(
         )
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            str(f"{self.doctype}/{plan_doc.doctype}"),
+            title=str(f"{self.doctype}/{plan_doc.doctype}/{plan_doc.name}"),
+            message=frappe.get_traceback(),
         )
         frappe.throw(
             f"There was an error while cancelling the Therapy Plan: {bold(plan_doc.name)}\
@@ -429,6 +440,9 @@ def update_therapy_session(
         session_doc = frappe.get_cached_doc("Therapy Session", session_id)
         if session_doc.docstatus < 2:
             try:
+                session_doc.flags.ignore_permissions = True
+                session_doc.flags.ignore_mandatory = True
+
                 apply_workflow(session_doc, "Not Serviced")
                 session_doc.save(ignore_permissions=True)
                 session_doc.add_comment(
@@ -451,8 +465,8 @@ def update_therapy_session(
 
             except Exception:
                 frappe.log_error(
-                    frappe.get_traceback(),
-                    str(f"{self.doctype}/{session_doc.doctype}"),
+                    title=str(f"{self.doctype}/{session_doc.doctype}/{session_doc.name}"),
+                    message=frappe.get_traceback(),
                 )
                 frappe.throw(
                     f"There was an error while cancelling the Therapy Session: {bold(session_doc.name)}\
@@ -483,6 +497,9 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
     try:
         dn_doc = frappe.get_cached_doc("Delivery Note", delivey_note)
 
+        dn_doc.flags.ignore_permissions = True
+        dn_doc.flags.ignore_mandatory = True
+
         if dn_doc.workflow_state != "Not Serviced":
             apply_workflow(dn_doc, "Not Serviced")
 
@@ -507,8 +524,8 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
 
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            str(f"Apply workflow error for Delivery Note {bold(delivey_note)}"),
+            title=str(f"{self.doctype}/Delivery Note/{delivey_note}"),
+            message=frappe.get_traceback(),
         )
         frappe.throw(
             str(f"Apply workflow error, for delivery note: {bold(delivey_note)}, check error log for more details")
@@ -530,7 +547,11 @@ def update_drug_prescription_for_submitted_delivery_note(item):
             "is_cancelled": item_cancelled,
         },
     )
-    update_cancelled_hsr(item.child_name, item_cancelled, qty_returned=qty_returned)
+    update_cancelled_hsr(
+        item.child_name,
+        item_cancelled,
+        qty_returned=qty_returned
+    )
 
 
 def return_drug_quantity_to_stock(self, source_doc):
@@ -598,20 +619,27 @@ def return_drug_quantity_to_stock(self, source_doc):
 
 def transition_workflow_states(source_doc, target_doc):
     try:
+        target_doc.flags.ignore_permissions = True
+        target_doc.flags.ignore_mandatory = True
+
         if target_doc.workflow_state != "Is Return":
             apply_workflow(target_doc, "Return")
+
         if target_doc.workflow_state == "Is Return" and source_doc.workflow_state != "Return Issued":
+            source_doc.flags.ignore_permissions = True
+            source_doc.flags.ignore_mandatory = True
+
             try:
                 apply_workflow(source_doc, "Issue Returns")
             except Exception:
                 frappe.log_error(
-                    frappe.get_traceback(),
-                    str(f"Apply workflow error for Delivery Note {bold(source_doc.name)}"),
+                    title=str(f"LRPMT Returns/{source_doc.doctype}/{source_doc.name}"),
+                    message=frappe.get_traceback(),
                 )
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            str(f"Apply workflow error for Delivery Note {bold(target_doc.name)}"),
+            title=str(f"LRPMT Returns/{target_doc.doctype}/{target_doc.name}"),
+            message=frappe.get_traceback(),
         )
         frappe.throw(
             str(f"Apply workflow error, for delivery note: {bold(target_doc.name)}, check error log for more details")
@@ -642,19 +670,14 @@ def get_lrp_item_list(patient, appointment, company):
 
         for item in items:
             if item.lab_test_code:
-                lab_status = "Submitted"
-                if not item.lab_test:
-                    name = get_refdoc(
-                        "Lab Prescription",
-                        item.name,
-                        item.lab_test_code,
-                        item.parent,
-                    )
-                    if name:
-                        lab_status = "Draft"
+                lab_status = ""
+                if item.lab_test:
+                    docstatus = frappe.get_cached_value("Lab Test", item.lab_test, "docstatus")
+                    if docstatus == 1:
+                        lab_status = "Submitted"
                     else:
-                        lab_status = ""
-
+                        lab_status = "Draft"
+                
                 item_list.append(
                     {
                         "child_name": item.name,
@@ -662,24 +685,19 @@ def get_lrp_item_list(patient, appointment, company):
                         "quantity": 1,
                         "encounter_no": item.parent,
                         "reference_doctype": "Lab Test",
-                        "reference_docname": item.lab_test or name,
+                        "reference_docname": item.lab_test or "",
                         "status": lab_status,
                     }
                 )
 
             if item.radiology_examination_template:
-                radiology_status = "Submitted"
-                if not item.radiology_examination:
-                    name = get_refdoc(
-                        "Radiology Procedure Prescription",
-                        item.name,
-                        item.radiology_examination_template,
-                        item.parent,
-                    )
-                    if name:
-                        radiology_status = "Draft"
+                radiology_status = ""
+                if item.radiology_examination:
+                    docstatus = frappe.get_cached_value("Radiology Examination", item.radiology_examination, "docstatus")
+                    if docstatus == 1:
+                        radiology_status = "Submitted"
                     else:
-                        radiology_status = ""
+                        radiology_status = "Draft"             
 
                 item_list.append(
                     {
@@ -688,24 +706,19 @@ def get_lrp_item_list(patient, appointment, company):
                         "quantity": 1,
                         "encounter_no": item.parent,
                         "reference_doctype": "Radiology Examination",
-                        "reference_docname": item.radiology_examination or name,
+                        "reference_docname": item.radiology_examination or "",
                         "status": radiology_status,
                     }
                 )
 
             if item.procedure:
-                procedure_status = "Submitted"
-                if not item.clinical_procedure:
-                    name = get_refdoc(
-                        "Procedure Prescription",
-                        item.name,
-                        item.procedure,
-                        item.parent,
-                    )
-                    if name:
-                        procedure_status = "Draft"
+                procedure_status = ""
+                if item.clinical_procedure:
+                    docstatus = frappe.get_cached_value("Clinical Procedure", item.clinical_procedure, "docstatus")
+                    if docstatus == 1:
+                        procedure_status = "Submitted"
                     else:
-                        procedure_status = ""
+                        procedure_status = "Draft"
 
                 item_list.append(
                     {
@@ -714,7 +727,7 @@ def get_lrp_item_list(patient, appointment, company):
                         "quantity": 1,
                         "encounter_no": item.parent,
                         "reference_doctype": "Clinical Procedure",
-                        "reference_docname": item.clinical_procedure or name,
+                        "reference_docname": item.clinical_procedure or "",
                         "status": procedure_status,
                     }
                 )
@@ -756,40 +769,6 @@ def get_lrp_map():
         },
     ]
     return child_map
-
-
-def get_refdoc(doctype, childname, template, encounter):
-    ref_docs = [
-        {
-            "ref_d": "Lab Test",
-            "table": "Lab Prescription",
-            "field": "template",
-        },
-        {
-            "ref_d": "Radiology Examination",
-            "table": "Radiology Procedure Prescription",
-            "field": "radiology_examination_template",
-        },
-        {
-            "ref_d": "Clinical Procedure",
-            "table": "Procedure Prescription",
-            "field": "procedure_template",
-        },
-    ]
-
-    for refd in ref_docs:
-        if refd.get("table") == doctype:
-            docname = frappe.get_cached_value(
-                refd.get("ref_d"),
-                {
-                    "ref_doctype": "Patient Encounter",
-                    "ref_docname": encounter,
-                    "hms_tz_ref_childname": childname,
-                    refd.get("field"): template,
-                },
-                ["name"],
-            )
-            return docname or ""
 
 
 def set_missing_values(doc):
