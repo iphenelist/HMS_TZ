@@ -597,23 +597,25 @@ class MedicationChangeRequest(Document):
                 apply_workflow(dn_doc, action)
                 dn_doc.reload()
 
-                if dn_doc.validate_workflow == "Changes Made":
+                if dn_doc.workflow_state == "Changes Made":
                     frappe.msgprint(
                         _("Delivery Note " + self.delivery_note + " has been updated!"),
                         alert=True,
                     )
 
         except Exception:
-            return
             if state == "Changes Made":
                 frappe.log_error(
-                    frappe.get_traceback(),
-                    str(f"Apply workflow error for delivery note: {frappe.bold(dn_doc.name)}"),
+                    title=f"{self.doctype}: {self.name}",
+                    message=frappe.get_traceback(),
                 )
                 frappe.throw(f"Apply workflow error for delivery note: {frappe.bold(dn_doc.name)}")
 
             else:
-                frappe.log_error(frappe.get_traceback(), str(self.doctype))
+                frappe.log_error(
+                    title=f"{self.doctype}: {self.name}",
+                    message=frappe.get_traceback(),
+                )
                 frappe.msgprint(f"Apply workflow error for delivery note: {frappe.bold(dn_doc.name)}")
                 frappe.throw("Medication Change Request was not created, try again")
 
