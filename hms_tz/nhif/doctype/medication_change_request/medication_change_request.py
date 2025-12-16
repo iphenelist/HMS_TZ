@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
+from time import sleep
 from frappe.query_builder import DocType
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
@@ -641,7 +642,7 @@ class MedicationChangeRequest(Document):
         
         frappe.enqueue(
             "hms_tz.nhif.doctype.medication_change_request.medication_change_request.update_healthcare_service_request",
-            mcr_doc=self,
+            mcr_name=self.name,
             queue="short",
             timeout=300,
         )
@@ -883,10 +884,22 @@ def get_service_unit(warehouse, company, service_unit_type):
     return None
 
 
-def update_healthcare_service_request(mcr_doc):
-    """Update Healthcare Service Request with new Drug Prescription"""
+def update_healthcare_service_request(mcr_name):
+    """Update Healthcare Service Request with new Drug Prescription
+    
+    This function is called via enqueue after MCR submission.
+    It compares original vs current drugs in MCR to determine:
+    - Which drugs were removed (need to delete from HSR)
+    - Which drugs were added (need to add to HSR)  
+    - Which drugs remain (need to update in HSR)
+    """
+    
+    sleep(60)
 
-    hsr_id = frappe.get_cached_value(
+    # Reload MCR document fresh from database
+    mcr_doc = frappe.get_doc("Medication Change Request", mcr_name)
+
+    hsr_id = frappe.db.get_value(
         "Healthcare Service Request",
         {"source_doctype": "Patient Encounter", "source_docname": mcr_doc.patient_encounter},
         "name"
@@ -895,43 +908,39 @@ def update_healthcare_service_request(mcr_doc):
     if not hsr_id:
         return
     
-    drug_map = {}
-    services_to_be_removed = []
+    # Original items = items that were in MCR before user made changes
+    original_drug_codes = set()
+    for d in mcr_doc.original_pharmacy_prescription:
+        original_drug_codes.add(d.drug_code)
 
-    encounter_doc = frappe.get_doc(
-        "Patient Encounter",
-        mcr_doc.patient_encounter,
-    )
-
-    # Map current drugs from encounter
-    for d in encounter_doc.drug_prescription:
-        if d.prescribe == 1 or d.is_not_available_inhouse == 1 or d.is_cancelled == 1:
+    # Current items = items in MCR after user made changes (excluding cancelled/not available)
+    current_drug_codes = set()
+    for d in mcr_doc.drug_prescription:
+        if d.is_not_available_inhouse == 1 or d.is_cancelled == 1:
             continue
 
-        drug_map.setdefault(d.drug_code, []).append(d)
+        current_drug_codes.add(d.drug_code)
 
-    hsr_doc = frappe.get_cached_doc("Healthcare Service Request", hsr_id)
+    # Calculate what changed
+    removed_drug_codes = original_drug_codes - current_drug_codes  # Items removed by user
+    added_drug_codes = current_drug_codes - original_drug_codes    # Items added by user
+    unchanged_drug_codes = original_drug_codes & current_drug_codes  # Items that remain (may have qty changes)
 
-    # Identify services to be removed (no longer in encounter)
-    for service in hsr_doc.services:
-        if service.service_type == "Medication" and service.service_name not in drug_map:
-            services_to_be_removed.append(service)
+    services_to_be_removed = []
+    hsr_doc = frappe.get_doc("Healthcare Service Request", hsr_id)
     
-    # Identify payments to be removed (no longer in encounter)
+    # Step 1: Identify HSR services and payments to remove (for removed drugs)
+    for service in hsr_doc.services:
+        if service.service_type == "Medication" and service.service_name in removed_drug_codes:
+            services_to_be_removed.append(service)
+
     for payment in hsr_doc.payments:
-        if payment.service_type == "Medication" and payment.service_name not in drug_map:
+        if payment.service_type == "Medication" and payment.service_name in removed_drug_codes:
             services_to_be_removed.append(payment)
     
-    # Remove obsolete services and payments
+    # Step 2: Delete removed services and payments, and cancel their HRE
     for service in services_to_be_removed:
-        frappe.delete_doc(
-            service.doctype,
-            service.name,
-            force=1,
-            ignore_permissions=True,
-            for_reload=True,
-        )
-
+        # If it's a payment, cancel its HRE first
         if service.doctype == "Healthcare Service Request Payment":
             update_cancelled_revenue_entry(
                 service.ref_docname,
@@ -940,51 +949,98 @@ def update_healthcare_service_request(mcr_doc):
                 is_cancelled=1,
                 remarks=f"Reason for Service Replacement: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else "",
             )
+        
+        frappe.delete_doc(
+            service.doctype,
+            service.name,
+            force=1,
+            ignore_permissions=True,
+            delete_permanently=True,
+        )
 
     hsr_doc.reload()
+    
+    # Step 3: Build drug map from the UPDATED encounter for adding/updating services
+    encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
+    
+    drug_map = {}
+    for d in encounter_doc.drug_prescription:
+        if (
+            d.prescribe == 1 or
+            d.is_not_available_inhouse == 1 or
+            d.is_cancelled == 1
+        ):
+            continue
+
+        drug_map.setdefault(d.drug_code, []).append(d)
+
+    # Step 4: Add or update services
     new_ref_docnames_for_hre = add_or_update_service(
         hsr_doc,
         drug_map,
         mcr_doc.name,
-        mcr_doc.hms_tz_comment
+        mcr_doc.hms_tz_comment,
+        added_drug_codes,
+        unchanged_drug_codes,
     )
 
-    # update db
+    # Step 5: Save HSR changes
     hsr_doc.db_update()
     hsr_doc.db_update_all()
 
     hsr_doc.reload()
     hsr_doc.run_method("before_save")
+    hsr_doc.db_update()
     hsr_doc.db_update_all()
     hsr_doc.add_comment(
         comment_type="Comment",
-        text=f"Changes made from Medication Change Request: {frappe.bold(mcr_doc.name)}",
+        text=f"Changes made from Medication Change Request: <a href='{mcr_doc.get_url()}'>{frappe.bold(mcr_doc.name)}</a>",
     )
 
+    hsr_doc.reload()
+
+    # Step 6: Create HRE for newly added services
     if len(new_ref_docnames_for_hre) > 0:
         create_revenue_entry_from_mcr(mcr_doc, new_ref_docnames_for_hre)
+
 
 def add_or_update_service(
     hsr_doc,
     drug_map,
     mcr_id,
-    mcr_comment
+    mcr_comment,
+    added_drug_codes,
+    unchanged_drug_codes,
 ):
-    """Add or update a service in the Healthcare Service Request"""
+    """Add or update services in the Healthcare Service Request
+    
+    Args:
+        hsr_doc: Healthcare Service Request document
+        drug_map: Dict mapping drug_code to list of Drug Prescription rows
+        mcr_id: Medication Change Request name
+        mcr_comment: Comment/reason for the change
+        added_drug_codes: Set of drug codes that were newly added in MCR
+        unchanged_drug_codes: Set of drug codes that existed before and still exist
+    """
     
     new_ref_docnames_for_hre = []
 
-    # Update or add services and their corresponding payments
+    # Process each drug in the map
     for drug_code, prescriptions in drug_map.items():
+        # Skip drugs that are not in added or unchanged sets
+        # (these would be drugs from other parts of the encounter not related to this MCR)
+        if drug_code not in added_drug_codes and drug_code not in unchanged_drug_codes:
+            continue
+            
         existing_service = None
         
-        # Check if service already exists
+        # Check if service already exists in HSR
         for service in hsr_doc.services:
             if service.service_type == "Medication" and service.service_name == drug_code:
                 existing_service = service
                 break
         
-        # Calculate aggregated values
+        # Calculate aggregated values from all prescriptions of this drug
         total_qty = sum(row.delivered_quantity or row.quantity for row in prescriptions)
         has_copayment = any(row.has_copayment for row in prescriptions)
         is_restricted = any(row.is_restricted for row in prescriptions)
@@ -993,8 +1049,8 @@ def add_or_update_service(
         # Use the first prescription for reference fields
         first_prescription = prescriptions[0]
         
-        if existing_service:
-            # Update existing service
+        if existing_service and drug_code in unchanged_drug_codes:
+            # Update existing service (drug existed before and still exists, possibly with qty change)
             existing_service.qty = total_qty
             existing_service.has_copayment = has_copayment
             existing_service.is_restricted = is_restricted
@@ -1014,7 +1070,7 @@ def add_or_update_service(
             updated_service.db_update()
             
             # Update corresponding payment entries
-            ref_docname = update_service_payments(
+            new_payment = update_service_payments(
                 hsr_doc,
                 updated_service,
                 first_prescription.delivery_note,
@@ -1023,8 +1079,9 @@ def add_or_update_service(
                 mcr_comment
             )
 
-            if ref_docname:
-                new_ref_docnames_for_hre.append(ref_docname)
+            if new_payment:
+                # Track for HRE creation if a new payment was created
+                new_ref_docnames_for_hre.append(first_prescription.name)
         else:
             # Add new service
             new_service = hsr_doc.append("services", {})
@@ -1032,12 +1089,16 @@ def add_or_update_service(
                 "service_type": "Medication",
                 "service_name": drug_code,
                 "qty": total_qty,
-                "has_copayment": has_copayment, 
+                "has_copayment": has_copayment,
                 "is_restricted": is_restricted,
                 "discount_applied": discount_applied,
                 "department_hsu": first_prescription.healthcare_service_unit,
                 "ref_docname": first_prescription.name,
                 "ref_doctype": first_prescription.doctype,
+                "insurance_company": hsr_doc.insurance_company,
+                "insurance_subscription": hsr_doc.insurance_subscription,
+                "payor_plan": hsr_doc.insurance_coverage_plan,
+                "item_code": get_item_refcode("Medication", drug_code),
             })
             
             new_service.percent_covered = hsr_doc.get_percent_covered(item_obj=new_service)
@@ -1058,6 +1119,7 @@ def add_or_update_service(
                 first_prescription.dn_detail,
             )
 
+            # Track for HRE creation
             new_ref_docnames_for_hre.append(first_prescription.name)
 
     return new_ref_docnames_for_hre
@@ -1138,14 +1200,15 @@ def update_service_payments(
                 query.run()
     else:
         # Create new payment entry if none exists
-        create_service_payments(
+        # This should rarely happen for unchanged drugs, but handles edge cases
+        new_payment = create_service_payments(
             hsr_doc,
             service_row,
             delivery_note,
             dn_detail
         )
 
-        return service_row.ref_docname
+        return new_payment
 
 
 def create_service_payments(
@@ -1157,6 +1220,9 @@ def create_service_payments(
     """Create payment entries for a new service"""
 
     ref_code = get_item_refcode("Medication", service_row.get("service_name"))
+    
+    # Get percent_covered from service_row or default to 100
+    percent_covered = service_row.get("percent_covered") or 100
 
     # Create payment entry based on insurance subscription
     new_payment = frappe.get_doc({
@@ -1169,7 +1235,7 @@ def create_service_payments(
         "item_code": ref_code,
         "qty": service_row.qty,
         "rate": service_row.rate,
-        "amount": service_row.amount,
+        "amount": ((percent_covered / 100) * service_row.rate) * service_row.qty,
         "price_list": service_row.price_list,
         "ref_docname": service_row.ref_docname,
         "ref_doctype": service_row.ref_doctype,
@@ -1181,12 +1247,12 @@ def create_service_payments(
         "department_hsu": service_row.department_hsu,
         "has_copayment": service_row.has_copayment,
         "is_restricted": service_row.is_restricted,
-        "discount_applied": service_row.discount_applied,
+        "discount_applied": service_row.get("discount_applied"),
         "insurance_subscription": hsr_doc.insurance_subscription,
         "payor_plan": hsr_doc.insurance_coverage_plan,
         "insurance_company": hsr_doc.insurance_company,
         "payment_type": "Insurance" if hsr_doc.insurance_subscription else "Cash",
-        "percent_covered": 100,
+        "percent_covered": percent_covered,
         "years_of_insurance": hsr_doc.years_of_insurance,
         "authorization_number": frappe.get_cached_value(
             "Patient Appointment",
