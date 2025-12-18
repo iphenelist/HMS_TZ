@@ -1248,10 +1248,19 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
             ):
                 continue
 
-            therapy_child.invoiced = 1
-            therapy_child.sales_invoice_number = row.parent
-            therapy_child.save(ignore_permissions=True)
+            # therapy_child.invoiced = 1
+            # therapy_child.sales_invoice_number = row.parent
+            # therapy_child.save(ignore_permissions=True)
             therapies.append(therapy_child)
+            frappe.db.set_value(
+                therapy_child.doctype,
+                therapy_child.name,
+                {
+                    "invoiced": 1,
+                    "sales_invoice_number": row.parent,
+                },
+                update_modified=False,
+            )
 
             # row.hms_tz_is_lrp_item_created = 1
             # row.db_update()
