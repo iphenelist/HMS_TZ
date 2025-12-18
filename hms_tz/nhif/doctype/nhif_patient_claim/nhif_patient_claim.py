@@ -148,7 +148,7 @@ class NHIFPatientClaim(Document):
     def get_patient_encounters(self):
         appointments = []
         if self.hms_tz_claim_appointment_list:
-            appointments = [json.loads(self.hms_tz_claim_appointment_list)]
+            appointments = json.loads(self.hms_tz_claim_appointment_list)
         else:
             appointments = [self.patient_appointment]
 
@@ -379,15 +379,20 @@ class NHIFPatientClaim(Document):
                     if not d.service_request:
                         continue
 
-                    if not occupancy.is_service_chargeable:
-                        continue
-
                     if d.service_request in service_requests:
                         continue
                     
                     service_requests.append(d.service_request)
                     service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
                     for row in service_request_doc.get("payments"):
+                        if (
+                            not occupancy.is_service_chargeable and
+                            "dialysis" not in row.service_name.lower() and
+                            "ct scan" not in row.service_name.lower() and
+                            "mri" not in row.service_name.lower()
+                        ):
+                            continue
+
                         self.add_LRPMT_claim_item(row, d)
 
         self.add_appointment_claim_item()
