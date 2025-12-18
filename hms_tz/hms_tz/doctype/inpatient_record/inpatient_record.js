@@ -136,7 +136,8 @@ let discharge_patient_dialog = (frm) => {
 
       if (
         frm.doc.insurance_company &&
-        frm.doc.insurance_company.includes("NHIF")
+        frm.doc.insurance_company.includes("NHIF") &&
+        frm.doc.admission_no
       ) {
         frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
           if (r.enable_nhif_api) {
