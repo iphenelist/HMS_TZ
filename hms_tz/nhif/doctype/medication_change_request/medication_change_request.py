@@ -26,7 +26,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     validate_nhif_patient_claim_status,
 )
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
-    create_revenue_entry_from_mcr, update_cancelled_revenue_entry
+    create_revenue_entry_from_mcr, update_returned_or_cancelled_revenue_entry
 )
 
 
@@ -942,7 +942,7 @@ def update_healthcare_service_request(mcr_name):
     for service in services_to_be_removed:
         # If it's a payment, cancel its HRE first
         if service.doctype == "Healthcare Service Request Payment":
-            update_cancelled_revenue_entry(
+            update_returned_or_cancelled_revenue_entry(
                 service.ref_docname,
                 "Medication Change Request",
                 mcr_doc.name,
