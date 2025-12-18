@@ -124,28 +124,58 @@ def update_revenue_entry(
     query.run()
 
 
-def update_cancelled_revenue_entry(
+def update_returned_or_cancelled_revenue_entry(
     ref_docname,
     update_from_doctype,
     update_from_docname,
     is_cancelled=1,
+    qty_returned=0,
     remarks=""
 ):
+    hre = DocType("Hospital Revenue Entry")
     updated_by = get_fullname(frappe.session.user)
 
-    hre = DocType("Hospital Revenue Entry")
-    query = (
-        frappe.qb.update(hre)
-        .set(hre.remarks, remarks)
-        .set(hre.updated_by, updated_by)
-        .set(hre.is_cancelled, is_cancelled)
-        .set(hre.updated_from_doctype, update_from_doctype)
-        .set(hre.updated_from_docname, update_from_docname)
-        .where(
-            (hre.ref_docname == ref_docname)
+    if qty_returned > 0:
+        hre_details = (
+            frappe.qb.from_(hre)
+            .select(hre.name, hre.qty, hre.rate, hre.percent_covered)
+            .where(
+                hre.ref_docname == ref_docname
+            )
+        ).run(as_dict=True)
+
+        for row in hre_details:
+            new_qty = row.get("qty") - qty_returned
+            new_amount = ((row.get("percent_covered", 0) / 100) * new_qty * row.get("rate"))
+
+            update_query = (
+                frappe.qb.update(hre)
+                .set(hre.remarks, remarks)
+                .set(hre.amount, new_amount)
+                .set(hre.updated_by, updated_by)
+                .set(hre.qty_returned, qty_returned)
+                .set(hre.is_cancelled, is_cancelled)
+                .set(hre.updated_from_doctype, update_from_doctype)
+                .set(hre.updated_from_docname, update_from_docname)
+                .where(
+                    hre.name == row.get("name")
+                )
+            )
+            update_query.run()
+    
+    else:
+        query = (
+            frappe.qb.update(hre)
+            .set(hre.remarks, remarks)
+            .set(hre.updated_by, updated_by)
+            .set(hre.is_cancelled, is_cancelled)
+            .set(hre.updated_from_doctype, update_from_doctype)
+            .set(hre.updated_from_docname, update_from_docname)
+            .where(
+                (hre.ref_docname == ref_docname)
+            )
         )
-    )
-    query.run()
+        query.run()
 
 
 def get_entry_from_appointment(doc):
