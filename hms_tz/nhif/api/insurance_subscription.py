@@ -44,6 +44,9 @@ def validate_card_no(doc):
         "name": ["!=", doc.name or ""],
     }
 
+    if doc.get("company"):
+        filters["company"] = doc.company
+
     his = frappe.db.get_all(
         "Healthcare Insurance Subscription",
         filters=filters,
@@ -65,6 +68,9 @@ def validate_national_id(doc):
         "national_id": doc.national_id,
         "name": ["!=", doc.name],
     }
+
+    if doc.get("company"):
+        filters["company"] = doc.company
 
     his = frappe.db.get_all(
         "Healthcare Insurance Subscription",
