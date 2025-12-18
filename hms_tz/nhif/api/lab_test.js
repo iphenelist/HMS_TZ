@@ -116,6 +116,81 @@ frappe.ui.form.on("Lab Test", {
       },
     });
   },
+  update_approval_request: (frm) => {
+    if (
+      !frm.doc.insurance_company ||
+      !frm.doc.insurance_company.includes("NHIF")
+    ) {
+      frappe.show_alert(
+        {
+          message: __("This feature is only applicable for NHIF insurance"),
+          indicator: "orange",
+        },
+        5
+      );
+      return;
+    }
+
+    if (!frm.doc.insurance_subscription) {
+      frappe.msgprint(
+        "Insurance Subscription is required to request approval"
+      );
+      return;
+    }
+
+    frappe.call({
+      method: "hms_tz.nhif.nhif_api.approval.update_service_approval",
+      args: {
+        ref_doctype: frm.doctype,
+        ref_docname: frm.docname,
+        service_type: "Lab Test Template",
+        service_name: frm.doc.template,
+        qty: 1,
+        item_authorization_id: frm.doc.item_authorization_id,
+        service_authorization_id: frm.doc.service_authorization_id,
+      },
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      callback: function (r) {
+        if (r.message) {
+          frm.refresh();
+          if (r.message.status == "success") {
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+            
+            frappe.show_alert(
+              {
+                message: __(
+                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Approval Request Successful. Reference Number: " +
+                  r.message.reference_no +
+                  "</h4>"
+                ),
+                indicator: "green",
+              },
+              15
+            );
+            frappe.utils.play_sound("submit");
+          } else {
+            frappe.show_alert(
+              {
+                message: __(
+                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
+                                Approval Request Failed: </h4>"
+                ),
+                indicator: "red",
+              },
+              20
+            );
+            frappe.utils.play_sound("error");
+          }
+        } else {
+          frappe.utils.play_sound("error");
+        }
+      },
+    });
+  },
   get_approval_status: (frm) => {
     if (
       !frm.doc.insurance_company ||
