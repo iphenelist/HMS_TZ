@@ -420,7 +420,7 @@ frappe.ui.form.on("Patient Encounter", {
       );
       preliminary_row.code_value = "ICD-10 R69";
       preliminary_row.code = "R69";
-      preliminary_row.description = "Illness, unspecified";
+      preliminary_row.description = "Unknown and unspecified causes of morbidity";
       preliminary_row.mtuha = "Other";
       frm.refresh_field("patient_encounter_preliminary_diagnosis");
       let final_row = frappe.model.add_child(
@@ -430,7 +430,7 @@ frappe.ui.form.on("Patient Encounter", {
       );
       final_row.code_value = "ICD-10 R69";
       final_row.code = "R69";
-      final_row.description = "Illness, unspecified";
+      final_row.description = "Unknown and unspecified causes of morbidity";
       final_row.mtuha = "Other";
       frm.refresh_field("patient_encounter_final_diagnosis");
     }
