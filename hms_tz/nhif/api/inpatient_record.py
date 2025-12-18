@@ -90,7 +90,7 @@ def daily_update_inpatient_occupancies():
                 if occupancies_len > 0:
                     count = 0
                     last_check_in = get_datetime(doc.inpatient_occupancies[-1].check_in)
-                    last_check_out = doc.inpatient_occupancies[-1].check_out or add_days(last_check_in, 1)
+                    last_check_out = doc.inpatient_occupancies[-1].check_out or last_check_in
                     date_count = date_diff(nowdate(), last_check_out)
 
                     if date_count <= 0:
@@ -98,7 +98,7 @@ def daily_update_inpatient_occupancies():
 
                     last_row = doc.inpatient_occupancies[-1]
                     if not last_row.left:
-                        base_check_in = get_datetime(last_row.check_in)
+                        base_check_in = get_datetime(last_row.check_in).replace(hour=0, minute=0, second=0, microsecond=0)
                         new_rows_data = []
                         
                         while count < date_count:
