@@ -207,7 +207,7 @@ def update_encounter_items(encounter_doc, package_doc, has_items):
                 {
                     "code_value": "ICD-10 R69",
                     "code": "R69",
-                    "description": "Illness, unspecified",
+                    "description": "Unknown and unspecified causes of morbidity",
                     "mtuha": "Other",
                 },
             )
@@ -220,12 +220,12 @@ def update_encounter_items(encounter_doc, package_doc, has_items):
                     new_row = {
                         d["field"]: row.healthcare_service,
                         "prescribe": 1 if encounter_doc.mode_of_payment else 0,
-                        "medical_code": str("ICD-10 R69") + "\n " + str("Illness, unspecified"),
+                        "medical_code": str("ICD-10 R69") + "\n " + "Unknown and unspecified causes of morbidity",
                         "amount": row.service_price,
                     }
 
                     if row.healthcare_service_type == "Radiology Examination Template":
-                        new_row["radiology_test_comment"] = "Heqalthcare Package"
+                        new_row["radiology_test_comment"] = "Healthcare Package"
 
                     if row.healthcare_service_type == "Medication":
                         new_row["quantity"] = row.quantity
