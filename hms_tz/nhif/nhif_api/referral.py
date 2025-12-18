@@ -65,11 +65,11 @@ def create_treatment_referral(doc):
         )
         doc.add_comment(
             comment_type="Comment",
-            text=f"Failed to create treatment referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+            text=f"Failed to create treatment referral!<br><br><b>Message from NHIF:</b><br>{data.get('message')}",
         )
         frappe.db.commit()
 
-        frappe.throw(str(data.get("reasonPhrase")))
+        frappe.throw(str(data.get("message")))
 
     else:
         data = json.loads(r.text)
@@ -165,10 +165,10 @@ def create_service_referral(doc):
 
         doc.add_comment(
             comment_type="Comment",
-            text=f"Failed to create service referral!<br><br><b>Message from NHIF:</b><br>{data.get('reasonPhrase')}",
+            text=f"Failed to create service referral!<br><br><b>Message from NHIF:</b><br>{data.get('message')}",
         )
         frappe.db.commit()
-        frappe.throw(str(data.get("reasonPhrase")))
+        frappe.throw(str(data.get("message")))
 
     else:
         data = json.loads(r.text)
