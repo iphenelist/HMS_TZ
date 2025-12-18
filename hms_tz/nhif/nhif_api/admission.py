@@ -833,11 +833,18 @@ def send_overstay_nofication():
                 days_diff = date_diff(inpatient_doc.get("last_overstay_date"), nowdate())
                 if days_diff and days_diff <= notification_days:
                     continue
+            
+            notes = frappe.db.get_value(
+                "Patient Encounter",
+                {"inpatient_record": inpatient_doc.name, "duplicated": 0},
+                "examination_detail"
+            )
+            clinical_notes = html2text(notes) if notes else ""
 
             payload = {
                 "admissionNo": inpatient_doc.admission_no,
                 "practitionerNo": row.tz_mct_code,
-                "practitionersRemarks": inpatient_doc.admission_instruction or "",
+                "practitionersRemarks": clinical_notes or "",
                 "createdBy": get_fullname(inpatient_doc.owner),
             }
 
@@ -876,10 +883,17 @@ def send_overstay_nofication():
                     ref_doctype=inpatient_doc.doctype,
                     ref_docname=inpatient_doc.name,
                 )
+                
+                frappe.db.set_value(
+                    inpatient_doc.doctype,
+                    inpatient_doc.name,
+                    "last_overstay_date",
+                    nowdate(),
+                )
 
                 inpatient_doc.add_comment(
                     comment_type="Comment",
-                    text=f"NHIF Overstay Notification Successful<br><br>Status Code: {r.status_code}<br>AdmissionNo: <b>{data.get('AdmissionNo')}<b>",
+                    text=f"NHIF Overstay Notification Successful<br><br>Status Code: {r.status_code}<br><b>{data}<b>",
                 )
 
 
