@@ -1253,8 +1253,15 @@ def create_therapy_plan(enc_doc=None, invoice_therapy_dict=[]):
             therapy_child.save(ignore_permissions=True)
             therapies.append(therapy_child)
 
-            row.hms_tz_is_lrp_item_created = 1
-            row.db_update()
+            # row.hms_tz_is_lrp_item_created = 1
+            # row.db_update()
+            frappe.db.set_value(
+                row.doctype,
+                row.name,
+                "hms_tz_is_lrp_item_created",
+                1,
+                update_modified=False,
+            )
 
     elif len(enc_doc.therapies) > 0:
         if enc_doc.docstatus != 1:

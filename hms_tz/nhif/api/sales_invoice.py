@@ -133,12 +133,20 @@ def create_healthcare_docs(doc, method):
                     create_individual_radiology_examination(patient_encounter_doc, child)
                 elif child.doctype == "Procedure Prescription":
                     create_individual_procedure_prescription(patient_encounter_doc, child)
+                
                 child.invoiced = 1
                 child.sales_invoice_number = doc.name
                 child.save(ignore_permissions=True)
 
-                item.hms_tz_is_lrp_item_created = 1
-                item.db_update()
+                # item.hms_tz_is_lrp_item_created = 1
+                # item.db_update()
+                frappe.db.set_value(
+                    item.doctype,
+                    item.name,
+                    "hms_tz_is_lrp_item_created",
+                    1,
+                    update_modified=False,
+                )
 
             elif item.reference_dt and item.reference_dt == "Therapy Plan Detail":
                 therapy_items.append(item)
