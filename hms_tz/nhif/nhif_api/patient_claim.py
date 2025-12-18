@@ -209,18 +209,6 @@ def get_payload(doc):
 
     date_modified = get_datetime(doc.modified).isoformat(timespec='milliseconds')
     date_created = get_datetime(f"{doc.attendance_date} {doc.attendance_time}").isoformat(timespec='milliseconds')
-    
-    appointment_type = frappe.get_cached_value(
-        "Patient Appointment",
-        doc.patient_appointment,
-        "appointment_type"
-    )
-
-    visit_type_id = frappe.get_cached_value(
-        "Appointment Type",
-        appointment_type,
-        "visit_type_id"
-    )
 
     for disease in doc.nhif_patient_claim_disease:
         disease_date = get_datetime(disease.date_created).isoformat(timespec='milliseconds')
@@ -297,7 +285,7 @@ def get_payload(doc):
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
         "AttendanceDate": date_created,
-        "VisitTypeID": visit_type_id,
+        "VisitTypeID": doc.visit_type_id,
         "PatientTypeCode": doc.patient_type_code,
         "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
         "LateSubmissionReason": doc.delayreason,
