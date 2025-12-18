@@ -14,7 +14,7 @@ from frappe.utils import cint, flt, get_fullname, nowdate, nowtime, unique
 from hms_tz.nhif.api.healthcare_utils import validate_nhif_patient_claim_status
 from hms_tz.nhif.api.patient_encounter import validate_totals
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
-    update_cancelled_revenue_entry,
+    update_returned_or_cancelled_revenue_entry,
 )
 
 
@@ -416,7 +416,7 @@ def update_therapy_plan(
         update_cancelled_hsr(
             row.get("encounter_child_table_id"),
             self.name,
-            remarks=f"Reason for cancellation: <b>{row.reason or ''}</b>",
+            remarks=f"Reason for cancellation: <b>{row.get("reason") or ''}</b>",
         )
     except Exception:
         frappe.log_error(
@@ -532,7 +532,7 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
         )
 
 
-def update_drug_prescription_for_submitted_delivery_note(item):
+def update_drug_prescription_for_submitted_delivery_note(lrpmt_return_id, item):
     item_cancelled = 0
     if item.quantity_prescribed <= (item.quantity_to_return + item.qty_returned):
         item_cancelled = 1
@@ -549,8 +549,10 @@ def update_drug_prescription_for_submitted_delivery_note(item):
     )
     update_cancelled_hsr(
         item.child_name,
-        item_cancelled,
-        qty_returned=qty_returned
+        lrpmt_return_id,
+        is_cancelled=item_cancelled,
+        qty_returned=qty_returned,
+        remarks=f"Reason for return: <b>{item.reason or ''}</b>, Total Qty Returned: <b>{qty_returned}</b>",
     )
 
 
@@ -586,7 +588,7 @@ def return_drug_quantity_to_stock(self, source_doc):
 
     for item in self.drug_items:
         if source_doc.name == item.delivery_note_no and item.status == "Submitted":
-            update_drug_prescription_for_submitted_delivery_note(item)
+            update_drug_prescription_for_submitted_delivery_note(self.name, item)
             for dni in source_doc.items:
                 if (item.dn_detail == dni.name) and (item.drug_name == dni.item_code):
                     target_doc.append(
@@ -1236,6 +1238,17 @@ def update_cancelled_hsr(
                 .set(hsrp.qty_returned, qty_returned)
                 .where(hsrp.name == record.name)
             ).run()
+        
+        update_returned_or_cancelled_revenue_entry(
+            ref_docname,
+            "LRPMT Returns",
+            lrpmt_return_id,
+            is_cancelled=is_cancelled,
+            qty_returned=qty_returned,
+            remarks=remarks
+        )
+
+            
     else:
         (
             frappe.qb.update(hsrp)
@@ -1243,7 +1256,7 @@ def update_cancelled_hsr(
             .where(hsrp.ref_docname == ref_docname)
         ).run()
 
-        update_cancelled_revenue_entry(
+        update_returned_or_cancelled_revenue_entry(
             ref_docname,
             "LRPMT Returns",
             lrpmt_return_id,
