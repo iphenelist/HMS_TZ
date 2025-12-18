@@ -100,7 +100,7 @@ def issue_nhif_service(
     if doc.doctype == "Delivery Note":
         approval_items = []
         for row in doc.items:
-            if row.is_restricted == 1:
+            if row.is_restricted == 1 and not row.service_reference_no:
                 if row.approval_number:
                     approval_items.append(row)
                 else:
@@ -121,8 +121,12 @@ def issue_nhif_service(
             )
 
             if service_data:
-                d.service_reference_no = service_data.get("ServiceReferenceNo")
-                d.db_update()
+                frappe.db.set_value(
+                    "Delivery Note Item",
+                    d.name,
+                    "service_reference_no",
+                    service_data.get("ServiceReferenceNo")
+                )
 
                 data.update(service_data)
 
