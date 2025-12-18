@@ -27,7 +27,9 @@ def validate(doc, method):
 
 def after_insert(doc, method):
     set_original_item(doc)
-    create_revenue_entry(doc)
+    
+    if doc.is_return == 0:
+        create_revenue_entry(doc)
 
 
 def set_original_item(doc):
@@ -245,7 +247,7 @@ def on_submit(doc, method):
 def update_drug_prescription(doc):
     if doc.patient and doc.is_return == 0:
         if doc.form_sales_invoice:
-            sales_invoice_doc = frappe.get_cached_doc("Sales Invoice", doc.form_sales_invoice)
+            sales_invoice_doc = frappe.get_doc("Sales Invoice", doc.form_sales_invoice)
 
             for item in sales_invoice_doc.items:
                 if item.reference_dt == "Drug Prescription":
@@ -307,7 +309,7 @@ def update_drug_prescription(doc):
 
         else:
             if doc.reference_doctype == "Patient Encounter":
-                patient_encounter_doc = frappe.get_cached_doc(doc.reference_doctype, doc.reference_name)
+                patient_encounter_doc = frappe.get_doc(doc.reference_doctype, doc.reference_name)
 
                 for dni in doc.items:
                     if dni.reference_doctype == "Drug Prescription":
