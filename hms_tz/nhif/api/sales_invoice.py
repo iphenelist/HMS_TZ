@@ -134,9 +134,19 @@ def create_healthcare_docs(doc, method):
                 elif child.doctype == "Procedure Prescription":
                     create_individual_procedure_prescription(patient_encounter_doc, child)
                 
-                child.invoiced = 1
-                child.sales_invoice_number = doc.name
-                child.save(ignore_permissions=True)
+                # child.invoiced = 1
+                # child.sales_invoice_number = doc.name
+                # child.save(ignore_permissions=True)
+
+                frappe.db.set_value(
+                    child.doctype,
+                    child.name,
+                    {
+                        "invoiced": 1,
+                        "sales_invoice_number": doc.name,
+                    },
+                    update_modified=False,
+                )
 
                 # item.hms_tz_is_lrp_item_created = 1
                 # item.db_update()
