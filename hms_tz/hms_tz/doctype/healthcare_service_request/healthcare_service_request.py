@@ -422,12 +422,33 @@ def create_service_request(doc_obj=None, data=None):
     hsr.insert(ignore_permissions=True)
     hsr.reload()
 
+    hsr.run_method("before_save")
+    hsr.db_update_all()
+    hsr.reload()
+    
     has_copayment = any(d.has_copayment == 1 for d in hsr.services)
-    if not has_copayment:
-        hsr.run_method("before_save")
-        hsr.db_update_all()
+    has_less_than_100 = any(d.percent_covered < 100 for d in hsr.payments)
 
-        hsr.reload()
+    if has_copayment and has_less_than_100:
+        frappe.db.set_value(
+            "Healthcare Service Request",
+            hsr.name,
+            "has_copayment",
+            1
+        )
+        
+        frappe.msgprint(
+            _(
+                "Copayment Items detected, Please Inform patient to pass through Billing Team."
+            ),
+            alert=True,
+        )
+        frappe.msgprint(
+            title=_("<b>Copayment Notice</b>"),
+            msg=_("Copayment Items detected, Please Inform patient to pass through Billing Team.")
+        )
+        
+    else:
         hsr.submit()
 
     return hsr.name
