@@ -194,12 +194,13 @@ def create_subscription(doc):
     sub_doc.national_id = doc.national_id
     sub_doc.hms_tz_scheme_id = doc.scheme_id
 
-    verifier_entry = get_card_verifier(doc)
 
-    if verifier_entry:
-        sub_doc.verifier_id = verifier_entry.verifier_id
-        sub_doc.card_type_id = verifier_entry.card_type_id
-        sub_doc.card_type_name = verifier_entry.card_type_name
+    if doc.card_type:
+        verifier_doc = frappe.get_cached_doc("Healthcare Card Verifier", doc.card_type)
+
+        sub_doc.verifier_id = verifier_doc.verifier_id
+        sub_doc.card_type_id = verifier_doc.card_type_id
+        sub_doc.card_type_name = verifier_doc.card_type_name
 
     frappe.flags.auto_his = True
     sub_doc.save(ignore_permissions=True)
@@ -263,39 +264,7 @@ def validate_missing_patient_dob(patient: str):
     return True
 
 
-def get_card_verifier(doc, card_no=None, national_id=None):
-    card_type_name = ""
-    card_no = card_no or doc.card_no
-    national_id = national_id or doc.national_id
-
-    if "workers" in doc.nhif_employername.lower():
-        card_type_name = "WCF"
-    elif "zanzibar" in doc.nhif_employername.lower() and card_no:
-        card_type_name = "ZHSF"
-    elif "zanzibar" in doc.nhif_employername.lower() and not card_no and national_id:
-        card_type_name = "ID"
-    elif "zanzibar" not in doc.nhif_employername.lower() and "workers" not in doc.nhif_employername.lower() and card_no:
-        card_type_name = "NHIF"
-    elif (
-        "zanzibar" not in doc.nhif_employername.lower()
-        and "workers" not in doc.nhif_employername.lower()
-        and card_no
-        and national_id
-    ):
-        card_type_name = "ID"
-
-    hcv = DocType("Healthcare Card Verifier")
-    hcvd = DocType("Healthcare Card Verifier Detail")
-
-    verifiers = (
-        frappe.qb.from_(hcv)
-        .inner_join(hcvd)
-        .on(hcv.name == hcvd.parent)
-        .select(hcv.verifier_id, hcvd.card_type_id, hcvd.card_type_name)
-        .where(hcvd.card_type_name.like(f"%{card_type_name}%"))
-    ).run(as_dict=True)
-
-    if len(verifiers) == 0:
-        frappe.throw(f"No Card verifier found for EmployerName: {doc.nhif_employername}")
-
-    return verifiers[0]
+@frappe.whitelist()
+def get_card_verifier():
+    verifiers = frappe.db.get_all("Healthcare Card Verifier", pluck="name", order_by="card_type_name asc")
+    return verifiers
