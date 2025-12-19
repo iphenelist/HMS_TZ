@@ -3,6 +3,7 @@ frappe.ui.form.on("Patient", {
   onload: function (frm) {
     frm.trigger("add_get_info_btn");
     frm.trigger("update_cash_limit");
+    frm.trigger("set_card_type_options");
     if (frm.is_new()) {
       frm.set_value("customer_group", "Patient");
     }
@@ -10,6 +11,17 @@ frappe.ui.form.on("Patient", {
   refresh: function (frm) {
     frm.trigger("add_get_info_btn");
     frm.trigger("update_cash_limit");
+    frm.trigger("set_card_type_options");
+  },
+  set_card_type_options: (frm) => {
+    frappe.call({
+      method: "hms_tz.nhif.api.patient.get_card_verifier",
+      callback: function (r) {
+        if (r.message) {
+          frm.set_df_property("card_type", "options", ["", ...r.message]);
+        }
+      },
+    });
   },
   add_get_info_btn: function (frm) {
     frm.add_custom_button(__("Get Patient Info"), function () {
@@ -21,6 +33,8 @@ frappe.ui.form.on("Patient", {
     });
   },
   card_no: function (frm) {
+    frm.trigger("set_card_type_options");
+
     if (!frm.doc.insurance_provider) return;
 
     frm.fields_dict.card_no.$input.off("focusout.card_no_handler").on("focusout.card_no_handler", function () {
@@ -37,6 +51,8 @@ frappe.ui.form.on("Patient", {
     });
   },
   national_id: function (frm) {
+    frm.trigger("set_card_type_options");
+
     if (!frm.doc.insurance_provider) return;
 
     frm.fields_dict.national_id.$input.off("focusout.national_id_handler").on("focusout.national_id_handler", function () {
@@ -53,6 +69,8 @@ frappe.ui.form.on("Patient", {
     });
   },
   insurance_provider: function (frm) {
+    frm.trigger("set_card_type_options");
+    
     let field_name = frm.doc.card_no ? "card_no" : "national_id";
 
     if (frm.doc.insurance_provider && frm.doc[field_name]) {
