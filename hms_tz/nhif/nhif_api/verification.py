@@ -170,53 +170,44 @@ def get_card_verifier(company=None, caller=None):
             company=settings_doc.name,
         )
         for record in data:
-            try:
-                if frappe.db.exists(
-                    "Healthcare Card Verifier",
-                    str(record.get("verifierName")),
-                    cache=True,
-                ):
-                    has_changed = False
-                    hcv_doc = frappe.get_cached_doc("Healthcare Card Verifier", record.get("verifierName"))
+            verifier_id = record.get("verifierID")
+            verifier_name = record.get("verifierName")
 
-                    if hcv_doc.verifier_id != record.get("verifierID"):
-                        has_changed = True
-                        hcv_doc.verifier_id = record.get("verifierID")
+            for card_type in record.get("cardTypes", []):
+                card_type_id = card_type.get("cardTypeID")
+                card_type_name = card_type.get("cardTypeName")
 
-                    hcv_doc.card_types = []
+                try:
+                    if frappe.db.exists("Healthcare Card Verifier", card_type_name):
+                        hcv_doc = frappe.get_doc("Healthcare Card Verifier", card_type_name)
 
-                    for row in record.get("cardTypes"):
-                        has_changed = True
-                        hcv_doc.append(
-                            "card_types",
-                            {
-                                "card_type_id": row.get("cardTypeID"),
-                                "card_type_name": row.get("cardTypeName"),
-                            },
-                        )
+                        has_changed = False
+                        if hcv_doc.card_type_id != card_type_id:
+                            hcv_doc.card_type_id = card_type_id
+                            has_changed = True
 
-                    if has_changed:
+                        if hcv_doc.verifier_name != verifier_name:
+                            hcv_doc.verifier_name = verifier_name
+                            has_changed = True
+
+                        if hcv_doc.verifier_id != verifier_id:
+                            hcv_doc.verifier_id = verifier_id
+                            has_changed = True
+
+                        if has_changed:
+                            hcv_doc.save(ignore_permissions=True)
+
+                    else:
+                        hcv_doc = frappe.new_doc("Healthcare Card Verifier")
+                        hcv_doc.card_type_name = card_type_name
+                        hcv_doc.card_type_id = card_type_id
+                        hcv_doc.verifier_name = verifier_name
+                        hcv_doc.verifier_id = verifier_id
                         hcv_doc.save(ignore_permissions=True)
 
-                else:
-                    hcv_doc = frappe.new_doc("Healthcare Card Verifier")
-                    hcv_doc.verifier_name = record.get("verifierName")
-                    hcv_doc.verifier_id = record.get("verifierID")
-
-                    for row in record.get("cardTypes"):
-                        hcv_doc.append(
-                            "card_types",
-                            {
-                                "card_type_id": row.get("cardTypeID"),
-                                "card_type_name": row.get("cardTypeName"),
-                            },
-                        )
-
-                    hcv_doc.save(ignore_permissions=True)
-                    hcv_doc.reload()
-            except Exception:
-                traceback = frappe.get_traceback()
-                frappe.log_error(title="CardVerifiers", message=traceback)
+                except Exception:
+                    traceback = frappe.get_traceback()
+                    frappe.log_error(title=f"CardVerifier: {card_type_name}", message=traceback)
             
         if company and caller == "Front End":
             frappe.msgprint(
