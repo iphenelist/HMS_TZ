@@ -8,6 +8,13 @@ frappe.ui.form.on("Healthcare Insurance Subscription", {
         },
       };
     });
+    frm.set_query("principal", function () {
+      return {
+        filters: {
+          name: ["!=", frm.doc.patient],
+        },
+      };
+    });
   },
   coverage_plan_card_number: function (frm) {
     frm.fields_dict.coverage_plan_card_number.$input.focusout(function () {
