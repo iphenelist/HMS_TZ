@@ -36,6 +36,10 @@ def on_cancel(doc, method):
 def validate_card_no(doc):
     if not doc.coverage_plan_card_number:
         return
+    
+    if doc.is_dependant and doc.principal:
+        # Dependants can use same card number as the principal member for Non NHIF patients
+        return
 
     filters = {
         "is_active": 1,
@@ -60,6 +64,10 @@ def validate_card_no(doc):
 
 def validate_national_id(doc):
     if not doc.national_id:
+        return
+    
+    if doc.is_dependant and doc.principal:
+        # Dependants can use same national ID number as the principal member for Non NHIF patients
         return
 
     filters = {
@@ -87,6 +95,9 @@ def set_insurance_card_detail_in_patient(doc):
     if frappe.flags.auto_his:
         return
 
+    if doc.is_dependant and doc.principal:
+        return
+    
     his_list = frappe.db.get_all(
         "Healthcare Insurance Subscription",
         filters={
