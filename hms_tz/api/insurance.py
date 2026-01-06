@@ -15,7 +15,10 @@ def delete_hsic_data(coverage_plans):
         return
 
     hsic = DocType("Healthcare Service Insurance Coverage")
-    frappe.qb.from_(hsic).delete().where(hsic.healthcare_insurance_coverage_plan.isin(coverage_plans)).run()
+    frappe.qb.from_(hsic).delete().where(
+        (hsic.is_auto_generated == 1) &
+        (hsic.healthcare_insurance_coverage_plan.isin(coverage_plans))
+    ).run()
 
 
 def get_insurance_items(insurance_customer_name, for_prices=False):
