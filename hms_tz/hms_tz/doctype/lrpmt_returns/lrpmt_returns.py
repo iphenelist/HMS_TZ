@@ -74,11 +74,11 @@ class LRPMTReturns(Document):
                                 Row: #{bold(row.idx)}:<br>"
 
                 if not row.reason:
-                    msg_print += "Reason for Return Field can not be Empty for drug name: {bold(row.drug_name)},\
+                    msg_print += f"Reason for Return Field can not be Empty for drug name: {bold(row.drug_name)},\
                                 Row: #{bold(row.idx)}:<br>"
 
                 if not row.drug_condition:
-                    msg_print += "Drug Condition Field can not Empty for drug name: {bold(row.drug_name)},\
+                    msg_print += f"Drug Condition Field can not Empty for drug name: {bold(row.drug_name)},\
                                 Row: #{bold(row.idx)}:<br>"
 
                 if not msg_print:
@@ -416,7 +416,7 @@ def update_therapy_plan(
         update_cancelled_hsr(
             row.get("encounter_child_table_id"),
             self.name,
-            remarks=f"Reason for cancellation: <b>{row.get("reason") or ''}</b>",
+            remarks=f"Reason for cancellation: <b>{row.get('reason') or ''}</b>",
         )
     except Exception:
         frappe.log_error(
