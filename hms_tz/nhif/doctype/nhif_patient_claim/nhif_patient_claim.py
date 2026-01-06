@@ -337,14 +337,14 @@ class NHIFPatientClaim(Document):
                     continue
 
                 service_requests.append(d.service_request)
-                service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
+                service_request_doc = frappe.get_doc("Healthcare Service Request", d.service_request)
                 for row in service_request_doc.get("payments"):
                     self.add_LRPMT_claim_item(row, d)
 
         else:
             dates = []
             occupancy_list = []
-            record_doc = frappe.get_cached_doc("Inpatient Record", self.inpatient_record)
+            record_doc = frappe.get_doc("Inpatient Record", self.inpatient_record)
 
             for occupancy in record_doc.inpatient_occupancies:
                 if not occupancy.is_confirmed:
@@ -383,7 +383,7 @@ class NHIFPatientClaim(Document):
                         continue
                     
                     service_requests.append(d.service_request)
-                    service_request_doc = frappe.get_cached_doc("Healthcare Service Request", d.service_request)
+                    service_request_doc = frappe.get_doc("Healthcare Service Request", d.service_request)
                     for row in service_request_doc.get("payments"):
                         if (
                             not occupancy.is_service_chargeable and
@@ -857,7 +857,7 @@ class NHIFPatientClaim(Document):
             ).insert(ignore_permissions=True)
             new_folio_doc.reload()
         else:
-            folio_doc = frappe.get_cached_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_doc = frappe.get_doc("NHIF Folio Counter", folio_counter[0].name)
             folio_no = cint(folio_doc.folio_no) + 1
 
             folio_doc.folio_no += 1
