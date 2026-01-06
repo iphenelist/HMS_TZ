@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import flt, get_fullname, now_datetime, get_datetime
+from frappe.utils import flt, get_fullname, now_datetime, get_datetime, add_to_date
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -121,6 +121,7 @@ def submit_folio(doc):
 
     url = f"{settings_doc.nhif_claim_url}/api/Claims/SubmitFolio"
     headers = {
+        "Accept": "*/*",
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
     }
@@ -207,12 +208,13 @@ def get_payload(doc):
     items = []
     diseases = []
 
-    date_modified = get_datetime(doc.modified).isoformat(timespec='milliseconds')
+    date_modified = to_iso8601_utc(doc.modified)
     date_created = get_datetime(f"{doc.attendance_date} {doc.attendance_time}").isoformat(timespec='milliseconds')
+    # date_created = to_iso8601_utc(f"{doc.attendance_date} {doc.attendance_time}")
 
     for disease in doc.nhif_patient_claim_disease:
+        # disease_date = to_iso8601_utc(disease.date_created)
         disease_date = get_datetime(disease.date_created).isoformat(timespec='milliseconds')
-
         disease_dict = {
             "DiseaseCode": disease.disease_code,
             "Status": disease.status,
@@ -225,6 +227,7 @@ def get_payload(doc):
         diseases.append(disease_dict)
 
     for item in doc.nhif_patient_claim_item:
+        # item_date = to_iso8601_utc(item.date_created)
         item_date = get_datetime(item.date_created).isoformat(timespec='milliseconds')
 
         item_dict = {
@@ -303,6 +306,9 @@ def get_payload(doc):
         "LastModifiedBy": get_fullname(doc.modified_by),
     }
     if doc.patient_type_code == "IN":
+        # payload["DateAdmitted"] = to_iso8601_utc(f"{doc.date_admitted} {doc.admitted_time}")
+        # payload["DateDischarged"] = to_iso8601_utc(f"{doc.date_discharge} {doc.discharge_time}")
+
         admission_datetime = get_datetime(f"{doc.date_admitted} {doc.admitted_time}")
         discharge_datetime = get_datetime(f"{doc.date_discharge} {doc.discharge_time}")
 
@@ -592,3 +598,11 @@ def get_receipt(ref_doctype, ref_docname):
             text=f"Receipt retrieved successfully!<br><br><b>Message from NHIF:</b><br>{data.get('Message')}",
         )
         return True
+
+
+def to_iso8601_utc(dt):
+    """Convert datetime to ISO 8601 format in UTC timezone"""
+    actual_date = add_to_date(get_datetime(dt), hours=-3)
+    dt = f"{actual_date.isoformat(timespec='milliseconds')}Z"
+    return dt
+
