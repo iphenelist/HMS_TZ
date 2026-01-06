@@ -187,6 +187,7 @@ class HealthcareServiceRequest(Document):
             return percent_details.percentcovered or 0
 
         else:
+            has_copayment = False
             for item in self.payments:
                 if not item.service_name:
                     item.percent_covered = 100
@@ -206,6 +207,11 @@ class HealthcareServiceRequest(Document):
                     continue
 
                 item.percent_covered = percent_details.percentcovered or 0
+
+                if item.percent_covered < 100 and not has_copayment:
+                    has_copayment = True
+            
+            self.has_copayment = 1 if has_copayment else 0
 
     def get_service_type(self, service_name, request_id=None):
         service_type = ""
@@ -425,27 +431,17 @@ def create_service_request(doc_obj=None, data=None):
     hsr.run_method("before_save")
     hsr.db_update_all()
     hsr.reload()
-    
-    has_copayment = any(d.has_copayment == 1 for d in hsr.services)
-    has_less_than_100 = any(d.percent_covered < 100 for d in hsr.payments)
 
-    if has_copayment and has_less_than_100:
-        frappe.db.set_value(
-            "Healthcare Service Request",
-            hsr.name,
-            "has_copayment",
-            1
-        )
-        
+    if hsr.has_copayment == 1:
         frappe.msgprint(
             _(
-                "Copayment Items detected, Please Inform patient to pass through Billing Team."
+                "<h4 style='background-color:LightCoral; text-align:center;'>Copayment Items detected</h4><br>Please Inform patient to pass through Billing Team.</h4>"
             ),
             alert=True,
         )
         frappe.msgprint(
             title=_("<b>Copayment Notice</b>"),
-            msg=_("Copayment Items detected, Please Inform patient to pass through Billing Team.")
+            msg=_("<h4 style='background-color:LightCoral; text-align:center;'>Copayment Items detected</h4><br>Please Inform patient to pass through Billing Team.</h4>")
         )
         
     else:
