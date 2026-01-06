@@ -62,7 +62,7 @@ def create_revenue_entry(doc):
         hre.reload()
 
 
-def create_revenue_entry_from_mcr(doc, ref_docnames=[]):
+def create_revenue_entry_from_insurance_mcr(doc, ref_docnames=[]):
     """
     Create Hospital Revenue Entry documents from Medication Change Request
 
@@ -81,6 +81,73 @@ def create_revenue_entry_from_mcr(doc, ref_docnames=[]):
         hre.update(entry)
         hre.insert(ignore_permissions=True)
         hre.reload()
+
+
+def create_revenue_entry_from_inpatient_cash_mcr(mcr_doc, ref_docnames):
+    """Create Hospital Revenue Entry for inpatient cash patients from MCR
+    
+    This function creates HRE entries for newly added drugs in MCR for inpatient cash patients
+    who don't have Healthcare Service Request.
+    
+    Args:
+        mcr_doc: Medication Change Request document
+        ref_docnames: List of Drug Prescription reference names to create HRE for
+    """
+    if not ref_docnames:
+        return
+    
+    encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
+    
+    for ref_docname in ref_docnames:
+        # Find the drug prescription row
+        drug_row = None
+        for d in encounter_doc.drug_prescription:
+            if d.name == ref_docname:
+                drug_row = d
+                break
+        
+        if not drug_row:
+            continue
+        
+        rate = drug_row.amount
+        qty = drug_row.delivered_quantity or drug_row.quantity
+        
+        entry_dict = {
+            "patient": mcr_doc.patient,
+            "patient_name": mcr_doc.patient_name,
+            "customer": frappe.get_cached_value("Patient", mcr_doc.patient, "customer"),
+            "appointment": mcr_doc.appointment,
+            "posting_date": encounter_doc.encounter_date,
+            "created_by": get_fullname(frappe.session.user),
+            "company": mcr_doc.company,
+            "source_doctype": "Patient Encounter",
+            "source_docname": mcr_doc.patient_encounter,
+            "currency": frappe.get_cached_value("Company", mcr_doc.company, "default_currency"),
+            "qty": qty,
+            "rate": rate,
+            "amount": rate * qty,
+            "percent_covered": 100,
+            "service_type": "Medication",
+            "service_name": drug_row.drug_code,
+            "is_cancelled": 0,
+            "payment_type": "Cash",
+            "mode_of_payment": "",
+            "ref_doctype": drug_row.doctype,
+            "ref_docname": drug_row.name,
+            "lrpmt_doctype": "Delivery Note",
+            "lrpmt_docname": drug_row.delivery_note,
+            "dn_detail": drug_row.dn_detail,
+            "lrpmt_status": "Draft",
+            "healthcare_service_unit": drug_row.healthcare_service_unit,
+            "healthcare_practitioner": mcr_doc.healthcare_practitioner,
+            "updated_from_doctype": "Medication Change Request",
+            "updated_from_docname": mcr_doc.name,
+            "remarks": f"Service Added from Medication Change Request",
+        }
+        
+        hre = frappe.new_doc("Hospital Revenue Entry")
+        hre.update(entry_dict)
+        hre.insert(ignore_permissions=True)
 
 
 def update_revenue_entry(
