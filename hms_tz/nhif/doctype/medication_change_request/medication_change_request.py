@@ -26,7 +26,9 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     validate_nhif_patient_claim_status,
 )
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
-    create_revenue_entry_from_mcr, update_returned_or_cancelled_revenue_entry
+    create_revenue_entry_from_insurance_mcr,
+    update_returned_or_cancelled_revenue_entry,
+    create_revenue_entry_from_inpatient_cash_mcr
 )
 
 
@@ -636,15 +638,12 @@ class MedicationChangeRequest(Document):
 
     def update_hsr_and_hre(self):
         """Update Healthcare Service Request and Hospital Revenue Entry after Medication Change Request is submitted"""
-
-        if not self.insurance_subscription:
-            return
         
         frappe.enqueue(
-            "hms_tz.nhif.doctype.medication_change_request.medication_change_request.update_healthcare_service_request",
-            mcr_name=self.name,
-            queue="short",
+            "hms_tz.nhif.doctype.medication_change_request.medication_change_request.update_hsr_hre_for_mcr",
             timeout=300,
+            queue="short",
+            mcr_name=self.name,
         )
 
 
@@ -884,7 +883,7 @@ def get_service_unit(warehouse, company, service_unit_type):
     return None
 
 
-def update_healthcare_service_request(mcr_name):
+def update_hsr_hre_for_mcr(mcr_name):
     """Update Healthcare Service Request with new Drug Prescription
     
     This function is called via enqueue after MCR submission.
@@ -892,21 +891,15 @@ def update_healthcare_service_request(mcr_name):
     - Which drugs were removed (need to delete from HSR)
     - Which drugs were added (need to add to HSR)  
     - Which drugs remain (need to update in HSR)
+    
+    Args:
+        mcr_name: Medication Change Request name
     """
     
     sleep(60)
 
     # Reload MCR document fresh from database
     mcr_doc = frappe.get_doc("Medication Change Request", mcr_name)
-
-    hsr_id = frappe.db.get_value(
-        "Healthcare Service Request",
-        {"source_doctype": "Patient Encounter", "source_docname": mcr_doc.patient_encounter},
-        "name"
-    )
-
-    if not hsr_id:
-        return
     
     # Original items = items that were in MCR before user made changes
     original_drug_codes = set()
@@ -925,6 +918,54 @@ def update_healthcare_service_request(mcr_name):
     removed_drug_codes = original_drug_codes - current_drug_codes  # Items removed by user
     added_drug_codes = current_drug_codes - original_drug_codes    # Items added by user
     unchanged_drug_codes = original_drug_codes & current_drug_codes  # Items that remain (may have qty changes)
+
+    try:
+        update_insurance_hsr_hre(
+            mcr_doc,
+            removed_drug_codes,
+            added_drug_codes,
+            unchanged_drug_codes
+        )
+
+        update_cash_inpatient_hre(
+            mcr_doc,
+            removed_drug_codes,
+            added_drug_codes,
+            unchanged_drug_codes
+        )
+    except Exception as e:
+        frappe.log_error(
+            title=f"Error: MCR: {mcr_doc.name} updating HSR and HRE",
+            message=frappe.get_traceback(),
+        )
+    
+
+def update_insurance_hsr_hre(
+    mcr_doc,
+    removed_drug_codes,
+    added_drug_codes,
+    unchanged_drug_codes
+):
+    """Update Healthcare Service Request and Hospital Revenue Entry for insurance Medication Change Request
+    Args:
+        mcr_doc: Medication Change Request document
+        removed_drug_codes: Set of drug codes that were removed in MCR
+        added_drug_codes: Set of drug codes that were newly added in MCR
+        unchanged_drug_codes: Set of drug codes that existed before and still exist
+    """
+
+    if not mcr_doc.insurance_subscription:
+        return
+    
+    # For insurance patients or non-inpatients, proceed with HSR updates
+    hsr_id = frappe.get_cached_value(
+        "Healthcare Service Request",
+        {"source_doctype": "Patient Encounter", "source_docname": mcr_doc.patient_encounter},
+        "name"
+    )
+
+    if not hsr_id:
+        return
 
     services_to_be_removed = []
     hsr_doc = frappe.get_doc("Healthcare Service Request", hsr_id)
@@ -1001,8 +1042,92 @@ def update_healthcare_service_request(mcr_name):
 
     # Step 6: Create HRE for newly added services
     if len(new_ref_docnames_for_hre) > 0:
-        create_revenue_entry_from_mcr(mcr_doc, new_ref_docnames_for_hre)
+        create_revenue_entry_from_insurance_mcr(mcr_doc, new_ref_docnames_for_hre)
 
+
+def update_cash_inpatient_hre(
+    mcr_doc,
+    removed_drug_codes,
+    added_drug_codes,
+    unchanged_drug_codes
+):
+    """Update Hospital Revenue Entry for cash inpatient Medication Change Request
+    Args:
+        mcr_doc: Medication Change Request document
+        removed_drug_codes: Set of drug codes that were removed in MCR
+        added_drug_codes: Set of drug codes that were newly added in MCR
+        unchanged_drug_codes: Set of drug codes that existed before and still exist
+    """
+
+    enc_details = frappe.get_cached_value("Patient Encounter", mcr_doc.patient_encounter, ["inpatient_record","insurance_subscription"], as_dict=True)
+    if enc_details.insurance_subscription or not enc_details.inpatient_record:
+        return
+    
+    hre = DocType("Hospital Revenue Entry")
+    updated_by = get_fullname(frappe.session.user)
+
+    # For cash inpatients, cancel HRE for removed drugs
+    if len(removed_drug_codes) > 0:
+        remarks = f"Reason for Service Replacement: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else ""
+        for drug_code in removed_drug_codes:
+            # Create fresh query for each drug to avoid accumulating conditions
+            cancel_query = (
+                frappe.qb.update(hre)
+                .set(hre.is_cancelled, 1)
+                .set(hre.remarks, remarks)
+                .set(hre.updated_by, updated_by)
+                .set(hre.updated_from_doctype, mcr_doc.doctype)
+                .set(hre.updated_from_docname, mcr_doc.name)
+                .where(
+                    (hre.patient == mcr_doc.patient)
+                    & (hre.source_doctype == "Patient Encounter")
+                    & (hre.source_docname == mcr_doc.patient_encounter)
+                    & (hre.service_type == "Medication")
+                    & (hre.service_name == drug_code)
+                )
+            )
+            cancel_query.run()
+    
+    # Create HRE for newly added drugs and update qty, rate & amount for unchanged drugs
+    if len(added_drug_codes) > 0 or len(unchanged_drug_codes) > 0:
+        new_ref_docnames = []
+        remarks = f"Reason for Qty Change: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else ""
+        
+        encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
+        for d in encounter_doc.drug_prescription:
+            if d.is_cancelled == 1 or d.is_not_available_inhouse == 1:
+                continue
+
+            if d.drug_code in added_drug_codes:
+                new_ref_docnames.append(d.name)
+            
+            if d.drug_code in unchanged_drug_codes:
+                qty = d.quantity - d.quantity_returned
+                amount = d.amount * qty
+
+                # Create fresh query for each drug to avoid accumulating conditions
+                update_query = (
+                    frappe.qb.update(hre)
+                    .set(hre.qty, qty)
+                    .set(hre.rate, d.amount)
+                    .set(hre.amount, amount)
+                    .set(hre.remarks, remarks)
+                    .set(hre.updated_by, updated_by)
+                    .set(hre.updated_from_doctype, mcr_doc.doctype)
+                    .set(hre.updated_from_docname, mcr_doc.name)
+                    .where(
+                        (hre.patient == mcr_doc.patient)
+                        & (hre.source_doctype == "Patient Encounter")
+                        & (hre.source_docname == mcr_doc.patient_encounter)
+                        & (hre.service_type == "Medication")
+                        & (hre.service_name == d.drug_code)
+                    )
+                )
+                update_query.run()
+        
+        if len(new_ref_docnames) > 0:
+            create_revenue_entry_from_inpatient_cash_mcr(mcr_doc, new_ref_docnames)
+    
 
 def add_or_update_service(
     hsr_doc,
