@@ -378,11 +378,20 @@ def update_insurance_subscription(insurance_subscription, data):
     if subscription_doc.hms_tz_scheme_id == data["SchemeID"]:
         return data
 
+    filters = {
+        "nhif_scheme_id": data["SchemeID"],
+        "is_active": 1,
+    }
+
+    if subscription_doc.company:
+        filters["company"] = subscription_doc.company
+    
     plan_list = frappe.db.get_list(
         "Healthcare Insurance Coverage Plan",
-        filters={"nhif_scheme_id": data["SchemeID"], "is_active": 1},
+        filters=filters,
         fields=["name", "insurance_company", "coverage_plan_name"],
     )
+    
     plan = plan_list[0] if len(plan_list) == 1 else None
 
     if plan:
