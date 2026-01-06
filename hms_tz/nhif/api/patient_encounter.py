@@ -294,11 +294,12 @@ def set_item_coverage(doc, method, child_tables):
             if row.get("override_subscription") == 1 or row.prescribe == 1:
                 continue
 
-            # service_templates is like {"CBC":
-            # [cbc1_lab_prescription_line_object,
-            # cbc2_lab_prescription_line_object], "XRay Abdomen":
-            # [radiology_prescription_line_object], ["Panadol":
-            # drug_prescription_line_object]}
+            # service_templates is like 
+            # {
+            #   "CBC": [cbc1_lab_prescription_line_object, # cbc2_lab_prescription_line_object],
+            #   "XRay Abdomen": [radiology_prescription_line_object],
+            #   "Panadol": [drug_prescription_line_object]
+            # }
             rows_affected = service_templates.setdefault(row.get(value), [])
             rows_affected.append(row)
 
@@ -409,6 +410,9 @@ def mark_item_not_covered(
             == 1
         ):
             row_item.prescribe = 1
+        
+        row_item.is_restricted = 0
+        row_item.has_copayment = 0
 
     msg = _(
         f"{template} <h4 style='background-color:LightCoral'>NOT COVERED</h4> \
