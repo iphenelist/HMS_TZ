@@ -702,12 +702,14 @@ frappe.ui.form.on("Patient Appointment", {
     if (frm.doc.biometric_method == "NONE") {
       frm.toggle_display(["remarks"], true);
       frm.toggle_reqd("remarks", true);
+      frm.toggle_enable(["remarks"], true);
     } else {
 
       let visit_type = get_visit_type_details(frm.doc.appointment_type);
       if (!visit_type || (visit_type && visit_type.requires_remarks != 1)) {
         frm.toggle_display(["remarks"], false);
         frm.toggle_reqd("remarks", false);
+        frm.toggle_enable(["remarks"], false);
       }
     }
   }
