@@ -400,7 +400,7 @@ def get_request_approval_payload(
 
     encounter_id = doc.get("ref_docname") or doc.get("reference_name")
     notes_html = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
-    clinical_notes = html2text(notes_html)
+    clinical_notes = html2text(notes_html).lstrip('\n')
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
@@ -606,7 +606,7 @@ def get_update_approval_payload(
 
     encounter_id = doc.get("ref_docname") or doc.get("reference_name")
     notes_html = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
-    clinical_notes = html2text(notes_html)
+    clinical_notes = html2text(notes_html).lstrip('\n')
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no, qualification = frappe.get_cached_value("Healthcare Practitioner", practitioner, ["tz_mct_code", "nhif_physician_qualification"])
