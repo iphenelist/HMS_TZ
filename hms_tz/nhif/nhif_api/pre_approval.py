@@ -51,7 +51,7 @@ def get_service_preapproval(
             "examination_detail",
         )
     
-    clinical_notes = html2text(notes)
+    clinical_notes = html2text(notes).lstrip('\n')
 
     payload = {
         "authorizationNo": authorization_no,
