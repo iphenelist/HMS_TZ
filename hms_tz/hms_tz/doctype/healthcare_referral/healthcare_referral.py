@@ -55,7 +55,7 @@ class HealthcareReferral(Document):
             return
         
         notes_html = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail") or ""
-        clinical_notes = html2text(notes_html)
+        clinical_notes = html2text(notes_html).lstrip('\n')
         self.reason_for_referral = clinical_notes
 
 

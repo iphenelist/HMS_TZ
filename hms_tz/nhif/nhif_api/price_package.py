@@ -557,9 +557,32 @@ def sync_copayment_items(data):
         ncs_name = make_autoname(key="hash")
         services = service_map.get(row.get("ItemCode"))
 
-        for row in services:
-            service_type = row.get("service_type")
-            service_name = row.get("service_name")
+        if not services:
+            values.append(
+                (
+                    ncs_name,
+                    now_datetime(),
+                    frappe.session.user,
+                    now_datetime(),
+                    frappe.session.user,
+                    "",
+                    "",
+                    row.get("ItemCode"),
+                    row.get("ScheduleItemID"),
+                    row.get("SchemeID"),
+                    row.get("YearNo"),
+                    row.get("PercentCovered"),
+                )
+            )
+            frappe.log_error(
+                title="NHIF Co-Payment Item Service Mapping Error",
+                message=f"Failed to find service mapping for ItemCode: {row.get('ItemCode')} <br><br> NHIF Co-Payment Item Data: {json.dumps(row)}",
+            )
+            continue
+
+        for d in services:
+            service_type = d.get("service_type")
+            service_name = d.get("service_name")
 
             values.append(
                 (
