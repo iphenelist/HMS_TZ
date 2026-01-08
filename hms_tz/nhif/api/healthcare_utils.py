@@ -1989,15 +1989,13 @@ def return_quatity_or_cancel_delivery_note_via_lrpmt_returns(source_doc, method)
         target_doc.submit()
 
 
-def create_invoiced_items_if_not_created():
+def create_invoiced_items_if_not_created(from_date='', to_date=''):
     """create pending LRP item(s) after submission of sales invoice"""
 
-    from frappe.query_builder import DocType as dt
+    si = DocType("Sales Invoice")
+    sii = DocType("Sales Invoice Item")
 
-    si = dt("Sales Invoice")
-    sii = dt("Sales Invoice Item")
-
-    si_invoices = (
+    query = (
         frappe.qb.from_(si)
         .inner_join(sii)
         .on(si.name == sii.parent)
@@ -2005,31 +2003,74 @@ def create_invoiced_items_if_not_created():
         .where(
             si.patient.isnotnull()
             & (si.docstatus == 1)
-            & (si.posting_date == nowdate())
             & (sii.hms_tz_is_lrp_item_created == 0)
         )
-    ).run(as_dict=1)
+    )
+
+    if from_date and to_date:
+        query = query.where(
+            (si.posting_date >= from_date)
+            & (si.posting_date <= to_date)
+        )
+    else:
+        query = query.where(
+            si.posting_date == nowdate()
+        )
+    
+    si_invoices = query.run(as_dict=1)
 
     for invoice in si_invoices:
-        si_doc = frappe.get_cached_doc("Sales Invoice", invoice.name)
+        si_doc = frappe.get_doc("Sales Invoice", invoice.name)
 
         therapy_items = []
+        service_request_ids = []
 
         for item in si_doc.items:
+            if not item.reference_dt or not item.reference_dn:
+                continue
+
+            # check if item is from Service Request
+            # its service document will be created from Healthcare Service
+            # Request
+            if item.service_request:
+                frappe.db.set_value(
+                    "Healthcare Service Request Payment",
+                    item.service_request,
+                    {
+                        "sales_invoice_number": si_doc.name,
+                        "invoiced": 1,
+                    },
+                )
+                service_request_ids.append(item.service_request)
+                item.hms_tz_is_lrp_item_created = 1
+                item.db_update()
+
+                continue
+
+            if item.hms_tz_is_lrp_item_created == 1:
+                continue
+
+            child = frappe.get_doc(item.reference_dt, item.reference_dn)
+
             if item.reference_dt in [
                 "Lab Prescription",
                 "Radiology Procedure Prescription",
                 "Procedure Prescription",
             ]:
-                if item.hms_tz_is_lrp_item_created == 1:
-                    continue
-
                 try:
-                    child = frappe.get_cached_doc(item.reference_dt, item.reference_dn)
-                    patient_encounter_doc = frappe.get_cached_doc("Patient Encounter", child.parent)
+                    patient_encounter_doc = frappe.get_doc("Patient Encounter", child.parent)
 
                     if child.doctype == "Lab Prescription":
-                        ltt_doc = frappe.get_cached_doc("Lab Test Template", child.lab_test_code)
+                        if (
+                            child.is_cancelled == 1 or
+                            child.lab_test_created == 1 or
+                            child.is_not_available_inhouse
+                        ):
+                            update_invoice_reference_in_lrpmt_childs(child, item)
+
+                            continue
+
+                        ltt_doc = frappe.get_doc("Lab Test Template", child.lab_test_code)
 
                         lab_doc = frappe.get_doc(
                             {
@@ -2059,12 +2100,18 @@ def create_invoiced_items_if_not_created():
                         )
                         lab_doc.insert(ignore_permissions=True, ignore_mandatory=True)
                         if lab_doc.name:
-                            child.lab_test_created = 1
-                            child.invoiced = 1
-                            child.sales_invoice_number = item.parent
-                            child.db_update()
+                            update_invoice_reference_in_lrpmt_childs(child, item, "lab_test_created")
 
                     elif child.doctype == "Radiology Procedure Prescription":
+                        if (
+                            child.is_cancelled == 1
+                            or child.radiology_examination_created == 1
+                            or child.is_not_available_inhouse
+                        ):
+                            update_invoice_reference_in_lrpmt_childs(child, item)
+
+                            continue
+
                         radiology_doc = frappe.get_doc(
                             {
                                 "doctype": "Radiology Examination",
@@ -2097,12 +2144,18 @@ def create_invoiced_items_if_not_created():
                         )
                         radiology_doc.insert(ignore_permissions=True, ignore_mandatory=True)
                         if radiology_doc.name:
-                            child.radiology_examination_created = 1
-                            child.invoiced = 1
-                            child.sales_invoice_number = item.parent
-                            child.db_update()
+                            update_invoice_reference_in_lrpmt_childs(child, item, "radiology_examination_created")
 
                     elif child.doctype == "Procedure Prescription":
+                        if (
+                            child.is_cancelled == 1
+                            or child.procedure_created == 1
+                            or child.is_not_available_inhouse
+                        ):
+                            update_invoice_reference_in_lrpmt_childs(child, item)
+
+                            continue
+
                         procedure_doc = frappe.get_doc(
                             {
                                 "doctype": "Clinical Procedure",
@@ -2132,26 +2185,81 @@ def create_invoiced_items_if_not_created():
                         )
                         procedure_doc.insert(ignore_permissions=True, ignore_mandatory=True)
                         if procedure_doc.name:
-                            child.procedure_created = 1
-                            child.invoiced = 1
-                            child.sales_invoice_number = item.parent
-                            child.db_update()
+                            update_invoice_reference_in_lrpmt_childs(child, item, "procedure_created")
 
-                    item.hms_tz_is_lrp_item_created = 1
-                    item.db_update()
                 except Exception:
-                    traceback = frappe.get_traceback()
-                    frappe.log_error(traceback)
+                    row = item.as_dict()
+                    traceback = f"""{item.as_dict()}\n\n<br><br>{frappe.get_traceback()}"""
+
+                    frappe.log_error(
+                        title=f"LRP Error: Invoice: {item.parent}",
+                        message=traceback,
+                    )
+            
+            elif item.reference_dt == "Drug Prescription":
+                # No need to create drug prescription again, just update the invoiced field, since re-creation is handled by CSF TZ app
+                update_invoice_reference_in_lrpmt_childs(child, item)
 
             elif item.reference_dt == "Therapy Plan Detail":
                 if item.hms_tz_is_lrp_item_created == 1:
                     continue
 
                 therapy_items.append(item)
-
+            
+            elif item.reference_dt in [
+                "Inpatient Occupancy",
+                "Inpatient Consultancy",
+            ]:
+                update_invoice_reference_in_lrpmt_childs(child, item)
+            
         create_therapy_plan(invoice_therapy_dict=therapy_items)
 
+        if len(service_request_ids) > 0:
+            hsrp = DocType("Healthcare Service Request Payment")
+            healthcare_service_parents = (
+                frappe.qb.from_(hsrp)
+                .select(
+                    hsrp.parent.as_("service_request_no"),
+                )
+                .distinct()
+                .where(hsrp.name.isin(service_request_ids))
+            ).run(as_dict=True)
+
+            if len(healthcare_service_parents) > 0:
+                for row in healthcare_service_parents:
+                    hsr_doc = frappe.get_cached_doc("Healthcare Service Request", row.service_request_no)
+                    hsr_doc.create_healthcare_service_docs()
+        
         frappe.db.commit()
+
+
+def update_invoice_reference_in_lrpmt_childs(child, item, fieldname=""):
+    fields = {
+        "sales_invoice_number": item.parent,
+    }
+
+    invoiced_field = "invoiced"
+    if frappe.get_meta(item.reference_dt).get_field("hms_tz_invoiced"):
+        invoiced_field = "hms_tz_invoiced"
+    
+    fields[invoiced_field] = 1
+
+    if fieldname:
+        fields[fieldname] = 1
+    
+    frappe.db.set_value(
+        child.doctype,
+        child.name,
+        fields,
+        update_modified=False,
+    )
+    frappe.db.set_value(
+        item.doctype,
+        item.name,
+        "hms_tz_is_lrp_item_created",
+        1,
+        update_modified=False,
+    )
 
 
 @frappe.whitelist()
