@@ -14,6 +14,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     create_individual_radiology_examination,
     create_therapy_plan,
     update_dimensions,
+    update_invoice_reference_in_lrpmt_childs
 )
 from hms_tz.nhif.api.sales_order import validate_stock_item
 
@@ -98,6 +99,9 @@ def create_healthcare_docs(doc, method):
     service_request_ids = []
     if doc.get("items"):
         for item in doc.items:
+            if not item.reference_dt or not item.reference_dn:
+                continue
+            
             # check if item is from Service Request
             # its service document will be created from Healthcare Service
             # Request
@@ -113,50 +117,22 @@ def create_healthcare_docs(doc, method):
                 service_request_ids.append(item.service_request)
                 continue
 
+            child = frappe.get_doc(item.reference_dt, item.reference_dn)
+
             if item.reference_dt and item.reference_dt in [
                 "Lab Prescription",
                 "Radiology Procedure Prescription",
                 "Procedure Prescription",
             ]:
-                child = frappe.get_cached_doc(item.reference_dt, item.reference_dn)
-                if child.is_cancelled == 1:
-                    frappe.throw(
-                        f"Item: {frappe.bold(item.item_code)} RowNo#: {frappe.bold(item.idx)} \
-                        is already cancelled, Please confirm cancellation of this item on \
-                            Patient Encounter and remove this item from sales invoice"
-                    )
-
-                patient_encounter_doc = frappe.get_cached_doc("Patient Encounter", child.parent)
+                patient_encounter_doc = frappe.get_doc("Patient Encounter", child.parent)
                 if child.doctype == "Lab Prescription":
                     create_individual_lab_test(patient_encounter_doc, child)
                 elif child.doctype == "Radiology Procedure Prescription":
                     create_individual_radiology_examination(patient_encounter_doc, child)
                 elif child.doctype == "Procedure Prescription":
                     create_individual_procedure_prescription(patient_encounter_doc, child)
-                
-                # child.invoiced = 1
-                # child.sales_invoice_number = doc.name
-                # child.save(ignore_permissions=True)
 
-                frappe.db.set_value(
-                    child.doctype,
-                    child.name,
-                    {
-                        "invoiced": 1,
-                        "sales_invoice_number": doc.name,
-                    },
-                    update_modified=False,
-                )
-
-                # item.hms_tz_is_lrp_item_created = 1
-                # item.db_update()
-                frappe.db.set_value(
-                    item.doctype,
-                    item.name,
-                    "hms_tz_is_lrp_item_created",
-                    1,
-                    update_modified=False,
-                )
+                update_invoice_reference_in_lrpmt_childs(child, item)
 
             elif item.reference_dt and item.reference_dt == "Therapy Plan Detail":
                 therapy_items.append(item)
@@ -165,18 +141,7 @@ def create_healthcare_docs(doc, method):
                 "Inpatient Occupancy",
                 "Inpatient Consultancy",
             ]:
-                invoiced_field = "invoiced"
-                if frappe.get_meta(item.reference_dt).get_field("hms_tz_invoiced"):
-                    invoiced_field = "hms_tz_invoiced"
-
-                frappe.db.set_value(
-                    item.reference_dt,
-                    item.reference_dn,
-                    {
-                        invoiced_field: 1,
-                        "sales_invoice_number": doc.name,
-                    },
-                )
+                update_invoice_reference_in_lrpmt_childs(child, item)
 
         create_therapy_plan(invoice_therapy_dict=therapy_items)
 
