@@ -49,9 +49,9 @@ def create_sales_order(doc, method):
 
     warehouse = ""
     if doc.inpatient_record:
-        warehouse = company_details.sales_order_opd_pharmacy
-    else:
         warehouse = company_details.sales_order_ipd_pharmacy
+    else:
+        warehouse = company_details.sales_order_opd_pharmacy
 
     drug_items, lrpt_items = get_items_from_encounter(doc, warehouse)
     if len(drug_items) > 0:
