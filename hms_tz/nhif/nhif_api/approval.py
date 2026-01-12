@@ -18,6 +18,9 @@ def get_service_approval(
     ref_docname,
     service_type,
     service_name,
+    start_date,
+    expire_date,
+    clinical_notes,
     qty=1,
     item_code=None,
     reference_name=None,
@@ -42,6 +45,9 @@ def get_service_approval(
         settings_doc.facility_code,
         service_type,
         service_name,
+        start_date,
+        expire_date,
+        clinical_notes,
         qty,
         item_code=item_code,
         reference_name=reference_name,
@@ -387,24 +393,25 @@ def get_request_approval_payload(
     facility_code,
     service_type,
     service_name,
+    start_date,
+    expire_date,
+    clinical_notes,
     qty=1,
     item_code=None,
     reference_name=None,
     reference_doctype=None,
     supportive_document="",
 ):
+    clinical_notes = html2text(clinical_notes).lstrip('\n')
     patient_doc = frappe.get_cached_doc("Patient", doc.patient)
 
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
     appointment_info = get_appointment_details(appointment)
 
     encounter_id = doc.get("ref_docname") or doc.get("reference_name")
-    notes_html = frappe.get_cached_value("Patient Encounter", encounter_id, "examination_detail") or ""
-    clinical_notes = html2text(notes_html).lstrip('\n')
 
     practitioner = doc.get("practitioner") or doc.get("healthcare_practitioner")
     practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
-    start_date = doc.get("start_date") or doc.get("result_date") or doc.get("posting_date")
     attendance_date = get_datetime(f"{appointment_info.appointment_date} {appointment_info.appointment_time}").isoformat(timespec='milliseconds')
 
     payload = {
@@ -418,7 +425,7 @@ def get_request_approval_payload(
         "facilityPatientFileNumber": doc.patient,
         "attendanceDate": attendance_date,
         "serviceDate": str(start_date),
-        "expiryDate": str(start_date),
+        "expiryDate": str(expire_date),
         "sourceFacilityCode": facility_code,
         "practitionerNo": practitioner_no,
         "prescribedBy": practitioner,
@@ -1012,7 +1019,7 @@ def set_service_approval(
             msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
             fields["approval_number"] = data.get("ReferenceNo")
         else:
-            msg += "<br>ReferenceNo: <b>Not Provided</b><br>Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
+            msg += f"<br>ReferenceNo: <b>Not Provided</b><br>Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
 
         frappe.db.set_value(
             "Delivery Note Item",
@@ -1025,15 +1032,19 @@ def set_service_approval(
             fields,
         )
     else:
-        doc.service_authorization_id = data.get("ServiceAuthorizationID")
-
         if data.get("ReferenceNo"):
             msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
-            doc.approval_number = data.get("ReferenceNo")
         else:
-            msg += "<br>ReferenceNo: <b>Not Provided</b><br>Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
+            msg += f"<br>ReferenceNo: <b>Not Provided</b><br>Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
 
-        doc.save(ignore_permissions=True)
+        frappe.db.set_value(
+            doc.doctype,
+            doc.name,
+            {
+                "service_authorization_id": data.get("ServiceAuthorizationID"),
+                "approval_number": data.get("ReferenceNo") or "",
+            },
+        )
 
     doc.add_comment(comment_type="Comment", text=msg)
     doc.reload()
