@@ -65,55 +65,14 @@ frappe.ui.form.on("Lab Test", {
       return;
     }
 
-    frappe.call({
-      method: "hms_tz.nhif.nhif_api.approval.get_service_approval",
-      args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
-        service_type: "Lab Test Template",
-        service_name: frm.doc.template,
-        qty: 1,
-      },
-      freeze: true,
-      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-      callback: function (r) {
-        if (r.message) {
-          frm.refresh();
-          if (r.message.status == "success") {
-            frm.save().then(() => {
-              frm.reload_doc();
-            });
-
-            frappe.show_alert(
-              {
-                message: __(
-                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                                Approval Request Successful. Reference Number: " +
-                    r.message.reference_no +
-                    "</h4>"
-                ),
-                indicator: "green",
-              },
-              15
-            );
-            frappe.utils.play_sound("submit");
-          } else {
-            frappe.show_alert(
-              {
-                message: __(
-                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                                Approval Request Failed: </h4>"
-                ),
-                indicator: "red",
-              },
-              20
-            );
-            frappe.utils.play_sound("error");
-          }
-        } else {
-          frappe.utils.play_sound("error");
-        }
-      },
+    new RequestApproval({
+      frm: frm,
+      ref_doctype: frm.doc.doctype,
+      ref_docname: frm.doc.name,
+      service_type: "Lab Test Template",
+      service_name: frm.doc.template,
+      encounter_no: frm.doc.ref_docname,
+      supportive_document: frm.doc.support_document || "",
     });
   },
   update_approval_request: (frm) => {
@@ -141,8 +100,8 @@ frappe.ui.form.on("Lab Test", {
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.update_service_approval",
       args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
         service_type: "Lab Test Template",
         service_name: frm.doc.template,
         qty: 1,
@@ -209,8 +168,8 @@ frappe.ui.form.on("Lab Test", {
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
       args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
       },
       freeze: true,
       freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
@@ -278,8 +237,8 @@ frappe.ui.form.on("Lab Test", {
           service_type: "Lab Test Template",
           service_name: frm.doc.template,
           appointment: frm.doc.appointment,
-          ref_doctype: frm.doctype,
-          ref_docname: frm.docname,
+          ref_doctype: frm.doc.doctype,
+          ref_docname: frm.doc.name,
         },
         freeze: true,
         freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
@@ -316,7 +275,7 @@ frappe.ui.form.on("Lab Test", {
                 "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
                         Approval Number is not Valid</h4>"
               ),
-              indicator: "Red",
+              indicator: "red",
             },
             20
           );

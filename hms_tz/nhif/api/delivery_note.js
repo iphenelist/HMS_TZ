@@ -247,59 +247,19 @@ frappe.ui.form.on("Delivery Note Item", {
 
     let row = locals[cdt][cdn];
 
-    frappe.call({
-      method: "hms_tz.nhif.nhif_api.approval.get_service_approval",
-      args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
-        service_type: "Medication",
-        service_name: "",
-        qty: row.qty,
-        item_code: row.item_code,
-        reference_name: row.reference_name,
-        reference_doctype: row.reference_doctype,
-      },
-      freeze: true,
-      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-      callback: function (r) {
-        if (r.message) {
-          frm.reload_doc();
-          if (r.message.status == "success") {
-            if (frm.is_dirty()) {
-              frm.save().then(() => {
-                frm.reload_doc();
-              });
-            }
-            frappe.show_alert(
-              {
-                message: __(
-                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                                Approval Request Successful. Reference Number: " +
-                    r.message.reference_no +
-                    "</h4>"
-                ),
-                indicator: "green",
-              },
-              15
-            );
-            frappe.utils.play_sound("submit");
-          } else {
-            frappe.show_alert(
-              {
-                message: __(
-                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
-                                Approval Request Failed: </h4>"
-                ),
-                indicator: "red",
-              },
-              20
-            );
-            frappe.utils.play_sound("error");
-          }
-        } else {
-          frappe.utils.play_sound("error");
-        }
-      },
+    new RequestApproval({
+      frm: frm,
+      ref_doctype: frm.doc.doctype,
+      ref_docname: frm.doc.name,
+      service_type: "Medication",
+      service_name: "",
+      encounter_no: frm.doc.reference_name,
+      item_code: row.item_code,
+      reference_name: row.reference_name,
+      reference_doctype: row.reference_doctype,
+      supportive_document: row.support_document || "",
+      qty: row.qty,
+      is_qty_read_only: true
     });
   },
   update_approval_request: (frm, cdt, cdn) => {
@@ -319,8 +279,8 @@ frappe.ui.form.on("Delivery Note Item", {
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.update_service_approval",
       args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
         service_type: "Medication",
         service_name: "",
         qty: row.qty,
@@ -390,8 +350,8 @@ frappe.ui.form.on("Delivery Note Item", {
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
       args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
         dni_id: row.name,
       },
       freeze: true,
@@ -465,8 +425,8 @@ frappe.ui.form.on("Delivery Note Item", {
           service_type: "Medication",
           service_name: "",
           appointment: frm.doc.hms_tz_appointment_no,
-          ref_doctype: frm.doctype,
-          ref_docname: frm.docname,
+          ref_doctype: frm.doc.doctype,
+          ref_docname: frm.doc.name,
         },
         freeze: true,
         freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
