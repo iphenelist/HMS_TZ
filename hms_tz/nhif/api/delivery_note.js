@@ -249,11 +249,11 @@ frappe.ui.form.on("Delivery Note Item", {
 
     new RequestApproval({
       frm: frm,
-      ref_doctype: frm.doctype,
-      ref_docname: frm.docname,
+      ref_doctype: frm.doc.doctype,
+      ref_docname: frm.doc.name,
       service_type: "Medication",
       service_name: "",
-      encounter_no: row.reference_name,
+      encounter_no: frm.doc.reference_name,
       item_code: row.item_code,
       reference_name: row.reference_name,
       reference_doctype: row.reference_doctype,
@@ -279,8 +279,8 @@ frappe.ui.form.on("Delivery Note Item", {
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.update_service_approval",
       args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
         service_type: "Medication",
         service_name: "",
         qty: row.qty,
@@ -350,8 +350,8 @@ frappe.ui.form.on("Delivery Note Item", {
     frappe.call({
       method: "hms_tz.nhif.nhif_api.approval.get_approval_status",
       args: {
-        ref_doctype: frm.doctype,
-        ref_docname: frm.docname,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
         dni_id: row.name,
       },
       freeze: true,
@@ -425,8 +425,8 @@ frappe.ui.form.on("Delivery Note Item", {
           service_type: "Medication",
           service_name: "",
           appointment: frm.doc.hms_tz_appointment_no,
-          ref_doctype: frm.doctype,
-          ref_docname: frm.docname,
+          ref_doctype: frm.doc.doctype,
+          ref_docname: frm.doc.name,
         },
         freeze: true,
         freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
