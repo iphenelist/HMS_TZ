@@ -154,8 +154,8 @@ class NHIFPatientClaim(Document):
 
         patient_encounters = (
             frappe.qb.from_(pe)
-            .left_join(hsr)
-            .on((hsr.appointment == pe.appointment) & (hsr.docstatus == 1))
+            .inner_join(hsr)
+            .on(hsr.source_docname == pe.name)
             .select(
                 pe.practitioner,
                 pe.encounter_date,
@@ -167,6 +167,8 @@ class NHIFPatientClaim(Document):
             .where(
                 (pe.docstatus == 1)
                 & (pe.appointment.isin(appointments))
+                & (hsr.docstatus == 1)
+                & (hsr.source_doctype == "Patient Encounter")
             )
             .orderby(pe.creation)
         ).run(as_dict=True)
