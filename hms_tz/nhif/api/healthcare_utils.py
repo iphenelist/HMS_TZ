@@ -12,7 +12,16 @@ from datetime import timedelta
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
-from frappe.utils import add_days, add_to_date, create_batch, get_url_to_form, now_datetime, nowdate, nowtime
+from frappe.utils import (
+    add_days,
+    add_to_date,
+    create_batch,
+    get_url_to_form,
+    now_datetime,
+    nowdate,
+    nowtime,
+    get_first_day
+)
 
 
 def get_childs_map():
@@ -2334,6 +2343,7 @@ def enqueue_auto_sending_of_patient_claims(setting_obj):
     frappe.db.commit()
 
 
+
 def auto_finalize_patient_encounters():
     """Auto finalize patient encounters after a number of days set in company settings
 
@@ -2357,7 +2367,7 @@ def auto_finalize_patient_encounters():
                     continue
 
                 else:
-                    frappe.set_value(
+                    frappe.db.set_value(
                         "Patient Encounter",
                         encounter.name,
                         {
@@ -2366,7 +2376,7 @@ def auto_finalize_patient_encounters():
                         },
                     )
 
-                    reference_encounters = frappe.get_all(
+                    reference_encounters = frappe.db.get_all(
                         "Patient Encounter",
                         {
                             "docstatus": 1,
@@ -2379,18 +2389,21 @@ def auto_finalize_patient_encounters():
                             if ref_encounter.finalized == 1:
                                 continue
 
-                            frappe.set_value(
+                            frappe.db.set_value(
                                 "Patient Encounter",
-                                ref_encounter,
+                                ref_encounter.name,
                                 {
                                     "finalized": 1,
                                 },
                             )
 
-            except Exception:
+            except Exception as e:
+                if "CancelledLinkError" in str(e):
+                    frappe.db.commit()
+                
                 frappe.log_error(
-                    frappe.get_traceback(),
-                    f"Error in finalizing encounter: {encounter.name}",
+                    title=f"Error: finalizing encounter: {encounter.name}",
+                    message=frappe.get_traceback()
                 )
                 continue
 
@@ -2403,22 +2416,27 @@ def auto_finalize_patient_encounters():
     for row in companies:
         if row.valid_days_to_auto_finalize_encounter == 0:
             continue
+        
+        current_date = frappe.flags.current_date or nowdate()
+        encounter_date = add_days(current_date, -row.valid_days_to_auto_finalize_encounter)
+        start_date = get_first_day(encounter_date)
 
-        date = add_days(nowdate(), -row.valid_days_to_auto_finalize_encounter)
         encounters = frappe.get_all(
             "Patient Encounter",
             {
                 "docstatus": 1,
                 "duplicated": 0,
                 "finalized": 0,
-                "encounter_date": ["<=", date],
-                "company": row.name,
+                "encounter_date": [">=", start_date],
+                "encounter_date": ["<=", encounter_date],
+                "company": row.company,
             },
             ["name", "reference_encounter", "inpatient_record"],
             order_by="modified desc",
-            limit=100,
+            limit=200,
         )
-        for encounter_batch in create_batch(encounters, 100):
+
+        for encounter_batch in create_batch(encounters, 50):
             finalize_encounter(encounter_batch)
             frappe.db.commit()
 
