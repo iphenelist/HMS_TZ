@@ -17,7 +17,7 @@ def get_service_preapproval(
     settings_doc=None,
 ):
     # source doc can be either Patient Encounter or Medication Change Request
-    source_doc = frappe.get_cached_doc(ref_doctype, ref_docname)
+    source_doc = frappe.get_doc(ref_doctype, ref_docname)
 
     services, service_map, diseases = get_services(source_doc)
     if len(services) == 0:
