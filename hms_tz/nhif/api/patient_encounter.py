@@ -967,6 +967,7 @@ def set_amounts(doc):
                     _(f"Item code for {row.get(child.get('item'))} set in row {row.idx} was not found.<br>Please set the item code in {child.get('doctype')}."))
 
             if row.prescribe and not doc.insurance_subscription:
+                mode_of_payment = ""
                 if doc.get("mode_of_payment"):
                     mode_of_payment = doc.get("mode_of_payment")
                 elif doc.get("encounter_mode_of_payment"):
