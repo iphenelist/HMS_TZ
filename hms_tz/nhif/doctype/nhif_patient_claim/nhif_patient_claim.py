@@ -887,12 +887,14 @@ def validate_submit_date(self):
     )
 
     if not (submit_claim_month or submit_claim_year):
-        frappe.throw(
+        frappe.msgprint(
             frappe.bold(
                 "Submit Claim Month or Submit Claim Year not found,\
                 please inform IT department to set it on HMS TZ Setting"
-            )
+            ),
+            alert=True,
         )
+        return
 
     if self.claim_month != submit_claim_month or self.claim_year != submit_claim_year:
         frappe.throw(
