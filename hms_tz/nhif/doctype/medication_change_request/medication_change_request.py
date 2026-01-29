@@ -11,6 +11,7 @@ from frappe.query_builder import DocType
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
 from frappe.utils import get_url_to_form, nowdate, get_fullname
+from hms_tz.nhif.api.delivery_note import update_drug_prescription
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     msgThrow,
@@ -933,6 +934,8 @@ def update_hsr_hre_for_mcr(mcr_name):
             added_drug_codes,
             unchanged_drug_codes
         )
+
+        re_update_drug_prescription(mcr_doc.delivery_note)
     except Exception as e:
         frappe.log_error(
             title=f"Error: MCR: {mcr_doc.name} updating HSR and HRE",
@@ -1391,4 +1394,22 @@ def create_service_payments(
     new_payment.reload()
     
     return new_payment
+
+
+def re_update_drug_prescription(delivery_note):
+    """
+    Re-update Drug Prescription entries linked to the Delivery Note
+    after Medication Change Request submission to ensure they reflect
+    the latest changes.
+
+    This update is only for Delivery Notes that are submitted (docstatus == 1).
+
+    params:
+        delivery_note (str): The name of the Delivery Note to update.
+    """
+    dn_doc = frappe.get_doc("Delivery Note", delivery_note)
+    if dn_doc.docstatus == 0:
+        return
+    
+    update_drug_prescription(dn_doc)
 
