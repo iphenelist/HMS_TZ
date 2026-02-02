@@ -211,7 +211,6 @@ doc_events = {
         "before_submit": "hms_tz.nhif.api.delivery_note.before_submit",
         "on_submit": "hms_tz.nhif.api.delivery_note.on_submit",
         "on_cancel": "hms_tz.nhif.api.delivery_note.on_cancel",
-        "on_update_after_submit": "hms_tz.nhif.api.delivery_note.on_update_after_submit",
     },
     "Inpatient Record": {
         "validate": "hms_tz.nhif.api.inpatient_record.validate",
