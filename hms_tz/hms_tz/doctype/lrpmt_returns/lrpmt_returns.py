@@ -9,7 +9,7 @@ from frappe import bold
 from frappe.query_builder import DocType
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
-from frappe.utils import cint, flt, get_fullname, nowdate, nowtime, unique
+from frappe.utils import cint, flt, get_fullname, nowdate, nowtime, unique, get_url_to_form
 
 from hms_tz.nhif.api.healthcare_utils import validate_nhif_patient_claim_status
 from hms_tz.nhif.api.patient_encounter import validate_totals
@@ -87,7 +87,7 @@ class LRPMTReturns(Document):
                 msg += msg_print + "<br>"
 
             if msg:
-                frappe.throw(title="Notification"(msg=msg).with_traceback(exc="Frappe.ValidationError"))
+                frappe.throw(title="Notification", msg=msg)
 
     def validate_duplicates(self):
         dt = DocType("LRPMT Returns")
@@ -100,8 +100,8 @@ class LRPMTReturns(Document):
             frappe.throw(
                 title="Duplicate Error",
                 exc=frappe.ValidationError,
-                msg="draft LRPMT Returns for this appointment: {bold(self.appointment)} already exists,\
-                    Please visit <a href='{get_url_to_form('LRPMT Returns', lrpmts[0].lrpmt_docname)}'>{lrpmts[0].lrpmt_docname)}</a> to continue",
+                msg=f"draft LRPMT Returns for this appointment: {bold(self.appointment)} already exists,\
+                    Please visit <a href='{get_url_to_form('LRPMT Returns', lrpmts[0].lrpmt_docname)}'>{lrpmts[0].lrpmt_docname}</a> to continue",
             )
 
     def cancel_lrp_doc(self):
@@ -114,28 +114,33 @@ class LRPMTReturns(Document):
             "Clinical Procedure": "Procedure Prescription",
         }
         for item in self.lrpt_items:
+            ref_doctype = prescription_lrp[item.reference_doctype]
+
             if not item.reference_docname:
                 frappe.db.set_value(
-                    prescription_lrp[item.reference_doctype],
+                    ref_doctype,
                     item.child_name,
                     "is_cancelled",
                     1,
                 )
                 update_cancelled_hsr(
                     item.child_name,
+                    ref_doctype,
                     self.name,
                     remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
                 )
                 continue
 
-            doc = frappe.get_cached_doc(item.reference_doctype, item.reference_docname)
+            doc = frappe.get_doc(item.reference_doctype, item.reference_docname)
 
             if doc.docstatus < 2:
                 try:
                     doc.flags.ignore_permissions = True
                     doc.flags.ignore_mandatory = True
 
-                    apply_workflow(doc, "Not Serviced")
+                    if doc.workflow_state not in ["Not Serviced", "Submitted but Not Serviced"]:
+                        apply_workflow(doc, "Not Serviced")
+                    
                     if doc.meta.get_field("status"):
                         doc.status = "Not Serviced"
 
@@ -143,9 +148,8 @@ class LRPMTReturns(Document):
                     doc.add_comment(
                         text=f"LRPMT Return: <a href='{self.get_url()}'>{bold(self.name)}</a> is submitted"
                     )
-                    doc.reload()
 
-                    if doc.workflow_state == "Not Serviced" or doc.workflow_state == "Submitted but Not Serviced":
+                    if doc.workflow_state in ["Not Serviced", "Submitted but Not Serviced"]:
                         frappe.db.set_value(
                             prescription_lrp[item.reference_doctype],
                             item.child_name,
@@ -154,15 +158,22 @@ class LRPMTReturns(Document):
                         )
                         update_cancelled_hsr(
                             item.child_name,
+                            ref_doctype,
                             self.name,
                             remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
                         )
                     
-                except Exception:
+                except Exception as e:
+                    frappe.db.rollback()
+
                     frappe.log_error(
                         title=str(f"{self.doctype}/{item.reference_doctype}/{item.reference_docname}"),
-                        message=frappe.get_traceback(), 
+                        message=frappe.get_traceback(),
+                        reference_doctype=item.reference_doctype,
+                        reference_name=item.reference_docname,
                     )
+                    frappe.db.commit()
+
                     frappe.throw(
                         f"There was an error while cancelling the Item: {bold(item.item_name)} of ReferenceDoctype: {bold(item.reference_doctype)},\
                              ReferenceName: {bold(item.reference_docname)},<br> Check error log for review"
@@ -201,6 +212,7 @@ class LRPMTReturns(Document):
                 )
                 update_cancelled_hsr(
                     item.get("encounter_child_table_id"),
+                    "Therapy Plan Detail",
                     self.name,
                     remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
                 )
@@ -238,7 +250,7 @@ class LRPMTReturns(Document):
         if unique_submitted_delivery_notes:
             for dn in unique_submitted_delivery_notes:
                 try:
-                    source_doc = frappe.get_cached_doc("Delivery Note", dn)
+                    source_doc = frappe.get_doc("Delivery Note", dn)
                     target_doc = return_drug_quantity_to_stock(self, source_doc)
 
                     if target_doc.get("name"):
@@ -269,7 +281,7 @@ class LRPMTReturns(Document):
 
         if returned_delivery_note_nos:
             for dn in returned_delivery_note_nos:
-                sales_doc = frappe.get_cached_doc("Delivery Note", dn)
+                sales_doc = frappe.get_doc("Delivery Note", dn)
 
                 for item in sales_doc.items:
                     for dd_n in self.drug_items:
@@ -289,7 +301,6 @@ class LRPMTReturns(Document):
                                 },
                             )
             self.save(ignore_permissions=True)
-            self.reload()
 
         return self.name
 
@@ -338,13 +349,12 @@ class LRPMTReturns(Document):
                 amount = frappe.get_cached_value("Drug Prescription", item.child_name, "amount")
                 cost_amount += (amount * (item.quantity_prescribed - item.quantity_to_return)) or 0
 
-            encounter_doc = frappe.get_cached_doc("Patient Encounter", encounters[0].name)
+            encounter_doc = frappe.get_doc("Patient Encounter", encounters[0].name)
             validate_totals(encounter_doc, method="validate", show_alert=False)
 
             encounter_doc.current_total = abs(encounter_doc.current_total - cost_amount)
 
             encounter_doc.db_update_all()
-            encounter_doc.reload()
 
 
 def combine_therapy_info(therapy_items):
@@ -392,7 +402,7 @@ def update_therapy_plan(
     total_sessions_cancelled,
     session_docstatus=0,
 ):
-    plan_doc = frappe.get_cached_doc("Therapy Plan", row.get("therapy_plan"))
+    plan_doc = frappe.get_doc("Therapy Plan", row.get("therapy_plan"))
     try:
         for d in plan_doc.therapy_plan_details:
             if d.name == row.get("plan_child_table_id") and d.therapy_type == row.get("therapy_type"):
@@ -415,14 +425,21 @@ def update_therapy_plan(
         )
         update_cancelled_hsr(
             row.get("encounter_child_table_id"),
+            "Therapy Plan Detail",
             self.name,
             remarks=f"Reason for cancellation: <b>{row.get('reason') or ''}</b>",
         )
-    except Exception:
+    except Exception as e:
+        frappe.db.rollback()
+
         frappe.log_error(
             title=str(f"{self.doctype}/{plan_doc.doctype}/{plan_doc.name}"),
             message=frappe.get_traceback(),
+            reference_doctype=plan_doc.doctype,
+            reference_name=plan_doc.name,
         )
+        frappe.db.commit()
+
         frappe.throw(
             f"There was an error while cancelling the Therapy Plan: {bold(plan_doc.name)}\
                 <br> Check error log for review"
@@ -437,18 +454,19 @@ def update_therapy_session(
     total_sessions_cancelled,
 ):
     for session_id in item.get("therapy_session_ids"):
-        session_doc = frappe.get_cached_doc("Therapy Session", session_id)
+        session_doc = frappe.get_doc("Therapy Session", session_id)
         if session_doc.docstatus < 2:
             try:
                 session_doc.flags.ignore_permissions = True
                 session_doc.flags.ignore_mandatory = True
 
-                apply_workflow(session_doc, "Not Serviced")
+                if session_doc.workflow_state not in ["Not Serviced", "Submitted but Not Serviced"]:
+                        apply_workflow(session_doc, "Not Serviced")
+                
                 session_doc.save(ignore_permissions=True)
                 session_doc.add_comment(
                     text=f"LRPMT Return: <a href='{self.get_url()}'>{bold(self.name)}</a> is submitted"
                 )
-                session_doc.reload()
 
                 if session_doc.workflow_state in [
                     "Not Serviced",
@@ -463,11 +481,17 @@ def update_therapy_session(
                         session_doc.docstatus,
                     )
 
-            except Exception:
+            except Exception as e:
+                frappe.db.rollback()
+
                 frappe.log_error(
                     title=str(f"{self.doctype}/{session_doc.doctype}/{session_doc.name}"),
                     message=frappe.get_traceback(),
+                    reference_doctype=session_doc.doctype,
+                    reference_name=session_doc.name,
                 )
+                frappe.db.commit()
+                
                 frappe.throw(
                     f"There was an error while cancelling the Therapy Session: {bold(session_doc.name)}\
                         <br> Check error log for review"
@@ -488,24 +512,25 @@ def update_drug_prescription_for_uncreated_delivery_note(self):
             )
             update_cancelled_hsr(
                 item.child_name,
+                "Drug Prescription",
                 self.name,
                 remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
             )
 
 
-def update_drug_description_for_draft_delivery_note(self, delivey_note):
+def update_drug_description_for_draft_delivery_note(self, delivery_note):
     try:
-        dn_doc = frappe.get_cached_doc("Delivery Note", delivey_note)
+        dn_doc = frappe.get_doc("Delivery Note", delivery_note)
 
         dn_doc.flags.ignore_permissions = True
         dn_doc.flags.ignore_mandatory = True
 
-        if dn_doc.workflow_state != "Not Serviced":
+        if dn_doc.workflow_state not in ["Not Serviced", "Submitted but Not Serviced"]:
             apply_workflow(dn_doc, "Not Serviced")
 
         if dn_doc.workflow_state == "Not Serviced":
             for item in self.drug_items:
-                if item.delivery_note_no == delivey_note and item.status == "Draft":
+                if item.delivery_note_no == delivery_note and item.status == "Draft":
                     frappe.db.set_value(
                         "Drug Prescription",
                         item.child_name,
@@ -518,15 +543,22 @@ def update_drug_description_for_draft_delivery_note(self, delivey_note):
                     )
                     update_cancelled_hsr(
                         item.child_name,
+                        "Drug Prescription",
                         self.name,
                         remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
                     )
 
-    except Exception:
+    except Exception as e:
+        frappe.db.rollback()
+
         frappe.log_error(
             title=str(f"{self.doctype}/Delivery Note/{delivey_note}"),
             message=frappe.get_traceback(),
+            reference_doctype="Delivery Note",
+            reference_name=delivey_note,
         )
+        frappe.db.commit()
+
         frappe.throw(
             str(f"Apply workflow error, for delivery note: {bold(delivey_note)}, check error log for more details")
         )
@@ -549,6 +581,7 @@ def update_drug_prescription_for_submitted_delivery_note(lrpmt_return_id, item):
     )
     update_cancelled_hsr(
         item.child_name,
+        "Drug Prescription",
         lrpmt_return_id,
         is_cancelled=item_cancelled,
         qty_returned=qty_returned,
@@ -614,7 +647,6 @@ def return_drug_quantity_to_stock(self, source_doc):
                         },
                     )
     target_doc.save(ignore_permissions=True)
-    target_doc.reload()
 
     return target_doc
 
@@ -633,16 +665,25 @@ def transition_workflow_states(source_doc, target_doc):
 
             try:
                 apply_workflow(source_doc, "Issue Returns")
-            except Exception:
+            except Exception as e:
                 frappe.log_error(
                     title=str(f"LRPMT Returns/{source_doc.doctype}/{source_doc.name}"),
                     message=frappe.get_traceback(),
+                    reference_doctype=source_doc.doctype,
+                    reference_name=source_doc.name,
                 )
-    except Exception:
+                frappe.db.commit()
+            
+    except Exception as e:
+        frappe.db.rollback()
         frappe.log_error(
             title=str(f"LRPMT Returns/{target_doc.doctype}/{target_doc.name}"),
             message=frappe.get_traceback(),
+            reference_doctype=target_doc.doctype,
+            reference_name=target_doc.name,
         )
+        frappe.db.commit()
+
         frappe.throw(
             str(f"Apply workflow error, for delivery note: {bold(target_doc.name)}, check error log for more details")
         )
@@ -835,7 +876,7 @@ def get_patient_encounters(patient, appointment, company):
 
 @frappe.whitelist()
 def set_checked_lrp_items(doc, checked_items):
-    doc = frappe.get_cached_doc(json.loads(doc))
+    doc = frappe.get_doc(json.loads(doc))
     checked_items = json.loads(checked_items)
 
     doc.lrpt_items = []
@@ -1033,7 +1074,7 @@ def get_drugs(patient, appointment, company):
 
 @frappe.whitelist()
 def set_checked_drug_items(doc, checked_items):
-    doc = frappe.get_cached_doc(json.loads(doc))
+    doc = frappe.get_doc(json.loads(doc))
     checked_items = json.loads(checked_items)
 
     doc.drug_items = []
@@ -1116,7 +1157,7 @@ def get_therapies(patient, appointment, company):
                 )
                 if len(child_table_ids) > 0:
                     for row in child_table_ids:
-                        if row.name not in child_table_ids:
+                        if row.name not in plan_child_table_ids:
                             plan_child_table_id = row.name
                             break
 
@@ -1181,7 +1222,7 @@ def get_therapies(patient, appointment, company):
 
 @frappe.whitelist()
 def set_checked_therapy_items(doc, checked_items):
-    doc = frappe.get_cached_doc(json.loads(doc))
+    doc = frappe.get_doc(json.loads(doc))
     checked_items = json.loads(checked_items)
 
     doc.therapy_items = []
@@ -1204,6 +1245,7 @@ def set_checked_therapy_items(doc, checked_items):
 
 def update_cancelled_hsr(
     ref_docname,
+    ref_doctype,
     lrpmt_return_id,
     is_cancelled=1,
     qty_returned=0,
@@ -1212,32 +1254,47 @@ def update_cancelled_hsr(
     """
     Update the cancelled status of the Healthcare Service Request (HSR) based on the reference document name.
     If qty_returned > 0, fetch and update all Healthcare Service Request Payment records with recalculated amounts.
+    
+    Args:
+        ref_docname (str): The name/id of the child row of encounter.
+        ref_doctype (str): The doctype name of the child row of encounter.
+        lrpmt_return_id (str): The ID of the LRPMT Return document.
+        is_cancelled (int, optional): The cancellation status to set (1 for cancelled, 0 for not cancelled). Defaults to 1.
+        qty_returned (int, optional): The quantity returned. Defaults to 0.
+        remarks (str, optional): Additional remarks for the update. Defaults to "".
     """
     hsrp = DocType("Healthcare Service Request Payment")
 
-    if qty_returned > 0:
-        payment_records = (
-            frappe.qb.from_(hsrp)
-            .select(
-                hsrp.name,
-                hsrp.rate,
-                hsrp.qty,
-                hsrp.percent_covered
-            )
-            .where(hsrp.ref_docname == ref_docname)
-        ).run(as_dict=True)
-        
-        for record in payment_records:
-            actual_qty = record.get('qty', 0) - qty_returned
-            calculated_amount = round(record.get('rate', 0) * actual_qty * (record.get('percent_covered', 0) / 100), 2)
+    is_prescribe = frappe.db.get_value(
+        ref_doctype,
+        ref_docname,
+        "prescribe"
+    )
 
-            (
-                frappe.qb.update(hsrp)
-                .set(hsrp.amount, calculated_amount)
-                .set(hsrp.is_cancelled, is_cancelled)
-                .set(hsrp.qty_returned, qty_returned)
-                .where(hsrp.name == record.name)
-            ).run()
+    if qty_returned > 0:
+        if not is_prescribe:
+            payment_records = (
+                frappe.qb.from_(hsrp)
+                .select(
+                    hsrp.name,
+                    hsrp.rate,
+                    hsrp.qty,
+                    hsrp.percent_covered
+                )
+                .where(hsrp.ref_docname == ref_docname)
+            ).run(as_dict=True)
+            
+            for record in payment_records:
+                actual_qty = record.get('qty', 0) - qty_returned
+                calculated_amount = round(record.get('rate', 0) * actual_qty * (record.get('percent_covered', 0) / 100), 2)
+
+                (
+                    frappe.qb.update(hsrp)
+                    .set(hsrp.amount, calculated_amount)
+                    .set(hsrp.is_cancelled, is_cancelled)
+                    .set(hsrp.qty_returned, qty_returned)
+                    .where(hsrp.name == record.name)
+                ).run()
         
         update_returned_or_cancelled_revenue_entry(
             ref_docname,
@@ -1250,11 +1307,12 @@ def update_cancelled_hsr(
 
             
     else:
-        (
-            frappe.qb.update(hsrp)
-            .set(hsrp.is_cancelled, is_cancelled)
-            .where(hsrp.ref_docname == ref_docname)
-        ).run()
+        if not is_prescribe:
+            (
+                frappe.qb.update(hsrp)
+                .set(hsrp.is_cancelled, is_cancelled)
+                .where(hsrp.ref_docname == ref_docname)
+            ).run()
 
         update_returned_or_cancelled_revenue_entry(
             ref_docname,
