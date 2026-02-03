@@ -214,7 +214,7 @@ class LRPMTReturns(Document):
                     item.get("encounter_child_table_id"),
                     "Therapy Plan Detail",
                     self.name,
-                    remarks=f"Reason for cancellation: <b>{item.reason or ''}</b>",
+                    remarks=f"Reason for cancellation: <b>{item.get('reason') or ''}</b>",
                 )
 
             elif item.get("therapy_plan") and len(item.get("therapy_session_ids")) == 0:
@@ -256,11 +256,17 @@ class LRPMTReturns(Document):
                     if target_doc.get("name"):
                         transition_workflow_states(source_doc, target_doc)
 
-                except Exception:
+                except Exception as e:
+                    frappe.db.rollback()
+
                     frappe.log_error(
                         title=str(f"{self.doctype}/Delivery Note/{dn}"),
                         message=frappe.get_traceback(),
+                        reference_doctype="Delivery Note",
+                        reference_name=dn,
                     )
+                    frappe.db.commit()
+                    
                     frappe.throw(
                         f"Error in creating return delivery note against delivery note: {bold(dn)}\
                             <br> Check error log for review"
