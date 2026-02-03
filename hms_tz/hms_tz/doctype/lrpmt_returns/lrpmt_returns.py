@@ -558,15 +558,15 @@ def update_drug_description_for_draft_delivery_note(self, delivery_note):
         frappe.db.rollback()
 
         frappe.log_error(
-            title=str(f"{self.doctype}/Delivery Note/{delivey_note}"),
+            title=str(f"{self.doctype}/Delivery Note/{delivery_note}"),
             message=frappe.get_traceback(),
             reference_doctype="Delivery Note",
-            reference_name=delivey_note,
+            reference_name=delivery_note,
         )
         frappe.db.commit()
 
         frappe.throw(
-            str(f"Apply workflow error, for delivery note: {bold(delivey_note)}, check error log for more details")
+            str(f"Apply workflow error, for delivery note: {bold(delivery_note)}, check error log for more details")
         )
 
 
