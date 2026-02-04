@@ -27,7 +27,7 @@
                   {{ displayValue(selectedValue) }}
                 </span>
                 <span class="text-base leading-5 text-gray-500" v-else>
-                  {{ placeholder || '' }}
+                  {{ placeholder || "" }}
                 </span>
               </div>
               <FeatherIcon
@@ -49,7 +49,7 @@
                 type="text"
                 @change="
                   (e) => {
-                    query = e.target.value
+                    query = e.target.value;
                   }
                 "
                 :value="query"
@@ -131,13 +131,13 @@ import {
   ComboboxInput,
   ComboboxOptions,
   ComboboxOption,
-} from '@headlessui/vue'
-import { ref, computed, useAttrs, useSlots, watch, nextTick } from 'vue'
+} from "@headlessui/vue";
+import { ref, computed, useAttrs, useSlots, watch, nextTick } from "vue";
 
 const props = defineProps({
   modelValue: {
     type: String,
-    default: '',
+    default: "",
   },
   options: {
     type: Array,
@@ -145,15 +145,15 @@ const props = defineProps({
   },
   size: {
     type: String,
-    default: 'md',
+    default: "md",
   },
   variant: {
     type: String,
-    default: 'subtle',
+    default: "subtle",
   },
   placeholder: {
     type: String,
-    default: '',
+    default: "",
   },
   disabled: {
     type: Boolean,
@@ -163,43 +163,43 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
-})
-const emit = defineEmits(['update:modelValue', 'update:query', 'change'])
+});
+const emit = defineEmits(["update:modelValue", "update:query", "change"]);
 
-const query = ref('')
-const showOptions = ref(false)
-const search = ref(null)
+const query = ref("");
+const showOptions = ref(false);
+const search = ref(null);
 
-const attrs = useAttrs()
-const slots = useSlots()
+const attrs = useAttrs();
+const slots = useSlots();
 
-const valuePropPassed = computed(() => 'value' in attrs)
+const valuePropPassed = computed(() => "value" in attrs);
 
 const selectedValue = computed({
   get() {
-    return valuePropPassed.value ? attrs.value : props.modelValue
+    return valuePropPassed.value ? attrs.value : props.modelValue;
   },
   set(val) {
-    query.value = ''
+    query.value = "";
     if (val) {
-      showOptions.value = false
+      showOptions.value = false;
     }
-    emit(valuePropPassed.value ? 'change' : 'update:modelValue', val)
+    emit(valuePropPassed.value ? "change" : "update:modelValue", val);
   },
-})
+});
 
 function close() {
-  showOptions.value = false
+  showOptions.value = false;
 }
 
 const groups = computed(() => {
   if (!props.options || props.options.length == 0) {
-    return []
+    return [];
   }
 
   let groups = props.options[0]?.group
     ? props.options
-    : [{ group: '', items: props.options }]
+    : [{ group: "", items: props.options }];
 
   return groups
     .map((group, i) => {
@@ -208,83 +208,83 @@ const groups = computed(() => {
         group: group.group,
         hideLabel: group.hideLabel || false,
         items: props.filterable ? filterOptions(group.items) : group.items,
-      }
+      };
     })
-    .filter((group) => group.items.length > 0)
-})
+    .filter((group) => group.items.length > 0);
+});
 
 function filterOptions(options) {
   if (!query.value) {
-    return options
+    return options;
   }
   return options.filter((option) => {
-    let searchTexts = [option.label, option.value]
+    let searchTexts = [option.label, option.value];
     return searchTexts.some((text) =>
-      (text || '').toString().toLowerCase().includes(query.value.toLowerCase())
-    )
-  })
+      (text || "").toString().toLowerCase().includes(query.value.toLowerCase())
+    );
+  });
 }
 
 function displayValue(option) {
-  if (typeof option === 'string') {
-    let allOptions = groups.value.flatMap((group) => group.items)
-    let selectedOption = allOptions.find((o) => o.value === option)
-    return selectedOption?.label || option
+  if (typeof option === "string") {
+    let allOptions = groups.value.flatMap((group) => group.items);
+    let selectedOption = allOptions.find((o) => o.value === option);
+    return selectedOption?.label || option;
   }
-  return option?.label
+  return option?.label;
 }
 
 watch(query, (q) => {
-  emit('update:query', q)
-})
+  emit("update:query", q);
+});
 
 watch(showOptions, (val) => {
   if (val) {
     nextTick(() => {
-      search.value.el.focus()
-    })
+      search.value.el.focus();
+    });
   }
-})
+});
 
 const textColor = computed(() => {
-  return props.disabled ? 'text-gray-600' : 'text-gray-800'
-})
+  return props.disabled ? "text-gray-600" : "text-gray-800";
+});
 
 const inputClasses = computed(() => {
   let sizeClasses = {
-    sm: 'text-base rounded h-7',
-    md: 'text-base rounded h-8',
-    lg: 'text-lg rounded-md h-10',
-    xl: 'text-xl rounded-md h-10',
-  }[props.size]
+    sm: "text-base rounded h-7",
+    md: "text-base rounded h-8",
+    lg: "text-lg rounded-md h-10",
+    xl: "text-xl rounded-md h-10",
+  }[props.size];
 
   let paddingClasses = {
-    sm: 'py-1.5 px-2',
-    md: 'py-1.5 px-2.5',
-    lg: 'py-1.5 px-3',
-    xl: 'py-1.5 px-3',
-  }[props.size]
+    sm: "py-1.5 px-2",
+    md: "py-1.5 px-2.5",
+    lg: "py-1.5 px-3",
+    xl: "py-1.5 px-3",
+  }[props.size];
 
-  let variant = props.disabled ? 'disabled' : props.variant
+  let variant = props.disabled ? "disabled" : props.variant;
   let variantClasses = {
     subtle:
-      'border border-gray-100 bg-gray-100 placeholder-gray-500 hover:border-gray-200 hover:bg-gray-200 focus:bg-white focus:border-gray-500 focus:shadow-sm focus:ring-0 focus-visible:ring-2 focus-visible:ring-gray-400',
+      "border border-gray-100 bg-gray-100 placeholder-gray-500 hover:border-gray-200 hover:bg-gray-200 focus:bg-white focus:border-gray-500 focus:shadow-sm focus:ring-0 focus-visible:ring-2 focus-visible:ring-gray-400",
     outline:
-      'border border-gray-300 bg-white placeholder-gray-500 hover:border-gray-400 hover:shadow-sm focus:bg-white focus:border-gray-500 focus:shadow-sm focus:ring-0 focus-visible:ring-2 focus-visible:ring-gray-400',
+      "border border-gray-300 bg-white placeholder-gray-500 hover:border-gray-400 hover:shadow-sm focus:bg-white focus:border-gray-500 focus:shadow-sm focus:ring-0 focus-visible:ring-2 focus-visible:ring-gray-400",
     disabled: [
-      'border bg-gray-50 placeholder-gray-400',
-      props.variant === 'outline' ? 'border-gray-300' : 'border-transparent',
+      "border bg-gray-50 placeholder-gray-400",
+      props.variant === "outline" ? "border-gray-300" : "border-transparent",
     ],
-  }[variant]
+  }[variant];
 
   return [
     sizeClasses,
     paddingClasses,
     variantClasses,
     textColor.value,
-    'transition-colors w-full',
-  ]
-})
+    "transition-colors w-full",
+  ];
+});
 
-defineExpose({ query })
+defineExpose({ query });
 </script>

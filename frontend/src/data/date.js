@@ -1,15 +1,15 @@
-import { defineStore } from 'pinia'
-import dayjs from 'dayjs'
+import { defineStore } from "pinia";
+import dayjs from "dayjs";
 
 // Using standard dayjs methods: isAfter(), isBefore(), isSame()
 
-export const useDateStore = defineStore('date', {
+export const useDateStore = defineStore("date", {
   state: () => ({
-    selectedDate: dayjs().format('YYYY-MM-DD'),
+    selectedDate: dayjs().format("YYYY-MM-DD"),
     timeSlots: [],
     workingHours: {
-      start: '08:00',
-      end: '07:50'
+      start: "08:00",
+      end: "07:50",
     },
     slotDuration: 10, // minutes
     bufferTime: 5, // minutes buffer for future bookings
@@ -17,61 +17,68 @@ export const useDateStore = defineStore('date', {
 
   getters: {
     isToday: (state) => {
-      return state.selectedDate === dayjs().format('YYYY-MM-DD')
-    }
+      return state.selectedDate === dayjs().format("YYYY-MM-DD");
+    },
   },
 
   actions: {
     setSelectedDate(date) {
-      this.selectedDate = dayjs(date).format('YYYY-MM-DD')
-      this.generateTimeSlots()
+      this.selectedDate = dayjs(date).format("YYYY-MM-DD");
+      this.generateTimeSlots();
     },
 
     goToPreviousDay() {
-      const previousDay = dayjs(this.selectedDate).subtract(1, 'day')
-      this.setSelectedDate(previousDay)
+      const previousDay = dayjs(this.selectedDate).subtract(1, "day");
+      this.setSelectedDate(previousDay);
     },
 
     goToNextDay() {
-      const nextDay = dayjs(this.selectedDate).add(1, 'day')
-      this.setSelectedDate(nextDay)
+      const nextDay = dayjs(this.selectedDate).add(1, "day");
+      this.setSelectedDate(nextDay);
     },
 
     generateTimeSlots() {
-      const slots = []
-      const startTime = dayjs(`${this.selectedDate} ${this.workingHours.start}`)
-      const endTime = dayjs(`${this.selectedDate} ${this.workingHours.end}`).add(1, 'day')
-      const currentTime = dayjs()
+      const slots = [];
+      const startTime = dayjs(
+        `${this.selectedDate} ${this.workingHours.start}`
+      );
+      const endTime = dayjs(
+        `${this.selectedDate} ${this.workingHours.end}`
+      ).add(1, "day");
+      const currentTime = dayjs();
 
-      let startTimeSlot = startTime
-      
+      let startTimeSlot = startTime;
+
       while (startTimeSlot.isBefore(endTime)) {
-        const timeString = startTimeSlot.format('HH:mm')
-        
+        const timeString = startTimeSlot.format("HH:mm");
+
         slots.push({
           time: timeString,
-          display: startTimeSlot.format('h:mm A'),
+          display: startTimeSlot.format("h:mm A"),
           timestamp: startTimeSlot.valueOf(),
           isPast: startTimeSlot.isBefore(currentTime),
-        })
-        
-        startTimeSlot = startTimeSlot.add(this.slotDuration, 'minute')
+        });
+
+        startTimeSlot = startTimeSlot.add(this.slotDuration, "minute");
       }
-      
-      this.timeSlots = slots
+
+      this.timeSlots = slots;
     },
 
     canBookAppointment(timeSlot) {
-      const slot = this.timeSlots.find(s => s.time === timeSlot)
-      if (!slot) return false
-      
+      const slot = this.timeSlots.find((s) => s.time === timeSlot);
+      if (!slot) return false;
+
       // Use the timestamp from the slot object which correctly handles cross-midnight scenarios
-      const slotDateTime = dayjs(slot.timestamp)
-      const currentTime = dayjs()
-      
+      const slotDateTime = dayjs(slot.timestamp);
+      const currentTime = dayjs();
+
       // Allow booking only if the slot time is equal to or greater than current time
       // This prevents backdated appointments while allowing all future slots
-      return slotDateTime.isAfter(currentTime) || slotDateTime.isSame(currentTime, 'minute')
-    }
-  }
-})
+      return (
+        slotDateTime.isAfter(currentTime) ||
+        slotDateTime.isSame(currentTime, "minute")
+      );
+    },
+  },
+});
