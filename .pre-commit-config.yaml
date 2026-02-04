@@ -65,7 +65,7 @@ repos:
       - id: eslint
         types_or: [javascript]
         files: "^(hms_tz|frontend)/.*\\.js$"
-        args: ["--quiet", "--fix"]
+        args: ["--quiet", "--fix", "--config", ".eslintrc.js"]
         additional_dependencies:
           - eslint@8.44.0
           - "@babel/eslint-parser@7.22.9"
