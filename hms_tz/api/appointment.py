@@ -1,10 +1,8 @@
 import frappe
-from frappe.utils import get_time
 from frappe.query_builder import DocType
-from hms_tz.nhif.api.patient_appointment import (
-    get_cash_amount,
-    get_consulting_charge_item
-)
+from frappe.utils import get_time
+
+from hms_tz.nhif.api.patient_appointment import get_cash_amount, get_consulting_charge_item
 
 
 @frappe.whitelist()
@@ -12,7 +10,7 @@ def create_appointment(appointment_data):
     """
     Create a new appointment with the provided data.
     """
-    
+
     # frappe.throw(str(appointment_data))
     appointment_doc = frappe.new_doc("Patient Appointment")
     appointment_doc.update(appointment_data)
@@ -53,7 +51,7 @@ def update_appointment(
     """
     Update an existing appointment with the provided data.
     """
-    
+
     has_changed = False
     appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_id)
     if appointment_doc.practitioner != practitioner:
@@ -72,13 +70,13 @@ def update_appointment(
     if appointment_doc.appointment_type != appointment_type:
         has_changed = True
         appointment_doc.appointment_type = appointment_type
-    
+
     if has_changed:
         appointment_doc.save(ignore_permissions=True)
         appointment_doc.reload()
 
         return True
-    
+
     return False
 
 
@@ -87,15 +85,15 @@ def cancel_appointment(appointment_id):
     """
     Cancel an existing appointment.
     """
-    
+
     appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_id)
     if appointment_doc.status == "Cancelled":
         frappe.throw(f"Appointment {appointment_id} is already cancelled.")
-    
+
     appointment_doc.status = "Cancelled"
     appointment_doc.save(ignore_permissions=True)
     appointment_doc.reload()
-    
+
     # If the appointment has an associated event, update the event status
     if appointment_doc.get("event"):
         event_doc = frappe.get_doc("Event", appointment_doc.event)
@@ -126,7 +124,7 @@ def get_mode_of_payment():
         .on(up.for_value == mp.name)
         .select(mp.name.as_("mode_of_payment"), mp.type.as_("type"))
         .where(
-            (up.user == user) 
+            (up.user == user)
             & (up.allow == "Mode of Payment")
             # & (mp.type == "Cash")
         )
@@ -149,14 +147,14 @@ def get_appointment_details(appointment_id):
 
     # Get appointment data
     appointment_data = appointment_doc.as_dict()
-    
+
     # Prepare the response structure
     response_data = {
         "Patient Appointment": appointment_data,
         "Patient": {},
         "Healthcare Insurance Subscription": {}
     }
-    
+
     # Get patient data if patient is linked
     if appointment_data.get("patient"):
         try:
@@ -164,7 +162,7 @@ def get_appointment_details(appointment_id):
             response_data["Patient"] = patient_doc.as_dict()
         except Exception as e:
             frappe.log_error(f"Error fetching patient data: {str(e)}")
-            
+
     # Get insurance subscription data if linked
     if appointment_data.get("insurance_subscription"):
         try:
@@ -181,13 +179,13 @@ def get_user_roles():
     """
     Fetch user roles.
     """
-    
+
     user = frappe.session.user
     roles = frappe.get_roles(user)
-    
+
     if not roles:
         frappe.throw(f"No roles found for user: {user}")
-    
+
     return roles
 
 
@@ -209,11 +207,11 @@ def validate_practitioner_level(current_practitioner, new_practitioner, inpatien
     )
     if not new_cons_item:
         frappe.throw(f"Consulting charge item for practitioner {new_practitioner} is not set. <br>Please set it on the practitioner record.")
-    
+
     if cur_cons_item != new_cons_item:
         frappe.throw(
             title="Consulting charge item mismatch:",
             msg=f"Cannot change practitioner from {current_practitioner}: {cur_cons_item} to {new_practitioner}: {new_cons_item}."
         )
-    
+
     return True

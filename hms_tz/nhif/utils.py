@@ -1,8 +1,9 @@
-import json
+
 import frappe
 from frappe.utils import get_url_to_form
-from hms_tz.nhif.nhif_api.verification import get_poc_reference_no
+
 from hms_tz.nhif.nhif_api.approval import issue_approved_service
+from hms_tz.nhif.nhif_api.verification import get_poc_reference_no
 
 
 @frappe.whitelist()
@@ -135,7 +136,7 @@ def issue_nhif_service(
             frappe.throw(
                 f"Approval Number is not set for this document, Please get Approval Number from NHIF."
             )
-        
+
         service_data = issue_approved_service(
             doc,
             doc.approval_number,
@@ -162,7 +163,7 @@ def get_patient_care_name(service_type, service_name):
     """
     if not service_type:
         return None
-    
+
     if not service_name and service_type == "Medication":
         return 'Pharmacy'
 
@@ -195,14 +196,14 @@ def validate_point_of_care(doc, field):
 
     if not doc.get(insurance_field) or "NHIF" not in doc.get(insurance_field, ""):
         return
-    
+
     if not frappe.get_cached_value(
         "HMS TZ Setting",
         doc.company,
         "enable_nhif_api"
     ):
         return
-    
+
     if not doc.get("poc_reference_no"):
         if frappe.get_cached_value(
             "HMS TZ Setting",
@@ -227,7 +228,7 @@ def validate_issued_services(
 
     if not is_restricted:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
     if not settings_doc.enable_nhif_api:
         return

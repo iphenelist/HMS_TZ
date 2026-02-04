@@ -14,7 +14,7 @@ from hms_tz.nhif.api.healthcare_utils import (
     create_individual_radiology_examination,
     create_therapy_plan,
     update_dimensions,
-    update_invoice_reference_in_lrpmt_childs
+    update_invoice_reference_in_lrpmt_childs,
 )
 from hms_tz.nhif.api.sales_order import validate_stock_item
 
@@ -101,7 +101,7 @@ def create_healthcare_docs(doc, method):
         for item in doc.items:
             if not item.reference_dt or not item.reference_dn:
                 continue
-            
+
             # check if item is from Service Request
             # its service document will be created from Healthcare Service
             # Request
@@ -168,7 +168,7 @@ def create_healthcare_docs(doc, method):
 def update_drug_prescription(doc):
     if not doc.patient:
         return
-    
+
     for item in doc.items:
         if (
             item.reference_dn and

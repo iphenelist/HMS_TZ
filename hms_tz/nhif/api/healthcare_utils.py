@@ -16,11 +16,11 @@ from frappe.utils import (
     add_days,
     add_to_date,
     create_batch,
+    get_first_day,
     get_url_to_form,
     now_datetime,
     nowdate,
     nowtime,
-    get_first_day
 )
 
 
@@ -2025,7 +2025,7 @@ def create_invoiced_items_if_not_created(from_date='', to_date=''):
         query = query.where(
             si.posting_date == nowdate()
         )
-    
+
     si_invoices = query.run(as_dict=1)
 
     for invoice in si_invoices:
@@ -2204,7 +2204,7 @@ def create_invoiced_items_if_not_created(from_date='', to_date=''):
                         title=f"LRP Error: Invoice: {item.parent}",
                         message=traceback,
                     )
-            
+
             elif item.reference_dt == "Drug Prescription":
                 # No need to create drug prescription again, just update the invoiced field, since re-creation is handled by CSF TZ app
                 update_invoice_reference_in_lrpmt_childs(child, item)
@@ -2214,13 +2214,13 @@ def create_invoiced_items_if_not_created(from_date='', to_date=''):
                     continue
 
                 therapy_items.append(item)
-            
+
             elif item.reference_dt in [
                 "Inpatient Occupancy",
                 "Inpatient Consultancy",
             ]:
                 update_invoice_reference_in_lrpmt_childs(child, item)
-            
+
         create_therapy_plan(invoice_therapy_dict=therapy_items)
 
         if len(service_request_ids) > 0:
@@ -2238,7 +2238,7 @@ def create_invoiced_items_if_not_created(from_date='', to_date=''):
                 for row in healthcare_service_parents:
                     hsr_doc = frappe.get_cached_doc("Healthcare Service Request", row.service_request_no)
                     hsr_doc.create_healthcare_service_docs()
-        
+
         frappe.db.commit()
 
 
@@ -2250,12 +2250,12 @@ def update_invoice_reference_in_lrpmt_childs(child, item, fieldname=""):
     invoiced_field = "invoiced"
     if frappe.get_meta(item.reference_dt).get_field("hms_tz_invoiced"):
         invoiced_field = "hms_tz_invoiced"
-    
+
     fields[invoiced_field] = 1
 
     if fieldname:
         fields[fieldname] = 1
-    
+
     frappe.db.set_value(
         child.doctype,
         child.name,
@@ -2400,7 +2400,7 @@ def auto_finalize_patient_encounters():
             except Exception as e:
                 if "CancelledLinkError" in str(e):
                     frappe.db.commit()
-                
+
                 frappe.log_error(
                     title=f"Error: finalizing encounter: {encounter.name}",
                     message=frappe.get_traceback()
@@ -2416,7 +2416,7 @@ def auto_finalize_patient_encounters():
     for row in companies:
         if row.valid_days_to_auto_finalize_encounter == 0:
             continue
-        
+
         current_date = frappe.flags.current_date or nowdate()
         encounter_date = add_days(current_date, -row.valid_days_to_auto_finalize_encounter)
         start_date = get_first_day(encounter_date)

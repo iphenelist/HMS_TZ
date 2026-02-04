@@ -1,10 +1,9 @@
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
-from hms_tz.nhif.utils import validate_point_of_care, validate_issued_services
-from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
-    update_revenue_entry,
-)
+
+from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import update_revenue_entry
+from hms_tz.nhif.utils import validate_issued_services, validate_point_of_care
 
 
 def before_insert(doc, method):

@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.query_builder import DocType
-from frappe.utils import get_fullname, nowdate, getdate
+from frappe.utils import get_fullname, getdate, nowdate
 
 
 class HospitalRevenueEntry(Document):
@@ -15,14 +15,14 @@ class HospitalRevenueEntry(Document):
         msg = """<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">\
                     <p class="text-center"><i>You cannot delete Hospital Revenue Entry record</i></p>
                 </div>"""
-        
+
         if self.source_doctype != "Inpatient Record":
             frappe.throw(
                 title="Cannot Delete",
                 msg=msg,
                 exc=frappe.ValidationError,
             )
-        
+
         elif not self.flags.is_unconfirmed:
             frappe.throw(
                 title="Cannot Delete",
@@ -85,19 +85,19 @@ def create_revenue_entry_from_insurance_mcr(doc, ref_docnames=[]):
 
 def create_revenue_entry_from_inpatient_cash_mcr(mcr_doc, ref_docnames):
     """Create Hospital Revenue Entry for inpatient cash patients from MCR
-    
+
     This function creates HRE entries for newly added drugs in MCR for inpatient cash patients
     who don't have Healthcare Service Request.
-    
+
     Args:
         mcr_doc: Medication Change Request document
         ref_docnames: List of Drug Prescription reference names to create HRE for
     """
     if not ref_docnames:
         return
-    
+
     encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
-    
+
     for ref_docname in ref_docnames:
         # Find the drug prescription row
         drug_row = None
@@ -105,13 +105,13 @@ def create_revenue_entry_from_inpatient_cash_mcr(mcr_doc, ref_docnames):
             if d.name == ref_docname:
                 drug_row = d
                 break
-        
+
         if not drug_row:
             continue
-        
+
         rate = drug_row.amount
         qty = drug_row.delivered_quantity or drug_row.quantity
-        
+
         entry_dict = {
             "patient": mcr_doc.patient,
             "patient_name": mcr_doc.patient_name,
@@ -144,7 +144,7 @@ def create_revenue_entry_from_inpatient_cash_mcr(mcr_doc, ref_docnames):
             "updated_from_docname": mcr_doc.name,
             "remarks": f"Service Added from Medication Change Request",
         }
-        
+
         hre = frappe.new_doc("Hospital Revenue Entry")
         hre.update(entry_dict)
         hre.insert(ignore_permissions=True)
@@ -173,7 +173,7 @@ def update_revenue_entry(
 
     if is_cancelled == 1:
         query = query.set(hre.is_cancelled, 1)
-    
+
     if therapy_plan and lrpmt_doctype == "Therapy Session":
         query = query.set(hre.lrpmt_doctype, lrpmt_doctype)
         query = query.set(hre.lrpmt_docname, lrpmt_docname)
@@ -187,7 +187,7 @@ def update_revenue_entry(
             (hre.lrpmt_doctype == lrpmt_doctype)
             & (hre.lrpmt_docname == lrpmt_docname)
         )
-    
+
     query.run()
 
 
@@ -229,7 +229,7 @@ def update_returned_or_cancelled_revenue_entry(
                 )
             )
             update_query.run()
-    
+
     else:
         query = (
             frappe.qb.update(hre)
@@ -527,7 +527,7 @@ def build_insurance_drug_entry(doc, ref_docnames):
             hsrp.department_hsu,
         )
         .where(
-            (hsrp.ref_doctype == "Drug Prescription") 
+            (hsrp.ref_doctype == "Drug Prescription")
             & (hsrp.ref_docname.isin(ref_docnames))
         )
     ).run(as_dict=True)
@@ -576,7 +576,7 @@ def build_insurance_drug_entry(doc, ref_docnames):
             entry_dict["updated_from_doctype"] = doc.doctype
             entry_dict["updated_from_docname"] = doc.name
             entry_dict["remarks"] = f"Service Added from Medication Change Request"
-        
+
         entries.append(entry_dict)
 
     return entries
@@ -841,7 +841,7 @@ def create_inpatient_revenue_entries(doc):
 
     for row in doc.inpatient_occupancies:
         old_row = old_occupancy_map.get(row.name)
-        
+
         if (
             old_row and
             old_row.is_confirmed == 0 and
@@ -874,7 +874,7 @@ def create_inpatient_revenue_entries(doc):
                 "lrpmt_doctype": row.doctype,
                 "lrpmt_docname": row.name,
             })
-        
+
         elif (
             not old_row and
             row.hre_created == 0 and
@@ -883,7 +883,7 @@ def create_inpatient_revenue_entries(doc):
             entry_dict = get_entry_from_occupancy(doc, row)
             entries_to_be_created.append(entry_dict)
             row.hre_created = 1
-        
+
         elif (
             not old_row and
             row.hre_created == 1 and
@@ -934,7 +934,7 @@ def create_inpatient_revenue_entries(doc):
                 "lrpmt_doctype": row.doctype,
                 "lrpmt_docname": row.name,
             })
-        
+
         elif (
             not old_row and
             row.hre_created == 0 and
@@ -961,7 +961,7 @@ def create_inpatient_revenue_entries(doc):
 
     if len(entries_to_be_created) == 0 and len(entries_to_be_deleted) == 0:
         return
-    
+
     for entry in entries_to_be_created:
         hre = frappe.new_doc("Hospital Revenue Entry")
         hre.update(entry)
