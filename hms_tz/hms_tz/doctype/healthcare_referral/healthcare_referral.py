@@ -2,11 +2,12 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.core.utils import html2text
 from frappe.model.document import Document
 from frappe.utils import now_datetime
-from frappe.core.utils import html2text
+
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_childs_map, get_item_refcode
 from hms_tz.nhif.nhif_api.referral import create_referral
-from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_refcode, get_childs_map
 
 
 class HealthcareReferral(Document):
@@ -53,7 +54,7 @@ class HealthcareReferral(Document):
 
         if not self.encounter:
             return
-        
+
         notes_html = frappe.get_cached_value("Patient Encounter", self.encounter, "examination_detail") or ""
         clinical_notes = html2text(notes_html).lstrip('\n')
         self.reason_for_referral = clinical_notes
@@ -144,7 +145,7 @@ class HealthcareReferral(Document):
 
         if not self.company or self.referral_type == "AcknowledgeServiceReferral":
             return
-        
+
         facility_code = frappe.get_cached_value(
             "HMS TZ Setting",
             self.company,
@@ -153,7 +154,7 @@ class HealthcareReferral(Document):
 
         if not facility_code:
             frappe.throw(f"Source Facility Code is not set for the HMS TZ Setting: <b>{self.company}</b>")
-        
+
         source_facility = frappe.get_cached_value(
             "Healthcare Facility",
             {"facility_code": facility_code},

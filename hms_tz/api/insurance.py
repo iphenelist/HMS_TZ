@@ -1,8 +1,7 @@
 import frappe
-from frappe import _
-from frappe.utils import flt
 from frappe.query_builder import DocType
 from frappe.query_builder.terms import ValueWrapper
+from frappe.utils import flt
 
 
 def delete_price_package(doctype_name, company):
@@ -26,7 +25,7 @@ def get_insurance_items(insurance_customer_name, for_prices=False):
 
     if for_prices:
         services += get_consultations(insurance_customer_name)
-    
+
     services += get_labs(insurance_customer_name)
     services += get_radiologies(insurance_customer_name)
     services += get_procedure(insurance_customer_name)
@@ -307,7 +306,7 @@ def get_items_for_price_list(
         # pp.hascopayment,
         # pp.strength,
         # pp.dosage,
-    
+
     if item:
         item_query = item_query.where(icd.parent == item)
 
@@ -331,7 +330,7 @@ def handle_insurance_prices(itp, package, price_list, currency):
                     frappe.qb.update(itp).set(
                         itp.price_list_rate, flt(package.unitprice)
                     ).where(itp.name == price.name).run()
-                    
+
                     out = frappe.get_doc(
                         {
                             "doctype": "Comment",
@@ -400,7 +399,7 @@ def create_insurance_price_list(company, price_list, currency, insurance_provide
         filters["nhif_scheme_id"] = schemeid
     elif insurance_provider == "Jubilee":
         filters["insurance_company"] = ["like", "%Jubilee%"]
-    
+
     plan_details = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan", filters, ["name", "price_list"], as_dict=True
     )
@@ -413,7 +412,7 @@ def create_insurance_price_list(company, price_list, currency, insurance_provide
                 "price_list",
                 price_list,
             )
-            
+
             out = frappe.get_doc(
                 {
                     "doctype": "Comment",

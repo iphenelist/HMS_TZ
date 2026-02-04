@@ -1,5 +1,4 @@
 import frappe
-from erpnext import get_default_company
 from frappe.utils import getdate, nowdate
 
 
@@ -28,15 +27,15 @@ def get_nhif_practitioner_login_status():
         return {"show_login": False, "show_logout": False, "show_poc": True}
 
     if (
-        not practitioner_details.date_loggedin_to_nhif or 
+        not practitioner_details.date_loggedin_to_nhif or
         (
             getdate(practitioner_details.date_loggedin_to_nhif) != getdate(nowdate())
         )
     ):
         return {"show_login": True, "show_logout": False, "show_poc": False}
-    
+
     elif (
-        practitioner_details.date_loggedin_to_nhif and 
+        practitioner_details.date_loggedin_to_nhif and
         (getdate(practitioner_details.date_loggedin_to_nhif) == getdate(nowdate()))
     ):
         return {"show_login": False, "show_logout": True, "show_poc": True}

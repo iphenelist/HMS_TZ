@@ -2,15 +2,16 @@ import json
 
 import frappe
 import requests
-from pypika.terms import Not
 from frappe.core.utils import html2text
 from frappe.query_builder import DocType
-from hms_tz.nhif.nhif_api.referral import get_disease_code
+from frappe.utils import date_diff, get_datetime, get_fullname, get_url_to_form, now_datetime, nowdate
+from pypika.terms import Not
+
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.api.inpatient_record import get_last_encounter
-from hms_tz.nhif.nhif_api.verification import get_poc_reference_no
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-from frappe.utils import date_diff, get_fullname, get_url_to_form, now_datetime, nowdate, get_datetime
+from hms_tz.nhif.nhif_api.referral import get_disease_code
+from hms_tz.nhif.nhif_api.verification import get_poc_reference_no
 
 
 @frappe.whitelist()
@@ -444,12 +445,12 @@ def admit_patient(
 
     admission_encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.admission_encounter)
     clinical_notes = html2text(admission_encounter_doc.examination_detail).lstrip('\n')
-    
+
     diagnosis_at_admission = []
     for row in admission_encounter_doc.patient_encounter_final_diagnosis:
         disease_code = get_disease_code(row.code)
         diagnosis_at_admission.append(disease_code)
-    
+
     if len(diagnosis_at_admission) == 0:
         for row in admission_encounter_doc.patient_encounter_preliminary_diagnosis:
             disease_code = get_disease_code(row.code)
@@ -502,7 +503,7 @@ def admit_patient(
             text=f"NHIF Admission failed<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('message') or r.text}<b>",
         )
         frappe.db.commit()
-        
+
         frappe.throw(
             title="NHIF API Error",
             msg=f"Failed to Admit Patient<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{r.text}</b>",
@@ -534,7 +535,7 @@ def admit_patient(
             point_of_care_name = "HDU Admission"
         elif ward_type == "ICU":
             point_of_care_name = "ICU Admission"
-        
+
 
         reference_data = get_poc_reference_no(
             point_of_care_name,
@@ -592,7 +593,7 @@ def discharge_patient(
 
     discharge_encounter_doc = frappe.get_cached_doc("Patient Encounter", doc.discharge_encounter)
     clinical_notes = html2text(discharge_encounter_doc.examination_detail).lstrip('\n')
-    
+
     diagnosis_at_discharge = []
     for row in discharge_encounter_doc.patient_encounter_final_diagnosis:
         disease_code = get_disease_code(row.code)
@@ -833,7 +834,7 @@ def send_overstay_nofication():
                 days_diff = date_diff(inpatient_doc.get("last_overstay_date"), nowdate())
                 if days_diff and days_diff <= notification_days:
                     continue
-            
+
             notes = frappe.db.get_value(
                 "Patient Encounter",
                 {"inpatient_record": inpatient_doc.name, "duplicated": 0},
@@ -883,7 +884,7 @@ def send_overstay_nofication():
                     ref_doctype=inpatient_doc.doctype,
                     ref_docname=inpatient_doc.name,
                 )
-                
+
                 frappe.db.set_value(
                     inpatient_doc.doctype,
                     inpatient_doc.name,

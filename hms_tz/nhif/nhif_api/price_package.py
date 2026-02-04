@@ -3,21 +3,21 @@ from time import sleep
 
 import frappe
 import requests
-from frappe.query_builder import DocType
 from frappe.model.naming import make_autoname
+from frappe.query_builder import DocType
+from frappe.utils import cint, create_batch, now_datetime, nowdate
 from frappe.utils.background_jobs import enqueue
-from frappe.query_builder.terms import ValueWrapper
-from frappe.utils import cint, flt, now_datetime, nowdate, create_batch
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
-from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
+
 from hms_tz.api.insurance import (
-    get_insurance_items,
-    delete_price_package,
-    delete_hsic_data,
-    get_items_for_price_list,
     create_insurance_price_list,
+    delete_hsic_data,
+    delete_price_package,
+    get_insurance_items,
+    get_items_for_price_list,
     handle_insurance_prices,
 )
+from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 @frappe.whitelist()
@@ -328,7 +328,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
 
             price_list_name = "NHIF-" + item.get("schemeid") + "-" + facility_code
             handle_insurance_prices(itp, item, price_list_name, default_currency)
-        
+
         frappe.db.commit()
 
 @frappe.whitelist()

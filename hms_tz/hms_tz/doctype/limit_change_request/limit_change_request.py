@@ -1,12 +1,9 @@
 import frappe
-from frappe.model.document import Document
 from erpnext.accounts.utils import get_balance_on
+from frappe.model.document import Document
 from frappe.utils import flt, get_url_to_form, nowdate, nowtime
-from hms_tz.nhif.api.patient_encounter import (
-    validate_totals,
-    create_healthcare_docs,
-    create_service_request
-)
+
+from hms_tz.nhif.api.patient_encounter import create_service_request, validate_totals
 
 
 class LimitChangeRequest(Document):
@@ -208,7 +205,7 @@ class LimitChangeRequest(Document):
 
                 encounter_doc.db_update_all()
                 encounter_doc.reload()
-    
+
 
     def create_insurance_items(self, encounters):
         """Create insurance items for all encounters related to the appointment"""
