@@ -13,15 +13,15 @@ loadDigitalPersonaSDK(
   .catch((error) => {
     console.error("Failed to load DigitalPersona SDK:", error);
   });
-  
+
 export class Fingerprint {
   constructor(opts) {
     this.label = opts.label || "Send Request";
-    
+
     this.mfs500 = new MFS500();
     this.mfs100 = new MFS100();
     this.digitalPersona = new DigitalPersona();
-    
+
     // Device management
     this.allDevices = [];
     this.selectedDevice = null;
@@ -42,17 +42,17 @@ export class Fingerprint {
   async init() {
     // Initialize event handlers for both devices
     this.initializeEventHandlers();
-    
+
     this.showDialog();
 
     try {
       await this.enumerateAllDevices();
       this.deviceScanningComplete = true;
-      
+
       this.updateDialog();
     } catch (err) {
       this.deviceScanningComplete = true;
-      
+
       this.updateDialog();
       this.handleError(err, "init");
     }
@@ -61,7 +61,7 @@ export class Fingerprint {
   initializeEventHandlers() {
     const callbacks = {
       onDeviceConnected: () => {
-         console.log("Device Connected: ", this.selectedDevice);
+        console.log("Device Connected: ", this.selectedDevice);
       },
       onDeviceDisconnected: () => {
         // this.enumerateAllDevices().then(() => {
@@ -94,7 +94,7 @@ export class Fingerprint {
       },
       onReaderError: (event) => {
         console.error("Reader Error:", event);
-      }
+      },
     };
 
     this.mfs500.initializeEventHandlers(callbacks);
@@ -142,11 +142,11 @@ export class Fingerprint {
 
   resetDeviceState = async () => {
     try {
-      if (this.currentDeviceType === 'digitalpersona') {
+      if (this.currentDeviceType === "digitalpersona") {
         await this.digitalPersona.resetDeviceState();
-      } else if (this.currentDeviceType === 'mfs100') {
+      } else if (this.currentDeviceType === "mfs100") {
         await this.mfs100.resetDeviceState();
-      } else if (this.currentDeviceType === 'mfs500') {
+      } else if (this.currentDeviceType === "mfs500") {
         await this.mfs500.resetDeviceState();
       }
     } catch (error) {
@@ -154,21 +154,21 @@ export class Fingerprint {
     }
   };
 
-  destroy = async () => {    
+  destroy = async () => {
     this.dialog.hide();
-    
+
     // Cleanup all device handlers
     try {
       await Promise.all([
         this.mfs500.destroy(),
         this.mfs100.destroy(),
-        this.digitalPersona.destroy()
+        this.digitalPersona.destroy(),
       ]);
     } catch (error) {
       console.warn("Error during device cleanup:", error);
       // Continue with cleanup even if there are errors
     }
-    
+
     // Reset internal state
     this.selectedDevice = null;
     this.selectedFinger = null;
@@ -198,8 +198,8 @@ export class Fingerprint {
           fieldtype: "HTML",
           fieldname: "device_connected_status",
           options: `<div id="device-connected-status">${__(
-              "Scanning for devices..."
-            )}</div>`,
+            "Scanning for devices..."
+          )}</div>`,
         },
         {
           fieldtype: "Column Break",
@@ -227,11 +227,11 @@ export class Fingerprint {
             if (this.onChangeTrigger) {
               return;
             }
-            
+
             const fingerValue = this.dialog.get_value("finger");
             if (fingerValue) {
               this.onChangeTrigger = true;
-              
+
               // Use setTimeout to ensure the flag is reset even if there's an error
               setTimeout(async () => {
                 this.toggleFingerprintField().finally(() => {
@@ -275,13 +275,13 @@ export class Fingerprint {
   updateDialog = () => {
     const hasDevices = this.allDevices.length > 0;
     if (hasDevices) {
-      const deviceOptions = this.allDevices.map(device => ({
+      const deviceOptions = this.allDevices.map((device) => ({
         label: device.name,
-        value: device.name
+        value: device.name,
       }));
 
       this.dialog.set_df_property("device", "options", deviceOptions);
-      
+
       if (!this.selectedDevice) {
         this.selectedDevice = this.allDevices[0].name;
         this.dialog.set_value("device", this.selectedDevice);
@@ -290,23 +290,31 @@ export class Fingerprint {
       this.dialog.set_df_property("device", "hidden", 0);
       this.dialog.set_df_property("finger", "hidden", 0);
       this.dialog.set_df_property("fingerprint", "hidden", 0);
-    } 
-    else {
+    } else {
       this.dialog.set_df_property("device", "hidden", 1);
       this.dialog.set_df_property("finger", "hidden", 1);
       this.dialog.set_df_property("fingerprint", "hidden", 1);
     }
-    
+
     // Update device status fields based on current state
     if (!this.deviceScanningComplete) {
-      this.updateDeviceConnectedStatus(`<div style="color: orange; padding: 5px;">${__("Scanning for devices...")}</div>`);
+      this.updateDeviceConnectedStatus(
+        `<div style="color: orange; padding: 5px;">${__(
+          "Scanning for devices..."
+        )}</div>`
+      );
       this.updateDeviceDisconnectedStatus("");
     } else if (hasDevices) {
-      this.updateDeviceConnectedStatus(`<div style="color: green; padding: 2px;">${__("Device Connected")}</div>`);
+      this.updateDeviceConnectedStatus(
+        `<div style="color: green; padding: 2px;">${__(
+          "Device Connected"
+        )}</div>`
+      );
       this.updateDeviceDisconnectedStatus("");
     } else {
       this.updateDeviceConnectedStatus("");
-      this.updateDeviceDisconnectedStatus(`<div style="padding: 5px; line-height: 1.6;">
+      this
+        .updateDeviceDisconnectedStatus(`<div style="padding: 5px; line-height: 1.6;">
                 <strong>No Device Connected.</strong><br>
                 Please download and install drivers:
               </div>
@@ -341,12 +349,12 @@ export class Fingerprint {
                     <span>Place a finger on the device</span>
                 </div>`
       );
-      
+
       await this.startScan();
     }
   };
 
-  getFingerprintData = async() => {
+  getFingerprintData = async () => {
     if (!this.fingerprintAcquired || !this.samples) {
       frappe.msgprint(__("Please scan your fingerprint first."));
       return;
@@ -359,9 +367,9 @@ export class Fingerprint {
 
     if (this.fingerprintPromiseResolve) {
       let fData;
-      if (this.currentDeviceType === 'digitalpersona') {
+      if (this.currentDeviceType === "digitalpersona") {
         console.log("this.samples:", this.samples);
-        fData = this.samples[0].Data
+        fData = this.samples[0].Data;
       } else {
         fData = this.samples[0];
       }
@@ -371,7 +379,7 @@ export class Fingerprint {
         Data: fData,
         fpCode: this.selectedFinger,
       };
-      
+
       this.fingerprintPromiseResolve(data);
     }
 
@@ -379,12 +387,14 @@ export class Fingerprint {
   };
 
   updateDeviceConnectedStatus = (content) => {
-    const dcs_wrapper  = this.dialog.fields_dict.device_connected_status.$wrapper
+    const dcs_wrapper =
+      this.dialog.fields_dict.device_connected_status.$wrapper;
     dcs_wrapper.find("#device-connected-status").html(content);
   };
 
   updateDeviceDisconnectedStatus = (content) => {
-    const dds_wrapper  = this.dialog.fields_dict.device_disconnected_status.$wrapper
+    const dds_wrapper =
+      this.dialog.fields_dict.device_disconnected_status.$wrapper;
     dds_wrapper.find("#device-disconnected-status").html(content);
   };
 
@@ -393,10 +403,10 @@ export class Fingerprint {
 
     if (sample) {
       let imageSrc;
-      
-      if (this.currentDeviceType === 'mfs500') {
+
+      if (this.currentDeviceType === "mfs500") {
         imageSrc = this.mfs500.formatFingerprintImage(sample);
-      } else if (this.currentDeviceType === 'mfs100') {
+      } else if (this.currentDeviceType === "mfs100") {
         imageSrc = this.mfs100.formatFingerprintImage(sample);
       } else {
         imageSrc = this.digitalPersona.formatFingerprintImage(sample);
@@ -427,7 +437,7 @@ export class Fingerprint {
     }
 
     // Find the selected device
-    const selectedDeviceInfo = this.allDevices.find(d => d.name === device);
+    const selectedDeviceInfo = this.allDevices.find((d) => d.name === device);
     if (!selectedDeviceInfo) {
       frappe.msgprint(__("Selected device not found."));
       return;
@@ -437,11 +447,11 @@ export class Fingerprint {
     this.currentDeviceType = selectedDeviceInfo.type;
 
     try {
-      if (selectedDeviceInfo.type === 'mfs500') {
+      if (selectedDeviceInfo.type === "mfs500") {
         await this.mfs500.startScan(selectedDeviceInfo);
-      } else if (selectedDeviceInfo.type === 'digitalpersona') {
+      } else if (selectedDeviceInfo.type === "digitalpersona") {
         await this.digitalPersona.startScan(selectedDeviceInfo.originalDevice);
-      } else if (selectedDeviceInfo.type === 'mfs100') {
+      } else if (selectedDeviceInfo.type === "mfs100") {
         await this.mfs100.startScan();
       }
     } catch (error) {
@@ -452,4 +462,3 @@ export class Fingerprint {
 
 // Make Fingerprint available globally
 window.Fingerprint = Fingerprint;
-

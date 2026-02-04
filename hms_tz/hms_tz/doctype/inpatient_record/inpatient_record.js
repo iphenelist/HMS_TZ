@@ -127,7 +127,11 @@ let discharge_patient_dialog = (frm) => {
         label: "Discharge Type",
         fieldname: "discharge_type",
         options: "Healthcare Discharge Type",
-        reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
+        reqd:
+          frm.doc.insurance_company &&
+          frm.doc.insurance_company.includes("NHIF")
+            ? 1
+            : 0,
       },
     ],
     primary_action_label: __("Discharge"),
@@ -139,32 +143,39 @@ let discharge_patient_dialog = (frm) => {
         frm.doc.insurance_company.includes("NHIF") &&
         frm.doc.admission_no
       ) {
-        frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
-          if (r.enable_nhif_api) {
-            if (!discharge_type) {
-              frappe.msgprint({
-                title: __("Discharge Type Required"),
-                message: __("Please select a discharge type before proceeding."),
-                indicator: "red",
-              });
+        frappe.db.get_value(
+          "HMS TZ Setting",
+          frm.doc.company,
+          "enable_nhif_api",
+          async (r) => {
+            if (r.enable_nhif_api) {
+              if (!discharge_type) {
+                frappe.msgprint({
+                  title: __("Discharge Type Required"),
+                  message: __(
+                    "Please select a discharge type before proceeding."
+                  ),
+                  indicator: "red",
+                });
 
-              return;
+                return;
+              }
+
+              await nhif_discharge_patient(frm, discharge_type);
+
+              frm.refresh_fields();
+              d.hide();
+            } else {
+              discharge_patient(frm, discharge_type);
+
+              frm.refresh_fields();
+              d.hide();
             }
-            
-            await nhif_discharge_patient(frm, discharge_type);
-
-            frm.refresh_fields();
-            d.hide();
-          } else {
-            discharge_patient(frm, discharge_type);
-            
-            frm.refresh_fields();
-            d.hide();
           }
-        });
+        );
       } else {
         discharge_patient(frm, discharge_type);
-        
+
         frm.refresh_fields();
         d.hide();
       }
@@ -195,16 +206,18 @@ let nhif_discharge_patient = (frm, discharge_type) => {
 };
 
 let discharge_patient = (frm, discharge_type) => {
-  frm.call("discharge", {"discharge_type": discharge_type})
-  .then(r => {
-      if (r.message) {
-        frappe.show_alert({
+  frm.call("discharge", { discharge_type: discharge_type }).then((r) => {
+    if (r.message) {
+      frappe.show_alert(
+        {
           message: __("Patient discharged successfully"),
           indicator: "green",
-        }, 10);
-        frm.reload_doc();
-      }
-  }); 
+        },
+        10
+      );
+      frm.reload_doc();
+    }
+  });
 };
 
 let admit_patient_dialog = (frm) => {
@@ -254,11 +267,22 @@ let admit_patient_dialog = (frm) => {
           { value: "NONE", label: __("NONE") },
         ],
         default: "FINGERPRINT",
-        reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
-        hidden: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
-      }
+        reqd:
+          frm.doc.insurance_company &&
+          frm.doc.insurance_company.includes("NHIF")
+            ? 1
+            : 0,
+        hidden:
+          frm.doc.insurance_company &&
+          frm.doc.insurance_company.includes("NHIF")
+            ? 0
+            : 1,
+      },
     ],
-    primary_action_label: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? __("Next") : __("Admit"),
+    primary_action_label:
+      frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")
+        ? __("Next")
+        : __("Admit"),
     primary_action: async () => {
       let admission_type = dialog.get_value("admission_type");
       let service_unit = dialog.get_value("service_unit");
@@ -269,24 +293,29 @@ let admit_patient_dialog = (frm) => {
       }
 
       if (
-        frm.doc.insurance_company && 
+        frm.doc.insurance_company &&
         frm.doc.insurance_company.includes("NHIF")
       ) {
-        frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
-          if (r.enable_nhif_api) {
-            await nhif_admit_patient(
-              frm,
-              dialog,
-              admission_type,
-              service_unit,
-              check_in,
-              biometric_method
-            );
-          } else {
-            admit_patient(frm, service_unit, check_in, admission_type);
-            dialog.hide();
+        frappe.db.get_value(
+          "HMS TZ Setting",
+          frm.doc.company,
+          "enable_nhif_api",
+          async (r) => {
+            if (r.enable_nhif_api) {
+              await nhif_admit_patient(
+                frm,
+                dialog,
+                admission_type,
+                service_unit,
+                check_in,
+                biometric_method
+              );
+            } else {
+              admit_patient(frm, service_unit, check_in, admission_type);
+              dialog.hide();
+            }
           }
-        });
+        );
       } else {
         admit_patient(frm, service_unit, check_in, admission_type);
         dialog.hide();
@@ -325,13 +354,13 @@ let nhif_admit_patient = async (
   biometric_method
 ) => {
   let biometricData;
-  
+
   if (biometric_method === "FACIAL") {
     biometricData = await new FacialRecognition({ label: "Admit" });
     if (!biometricData) {
-        frappe.msgprint(__("Face capture failed. Please try again."));
-        return;
-      }
+      frappe.msgprint(__("Face capture failed. Please try again."));
+      return;
+    }
   } else if (biometric_method === "FINGERPRINT") {
     biometricData = await new Fingerprint({ label: "Admit" });
     if (!biometricData) {
@@ -346,8 +375,7 @@ let nhif_admit_patient = async (
             <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
           </div>
           <br>
-          <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-        ),
+          <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
         () => resolve(true),
         () => resolve(false)
       );
@@ -357,11 +385,11 @@ let nhif_admit_patient = async (
       return;
     }
 
-    biometricData = {Data: "", fpCode: ""};
+    biometricData = { Data: "", fpCode: "" };
   }
-  
+
   dialog.hide();
-  
+
   frappe.call({
     method: "hms_tz.nhif.nhif_api.admission.admit_patient",
     args: {
@@ -397,26 +425,27 @@ let admit_patient = (
   frm,
   service_unit,
   check_in,
-  admission_no=null,
-  admission_type=null,
-  poc_reference_no=null,
+  admission_no = null,
+  admission_type = null,
+  poc_reference_no = null
 ) => {
-  frm.call('admit', {
-    service_unit: service_unit,
-    check_in: check_in,
-    admission_no: admission_no,
-    admission_type: admission_type,
-    poc_reference_no: poc_reference_no
-  })
-    .then(r => {
-        if (r.message) {
-          frappe.show_alert({
-            message: __("Patient admitted successfully"),
-            indicator: "green",
-          });
-          frm.reload_doc();
-        }
+  frm
+    .call("admit", {
+      service_unit: service_unit,
+      check_in: check_in,
+      admission_no: admission_no,
+      admission_type: admission_type,
+      poc_reference_no: poc_reference_no,
     })
+    .then((r) => {
+      if (r.message) {
+        frappe.show_alert({
+          message: __("Patient admitted successfully"),
+          indicator: "green",
+        });
+        frm.reload_doc();
+      }
+    });
 };
 
 let add_bed_dialog = (frm) => {
@@ -592,11 +621,22 @@ let transfer_patient_dialog = (frm) => {
           { value: "NONE", label: __("NONE") },
         ],
         default: "FINGERPRINT",
-        reqd: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 1 : 0,
-        hidden: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? 0 : 1,
-      }
+        reqd:
+          frm.doc.insurance_company &&
+          frm.doc.insurance_company.includes("NHIF")
+            ? 1
+            : 0,
+        hidden:
+          frm.doc.insurance_company &&
+          frm.doc.insurance_company.includes("NHIF")
+            ? 0
+            : 1,
+      },
     ],
-    primary_action_label: frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF") ? __("Next") : __("Transfer"),
+    primary_action_label:
+      frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")
+        ? __("Next")
+        : __("Transfer"),
     primary_action: async () => {
       let service_unit = null;
       let leave_from = null;
@@ -622,22 +662,27 @@ let transfer_patient_dialog = (frm) => {
         frm.doc.insurance_company &&
         frm.doc.insurance_company.includes("NHIF")
       ) {
-        frappe.db.get_value("HMS TZ Setting", frm.doc.company, "enable_nhif_api", async (r) => {
-          if (r.enable_nhif_api) {
-            await nhif_transfer_patient(
-              frm,
-              dialog,
-              service_unit_type,
-              service_unit,
-              check_in,
-              leave_from,
-              biometric_method
-            );
-          } else {
-            transfer_patient(frm, service_unit, check_in, leave_from);
-            dialog.hide();
+        frappe.db.get_value(
+          "HMS TZ Setting",
+          frm.doc.company,
+          "enable_nhif_api",
+          async (r) => {
+            if (r.enable_nhif_api) {
+              await nhif_transfer_patient(
+                frm,
+                dialog,
+                service_unit_type,
+                service_unit,
+                check_in,
+                leave_from,
+                biometric_method
+              );
+            } else {
+              transfer_patient(frm, service_unit, check_in, leave_from);
+              dialog.hide();
+            }
           }
-        });
+        );
       } else {
         transfer_patient(frm, service_unit, check_in, leave_from);
         dialog.hide();
@@ -692,17 +737,16 @@ let nhif_transfer_patient = async (
   service_unit,
   check_in,
   leave_from,
-  biometric_method,
+  biometric_method
 ) => {
-
   let biometricData;
 
   if (biometric_method === "FACIAL") {
     biometricData = await new FacialRecognition({ label: "Transfer" });
     if (!biometricData) {
-        frappe.msgprint(__("Face capture failed. Please try again."));
-        return;
-      }
+      frappe.msgprint(__("Face capture failed. Please try again."));
+      return;
+    }
   } else if (biometric_method === "FINGERPRINT") {
     biometricData = await new Fingerprint({ label: "Transfer" });
     if (!biometricData) {
@@ -717,8 +761,7 @@ let nhif_transfer_patient = async (
             <p class="text-center"><i>Biometric Method: <b>${biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
           </div>
           <br>
-          <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-        ),
+          <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
         () => resolve(true),
         () => resolve(false)
       );
@@ -728,9 +771,9 @@ let nhif_transfer_patient = async (
       return;
     }
 
-    biometricData = {Data: "", fpCode: ""};
+    biometricData = { Data: "", fpCode: "" };
   }
-  
+
   dialog.hide();
 
   frappe.call({
@@ -751,24 +794,41 @@ let nhif_transfer_patient = async (
       if (r.message) {
         let data = r.message;
 
-        transfer_patient(frm, service_unit, check_in, leave_from, data.poc_reference_no);
+        transfer_patient(
+          frm,
+          service_unit,
+          check_in,
+          leave_from,
+          data.poc_reference_no
+        );
       }
     },
   });
 };
 
-let transfer_patient = (frm, service_unit, check_in, leave_from, poc_reference_no="") => {
-  frm.call("transfer", {
-    service_unit: service_unit,
-    check_in: check_in,
-    leave_from: leave_from,
-    poc_reference_no: poc_reference_no
-  }).then(r => {
+let transfer_patient = (
+  frm,
+  service_unit,
+  check_in,
+  leave_from,
+  poc_reference_no = ""
+) => {
+  frm
+    .call("transfer", {
+      service_unit: service_unit,
+      check_in: check_in,
+      leave_from: leave_from,
+      poc_reference_no: poc_reference_no,
+    })
+    .then((r) => {
       if (!r.exc) {
-        frappe.show_alert({
-          message: __("Patient transferred successfully"),
-          indicator: "green",
-        }, 10);
+        frappe.show_alert(
+          {
+            message: __("Patient transferred successfully"),
+            indicator: "green",
+          },
+          10
+        );
 
         frm.reload_doc();
       }

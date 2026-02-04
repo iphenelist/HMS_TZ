@@ -1,7 +1,7 @@
 /**
  * RequestApproval Class
  * A reusable class to show a dialog for requesting NHIF service approval
- * 
+ *
  * Usage:
  * new RequestApproval({
  *   frm: frm,
@@ -72,7 +72,7 @@ class RequestApproval {
     try {
       // Fetch clinical notes from Patient Encounter
       const clinical_notes = await this.fetchClinicalNotes();
-      
+
       // Show the dialog
       this.showDialog(clinical_notes);
     } catch (error) {
@@ -80,7 +80,8 @@ class RequestApproval {
       frappe.msgprint({
         title: __("Error"),
         indicator: "red",
-        message: __("Failed to initialize approval request dialog: ") + error.message
+        message:
+          __("Failed to initialize approval request dialog: ") + error.message,
       });
     }
   }
@@ -92,30 +93,34 @@ class RequestApproval {
         args: {
           doctype: "Patient Encounter",
           filters: { name: this.encounter_no },
-          fieldname: "examination_detail"
+          fieldname: "examination_detail",
         },
         async: true,
-        callback: function(r) {
+        callback: function (r) {
           if (r.message && r.message.examination_detail) {
             resolve(r.message.examination_detail);
           } else {
             resolve("");
           }
         },
-        error: function(err) {
+        error: function (err) {
           console.error("Error fetching clinical notes:", err);
           resolve(""); // Resolve with empty string on error
-        }
+        },
       });
     });
   }
 
   showDialog(clinical_notes) {
     const me = this;
-    
+
     // Get today's date for default start_date
-    const start_date = me.frm.start_date || me.frm.result_date || me.frm.posting_date || frappe.datetime.get_today();
-    
+    const start_date =
+      me.frm.start_date ||
+      me.frm.result_date ||
+      me.frm.posting_date ||
+      frappe.datetime.get_today();
+
     // Calculate default expire_date (30 days from today)
     // const expire_date = frappe.datetime.add_days(start_date, 30);
 
@@ -128,22 +133,22 @@ class RequestApproval {
           fieldtype: "Date",
           label: __("Start Date"),
           default: start_date,
-          reqd: 1
+          reqd: 1,
         },
         {
           fieldname: "col_break_1",
-          fieldtype: "Column Break"
+          fieldtype: "Column Break",
         },
         {
           fieldname: "expire_date",
           fieldtype: "Date",
           label: __("Expire Date"),
           // default: expire_date,
-          reqd: 1
+          reqd: 1,
         },
         {
           fieldname: "col_break_2",
-          fieldtype: "Column Break"
+          fieldtype: "Column Break",
         },
         {
           fieldname: "quantity",
@@ -151,7 +156,7 @@ class RequestApproval {
           label: __("Quantity"),
           default: me.qty,
           reqd: 1,
-          read_only: me.is_qty_read_only ? 1 : 0
+          read_only: me.is_qty_read_only ? 1 : 0,
         },
         {
           fieldname: "sec_col_1",
@@ -162,33 +167,33 @@ class RequestApproval {
           fieldtype: "Text Editor",
           label: __("Clinical Notes"),
           bold: true,
-          default: clinical_notes || ""
-        }
+          default: clinical_notes || "",
+        },
       ],
       primary_action_label: __("Request Kibali"),
-      primary_action: function(values) {
+      primary_action: function (values) {
         me.submitApprovalRequest(values, dialog);
       },
       secondary_action_label: __("Cancel"),
-      secondary_action: function() {
+      secondary_action: function () {
         dialog.hide();
-      }
+      },
     });
 
     // Add validation for dates
-    dialog.fields_dict.expire_date.$input.on("change", function() {
+    dialog.fields_dict.expire_date.$input.on("change", function () {
       const start_date = dialog.get_value("start_date");
       const expire_date = dialog.get_value("expire_date");
-      
+
       if (start_date && expire_date && expire_date < start_date) {
         frappe.msgprint(__("Expire Date cannot be before Start Date"));
       }
     });
 
-    dialog.fields_dict.start_date.$input.on("change", function() {
+    dialog.fields_dict.start_date.$input.on("change", function () {
       const start_date = dialog.get_value("start_date");
       const expire_date = dialog.get_value("expire_date");
-      
+
       if (start_date && expire_date && expire_date < start_date) {
         frappe.msgprint(__("Expire Date cannot be before Start Date"));
       }
@@ -258,44 +263,52 @@ class RequestApproval {
       args: args,
       freeze: true,
       freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
-      callback: function(r) {
+      callback: function (r) {
         if (r.message) {
           me.frm.refresh();
-          
+
           if (r.message.status == "success") {
             // Hide the dialog first
             dialog.hide();
-            
+
             // Save and reload the form
             me.frm.save().then(() => {
               me.frm.reload_doc();
             });
 
             // Show success alert
-            frappe.show_alert({
-              message: __(
-                "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>" +
-                "Approval Request Successful. Reference Number: " +
-                r.message.reference_no +
-                "</h4>"
-              ),
-              indicator: "green"
-            }, 15);
-            
+            frappe.show_alert(
+              {
+                message: __(
+                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>" +
+                    "Approval Request Successful. Reference Number: " +
+                    r.message.reference_no +
+                    "</h4>"
+                ),
+                indicator: "green",
+              },
+              15
+            );
+
             frappe.utils.play_sound("submit");
           } else {
             // Show error alert with message from API if available
-            const error_message = r.message.message || "Approval Request Failed";
-            
-            frappe.show_alert({
-              message: __(
-                "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>" +
-                "Approval Request Failed: " + error_message +
-                "</h4>"
-              ),
-              indicator: "red"
-            }, 20);
-            
+            const error_message =
+              r.message.message || "Approval Request Failed";
+
+            frappe.show_alert(
+              {
+                message: __(
+                  "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>" +
+                    "Approval Request Failed: " +
+                    error_message +
+                    "</h4>"
+                ),
+                indicator: "red",
+              },
+              20
+            );
+
             frappe.utils.play_sound("error");
           }
         } else {
@@ -303,19 +316,23 @@ class RequestApproval {
           frappe.msgprint({
             title: __("Error"),
             indicator: "red",
-            message: __("No response received from the server. Please try again.")
+            message: __(
+              "No response received from the server. Please try again."
+            ),
           });
         }
       },
-      error: function(err) {
+      error: function (err) {
         console.error("API Error:", err);
         frappe.utils.play_sound("error");
         frappe.msgprint({
           title: __("Error"),
           indicator: "red",
-          message: __("An error occurred while processing the request. Please try again.")
+          message: __(
+            "An error occurred while processing the request. Please try again."
+          ),
         });
-      }
+      },
     });
   }
 }

@@ -31,7 +31,7 @@ var nhif_btns = (listview) => {
     args: {},
     callback: (r) => {
       let data = r.message;
-      
+
       if (data.show_login) {
         login_to_nhif(listview);
       }
@@ -60,18 +60,20 @@ var login_to_nhif = (listview) => {
               // { value: "NONE", label: __("NONE") },
             ],
             default: "FINGERPRINT",
-            reqd: 1
-          }
+            reqd: 1,
+          },
         ],
         size: "small",
-        primary_action_label: __("Next") ,
+        primary_action_label: __("Next"),
         primary_action: async () => {
           let biometricData;
           let values = dialog.get_values();
           dialog.hide();
 
           if (values.biometric_method === "FACIAL") {
-            biometricData = await new FacialRecognition({ label: "Login To NHIF" });
+            biometricData = await new FacialRecognition({
+              label: "Login To NHIF",
+            });
             if (!biometricData) {
               frappe.msgprint(__("Face capture failed. Please try again."));
               return;
@@ -79,7 +81,9 @@ var login_to_nhif = (listview) => {
           } else if (values.biometric_method === "FINGERPRINT") {
             biometricData = await new Fingerprint({ label: "Login To NHIF" });
             if (!biometricData) {
-              frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+              frappe.msgprint(
+                __("Fingerprint capture failed. Please try again.")
+              );
               return;
             }
           } else {
@@ -90,25 +94,24 @@ var login_to_nhif = (listview) => {
                   <p class="text-center"><i>Biometric Method: <b>${values.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
                   </div>
                   <br>
-                  <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-                ),
+                  <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
                 () => resolve(true),
                 () => resolve(false)
               );
             });
-            
+
             if (!confirmed) {
               return;
             }
 
-            biometricData = {Data: "", fpCode: ""};
+            biometricData = { Data: "", fpCode: "" };
           }
 
           frappe.call({
             method: "hms_tz.nhif.nhif_api.attendance.login_practitioner",
             args: {
               fingerprint: biometricData.Data,
-              fpcode: biometricData.fpCode
+              fpcode: biometricData.fpCode,
             },
             async: true,
             freeze: true,
