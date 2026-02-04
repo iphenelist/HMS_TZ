@@ -6,7 +6,7 @@
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center space-x-6">
             <h1 class="text-2xl font-semibold text-black">Appointments</h1>
-            
+
             <!-- Company Selector -->
             <div class="flex items-center">
               <Link
@@ -18,13 +18,13 @@
                 variant="outline"
               />
             </div>
-            
+
             <!-- Date Controls -->
             <div class="flex items-center space-x-2">
               <Button variant="ghost" @click="goToPreviousDay">
                 <FeatherIcon name="chevron-left" class="h-4 w-4 text-black" />
               </Button>
-              
+
               <DatePicker
                 v-model="selectedDateForPicker"
                 variant="outline"
@@ -32,16 +32,19 @@
                 @change="handleDateChange"
                 class="min-w-[200px]"
               />
-              
+
               <Button variant="ghost" @click="goToNextDay">
                 <FeatherIcon name="chevron-right" class="h-4 w-4 text-black" />
               </Button>
             </div>
           </div>
-          
+
           <div class="flex items-center space-x-3">
             <div class="relative">
-              <FeatherIcon name="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
+              <FeatherIcon
+                name="search"
+                class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600"
+              />
               <TextInput
                 placeholder="Search practitioners..."
                 class="pl-10 w-64 text-black"
@@ -63,7 +66,9 @@
       <div class="time-column">
         <!-- Time Slots Header -->
         <div class="time-header">
-          <div class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-10">
+          <div
+            class="h-24 border-b-2 border-gray-200 bg-gray-50 flex items-center justify-center sticky top-0 z-10"
+          >
             <span class="text-sm font-semibold text-gray-600">Time Slots</span>
           </div>
         </div>
@@ -74,12 +79,14 @@
             v-for="slot in dateStore.timeSlots"
             :key="slot.time"
             class="time-slot"
-            :class="{ 
-              'current-time': isCurrentTimeSlot(slot)
+            :class="{
+              'current-time': isCurrentTimeSlot(slot),
             }"
           >
             <div class="flex flex-col items-center">
-              <span class="text-sm font-bold text-gray-900">{{ slot.display }}</span>
+              <span class="text-sm font-bold text-gray-900">{{
+                slot.display
+              }}</span>
             </div>
           </div>
         </div>
@@ -92,10 +99,15 @@
           <!-- Practitioners Header - Fixed -->
           <div class="practitioners-header-fixed" ref="practitionersHeader">
             <div class="flex gap-4">
-              <div v-if="practitionerStore.filteredPractitioners.length === 0" class="flex items-center justify-center min-w-[320px] h-full border-b-2 border-gray-300">
-                <span class="text-gray-500 text-sm">No practitioners found</span>
+              <div
+                v-if="practitionerStore.filteredPractitioners.length === 0"
+                class="flex items-center justify-center min-w-[320px] h-full border-b-2 border-gray-300"
+              >
+                <span class="text-gray-500 text-sm"
+                  >No practitioners found</span
+                >
               </div>
-              <div 
+              <div
                 v-for="practitioner in practitionerStore.filteredPractitioners"
                 :key="practitioner.name"
                 class="practitioner-header-cell"
@@ -113,16 +125,16 @@
               v-for="slot in dateStore.timeSlots"
               :key="slot.time"
               class="grid-row"
-              :class="{ 
-                'current-time': isCurrentTimeSlot(slot)
+              :class="{
+                'current-time': isCurrentTimeSlot(slot),
               }"
             >
               <div
                 v-for="practitioner in practitionerStore.filteredPractitioners"
                 :key="`${slot.time}-${practitioner.name}`"
                 class="grid-cell"
-                :class="{ 
-                  'bg-gray-50': !practitioner.is_available
+                :class="{
+                  'bg-gray-50': !practitioner.is_available,
                 }"
               >
                 <!-- Existing Appointment -->
@@ -131,16 +143,18 @@
                   :appointment="getAppointment(slot.time, practitioner.name)"
                   @click="viewAppointment"
                 />
-                
+
                 <!-- Break Time Slot -->
                 <div
                   v-else-if="slot.isDuringBreak"
                   class="break-slot"
                   :title="slot.breakLabel"
                 >
-                  <span class="text-xs font-bold text-orange-800">{{ slot.breakLabel || 'Break' }}</span>
+                  <span class="text-xs font-bold text-orange-800">{{
+                    slot.breakLabel || "Break"
+                  }}</span>
                 </div>
-                
+
                 <!-- Empty Slot with Add Button -->
                 <div
                   v-else-if="!slot.isPast && practitioner.is_available"
@@ -149,11 +163,17 @@
                   :title="`Create appointment for ${practitioner.name} at ${slot.display}`"
                 >
                   <div class="add-button-content">
-                    <FeatherIcon name="plus" class="h-4 w-4 text-gray-900 group-hover:text-blue-600 transition-colors" />
-                    <span class="add-text text-xs font-bold text-gray-900 group-hover:text-blue-600 transition-colors mt-1">Add</span>
+                    <FeatherIcon
+                      name="plus"
+                      class="h-4 w-4 text-gray-900 group-hover:text-blue-600 transition-colors"
+                    />
+                    <span
+                      class="add-text text-xs font-bold text-gray-900 group-hover:text-blue-600 transition-colors mt-1"
+                      >Add</span
+                    >
                   </div>
                 </div>
-                
+
                 <!-- Unavailable Slot -->
                 <div
                   v-else
@@ -170,7 +190,10 @@
     </div>
 
     <!-- Bottom Scroll Controls -->
-    <div class="bottom-scroll-controls" :class="{ 'hidden': showAppointmentDialog }">
+    <div
+      class="bottom-scroll-controls"
+      :class="{ hidden: showAppointmentDialog }"
+    >
       <!-- Left Scroll Button -->
       <button
         v-if="canScrollLeft && !showAppointmentDialog"
@@ -179,7 +202,10 @@
         :disabled="!canScrollLeft"
         title="Scroll left"
       >
-        <FeatherIcon name="chevron-left" class="h-5 w-5 text-white drop-shadow-sm" />
+        <FeatherIcon
+          name="chevron-left"
+          class="h-5 w-5 text-white drop-shadow-sm"
+        />
       </button>
 
       <!-- Right Scroll Button -->
@@ -190,12 +216,15 @@
         :disabled="!canScrollRight"
         title="Scroll right"
       >
-        <FeatherIcon name="chevron-right" class="h-5 w-5 text-white drop-shadow-sm" />
+        <FeatherIcon
+          name="chevron-right"
+          class="h-5 w-5 text-white drop-shadow-sm"
+        />
       </button>
     </div>
 
     <!-- Appointment Dialog with v-model approach -->
-    <AppointmentDialog 
+    <AppointmentDialog
       v-model:show-dialog="showAppointmentDialog"
       :time-slot="selectedTimeSlot"
       :practitioner-data="selectedPractitioner"
@@ -207,403 +236,431 @@
       @edit-appointment="handleEditAppointment"
       @mode-changed="handleModeChanged"
     />
-    
   </div>
 </template>
 
 <script setup>
-import { onMounted, computed, ref, onUnmounted, nextTick, watch } from 'vue'
+import { onMounted, computed, ref, onUnmounted, nextTick, watch } from "vue";
 // All Frappe UI components are now globally available from main.js
-import { useAppointmentStore } from '@/data/appointment'
-import { usePractitionerStore } from '@/data/practitioner'
-import { useDateStore } from '@/data/date'
-import PractitionerCard from './PractitionerCard.vue'
-import AppointmentCard from './AppointmentCard.vue'
-import AppointmentDialog from './AppointmentDialog.vue'
-import Link from '../controls/Link.vue'
-import { useToast } from '@/composables/useToast'
-import dayjs from 'dayjs'
+import { useAppointmentStore } from "@/data/appointment";
+import { usePractitionerStore } from "@/data/practitioner";
+import { useDateStore } from "@/data/date";
+import PractitionerCard from "./PractitionerCard.vue";
+import AppointmentCard from "./AppointmentCard.vue";
+import AppointmentDialog from "./AppointmentDialog.vue";
+import Link from "../controls/Link.vue";
+import { useToast } from "@/composables/useToast";
+import dayjs from "dayjs";
 
-const appointmentStore = useAppointmentStore()
-const practitionerStore = usePractitionerStore()
-const dateStore = useDateStore()
-const { notifications } = useToast()
+const appointmentStore = useAppointmentStore();
+const practitionerStore = usePractitionerStore();
+const dateStore = useDateStore();
+const { notifications } = useToast();
 
 // Refs for DOM elements
-const practitionersArea = ref(null)
-const practitionersHeader = ref(null)
-const appointmentsGrid = ref(null)
-const timeSlots = ref(null)
+const practitionersArea = ref(null);
+const practitionersHeader = ref(null);
+const appointmentsGrid = ref(null);
+const timeSlots = ref(null);
 
 // State
-const isRefreshing = ref(false)
-const searchQuery = ref('')
-const selectedCompany = ref('')
-const selectedDateForPicker = ref('')
-const userCompanies = ref([])
+const isRefreshing = ref(false);
+const searchQuery = ref("");
+const selectedCompany = ref("");
+const selectedDateForPicker = ref("");
+const userCompanies = ref([]);
 
 // Simple appointment dialog state
-const showAppointmentDialog = ref(false)
-const selectedTimeSlot = ref('')
-const selectedPractitioner = ref(null)
-const dialogMode = ref('create')
-const selectedAppointmentData = ref({})
+const showAppointmentDialog = ref(false);
+const selectedTimeSlot = ref("");
+const selectedPractitioner = ref(null);
+const dialogMode = ref("create");
+const selectedAppointmentData = ref({});
 
 // Horizontal scroll control state
-const canScrollLeft = ref(false)
-const canScrollRight = ref(false)
-const scrollAmount = 320 // 2 practitioner cards width (160px each)
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+const scrollAmount = 320; // 2 practitioner cards width (160px each)
 
 // Initialize selectedDateForPicker with current date
 onMounted(() => {
-  selectedDateForPicker.value = dateStore.selectedDate
+  selectedDateForPicker.value = dateStore.selectedDate;
   // Ensure selectedCompany has a default value
   if (!selectedCompany.value) {
-    selectedCompany.value = ''
+    selectedCompany.value = "";
   }
-})
-
+});
 
 // Initialize data
 onMounted(async () => {
   try {
-    console.log('🔄 Initializing appointment grid...')
+    console.log("🔄 Initializing appointment grid...");
 
     // Fetch user companies first
-    await fetchUserCompanies()
+    await fetchUserCompanies();
 
     // Sync dates between stores initially
-    appointmentStore.setSelectedDate(dateStore.selectedDate)
-    selectedDateForPicker.value = dateStore.selectedDate
+    appointmentStore.setSelectedDate(dateStore.selectedDate);
+    selectedDateForPicker.value = dateStore.selectedDate;
 
     // Set initial company in appointment store if one is selected
     if (selectedCompany.value) {
-      appointmentStore.setSelectedCompany(selectedCompany.value)
+      appointmentStore.setSelectedCompany(selectedCompany.value);
     }
 
     await Promise.all([
       dateStore.generateTimeSlots(),
-      selectedCompany.value ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve()
-    ])
-    
-    setupSynchronizedScrolling()
+      selectedCompany.value
+        ? practitionerStore.fetchPractitioners(
+            selectedCompany.value,
+            dateStore.selectedDate
+          )
+        : Promise.resolve(),
+    ]);
+
+    setupSynchronizedScrolling();
 
     // Add window resize listener for scroll button states
-    window.addEventListener('resize', updateScrollButtonStates)
-
+    window.addEventListener("resize", updateScrollButtonStates);
   } catch (error) {
-    console.error('❌ Error initializing appointment grid:', error)
-    notifications.error.dataLoadFailed(error.message)
+    console.error("❌ Error initializing appointment grid:", error);
+    notifications.error.dataLoadFailed(error.message);
   }
-})
+});
 
 onUnmounted(() => {
-  cleanupSynchronizedScrolling()
-  window.removeEventListener('resize', updateScrollButtonStates)
-})
+  cleanupSynchronizedScrolling();
+  window.removeEventListener("resize", updateScrollButtonStates);
+});
 
 // Watch for date changes
 watch(
   () => dateStore.selectedDate,
   async (newDate) => {
-    console.log('🔍 DateStore date changed to:', newDate)
-    selectedDateForPicker.value = newDate
-    appointmentStore.setSelectedDate(newDate) // Update appointment store date
+    console.log("🔍 DateStore date changed to:", newDate);
+    selectedDateForPicker.value = newDate;
+    appointmentStore.setSelectedDate(newDate); // Update appointment store date
     if (selectedCompany.value && selectedCompany.value.trim()) {
-      practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate)
+      practitionerStore.fetchPractitioners(
+        selectedCompany.value,
+        dateStore.selectedDate
+      );
     }
   }
-)
+);
 
 // Watch for company changes
-watch(
-  selectedCompany,
-  async (newCompany) => {
-    if (newCompany && newCompany.trim()) {
-      appointmentStore.setSelectedCompany(newCompany)
-      await Promise.all([
-        practitionerStore.fetchPractitioners(newCompany, dateStore.selectedDate),
-        appointmentStore.fetchAppointments()
-      ])
-    }
+watch(selectedCompany, async (newCompany) => {
+  if (newCompany && newCompany.trim()) {
+    appointmentStore.setSelectedCompany(newCompany);
+    await Promise.all([
+      practitionerStore.fetchPractitioners(newCompany, dateStore.selectedDate),
+      appointmentStore.fetchAppointments(),
+    ]);
   }
-)
+});
 
 // Watch for search query changes
-watch(
-  searchQuery,
-  (newQuery) => {
-    practitionerStore.setSearchQuery(newQuery)
-  }
-)
+watch(searchQuery, (newQuery) => {
+  practitionerStore.setSearchQuery(newQuery);
+});
 
 // Watch for practitioners changes to update scroll states
 watch(
   () => practitionerStore.filteredPractitioners,
   () => {
     nextTick(() => {
-      updateScrollButtonStates()
-    })
+      updateScrollButtonStates();
+    });
   }
-)
+);
 
 // Synchronized scrolling setup (vertical only)
-let scrollListeners = []
+let scrollListeners = [];
 
 // Simplified vertical-only synchronized scrolling
 const setupSynchronizedScrolling = () => {
   nextTick(() => {
     if (appointmentsGrid.value && timeSlots.value) {
-      let isScrolling = false
+      let isScrolling = false;
 
       // Vertical sync: appointments grid to time slots
       const handleAppointmentsGridScroll = () => {
-        if (isScrolling) return
-        isScrolling = true
-        
-        const scrollTop = appointmentsGrid.value.scrollTop
-        
+        if (isScrolling) return;
+        isScrolling = true;
+
+        const scrollTop = appointmentsGrid.value.scrollTop;
+
         // Sync vertical with time slots only
         if (timeSlots.value.scrollTop !== scrollTop) {
-          timeSlots.value.scrollTop = scrollTop
+          timeSlots.value.scrollTop = scrollTop;
         }
-        
+
         // Update horizontal scroll button states
-        updateScrollButtonStates()
-        
-        isScrolling = false
-      }
+        updateScrollButtonStates();
+
+        isScrolling = false;
+      };
 
       // Vertical sync: time slots to appointments grid
       const handleTimeSlotsScroll = () => {
-        if (isScrolling) return
-        isScrolling = true
-        
-        const scrollTop = timeSlots.value.scrollTop
+        if (isScrolling) return;
+        isScrolling = true;
+
+        const scrollTop = timeSlots.value.scrollTop;
         if (appointmentsGrid.value.scrollTop !== scrollTop) {
-          appointmentsGrid.value.scrollTop = scrollTop
+          appointmentsGrid.value.scrollTop = scrollTop;
         }
-        
-        isScrolling = false
-      }
+
+        isScrolling = false;
+      };
 
       // Add event listeners with passive: true for better performance
-      appointmentsGrid.value.addEventListener('scroll', handleAppointmentsGridScroll, { passive: true })
-      timeSlots.value.addEventListener('scroll', handleTimeSlotsScroll, { passive: true })
+      appointmentsGrid.value.addEventListener(
+        "scroll",
+        handleAppointmentsGridScroll,
+        { passive: true }
+      );
+      timeSlots.value.addEventListener("scroll", handleTimeSlotsScroll, {
+        passive: true,
+      });
 
       scrollListeners.push(
-        () => appointmentsGrid.value?.removeEventListener('scroll', handleAppointmentsGridScroll),
-        () => timeSlots.value?.removeEventListener('scroll', handleTimeSlotsScroll)
-      )
+        () =>
+          appointmentsGrid.value?.removeEventListener(
+            "scroll",
+            handleAppointmentsGridScroll
+          ),
+        () =>
+          timeSlots.value?.removeEventListener("scroll", handleTimeSlotsScroll)
+      );
 
       // Initial scroll button state check
-      updateScrollButtonStates()
+      updateScrollButtonStates();
     }
-  })
-}
+  });
+};
 
 // Horizontal scroll control functions
 const scrollHorizontally = (direction) => {
-  if (!practitionersHeader.value || !appointmentsGrid.value) return
+  if (!practitionersHeader.value || !appointmentsGrid.value) return;
 
-  const currentScrollLeft = practitionersHeader.value.scrollLeft
-  const newScrollLeft = direction === 'left' 
-    ? Math.max(0, currentScrollLeft - scrollAmount)
-    : currentScrollLeft + scrollAmount
+  const currentScrollLeft = practitionersHeader.value.scrollLeft;
+  const newScrollLeft =
+    direction === "left"
+      ? Math.max(0, currentScrollLeft - scrollAmount)
+      : currentScrollLeft + scrollAmount;
 
   // Smooth scroll both elements simultaneously
   practitionersHeader.value.scrollTo({
     left: newScrollLeft,
-    behavior: 'smooth'
-  })
-  
+    behavior: "smooth",
+  });
+
   appointmentsGrid.value.scrollTo({
     left: newScrollLeft,
     top: appointmentsGrid.value.scrollTop,
-    behavior: 'smooth'
-  })
+    behavior: "smooth",
+  });
 
   // Update button states after scroll animation
-  setTimeout(updateScrollButtonStates, 300)
-}
+  setTimeout(updateScrollButtonStates, 300);
+};
 
 const updateScrollButtonStates = () => {
-  if (!practitionersHeader.value) return
+  if (!practitionersHeader.value) return;
 
-  const scrollLeft = practitionersHeader.value.scrollLeft
-  const maxScrollLeft = practitionersHeader.value.scrollWidth - practitionersHeader.value.clientWidth
+  const scrollLeft = practitionersHeader.value.scrollLeft;
+  const maxScrollLeft =
+    practitionersHeader.value.scrollWidth -
+    practitionersHeader.value.clientWidth;
 
-  canScrollLeft.value = scrollLeft > 0
-  canScrollRight.value = scrollLeft < maxScrollLeft - 1 // -1 for precision issues
-}
+  canScrollLeft.value = scrollLeft > 0;
+  canScrollRight.value = scrollLeft < maxScrollLeft - 1; // -1 for precision issues
+};
 
 const cleanupSynchronizedScrolling = () => {
-  scrollListeners.forEach(cleanup => cleanup())
-  scrollListeners = []
-}
+  scrollListeners.forEach((cleanup) => cleanup());
+  scrollListeners = [];
+};
 
 // Helper functions
 const getAppointment = (timeSlot, practitionerId) => {
-  const key = `${timeSlot}-${practitionerId}`
-  const appointment = appointmentStore.appointmentsByTimeSlot[key]
-  
-  return appointment
-}
+  const key = `${timeSlot}-${practitionerId}`;
+  const appointment = appointmentStore.appointmentsByTimeSlot[key];
+
+  return appointment;
+};
 
 const isCurrentTimeSlot = (slot) => {
-  if (!dateStore.isToday) return false
-  
-  const now = dayjs()
-  const slotTime = dayjs(`${dateStore.selectedDate} ${slot.time}`)
-  const nextSlotTime = slotTime.add(dateStore.slotDuration, 'minute')
-  
-  return now.isAfter(slotTime) && now.isBefore(nextSlotTime)
-}
+  if (!dateStore.isToday) return false;
+
+  const now = dayjs();
+  const slotTime = dayjs(`${dateStore.selectedDate} ${slot.time}`);
+  const nextSlotTime = slotTime.add(dateStore.slotDuration, "minute");
+
+  return now.isAfter(slotTime) && now.isBefore(nextSlotTime);
+};
 
 const getUnavailableReason = (slot, practitioner) => {
-  if (slot.isPast) return 'Past time slot'
-  if (slot.isDuringBreak) return `${slot.breakLabel || 'Break time'}`
-  if (!practitioner.is_available) return 'Practitioner unavailable'
-  if (!dateStore.canBookAppointment(slot.time)) return 'Booking not allowed'
-  return 'Unavailable'
-}
+  if (slot.isPast) return "Past time slot";
+  if (slot.isDuringBreak) return `${slot.breakLabel || "Break time"}`;
+  if (!practitioner.is_available) return "Practitioner unavailable";
+  if (!dateStore.canBookAppointment(slot.time)) return "Booking not allowed";
+  return "Unavailable";
+};
 
 // Date navigation functions
 const goToPreviousDay = () => {
-  dateStore.goToPreviousDay()
-}
+  dateStore.goToPreviousDay();
+};
 
 const goToNextDay = () => {
-  dateStore.goToNextDay()
-}
+  dateStore.goToNextDay();
+};
 
 // Handle date change from DatePicker
-const handleDateChange = async(selectedDate) => {
+const handleDateChange = async (selectedDate) => {
   if (selectedDate) {
-    console.log('🔍 Date picker changed to:', selectedDate)
-    dateStore.setSelectedDate(selectedDate)
+    console.log("🔍 Date picker changed to:", selectedDate);
+    dateStore.setSelectedDate(selectedDate);
 
     await Promise.all([
-      practitionerStore.fetchPractitioners(selectedCompany.value, selectedDate),
-      appointmentStore.fetchAppointments()
-    ])
+      practitionerStore.fetchPractitioners(
+        selectedCompany.value,
+        selectedDate
+      ),
+      appointmentStore.fetchAppointments(),
+    ]);
 
-    selectedDateForPicker.value = selectedDate
+    selectedDateForPicker.value = selectedDate;
   }
-}
+};
 
 // Handle company change from Link component
 const handleCompanyChange = async (selectedCompanyValue) => {
-  if (selectedCompanyValue && typeof selectedCompanyValue === 'string') {
-    selectedCompany.value = selectedCompanyValue
+  if (selectedCompanyValue && typeof selectedCompanyValue === "string") {
+    selectedCompany.value = selectedCompanyValue;
 
     await Promise.all([
-      practitionerStore.fetchPractitioners(selectedCompanyValue, dateStore.selectedDate),
-      appointmentStore.setSelectedCompany(selectedCompanyValue)
-    ])
+      practitionerStore.fetchPractitioners(
+        selectedCompanyValue,
+        dateStore.selectedDate
+      ),
+      appointmentStore.setSelectedCompany(selectedCompanyValue),
+    ]);
 
-    console.log('Company changed to:', selectedCompanyValue)
+    console.log("Company changed to:", selectedCompanyValue);
   } else if (selectedCompanyValue && selectedCompanyValue.name) {
     // Handle if Link component returns an object
-    selectedCompany.value = selectedCompanyValue.name
+    selectedCompany.value = selectedCompanyValue.name;
 
     await Promise.all([
-      practitionerStore.fetchPractitioners(selectedCompanyValue.name, dateStore.selectedDate),
-      appointmentStore.setSelectedCompany(selectedCompanyValue.name)
-    ])
+      practitionerStore.fetchPractitioners(
+        selectedCompanyValue.name,
+        dateStore.selectedDate
+      ),
+      appointmentStore.setSelectedCompany(selectedCompanyValue.name),
+    ]);
 
-    console.log('Company changed to:', selectedCompanyValue.name)
+    console.log("Company changed to:", selectedCompanyValue.name);
   }
-}
+};
 
 // Fetch user companies function
 const fetchUserCompanies = async () => {
   try {
     // Mock data for now - replace with actual API call
     userCompanies.value = [
-      { name: 'Nephro One Dialysis Clinic' },
+      { name: "Nephro One Dialysis Clinic" },
       // { name: 'Shree Hindu Mandal Hospital - Mwanza' },
-    ]
-    
+    ];
+
     // Set default company if none selected
     if (userCompanies.value.length > 0 && !selectedCompany.value) {
-      selectedCompany.value = userCompanies.value[0].name
+      selectedCompany.value = userCompanies.value[0].name;
     }
   } catch (error) {
-    console.error('Error fetching user companies:', error)
-    userCompanies.value = [{ name: 'Default Company' }]
-    selectedCompany.value = 'Default Company'
+    console.error("Error fetching user companies:", error);
+    userCompanies.value = [{ name: "Default Company" }];
+    selectedCompany.value = "Default Company";
   }
-}
+};
 
 // Event handlers
 const createAppointment = (timeSlot, practitioner) => {
   // Immediate state update for fast dialog opening
-  selectedTimeSlot.value = timeSlot
-  selectedPractitioner.value = practitioner
-  dialogMode.value = 'create'
-  selectedAppointmentData.value = {}
-  
+  selectedTimeSlot.value = timeSlot;
+  selectedPractitioner.value = practitioner;
+  dialogMode.value = "create";
+  selectedAppointmentData.value = {};
+
   // Use nextTick for immediate UI update
   nextTick(() => {
-    showAppointmentDialog.value = true
-  })
-}
+    showAppointmentDialog.value = true;
+  });
+};
 
 const viewAppointment = (appointment) => {
-  selectedAppointmentData.value = appointment
-  dialogMode.value = 'view'
-  showAppointmentDialog.value = true
-}
+  selectedAppointmentData.value = appointment;
+  dialogMode.value = "view";
+  showAppointmentDialog.value = true;
+};
 
 const closeAppointmentDialog = () => {
-  showAppointmentDialog.value = false
-  selectedTimeSlot.value = ''
-  selectedPractitioner.value = null
-  selectedAppointmentData.value = {}
-  dialogMode.value = 'create'
-}
+  showAppointmentDialog.value = false;
+  selectedTimeSlot.value = "";
+  selectedPractitioner.value = null;
+  selectedAppointmentData.value = {};
+  dialogMode.value = "create";
+};
 
 const refreshData = async () => {
-  if (isRefreshing.value) return
-  
-  isRefreshing.value = true
+  if (isRefreshing.value) return;
+
+  isRefreshing.value = true;
   try {
     await Promise.all([
       dateStore.generateTimeSlots(),
-      (selectedCompany.value && selectedCompany.value.trim()) ? practitionerStore.fetchPractitioners(selectedCompany.value, dateStore.selectedDate) : Promise.resolve(),
-      (selectedCompany.value && selectedCompany.value.trim()) ? appointmentStore.fetchAppointments() : Promise.resolve(),
-    ])
-    notifications.success.dataRefreshed()
+      selectedCompany.value && selectedCompany.value.trim()
+        ? practitionerStore.fetchPractitioners(
+            selectedCompany.value,
+            dateStore.selectedDate
+          )
+        : Promise.resolve(),
+      selectedCompany.value && selectedCompany.value.trim()
+        ? appointmentStore.fetchAppointments()
+        : Promise.resolve(),
+    ]);
+    notifications.success.dataRefreshed();
   } catch (error) {
-    notifications.error.dataLoadFailed(error.message)
-    console.error(error)
+    notifications.error.dataLoadFailed(error.message);
+    console.error(error);
   } finally {
-    isRefreshing.value = false
+    isRefreshing.value = false;
   }
-}
+};
 
 const handleAppointmentCreated = async (data) => {
   // Refresh appointments after creating new one
   if (selectedCompany.value && selectedCompany.value.trim()) {
-    await appointmentStore.fetchAppointments()
+    await appointmentStore.fetchAppointments();
   }
-}
+};
 
 const handleModeChanged = (newMode, appointmentData) => {
   // Update dialog mode and appointment data
-  dialogMode.value = newMode
+  dialogMode.value = newMode;
   if (appointmentData) {
-    selectedAppointmentData.value = appointmentData
+    selectedAppointmentData.value = appointmentData;
   }
-}
+};
 
 const handleEditAppointment = () => {
   // Switch from view mode to edit mode
-  dialogMode.value = 'edit'
-}
+  dialogMode.value = "edit";
+};
 </script>
-
 
 <style scoped>
 .appointment-grid {
@@ -678,7 +735,8 @@ const handleEditAppointment = () => {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
   text-align: center;
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-property: color, background-color, border-color,
+    text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
   background-color: #f9fafb;
@@ -726,14 +784,23 @@ const handleEditAppointment = () => {
   box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(8px);
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(96, 165, 250, 0.9) 0%,
+    rgba(59, 130, 246, 0.9) 100%
+  );
   border: 2px solid #60a5fa;
 }
 
 .scroll-control:hover:not(:disabled) {
-  box-shadow: 0 8px 25px rgba(96, 165, 250, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(96, 165, 250, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.15);
   transform: scale(1.1);
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.95) 0%,
+    rgba(37, 99, 235, 0.95) 100%
+  );
   border-color: #3b82f6;
 }
 
@@ -744,8 +811,6 @@ const handleEditAppointment = () => {
   border-color: #6b7280;
 }
 
-
-
 .scroll-control:active:not(:disabled) {
   transform: scale(0.95);
   box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
@@ -753,16 +818,20 @@ const handleEditAppointment = () => {
 
 .scroll-control:focus {
   outline: none;
-  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 2px #3b82f6, 0 0 0 4px rgba(96, 165, 250, 0.2);
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1),
+    0 0 0 2px #3b82f6, 0 0 0 4px rgba(96, 165, 250, 0.2);
 }
 
 /* Subtle pulse animation to draw attention */
 @keyframes pulse-blue {
-  0%, 100% {
-    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1);
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25),
+      0 2px 4px rgba(0, 0, 0, 0.1);
   }
   50% {
-    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -823,8 +892,7 @@ const handleEditAppointment = () => {
   overflow-y: auto;
   overflow-x: auto;
   scroll-behavior: smooth;
-  background: 
-    linear-gradient(to right, #f3f4f6 1px, transparent 1px),
+  background: linear-gradient(to right, #f3f4f6 1px, transparent 1px),
     linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
   background-size: 176px 96px; /* 160px width + 16px gap, 96px height to match time slots */
   height: 100%;
@@ -856,7 +924,8 @@ const handleEditAppointment = () => {
 
 .grid-row {
   display: flex;
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-property: color, background-color, border-color,
+    text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
   background-color: white;
@@ -906,7 +975,8 @@ const handleEditAppointment = () => {
 .add-appointment-button:hover {
   background-color: #bfdbfe;
   border-color: #2563eb;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .add-appointment-button:hover .add-button-content {
@@ -1028,54 +1098,56 @@ const handleEditAppointment = () => {
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
-  
+
   .time-column {
     width: 5rem;
   }
-  
-  .grid-cell, .practitioner-header-cell {
+
+  .grid-cell,
+  .practitioner-header-cell {
     width: 9rem;
     height: 80px;
     min-height: 80px;
   }
-  
+
   .time-slot {
     height: 80px;
     min-height: 80px;
   }
-  
+
   .practitioners-header {
     height: 80px;
   }
 }
 
 @media (max-width: 640px) {
-  .grid-cell, .practitioner-header-cell {
+  .grid-cell,
+  .practitioner-header-cell {
     width: 8rem;
     height: 4rem;
     min-height: 64px;
   }
-  
+
   .time-slot {
     height: 4rem;
     font-size: 0.75rem;
     line-height: 1rem;
     min-height: 64px;
   }
-  
+
   .time-column {
     width: 5rem;
   }
-  
+
   .practitioners-header {
     height: 4rem;
   }
-  
+
   .appointment-grid-container .px-6 {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   .appointment-grid-container .py-4 {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
@@ -1102,7 +1174,8 @@ const handleEditAppointment = () => {
 
 .appointment-card:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* High contrast mode support */
@@ -1110,11 +1183,11 @@ const handleEditAppointment = () => {
   .grid-cell {
     border-color: #9ca3af;
   }
-  
+
   .time-slot {
     border-color: #9ca3af;
   }
-  
+
   .appointment-card {
     border: 2px solid;
   }
@@ -1129,7 +1202,7 @@ const handleEditAppointment = () => {
   .grid-cell {
     transition: none;
   }
-  
+
   .practitioners-header,
   .appointments-grid {
     scroll-behavior: auto;

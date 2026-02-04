@@ -1,166 +1,177 @@
-import { defineStore } from 'pinia'
-import { createListResource, createResource } from 'frappe-ui'
-import dayjs from 'dayjs'
-import { useToast } from '../composables/useToast'
+import { defineStore } from "pinia";
+import { createListResource, createResource } from "frappe-ui";
+import dayjs from "dayjs";
+import { useToast } from "../composables/useToast";
 
-export const useAppointmentStore = defineStore('appointments', {
+export const useAppointmentStore = defineStore("appointments", {
   state: () => ({
     appointments: [],
-    selectedDate: dayjs().format('YYYY-MM-DD'),
-    selectedCompany: '',
+    selectedDate: dayjs().format("YYYY-MM-DD"),
+    selectedCompany: "",
     isLoading: false,
     error: null,
     appointmentsResource: null,
     userRoles: [],
-    rolesLoading: false
+    rolesLoading: false,
   }),
 
   getters: {
     appointmentsByTimeSlot: (state) => {
-      const grouped = {}
-      state.appointments.forEach(appointment => {
-        const key = `${appointment.appointment_time}-${appointment.practitioner}`
-        grouped[key] = appointment
-      })
-      return grouped
+      const grouped = {};
+      state.appointments.forEach((appointment) => {
+        const key = `${appointment.appointment_time}-${appointment.practitioner}`;
+        grouped[key] = appointment;
+      });
+      return grouped;
     },
 
     canCancelAppointment: (state) => {
-      const allowedRoles = ['System Manager', 'Healthcare Administrator', 'Healthcare Head Receptionist']
-      return state.userRoles.some(role => allowedRoles.includes(role))
-    }
+      const allowedRoles = [
+        "System Manager",
+        "Healthcare Administrator",
+        "Healthcare Head Receptionist",
+      ];
+      return state.userRoles.some((role) => allowedRoles.includes(role));
+    },
   },
 
   actions: {
     initializeResource() {
       if (!this.appointmentsResource) {
         this.appointmentsResource = createListResource({
-          doctype: 'Patient Appointment',
+          doctype: "Patient Appointment",
           fields: [
-            'name',
-            'patient',
-            'patient_name',
-            'patient_sex',
-            'practitioner',
-            'appointment_time',
-            'appointment_date',
-            'status',
-            'appointment_type',
-            'department',
-            'company',
-            'insurance_company',
-            'mode_of_payment',
-            'billing_item',
-            'paid_amount',
-            'invoiced',
-            'ref_sales_invoice',
-            'referral_no',
-            'remarks',
-            'coverage_plan_name',
-            'nhif_employer_name',
-            'daily_limit',
-            'apply_fasttrack_charge',
-            'authorization_number',
-            'poc_reference_no',
-            'require_fingerprint',
-            'require_facial_recognation',
-            'biometric_method',
-            'fpcode'
+            "name",
+            "patient",
+            "patient_name",
+            "patient_sex",
+            "practitioner",
+            "appointment_time",
+            "appointment_date",
+            "status",
+            "appointment_type",
+            "department",
+            "company",
+            "insurance_company",
+            "mode_of_payment",
+            "billing_item",
+            "paid_amount",
+            "invoiced",
+            "ref_sales_invoice",
+            "referral_no",
+            "remarks",
+            "coverage_plan_name",
+            "nhif_employer_name",
+            "daily_limit",
+            "apply_fasttrack_charge",
+            "authorization_number",
+            "poc_reference_no",
+            "require_fingerprint",
+            "require_facial_recognation",
+            "biometric_method",
+            "fpcode",
           ],
           filters: {},
-          orderBy: 'appointment_time asc',
+          orderBy: "appointment_time asc",
           pageLength: 999,
-          auto: false
-        })
+          auto: false,
+        });
       }
     },
 
     setSelectedDate(date) {
       // Ensure date is in YYYY-MM-DD format for Frappe
-      const formattedDate = dayjs(date).format('YYYY-MM-DD')
-      this.selectedDate = formattedDate
-      this.fetchAppointments()
+      const formattedDate = dayjs(date).format("YYYY-MM-DD");
+      this.selectedDate = formattedDate;
+      this.fetchAppointments();
     },
 
     setSelectedCompany(company) {
-      this.selectedCompany = company
-      this.fetchAppointments()
+      this.selectedCompany = company;
+      this.fetchAppointments();
     },
 
     async fetchAppointments() {
-      this.initializeResource()
-      this.isLoading = true
-      this.error = null
+      this.initializeResource();
+      this.isLoading = true;
+      this.error = null;
 
       try {
         // Build filters - start with date filter
         const filters = {
-          appointment_date: this.selectedDate
-        }
+          appointment_date: this.selectedDate,
+        };
 
         // Only add company filter if a specific company is selected
-        if (this.selectedCompany && this.selectedCompany.trim() && this.selectedCompany !== '') {
-          filters.company = this.selectedCompany
+        if (
+          this.selectedCompany &&
+          this.selectedCompany.trim() &&
+          this.selectedCompany !== ""
+        ) {
+          filters.company = this.selectedCompany;
         }
 
         // Update resource filters
         this.appointmentsResource.update({
-          filters: filters
-        })
+          filters: filters,
+        });
 
         // Fetch data
-        await this.appointmentsResource.reload()
+        await this.appointmentsResource.reload();
 
         // Transform the data to match our expected format
-        this.appointments = (this.appointmentsResource.data || []).map(appointment => ({
-          id: appointment.name,
-          name: appointment.name,
-          patient: appointment.patient,
-          patient_name: appointment.patient_name,
-          patient_sex: appointment.patient_sex,
-          practitioner: appointment.practitioner,
-          appointment_time: dayjs(`2024-01-01 ${appointment.appointment_time}`).format('HH:mm'), // Normalize to HH:mm format
-          appointment_date: appointment.appointment_date,
-          status: appointment.status?.toLowerCase() || 'scheduled',
-          appointment_type: appointment.appointment_type,
-          department: appointment.department,
-          company: appointment.company,
-          insurance_company: appointment.insurance_company || 'Cash',
-          insurance_subscription: appointment.insurance_subscription,
-          billing_item: appointment.billing_item,
-          paid_amount: appointment.paid_amount || 0,
-          mode_of_payment: appointment.mode_of_payment,
-          invoiced: appointment.invoiced,
-          ref_sales_invoice: appointment.ref_sales_invoice,
-          referral_no: appointment.referral_no,
-          remarks: appointment.remarks,
-          coverage_plan_name: appointment.coverage_plan_name,
-          nhif_employer_name: appointment.nhif_employer_name,
-          daily_limit: appointment.daily_limit,
-          apply_fasttrack_charge: appointment.apply_fasttrack_charge,
-          authorization_number: appointment.authorization_number,
-          poc_reference_no: appointment.poc_reference_no,
-          require_fingerprint: appointment.require_fingerprint,
-          require_facial_recognation: appointment.require_facial_recognation,
-          biometric_method: appointment.biometric_method,
-          fpcode: appointment.fpcode,
-        }))
-
+        this.appointments = (this.appointmentsResource.data || []).map(
+          (appointment) => ({
+            id: appointment.name,
+            name: appointment.name,
+            patient: appointment.patient,
+            patient_name: appointment.patient_name,
+            patient_sex: appointment.patient_sex,
+            practitioner: appointment.practitioner,
+            appointment_time: dayjs(
+              `2024-01-01 ${appointment.appointment_time}`
+            ).format("HH:mm"), // Normalize to HH:mm format
+            appointment_date: appointment.appointment_date,
+            status: appointment.status?.toLowerCase() || "scheduled",
+            appointment_type: appointment.appointment_type,
+            department: appointment.department,
+            company: appointment.company,
+            insurance_company: appointment.insurance_company || "Cash",
+            insurance_subscription: appointment.insurance_subscription,
+            billing_item: appointment.billing_item,
+            paid_amount: appointment.paid_amount || 0,
+            mode_of_payment: appointment.mode_of_payment,
+            invoiced: appointment.invoiced,
+            ref_sales_invoice: appointment.ref_sales_invoice,
+            referral_no: appointment.referral_no,
+            remarks: appointment.remarks,
+            coverage_plan_name: appointment.coverage_plan_name,
+            nhif_employer_name: appointment.nhif_employer_name,
+            daily_limit: appointment.daily_limit,
+            apply_fasttrack_charge: appointment.apply_fasttrack_charge,
+            authorization_number: appointment.authorization_number,
+            poc_reference_no: appointment.poc_reference_no,
+            require_fingerprint: appointment.require_fingerprint,
+            require_facial_recognation: appointment.require_facial_recognation,
+            biometric_method: appointment.biometric_method,
+            fpcode: appointment.fpcode,
+          })
+        );
       } catch (error) {
-        this.error = error.message || 'Failed to fetch appointments'
-        console.error('❌ Error fetching appointments:', error)
-        const { notifications } = useToast()
-        notifications.error.dataLoadFailed(error.message || 'appointments')
-        this.appointments = []
-        throw error
+        this.error = error.message || "Failed to fetch appointments";
+        console.error("❌ Error fetching appointments:", error);
+        const { notifications } = useToast();
+        notifications.error.dataLoadFailed(error.message || "appointments");
+        this.appointments = [];
+        throw error;
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
 
     async updateAppointment(appointmentId, updates) {
-      this.isLoading = true
-      this.error = null
+      this.isLoading = true;
+      this.error = null;
 
       try {
         // TODO: Replace with actual API call
@@ -169,50 +180,51 @@ export const useAppointmentStore = defineStore('appointments', {
         //   params: { id: appointmentId, ...updates }
         // }).fetch()
 
-        const index = this.appointments.findIndex(app => app.id === appointmentId)
+        const index = this.appointments.findIndex(
+          (app) => app.id === appointmentId
+        );
         if (index !== -1) {
           this.appointments[index] = {
             ...this.appointments[index],
             ...updates,
-            modified_at: new Date().toISOString()
-          }
+            modified_at: new Date().toISOString(),
+          };
         }
 
-        return { success: true }
+        return { success: true };
       } catch (error) {
-        this.error = error.message
-        console.error('Error updating appointment:', error)
-        return { success: false, error: error.message }
+        this.error = error.message;
+        console.error("Error updating appointment:", error);
+        return { success: false, error: error.message };
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
 
-
     async fetchUserRoles() {
-      this.rolesLoading = true
-      this.error = null
+      this.rolesLoading = true;
+      this.error = null;
 
       try {
         const userRolesResource = createResource({
-          url: 'hms_tz.api.appointment.get_user_roles',
-          auto: false
-        })
+          url: "hms_tz.api.appointment.get_user_roles",
+          auto: false,
+        });
 
-        const roles = await userRolesResource.fetch()
-        this.userRoles = roles || []
-        
-        return { success: true, roles: this.userRoles }
+        const roles = await userRolesResource.fetch();
+        this.userRoles = roles || [];
+
+        return { success: true, roles: this.userRoles };
       } catch (error) {
-        this.error = error.message || 'Failed to fetch user roles'
-        console.error('❌ Error fetching user roles:', error)
-        const { notifications } = useToast()
-        notifications.error.dataLoadFailed(error.message || 'user roles')
-        this.userRoles = []
-        return { success: false, error: error.message }
+        this.error = error.message || "Failed to fetch user roles";
+        console.error("❌ Error fetching user roles:", error);
+        const { notifications } = useToast();
+        notifications.error.dataLoadFailed(error.message || "user roles");
+        this.userRoles = [];
+        return { success: false, error: error.message };
       } finally {
-        this.rolesLoading = false
+        this.rolesLoading = false;
       }
-    }
-  }
-})
+    },
+  },
+});

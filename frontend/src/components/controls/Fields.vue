@@ -4,10 +4,18 @@
       v-if="field.type != 'Check'"
       class="mb-2 text-base text-gray-900 font-semibold"
     >
-      {{ field.label}}
-      <span 
+      {{ field.label }}
+      <span
         class="text-red-500 text-xl"
-        v-if="field.reqd && !((field.name === 'patient' && data['Patient Appointment']['is_new_patient']) || (field.name === 'insurance_subscription' && data['Patient Appointment']['is_new_his']))"
+        v-if="
+          field.reqd &&
+          !(
+            (field.name === 'patient' &&
+              data['Patient Appointment']['is_new_patient']) ||
+            (field.name === 'insurance_subscription' &&
+              data['Patient Appointment']['is_new_his'])
+          )
+        "
       >
         *
       </span>
@@ -31,18 +39,27 @@
       v-model="data[section.doctype][field.name]"
       :label="field.label"
       :disabled="Boolean(field.read_only)"
-      @change="(e) => updateCheckValue(section.doctype, field.name, e.target.checked)"
+      @change="
+        (e) => updateCheckValue(section.doctype, field.name, e.target.checked)
+      "
       :required="field.reqd"
     />
     <Link
-      v-else-if="field.type === 'Link' "
+      v-else-if="field.type === 'Link'"
       class="form-control"
       :value="data[section.doctype][field.name]"
       :doctype="field.options"
-      @change="(v) => handleLinkChange(section.doctype, field.name, field.options, v)"
+      @change="
+        (v) => handleLinkChange(section.doctype, field.name, field.options, v)
+      "
       :placeholder="field.placeholder || field.label"
       :onCreate="field.create"
-      :disabled="(field.name === 'patient' && data['Patient Appointment']['is_new_patient']) || (field.name === 'insurance_subscription' && data['Patient Appointment']['is_new_his'])"
+      :disabled="
+        (field.name === 'patient' &&
+          data['Patient Appointment']['is_new_patient']) ||
+        (field.name === 'insurance_subscription' &&
+          data['Patient Appointment']['is_new_his'])
+      "
     />
     <DatePicker
       v-else-if="field.type === 'Date'"
@@ -56,9 +73,7 @@
       v-model="data[section.doctype][field.name]"
     />
     <FormControl
-      v-else-if="
-        ['Small Text', 'Text', 'Long Text'].includes(field.type)
-      "
+      v-else-if="['Small Text', 'Text', 'Long Text'].includes(field.type)"
       type="textarea"
       :placeholder="field.placeholder || field.label"
       v-model="data[section.doctype][field.name]"
@@ -85,37 +100,36 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { createResource } from 'frappe-ui'
-import Link from './Link.vue';
+import { computed } from "vue";
+import { createResource } from "frappe-ui";
+import Link from "./Link.vue";
 
 const props = defineProps({
   section: Object,
   data: Object,
-})
-
+});
 
 // Resource to fetch patient details
 const patientResource = createResource({
-  url: 'frappe.client.get',
-  method: 'GET',
+  url: "frappe.client.get",
+  method: "GET",
   onSuccess: (data) => {
     if (data && data.patient_name) {
       // Set the patient_name field in the Patient Appointment doctype
-      if (props.data['Patient Appointment']) {
-        props.data['Patient Appointment']['patient_name'] = data.patient_name
+      if (props.data["Patient Appointment"]) {
+        props.data["Patient Appointment"]["patient_name"] = data.patient_name;
       }
       // Also set in Healthcare Insurance Subscription if it exists
-      if (props.data['Healthcare Insurance Subscription']) {
-        props.data['Healthcare Insurance Subscription']['patient_name'] = data.patient_name
+      if (props.data["Healthcare Insurance Subscription"]) {
+        props.data["Healthcare Insurance Subscription"]["patient_name"] =
+          data.patient_name;
       }
     }
   },
   onError: (error) => {
-    console.error('Error fetching patient details:', error)
-  }
-})
-
+    console.error("Error fetching patient details:", error);
+  },
+});
 
 // Handle Link field changes with special logic for patient field
 function handleLinkChange(doctype, fieldName, linkDoctype, value) {
@@ -124,30 +138,33 @@ function handleLinkChange(doctype, fieldName, linkDoctype, value) {
   if (data[doctype]) {
     data[doctype][fieldName] = value;
   }
-  
+
   // Special handling for patient field
-  if (fieldName === 'patient' && linkDoctype === 'Patient') {
+  if (fieldName === "patient" && linkDoctype === "Patient") {
     if (value) {
       // Fetch patient details to get patient_name
       patientResource.submit({
-        doctype: 'Patient',
-        name: value
-      })
-      
+        doctype: "Patient",
+        name: value,
+      });
+
       // Sync patient field to Healthcare Insurance Subscription if selecting from Patient Appointment
-      if (doctype === 'Patient Appointment' && data['Healthcare Insurance Subscription']) {
-        data['Healthcare Insurance Subscription']['patient'] = value
+      if (
+        doctype === "Patient Appointment" &&
+        data["Healthcare Insurance Subscription"]
+      ) {
+        data["Healthcare Insurance Subscription"]["patient"] = value;
       }
     } else {
       // Clear patient_name when patient is cleared
-      if (data['Patient Appointment']) {
-        data['Patient Appointment']['patient_name'] = ''
+      if (data["Patient Appointment"]) {
+        data["Patient Appointment"]["patient_name"] = "";
       }
-      if (data['Healthcare Insurance Subscription']) {
-        data['Healthcare Insurance Subscription']['patient_name'] = ''
+      if (data["Healthcare Insurance Subscription"]) {
+        data["Healthcare Insurance Subscription"]["patient_name"] = "";
         // Also clear the patient field in Healthcare Insurance Subscription if clearing from Patient Appointment
-        if (doctype === 'Patient Appointment') {
-          data['Healthcare Insurance Subscription']['patient'] = ''
+        if (doctype === "Patient Appointment") {
+          data["Healthcare Insurance Subscription"]["patient"] = "";
         }
       }
     }
@@ -156,7 +173,7 @@ function handleLinkChange(doctype, fieldName, linkDoctype, value) {
 
 function updateField(doctype, name, value) {
   const data = props.data;
-  if (data[doctype]) {  
+  if (data[doctype]) {
     data[doctype][name] = value;
   }
 }
@@ -166,11 +183,11 @@ function updateCheckValue(doctype, name, value) {
   if (data[doctype]) {
     data[doctype][name] = value;
   }
-  if (data['Patient Appointment']['is_new_patient']) {
-    data['Patient Appointment']['patient'] = '';
+  if (data["Patient Appointment"]["is_new_patient"]) {
+    data["Patient Appointment"]["patient"] = "";
   }
-  if (data['Patient Appointment']['is_new_his']) {
-    data['Patient Appointment']['insurance_subscription'] = '';
+  if (data["Patient Appointment"]["is_new_his"]) {
+    data["Patient Appointment"]["insurance_subscription"] = "";
   }
 }
 </script>
