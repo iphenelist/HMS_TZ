@@ -1,5 +1,5 @@
 exclude: "node_modules|.git"
-default_stages: [commit]
+default_stages: [pre-commit]
 fail_fast: false
 
 repos:
@@ -37,7 +37,7 @@ repos:
     hooks:
       - id: prettier
         types_or: [javascript, vue, scss]
-        files: "^hms_tz/.*\\.(js|vue|scss)$"
+        files: "^(hms_tz|frontend)/.*\\.(js|vue|scss)$"
         args: [
           "--write",
           "--print-width=79",
@@ -64,7 +64,7 @@ repos:
     hooks:
       - id: eslint
         types_or: [javascript]
-        files: "^hms_tz/.*\\.js$"
+        files: "^(hms_tz|frontend)/.*\\.js$"
         args: ["--quiet", "--fix"]
         additional_dependencies:
           - eslint@8.44.0
