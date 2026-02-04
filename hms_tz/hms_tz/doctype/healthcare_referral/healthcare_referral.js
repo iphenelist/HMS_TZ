@@ -19,7 +19,10 @@ frappe.ui.form.on("Healthcare Referral", {
       frm.call("get_source_facility", {}).then((r) => {
         if (r.message) {
           frm.set_value("source_facility", r.message.source_facility);
-          frm.set_value("source_facility_code", r.message.source_facility_code);
+          frm.set_value(
+            "source_facility_code",
+            r.message.source_facility_code
+          );
         }
       });
     }
@@ -85,7 +88,7 @@ frappe.ui.form.on("Healthcare Referral", {
       freeze_message: __("Updating Referral..."),
       callback: function (r) {
         frm.reload_doc();
-        
+
         if (r.message) {
           frappe.show_alert({
             message: __("Referral updated successfully"),
@@ -259,7 +262,9 @@ let show_service_dialog = (frm, data) => {
         service_name: $(this).find("#service_name").attr("data-service_name"),
         item_code: $(this).find("#item_code").attr("data-item_code"),
         qty: $(this).find("#qty").attr("data-qty"),
-        approval_ref_no: $(this).find("#approval_ref_no").attr("data-approval_ref_no"),
+        approval_ref_no: $(this)
+          .find("#approval_ref_no")
+          .attr("data-approval_ref_no"),
       });
     });
 
