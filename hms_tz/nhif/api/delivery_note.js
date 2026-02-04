@@ -84,7 +84,9 @@ frappe.ui.form.on("Delivery Note", {
     let biometricData;
 
     if (frm.doc.biometric_method === "FACIAL") {
-      biometricData = await new FacialRecognition({ label: "Get POC Reference No" });
+      biometricData = await new FacialRecognition({
+        label: "Get POC Reference No",
+      });
       if (!biometricData) {
         frappe.msgprint(__("Face capture failed. Please try again."));
         return;
@@ -103,18 +105,17 @@ frappe.ui.form.on("Delivery Note", {
               <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
             </div>
             <br>
-            <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-          ),
+            <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
           () => resolve(true),
           () => resolve(false)
         );
       });
-      
+
       if (!confirmed) {
         return;
       }
 
-      biometricData = {Data: "", fpCode: ""};
+      biometricData = { Data: "", fpCode: "" };
     }
     frappe.call({
       method: "hms_tz.nhif.utils.get_poc_reference_no_for_lrpmt",
@@ -181,18 +182,17 @@ frappe.ui.form.on("Delivery Note", {
               <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
             </div>
             <br>
-            <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-          ),
+            <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
           () => resolve(true),
           () => resolve(false)
         );
       });
-      
+
       if (!confirmed) {
         return;
       }
 
-      biometricData = {Data: "", fpCode: ""};
+      biometricData = { Data: "", fpCode: "" };
     }
 
     frappe.call({
@@ -259,7 +259,7 @@ frappe.ui.form.on("Delivery Note Item", {
       reference_doctype: row.reference_doctype,
       supportive_document: row.support_document || "",
       qty: row.qty,
-      is_qty_read_only: true
+      is_qty_read_only: true,
     });
   },
   update_approval_request: (frm, cdt, cdn) => {
@@ -412,7 +412,6 @@ frappe.ui.form.on("Delivery Note Item", {
       frappe.msgprint("Approval Number is required to verify");
       return;
     }
-
 
     let row = locals[cdt][cdn];
 

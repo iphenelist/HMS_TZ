@@ -37,10 +37,11 @@ class FacialRecognition {
     this.dialog = new frappe.ui.Dialog({
       title: __("Patient Face Capture"),
       width: 150,
-      fields: [{
-        fieldname: 'face_capture_section',
-        fieldtype: 'HTML',
-        options: `
+      fields: [
+        {
+          fieldname: "face_capture_section",
+          fieldtype: "HTML",
+          options: `
           <div class="face-capture-container">
             <div class="camera-selector">
               <select id="camera-select" class="form-control">
@@ -56,7 +57,7 @@ class FacialRecognition {
 
             <div class="capture-controls">
               <button id="capture-btn" class="btn btn-sm btn-capture">
-                <i class="fa fa-camera"></i> ${__('Capture')}
+                <i class="fa fa-camera"></i> ${__("Capture")}
               </button>
             </div>
 
@@ -65,24 +66,27 @@ class FacialRecognition {
                 <img id="face-preview" style="display:none;"/>
                 <div class="preview-overlay">
                   <button id="zoom-preview-btn" class="btn btn-info btn-sm" style="display:none;">
-                    <i class="fa fa-search-plus"></i> ${__('View Full Size')}
+                    <i class="fa fa-search-plus"></i> ${__("View Full Size")}
                   </button>
                 </div>
               </div>
               <div class="retake-controls" style="margin-top: 15px;">
                 <button id="retake-btn" class="btn btn-default">
-                  <i class="fa fa-refresh"></i> ${__('Retake')}
+                  <i class="fa fa-refresh"></i> ${__("Retake")}
                 </button>
               </div>
             </div>
           </div>
-        `
-      }],
-      size: 'large',
+        `,
+        },
+      ],
+      size: "large",
     });
 
     // Add custom styles
-    $('<style>').html(`
+    $("<style>")
+      .html(
+        `
       .face-capture-container {
         text-align: center;
         max-width: 500px;
@@ -234,13 +238,15 @@ class FacialRecognition {
           width: 280px;
           height: 280px;
         }
-        
+
         .btn-capture {
           padding: 8px 20px;
           font-size: 14px;
         }
       }
-    `).appendTo('head');
+    `
+      )
+      .appendTo("head");
 
     this.dialog.show();
     this.setupFaceCapture();
@@ -248,21 +254,21 @@ class FacialRecognition {
 
   setupFaceCapture() {
     const $wrapper = this.dialog.$wrapper;
-    const video = $wrapper.find('#face-camera')[0];
-    const canvas = $wrapper.find('#face-canvas')[0];
-    const photo = $wrapper.find('#face-preview')[0];
-    const captureBtn = $wrapper.find('#capture-btn')[0];
-    const retakeBtn = $wrapper.find('#retake-btn')[0];
-    const zoomPreviewBtn = $wrapper.find('#zoom-preview-btn')[0];
-    const cameraSelect = $wrapper.find('#camera-select')[0];
-    const facePreviewArea = $wrapper.find('#face-preview-area')[0];
-    const photoPreviewContainer = $wrapper.find('#photo-preview-container')[0];
+    const video = $wrapper.find("#face-camera")[0];
+    const canvas = $wrapper.find("#face-canvas")[0];
+    const photo = $wrapper.find("#face-preview")[0];
+    const captureBtn = $wrapper.find("#capture-btn")[0];
+    const retakeBtn = $wrapper.find("#retake-btn")[0];
+    const zoomPreviewBtn = $wrapper.find("#zoom-preview-btn")[0];
+    const cameraSelect = $wrapper.find("#camera-select")[0];
+    const facePreviewArea = $wrapper.find("#face-preview-area")[0];
+    const photoPreviewContainer = $wrapper.find("#photo-preview-container")[0];
 
     // Set initial button states
-    retakeBtn.style.display = 'none';
+    retakeBtn.style.display = "none";
 
     // Handle camera selection change
-    cameraSelect.addEventListener('change', () => {
+    cameraSelect.addEventListener("change", () => {
       this.startCamera(cameraSelect.value);
     });
 
@@ -274,33 +280,35 @@ class FacialRecognition {
 
       canvas.width = size;
       canvas.height = size;
-      canvas.getContext('2d').drawImage(video, x, y, size, size, 0, 0, size, size);
+      canvas
+        .getContext("2d")
+        .drawImage(video, x, y, size, size, 0, 0, size, size);
 
-      photo.src = canvas.toDataURL('image/jpeg', 0.9);
-      this.Data = photo.src.split(',')[1];
+      photo.src = canvas.toDataURL("image/jpeg", 0.9);
+      this.Data = photo.src.split(",")[1];
 
       // Update UI
-      facePreviewArea.style.display = 'none';
-      photoPreviewContainer.style.display = 'block';
-      photo.style.display = 'block';
-      zoomPreviewBtn.style.display = 'inline-block';
-      captureBtn.style.display = 'none';
-      retakeBtn.style.display = 'inline-block';
+      facePreviewArea.style.display = "none";
+      photoPreviewContainer.style.display = "block";
+      photo.style.display = "block";
+      zoomPreviewBtn.style.display = "inline-block";
+      captureBtn.style.display = "none";
+      retakeBtn.style.display = "inline-block";
 
       this.faceCaptured = true;
       this.dialog.enable_primary_action();
-      this.set_primary_action(this.faceCaptured)
-    //   this.dialog.set_primary_btn_label(__(this.label));
+      this.set_primary_action(this.faceCaptured);
+      //   this.dialog.set_primary_btn_label(__(this.label));
     };
 
     // Retake functionality
     retakeBtn.onclick = () => {
-      photoPreviewContainer.style.display = 'none';
-      facePreviewArea.style.display = 'block';
-      photo.style.display = 'none';
-      zoomPreviewBtn.style.display = 'none';
-      captureBtn.style.display = 'inline-block';
-      retakeBtn.style.display = 'none';
+      photoPreviewContainer.style.display = "none";
+      facePreviewArea.style.display = "block";
+      photo.style.display = "none";
+      zoomPreviewBtn.style.display = "none";
+      captureBtn.style.display = "inline-block";
+      retakeBtn.style.display = "none";
 
       this.faceCaptured = false;
       this.Data = null;
@@ -312,7 +320,7 @@ class FacialRecognition {
     photo.onclick = () => this.faceCaptured && this.showZoomMode(photo.src);
 
     // Cleanup on dialog close
-    this.dialog.$wrapper.on('hidden.bs.modal', () => this.stopCamera());
+    this.dialog.$wrapper.on("hidden.bs.modal", () => this.stopCamera());
   }
 
   showZoomMode(imageSrc) {
@@ -321,22 +329,25 @@ class FacialRecognition {
         <img src="${imageSrc}" alt="Patient Face" />
         <div class="zoom-controls">
           <button class="btn btn-default zoom-close-btn">
-            <i class="fa fa-times"></i> ${__('Close')}
+            <i class="fa fa-times"></i> ${__("Close")}
           </button>
           <button class="btn btn-primary zoom-authorize-btn">
-            <i class="fa fa-check"></i> ${__('Authorize')}
+            <i class="fa fa-check"></i> ${__("Authorize")}
           </button>
         </div>
       </div>
-    `).appendTo('body');
+    `).appendTo("body");
 
-    $zoomMode.find('.zoom-close-btn').on('click', () => $zoomMode.remove());
-    $zoomMode.find('.zoom-authorize-btn').on('click', () => {
+    $zoomMode.find(".zoom-close-btn").on("click", () => $zoomMode.remove());
+    $zoomMode.find(".zoom-authorize-btn").on("click", () => {
       $zoomMode.remove();
       this.dialog.hide();
       this.facialPromiseResolve(this);
     });
-    $zoomMode.on('click', (e) => e.target === $zoomMode[0] && $zoomMode.remove());
+    $zoomMode.on(
+      "click",
+      (e) => e.target === $zoomMode[0] && $zoomMode.remove()
+    );
   }
 
   startCamera(deviceId) {
@@ -346,13 +357,14 @@ class FacialRecognition {
         deviceId: deviceId ? { exact: deviceId } : undefined,
         width: { ideal: 720 },
         height: { ideal: 720 },
-        facingMode: 'user'
-      }
+        facingMode: "user",
+      },
     };
 
-    navigator.mediaDevices.getUserMedia(constraints)
+    navigator.mediaDevices
+      .getUserMedia(constraints)
       .then((stream) => {
-        const video = this.dialog.$wrapper.find('#face-camera')[0];
+        const video = this.dialog.$wrapper.find("#face-camera")[0];
         this.cameraStream = stream;
         video.srcObject = stream;
 
@@ -362,14 +374,16 @@ class FacialRecognition {
 
           if (videoRatio > containerRatio) {
             const newWidth = video.videoHeight * containerRatio;
-            video.style.width = 'auto';
-            video.style.height = '100%';
+            video.style.width = "auto";
+            video.style.height = "100%";
             video.style.marginLeft = `-${(newWidth - video.videoWidth) / 2}px`;
           } else {
             const newHeight = video.videoWidth / containerRatio;
-            video.style.width = '100%';
-            video.style.height = 'auto';
-            video.style.marginTop = `-${(newHeight - video.videoHeight) / 2}px`;
+            video.style.width = "100%";
+            video.style.height = "auto";
+            video.style.marginTop = `-${
+              (newHeight - video.videoHeight) / 2
+            }px`;
           }
         };
       })
@@ -378,7 +392,7 @@ class FacialRecognition {
 
   stopCamera() {
     if (this.cameraStream) {
-      this.cameraStream.getTracks().forEach(track => track.stop());
+      this.cameraStream.getTracks().forEach((track) => track.stop());
       this.cameraStream = null;
     }
   }
@@ -386,41 +400,47 @@ class FacialRecognition {
   async loadCameras() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      return devices.filter(device => device.kind === 'videoinput');
+      return devices.filter((device) => device.kind === "videoinput");
     } catch (error) {
-      console.error('Error loading cameras:', error);
+      console.error("Error loading cameras:", error);
       return [];
     }
   }
 
   updateDialog() {
     const $wrapper = this.dialog.$wrapper;
-    const cameraSelect = $wrapper.find('#camera-select')[0];
+    const cameraSelect = $wrapper.find("#camera-select")[0];
 
-    cameraSelect.innerHTML = this.cameras.length ? 
-      this.cameras.map((device, index) => 
-        `<option value="${device.deviceId}">${device.label || `Camera ${index + 1}`}</option>`
-      ).join('') :
-      '<option value="">No cameras found</option>';
+    cameraSelect.innerHTML = this.cameras.length
+      ? this.cameras
+          .map(
+            (device, index) =>
+              `<option value="${device.deviceId}">${
+                device.label || `Camera ${index + 1}`
+              }</option>`
+          )
+          .join("")
+      : '<option value="">No cameras found</option>';
 
     if (this.cameras.length > 0) {
       this.startCamera(this.cameras[0].deviceId);
     } else {
-      this.showCameraError({ name: 'NotFoundError' });
+      this.showCameraError({ name: "NotFoundError" });
     }
   }
 
   showCameraError(err) {
-    let message = __('Could not access camera');
-    if (err.name === 'NotAllowedError') message = __('Please allow camera access');
-    if (err.name === 'NotFoundError') message = __('No camera found');
+    let message = __("Could not access camera");
+    if (err.name === "NotAllowedError")
+      message = __("Please allow camera access");
+    if (err.name === "NotFoundError") message = __("No camera found");
 
     this.dialog.fields_dict.face_capture_section.$wrapper.html(`
       <div class="alert alert-danger text-center" style="margin: 20px;">
         <i class="fa fa-camera" style="font-size: 24px;"></i><br><br>
         ${message}<br><br>
         <button class="btn btn-default" onclick="window.location.reload()">
-          ${__('Try Again')}
+          ${__("Try Again")}
         </button>
       </div>
     `);
@@ -430,16 +450,16 @@ class FacialRecognition {
     this.dialog.hide();
     this.stopCamera();
   }
-  set_primary_action (faceCaptured) {
-    let me = this
+  set_primary_action(faceCaptured) {
+    let me = this;
     this.dialog.set_primary_action(__(this.label), function () {
-        if (faceCaptured) {
-          me.facialPromiseResolve(me);
-          me.destroy();
-        } else {
-          frappe.msgprint(__("Please capture a face photo first."));
-          return;
-        }
+      if (faceCaptured) {
+        me.facialPromiseResolve(me);
+        me.destroy();
+      } else {
+        frappe.msgprint(__("Please capture a face photo first."));
+        return;
+      }
     });
   }
 }

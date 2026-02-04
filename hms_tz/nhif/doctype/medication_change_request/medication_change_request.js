@@ -61,7 +61,8 @@ frappe.ui.form.on("Drug Prescription", {
   drug_prescription_add: (frm, cdt, cdn) => {
     if (frm.doc.delivery_note) {
       frappe.call({
-        method: "hms_tz.nhif.doctype.medication_change_request.medication_change_request.get_service_unit",
+        method:
+          "hms_tz.nhif.doctype.medication_change_request.medication_change_request.get_service_unit",
         args: {
           warehouse: frm.doc.warehouse,
           company: frm.doc.company,
@@ -130,8 +131,7 @@ const get_final_diagnosis = (frm) => {
   const diagnosis_list = [];
   if (frm.doc.patient_encounter_final_diagnosis) {
     frm.doc.patient_encounter_final_diagnosis.forEach((element) => {
-      let d =
-        String(element.code_value) + "\n " + String(element.definition);
+      let d = String(element.code_value) + "\n " + String(element.definition);
       diagnosis_list.push(d);
     });
     return diagnosis_list;
@@ -324,12 +324,11 @@ const set_query_filters = (frm) => {
   });
 };
 
-
 var nhif_btns = (frm) => {
   if (frm.is_new()) {
     return;
   }
-  
+
   if (!frappe.user.has_role("Healthcare Practitioner")) {
     return;
   }
@@ -340,7 +339,7 @@ var nhif_btns = (frm) => {
   ) {
     return;
   }
-  
+
   if (!frm.doc.patient || !frm.doc.patient_encounter) {
     return;
   }
@@ -348,7 +347,6 @@ var nhif_btns = (frm) => {
   pre_approval_btn(frm);
   cancel_pre_approval_btn(frm);
 };
-
 
 var pre_approval_btn = (frm) => {
   if (!frm.page.fields_dict.pre_approval_btn) {

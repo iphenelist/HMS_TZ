@@ -111,20 +111,28 @@ frappe.ui.form.on("Patient Encounter", {
       };
     });
 
-    frm.set_query("code_value", "patient_encounter_preliminary_diagnosis", function () {
-      return {
-        filters: {
-          code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
-        },
-      };
-    });
-    frm.set_query("code_value", "patient_encounter_final_diagnosis", function () {
-      return {
-        filters: {
-          code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
-        },
-      };
-    });
+    frm.set_query(
+      "code_value",
+      "patient_encounter_preliminary_diagnosis",
+      function () {
+        return {
+          filters: {
+            code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
+          },
+        };
+      }
+    );
+    frm.set_query(
+      "code_value",
+      "patient_encounter_final_diagnosis",
+      function () {
+        return {
+          filters: {
+            code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
+          },
+        };
+      }
+    );
 
     frm.set_query("default_healthcare_service_unit", function () {
       return {
@@ -420,7 +428,8 @@ frappe.ui.form.on("Patient Encounter", {
       );
       preliminary_row.code_value = "ICD-10 R69";
       preliminary_row.code = "R69";
-      preliminary_row.description = "Unknown and unspecified causes of morbidity";
+      preliminary_row.description =
+        "Unknown and unspecified causes of morbidity";
       preliminary_row.mtuha = "Other";
       frm.refresh_field("patient_encounter_preliminary_diagnosis");
       let final_row = frappe.model.add_child(
@@ -775,8 +784,7 @@ function get_diagnosis_list(frm, table_name) {
   if (frm.doc[table_name]) {
     frm.doc[table_name].forEach((element) => {
       if (!element.code_value) return;
-      let d =
-        String(element.code_value) + "\n " + String(element.definition);
+      let d = String(element.code_value) + "\n " + String(element.definition);
       diagnosis_list.push(d);
     });
   }
@@ -883,7 +891,9 @@ var add_btn_final = (frm) => {
                 ref_encounter: frm.doc.reference_encounter,
               },
               freeze: true,
-              freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+              freeze_message: __(
+                '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+              ),
               callback: function (data) {
                 $('[data-fieldname="set_as_final"]').hide();
                 $('[data-fieldname="referring_practitioner"]').hide();
@@ -2018,26 +2028,34 @@ var login_to_nhif = (frm) => {
                   // { value: "NONE", label: __("NONE") },
                 ],
                 default: "FINGERPRINT",
-                reqd: 1
-              }
+                reqd: 1,
+              },
             ],
             size: "small",
-            primary_action_label: __("Next") ,
+            primary_action_label: __("Next"),
             primary_action: async () => {
               let biometricData;
               let values = dialog.get_values();
               dialog.hide();
 
               if (values.biometric_method === "FACIAL") {
-                biometricData = await new FacialRecognition({ label: "Login To NHIF" });
+                biometricData = await new FacialRecognition({
+                  label: "Login To NHIF",
+                });
                 if (!biometricData) {
-                  frappe.msgprint(__("Face capture failed. Please try again."));
+                  frappe.msgprint(
+                    __("Face capture failed. Please try again.")
+                  );
                   return;
                 }
               } else if (values.biometric_method === "FINGERPRINT") {
-                biometricData = await new Fingerprint({ label: "Login To NHIF" });
+                biometricData = await new Fingerprint({
+                  label: "Login To NHIF",
+                });
                 if (!biometricData) {
-                  frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+                  frappe.msgprint(
+                    __("Fingerprint capture failed. Please try again.")
+                  );
                   return;
                 }
               } else {
@@ -2048,29 +2066,30 @@ var login_to_nhif = (frm) => {
                       <p class="text-center"><i>Biometric Method: <b>${values.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
                       </div>
                       <br>
-                      <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-                    ),
+                      <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
                     () => resolve(true),
                     () => resolve(false)
                   );
                 });
-                
+
                 if (!confirmed) {
                   return;
                 }
 
-                biometricData = {Data: "", fpCode: ""};
+                biometricData = { Data: "", fpCode: "" };
               }
 
               frappe.call({
                 method: "hms_tz.nhif.nhif_api.attendance.login_practitioner",
                 args: {
                   fingerprint: biometricData.Data,
-                  fpcode: biometricData.fpCode
+                  fpcode: biometricData.fpCode,
                 },
                 async: true,
                 freeze: true,
-                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                freeze_message: __(
+                  '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+                ),
                 callback: function (data) {
                   if (data.message && data.message !== "Error") {
                     frappe.utils.play_sound("submit");
@@ -2267,26 +2286,34 @@ var confirm_poc_btn = (frm) => {
                   { value: "NONE", label: __("NONE") },
                 ],
                 default: "FINGERPRINT",
-                reqd: 1
-              }
+                reqd: 1,
+              },
             ],
             size: "small",
-            primary_action_label: __("Next") ,
+            primary_action_label: __("Next"),
             primary_action: async () => {
               let biometricData;
               let values = dialog.get_values();
               dialog.hide();
 
               if (values.biometric_method === "FACIAL") {
-                biometricData = await new FacialRecognition({ label: "Confirm POC" });
+                biometricData = await new FacialRecognition({
+                  label: "Confirm POC",
+                });
                 if (!biometricData) {
-                  frappe.msgprint(__("Face capture failed. Please try again."));
+                  frappe.msgprint(
+                    __("Face capture failed. Please try again.")
+                  );
                   return;
                 }
               } else if (values.biometric_method === "FINGERPRINT") {
-                biometricData = await new Fingerprint({ label: "Confirm POC" });
+                biometricData = await new Fingerprint({
+                  label: "Confirm POC",
+                });
                 if (!biometricData) {
-                  frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+                  frappe.msgprint(
+                    __("Fingerprint capture failed. Please try again.")
+                  );
                   return;
                 }
               } else {
@@ -2297,22 +2324,22 @@ var confirm_poc_btn = (frm) => {
                       <p class="text-center"><i>Biometric Method: <b>${values.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
                       </div>
                       <br>
-                      <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-                    ),
+                      <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
                     () => resolve(true),
                     () => resolve(false)
                   );
                 });
-                
+
                 if (!confirmed) {
                   return;
                 }
 
-                biometricData = {Data: "", fpCode: ""};
+                biometricData = { Data: "", fpCode: "" };
               }
-              
+
               frappe.call({
-                method: "hms_tz.nhif.nhif_api.verification.get_poc_reference_no",
+                method:
+                  "hms_tz.nhif.nhif_api.verification.get_poc_reference_no",
                 args: {
                   point_of_care: "Consultation",
                   practitioner: frm.doc.practitioner,
@@ -2326,7 +2353,9 @@ var confirm_poc_btn = (frm) => {
                 },
                 async: true,
                 freeze: true,
-                freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+                freeze_message: __(
+                  '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+                ),
                 callback: function (r) {
                   if (r.message && r.message !== "Error") {
                     frappe.utils.play_sound("submit");
@@ -2346,7 +2375,7 @@ var confirm_poc_btn = (frm) => {
                   frappe.utils.play_sound("error");
                 },
               });
-            }
+            },
           });
 
           dialog.show();
