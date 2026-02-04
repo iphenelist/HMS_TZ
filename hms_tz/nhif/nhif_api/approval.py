@@ -5,7 +5,7 @@ import frappe
 import requests
 from frappe.core.utils import html2text
 from frappe.query_builder import DocType
-from frappe.utils import get_fullname, cint, get_datetime
+from frappe.utils import cint, get_datetime, get_fullname
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_item_rate, get_item_refcode
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
@@ -111,7 +111,7 @@ def get_service_approval(
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
         )
-        
+
         return set_service_approval(
             doc,
             data,
@@ -132,7 +132,7 @@ def get_approval_status(ref_doctype, ref_docname, dni_id=None):
         return {
             "status": "error",
         }
-    
+
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     authorization_no = ""
@@ -206,7 +206,7 @@ def update_service_approval(
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("NHIF API is disabled")
         return False
-    
+
     appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
 
     payload = get_update_approval_payload(
@@ -306,12 +306,12 @@ def issue_approved_service(
         item_rate = rate
     else:
         item = frappe.get_cached_value(service_type, service_name, "item")
-        
+
         insurance_subscription = doc.get("insurance_subscription")
         if not insurance_subscription:
             appointment = doc.get("appointment") or doc.get("hms_tz_appointment_no")
             insurance_subscription = frappe.get_cached_value("Patient Appointment", appointment, "insurance_subscription")
-        
+
         item_rate = get_item_rate(item, doc.company, insurance_subscription, doc.insurance_company)
 
     payload = {
@@ -359,7 +359,7 @@ def issue_approved_service(
             text=f"Failed to Issue Service<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>",
         )
         frappe.db.commit()
-        
+
         frappe.throw(
             title="NHIF API Error",
             msg=f"Failed to Issue Service<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('errors') or data.get('message')}<b>",
@@ -450,15 +450,15 @@ def get_request_approval_payload(
     # Add supporting documents if available
     if supportive_document:
         file_doc = frappe.get_doc("File", {"file_url": supportive_document})
-        
+
         if file_doc:
             file_path = file_doc.get_full_path()
-            
+
             document_data = ""
             with open(file_path, "rb") as f:
                 file_content = f.read()
                 document_data = base64.b64encode(file_content).decode("utf-8")
-            
+
             supporting_doc = {
                 "documentTypeID": 1,
                 "documentDetails": file_doc.file_name or "",
@@ -497,9 +497,9 @@ def get_approval_diseases(
             preliminary["serviceAuthorizationID"] = service_authorization_id
             preliminary["lastModifiedBy"] = get_fullname(doc.modified_by)
             preliminary["lastModified"] = doc.modified.isoformat(timespec='milliseconds')
-        
+
         diseases.append(preliminary)
-    
+
     for d in encounter_doc.patient_encounter_final_diagnosis:
         final = {
             "diseaseCode": get_disease_code(d.code),
@@ -513,7 +513,7 @@ def get_approval_diseases(
             final["serviceAuthorizationID"] = service_authorization_id
             final["lastModifiedBy"] = get_fullname(doc.modified_by)
             final["lastModified"] = doc.modified.isoformat(timespec='milliseconds')
-        
+
         diseases.append(final)
 
     return diseases
@@ -623,10 +623,10 @@ def get_update_approval_payload(
 
     if not service_name and reference_name and reference_doctype:
         service_name = frappe.get_cached_value(reference_doctype, reference_name, "drug_code")
-    
+
     ref_code = get_item_refcode(service_type, service_name)
     service_type_id = get_service_type_id(ref_code)
-    
+
     scheme_id = frappe.get_cached_value(
         "Healthcare Insurance Coverage Plan",
         insurance_coverage_plan,
@@ -698,21 +698,21 @@ def get_update_approval_payload(
         ),
         "approvalSupportingDocuments": [],
     }
-    
+
     # Add supporting documents if available
     supportive_document = doc.get("supportive_document") or item_row.get("supportive_document")
     if supportive_document:
         file_doc = frappe.get_doc("File", {"file_url": supportive_document})
-        
+
         if file_doc:
             file_path = file_doc.get_full_path()
-            file_type = file_doc.file_name.split(".")[-1].upper() if file_doc.file_name else ""
-            
+            file_doc.file_name.split(".")[-1].upper() if file_doc.file_name else ""
+
             document_data = ""
             with open(file_path, "rb") as f:
                 file_content = f.read()
                 document_data = base64.b64encode(file_content).decode("utf-8")
-            
+
             supporting_doc = {
                 "supportingDocumentID": "",
                 "serviceAuthorizationID": service_authorization_id or "",
@@ -724,7 +724,7 @@ def get_update_approval_payload(
             }
 
             payload["approvalSupportingDocuments"].append(supporting_doc)
-    
+
     return payload
 
 
@@ -762,11 +762,11 @@ def verify_approval_number(
     ref_docname,
 ):
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
-    
+
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("NHIF API is disabled")
         return False
-    
+
     ref_code = get_item_refcode(service_type, service_name)
     appointment_info = get_appointment_details(appointment)
 

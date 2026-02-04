@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 
 import json
 import os
-import uuid
 
 import frappe
 from frappe import _
@@ -27,9 +26,9 @@ from frappe.utils import (
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 
-from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, get_item_rate, to_base64
-from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
+from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
 from hms_tz.nhif.api.patient_encounter import finalized_encounter
+from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
 from hms_tz.nhif.nhif_api.patient_claim import submit_folio
 
 pa = DocType("Patient Appointment")
@@ -118,7 +117,7 @@ class NHIFPatientClaim(Document):
     def before_submit(self):
         if not self.allow_changes:
             self.db_set("allow_changes", 1)
-        
+
         start_datetime = get_datetime()
 
         self.validate_multiple_appointments_per_authorization_no()
@@ -137,7 +136,7 @@ class NHIFPatientClaim(Document):
 
         if self.bypass_sending_to_nhif == 0:
             submit_folio(self)
-        
+
         end_datetime = get_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
         frappe.msgprint("Total time used to submit folio in seconds = " + str(time_in_seconds))
@@ -385,7 +384,7 @@ class NHIFPatientClaim(Document):
 
                     if d.service_request in service_requests:
                         continue
-                    
+
                     service_requests.append(d.service_request)
                     service_request_doc = frappe.get_doc("Healthcare Service Request", d.service_request)
                     for row in service_request_doc.get("payments"):
@@ -564,7 +563,7 @@ class NHIFPatientClaim(Document):
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
-                
+
                 self.clinical_notes += f"Radiology Name: <b>{row.radiology_procedure_name}</b> {serv_info} <br>"
                 radiology_report = self.get_radiology_results(row)
                 if radiology_report:
@@ -817,11 +816,11 @@ class NHIFPatientClaim(Document):
             result += f"</table><br>"
 
         return result
-    
+
     def get_procedure_notes(self, row):
         if not row.clinical_procedure:
             return
-        
+
         notes = frappe.get_cached_value("Clinical Procedure", row.clinical_procedure, "procedure_notes") or ""
         result = ""
         if notes:
@@ -835,7 +834,7 @@ class NHIFPatientClaim(Document):
     def set_folio_count(self):
         if cint(self.folio_no) != 0:
             return
-    
+
         folio_counter = frappe.db.get_all(
             "NHIF Folio Counter",
             filters={
@@ -868,7 +867,7 @@ class NHIFPatientClaim(Document):
             folio_doc.posting_date = now_datetime()
             folio_doc.save(ignore_permissions=True)
             # folio_doc.reload()
-        
+
         self.folio_no = folio_no
         self.db_set("folio_no", folio_no)
 

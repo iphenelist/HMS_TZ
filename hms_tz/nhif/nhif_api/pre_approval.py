@@ -3,10 +3,11 @@ import json
 import frappe
 import requests
 from frappe.core.utils import html2text
-from frappe.utils import add_days, nowdate
-from hms_tz.nhif.nhif_api.referral import get_disease_code
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from frappe.utils import nowdate
+
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import get_childs_map, get_item_refcode
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from hms_tz.nhif.nhif_api.referral import get_disease_code
 
 
 @frappe.whitelist()
@@ -40,17 +41,17 @@ def get_service_preapproval(
             source_doc.appointment,
             "authorization_number",
         )
-    
+
     notes = ""
     if source_doc.doctype == "Patient Encounter":
-        notes = source_doc.get("examination_detail") 
+        notes = source_doc.get("examination_detail")
     else:
         notes = frappe.get_cached_value(
             "Patient Encounter",
             source_doc.get("patient_encounter"),
             "examination_detail",
         )
-    
+
     clinical_notes = html2text(notes).lstrip('\n')
 
     payload = {
@@ -68,7 +69,7 @@ def get_service_preapproval(
         "requestedServices": services,
     }
     payload = json.dumps(payload)
-    
+
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Setting", source_doc.company)
 

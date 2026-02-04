@@ -6,9 +6,9 @@ import frappe
 from erpnext.accounts.utils import get_balance_on
 from frappe import _
 from frappe.query_builder import DocType
-from frappe.query_builder.functions import Coalesce
 from frappe.query_builder import functions as fn
-from frappe.utils import flt, add_days, getdate, nowdate
+from frappe.query_builder.functions import Coalesce
+from frappe.utils import add_days, flt, getdate, nowdate
 from pypika.terms import ValueWrapper  # Case, Criterion, , Not
 
 
@@ -20,18 +20,18 @@ def execute(filters=None):
 
     data = []
     details = frappe.get_cached_value(
-        "Patient Appointment", 
-        filters.patient_appointment, 
+        "Patient Appointment",
+        filters.patient_appointment,
         [
             "status",
-            "company", 
+            "company",
             "appointment_date",
             "mode_of_payment",
             "insurance_subscription"
         ],
         as_dict=True
     )
-    
+
     if details.status != "Closed":
         frappe.throw(_("<b>This Appointment is not Closed..!!</b>"))
 
@@ -126,7 +126,7 @@ def execute(filters=None):
         if len(exceeded_items) > 0:
             last_row["limit_exceeded_items"] = exceeded_items
             last_row["total_limit_exceeded_amount"] = sum([d.amount for d in exceeded_items])
-        
+
         data.append(last_row)
 
         return columns, data
@@ -908,14 +908,14 @@ def get_insurance_lrpmt_transaction(
 ):
     """
     Fetch insurance transaction data based on date range and new_api_start_date.
-    
+
     Logic:
     - If appointment is not insurance: return empty list
     - If new_api_start_date is not set: use Healthcare Service Request Payment
     - If from_date > new_api_start_date: use Healthcare Service Request Payment
     - If to_date < new_api_start_date: use Patient Encounter tables
     - If from_date <= new_api_start_date <= to_date: split and use both sources
-    
+
     Args:
         filters: Report filters
         new_api_start_date: The date from which HSR Payment is used as data source
@@ -923,7 +923,7 @@ def get_insurance_lrpmt_transaction(
     """
     if not is_insurance_appointment:
         return []
-    
+
     # Check date range against new_api_start_date
     date_range_info = is_new_api_start_date_within_range(
         filters.get("from_date"),
@@ -931,27 +931,27 @@ def get_insurance_lrpmt_transaction(
         appointment_date,
         new_api_start_date
     )
-    
+
     data = []
-    
+
     # If new_api_start_date is not set, use HSR payment
     if date_range_info.get("use_hsr"):
         return get_hsr_payment_data(filters)
-    
+
     # Process each date range with appropriate data source
     for date_range in date_range_info.get("date_ranges", []):
         # Create a copy of filters with updated date range
         range_filters = frappe._dict(filters.copy())
         range_filters.from_date = date_range["from_date"]
         range_filters.to_date = date_range["to_date"]
-        
+
         if date_range["source"] == "encounter":
             # Use Patient Encounter tables for dates before new_api_start_date
             data += get_insurance_encounter_data(range_filters)
         elif date_range["source"] == "hsr":
             # Use Healthcare Service Request Payment for dates on/after new_api_start_date
             data += get_hsr_payment_data(range_filters)
-    
+
     return data
 
 
@@ -1172,12 +1172,12 @@ def is_new_api_start_date_within_range(
             "use_hsr": True,  # If no start date set, use Healthcare Service Request
             "date_ranges": []
         }
-    
+
     # Use appointment_date if from_date or to_date are not provided
     from_date = getdate(from_date) if from_date else (getdate(appointment_date) if appointment_date else None)
     to_date = getdate(to_date) if to_date else (getdate(nowdate()))
     new_api_start_date = getdate(new_api_start_date)
-    
+
     if not from_date or not to_date:
         return {
             "is_within": False,
@@ -1186,11 +1186,11 @@ def is_new_api_start_date_within_range(
             "use_hsr": True,
             "date_ranges": []
         }
-    
+
     is_within = from_date <= new_api_start_date <= to_date
     is_after = from_date > new_api_start_date
     is_before = to_date < new_api_start_date
-    
+
     date_ranges = []
     if is_within:
         # Split the date range
@@ -1222,7 +1222,7 @@ def is_new_api_start_date_within_range(
             "to_date": to_date,
             "source": "encounter"
         })
-    
+
     return {
         "is_within": is_within,
         "is_after": is_after,

@@ -1,10 +1,9 @@
-import base64
 import json
 
 import frappe
 import requests
 from frappe.utils import nowdate
-from erpnext import get_default_company
+
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
@@ -35,7 +34,7 @@ def login_practitioner(fingerprint, fpcode, settings_doc=None):
         "nationalID": practitioner.national_id,
         "practitionerNo": practitioner.tz_mct_code,
         "biometricMethod": "FINGERPRINT", # "NONE",
-        "fpCode": fpcode, 
+        "fpCode": fpcode,
         "imageData": fingerprint,
     }
 
@@ -106,10 +105,10 @@ def logout_practitioner(settings_doc=None):
         frappe.throw(
             f"No healthcare practitioner found for user id: {frappe.session.user}, Please set user id to healthcare practitioner"
         )
-    
+
     if not settings_doc:
         settings_doc = frappe.get_cached_doc("HMS TZ Setting", practitioner.hms_tz_company)
-    
+
     if not settings_doc.enable_nhif_api:
         frappe.msgprint("NHIF API is disabled")
         return False

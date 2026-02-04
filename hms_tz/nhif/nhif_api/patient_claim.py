@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import flt, get_fullname, now_datetime, get_datetime, add_to_date
+from frappe.utils import add_to_date, flt, get_datetime, get_fullname
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -24,11 +24,11 @@ def sign_folio(
 
     if signature_method == "signature" and not signature:
         frappe.throw("Patient signature is required before signing the folio.")
-    
+
     if signature_method == "fingerprint":
         if not fingerprint:
             frappe.throw("Fingerprint is required for biometric signature.")
-        
+
         if not fpcode:
             frappe.throw("FPCode is required for biometric signature.")
 
@@ -47,7 +47,7 @@ def sign_folio(
         payload["SignatureData"] = fingerprint
         payload["SignatureMethod"] = "FINGERPRINT"
         payload["FpCode"] = fpcode
-    
+
     payload = json.dumps(payload)
 
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", doc.company)
@@ -82,7 +82,7 @@ def sign_folio(
                 <br><br><b>Message from NHIF:</b><br>{r.text}"
         )
         return 'Error'
-    
+
     else:
         data = json.loads(r.text)
         add_log(

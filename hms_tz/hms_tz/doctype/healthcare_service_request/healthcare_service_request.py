@@ -160,7 +160,7 @@ class HealthcareServiceRequest(Document):
             )
 
             return percent_details
-        
+
         if item_obj:
             if isinstance(item_obj, str):
                 item_obj = json.loads(item_obj)
@@ -179,7 +179,7 @@ class HealthcareServiceRequest(Document):
 
             if "NHIF" not in item.insurance_company:
                 return 100
-            
+
             percent_details = get_percent(item, self.years_of_insurance)
             if not percent_details:
                 return 100
@@ -210,7 +210,7 @@ class HealthcareServiceRequest(Document):
 
                 if item.percent_covered < 100 and not has_copayment:
                     has_copayment = True
-            
+
             self.has_copayment = 1 if has_copayment else 0
 
     def get_service_type(self, service_name, request_id=None):
@@ -443,7 +443,7 @@ def create_service_request(doc_obj=None, data=None):
             title=_("<b>Copayment Notice</b>"),
             msg=_("<h4 style='background-color:LightCoral; text-align:center;'>Copayment Items detected</h4><br>Please Inform patient to pass through Billing Team.</h4>")
         )
-        
+
     else:
         hsr.submit()
 
@@ -460,8 +460,8 @@ def get_encounter_services(doc):
 
         for row in doc.get(child["table"]):
             if (
-                row.prescribe == 1 or 
-                row.is_cancelled == 1 or 
+                row.prescribe == 1 or
+                row.is_cancelled == 1 or
                 row.is_not_available_inhouse == 1 or
                 row.get(child["service_created"]) == 1
             ):

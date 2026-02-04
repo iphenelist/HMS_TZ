@@ -22,20 +22,19 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
     create_service_request,
     get_childs_map,
     get_discount_percent,
+    get_drug_quantity,
     get_item_price,
     get_item_rate,
     get_mop_amount,
-    get_warehouse_from_service_unit,
     inpatient_billing,
     msgPrint,
     msgThrow,
-    get_drug_quantity,
-    validate_stock_item,
     validate_nhif_patient_claim_status,
+    validate_stock_item,
 )
-from hms_tz.nhif.utils import validate_point_of_care
-from hms_tz.nhif.api.patient_appointment import calculate_patient_age
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
+from hms_tz.nhif.api.patient_appointment import calculate_patient_age
+from hms_tz.nhif.utils import validate_point_of_care
 
 
 def on_trash(doc, method):
@@ -124,7 +123,7 @@ def after_insert(doc, method):
 
     if doc.encounter_type == "Initial":
         doc.poc_reference_no = ""
-    
+
     doc.save()
 
     if doc.appointment and doc.encounter_type == "Initial":
@@ -172,7 +171,7 @@ def on_submit_validation(doc, method):
     set_practitioner_name(doc, method)
 
     if (
-        not doc.healthcare_service_unit and 
+        not doc.healthcare_service_unit and
         not doc.healthcare_package_order and
         "Direct Cash" not in doc.practitioner
     ):
@@ -294,7 +293,7 @@ def set_item_coverage(doc, method, child_tables):
             if row.get("override_subscription") == 1 or row.prescribe == 1:
                 continue
 
-            # service_templates is like 
+            # service_templates is like
             # {
             #   "CBC": [cbc1_lab_prescription_line_object, # cbc2_lab_prescription_line_object],
             #   "XRay Abdomen": [radiology_prescription_line_object],
@@ -410,7 +409,7 @@ def mark_item_not_covered(
             == 1
         ):
             row_item.prescribe = 1
-        
+
         row_item.is_restricted = 0
         row_item.has_copayment = 0
 
@@ -926,7 +925,7 @@ def finalized_encounter(cur_encounter, ref_encounter=None):
     )
     for element in encounters_list:
         frappe.db.set_value("Patient Encounter", element.name, "finalized", 1)
-    
+
     return True
 
 
@@ -943,7 +942,7 @@ def undo_finalized_encounter(cur_encounter, ref_encounter=None):
     )
     for element in encounters_list:
         frappe.set_value("Patient Encounter", element.name, "finalized", 0)
-    
+
     return True
 
 
@@ -1451,7 +1450,7 @@ def convert_opd_encounter_to_ipd_encounter(encounter):
 @frappe.whitelist()
 def validate_admission_encounter(encounter):
     """Validate encounter if it has duplicated = 1 and if it has healthcare package order"""
-    
+
     duplicated_encounter = frappe.get_cached_value("Patient Encounter", {"from_encounter": encounter}, "name")
     if duplicated_encounter:
         url = frappe.utils.get_link_to_form("Patient Encounter", duplicated_encounter)
@@ -1674,7 +1673,7 @@ def set_practitioner_name(doc, method):
                 "validate_nhif_practitioner_attendance",
             )
             if (
-                validate_nhif_attendance == 1 and 
+                validate_nhif_attendance == 1 and
                 method not in ("before_insert", "validate", "before_save")
             ):
                 frappe.throw("Please Login to NHIF, to proceed attending NHIF Patients..")
@@ -1748,7 +1747,7 @@ def validate_medical_code(doc, method):
             for row in doc.get(diagnosis_table):
                 if not row.code_value:
                     continue
-                
+
                 d = str(row.code_value) + "\n " + str(row.definition)
                 diagnosis_list.append(d)
 
@@ -1779,7 +1778,7 @@ def validate_medical_code(doc, method):
             len(doc.get(from_table)) > 0
         ):
             has_disease_code = True
-    
+
     if not has_disease_code:
         msgThrow(
             _(
@@ -1863,7 +1862,7 @@ def set_admission_service_type(doc):
 def validate_preapproval_services(doc):
     if not doc.insurance_company or "NHIF" not in doc.insurance_company:
         return
-        
+
     if not frappe.get_cached_value(
         "HMS TZ Setting",
         doc.company,

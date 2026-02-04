@@ -7,13 +7,13 @@ from frappe import _
 from frappe.query_builder import DocType
 from frappe.utils import date_diff, get_fullname, nowdate
 
-from hms_tz.nhif.api.healthcare_utils import update_dimensions
-from hms_tz.nhif.utils import validate_point_of_care, validate_issued_services
-from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
     create_revenue_entry,
-    update_revenue_entry
+    update_revenue_entry,
 )
+from hms_tz.nhif.api.healthcare_utils import update_dimensions
+from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
+from hms_tz.nhif.utils import validate_issued_services, validate_point_of_care
 
 
 def validate(doc, method):
@@ -27,7 +27,7 @@ def validate(doc, method):
 
 def after_insert(doc, method):
     set_original_item(doc)
-    
+
     if doc.is_return == 0:
         create_revenue_entry(doc)
 
@@ -222,13 +222,13 @@ def before_submit(doc, method):
             This Delivery Note can't be submitted because all Items\
                 are not available in stock</h4>"
         )
-    
+
     for item in doc.items:
         if item.is_restricted and not item.approval_number:
             frappe.throw(
                 _(f"Approval number required for {item.item_name}. Please open line {item.idx} and set the Approval Number.")
             )
-        
+
         validate_issued_services(item.doctype, item.name, is_restricted=item.is_restricted, company=doc.company)
 
     validate_point_of_care(doc, "validate_poc_at_pharmacy")

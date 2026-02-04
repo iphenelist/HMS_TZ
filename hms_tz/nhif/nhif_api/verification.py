@@ -21,7 +21,7 @@ def get_visit_types(company=None, caller=None):
 
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
@@ -134,7 +134,7 @@ def get_card_verifier(company=None, caller=None):
 
     if not company:
         return
-    
+
     settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     token = settings_doc.get_nhif_token()
@@ -208,7 +208,7 @@ def get_card_verifier(company=None, caller=None):
                 except Exception:
                     traceback = frappe.get_traceback()
                     frappe.log_error(title=f"CardVerifier: {card_type_name}", message=traceback)
-            
+
         if company and caller == "Front End":
             frappe.msgprint(
                 "successfully fetched Card Verifier",
@@ -264,7 +264,7 @@ def get_card_details_by_card_no(company, card_no, ref_doctype, ref_docname=None,
         data = {}
         if r.text:
             data = json.loads(r.text)
-        
+
         frappe.msgprint(
             title="NHIF API Error",
             msg=f"Failed to Fetch card details<br><br>Status Code: {r.status_code}<br>NHIF Response: <b>{data.get('reasonPhrase')}<b>",
@@ -638,7 +638,7 @@ def get_poc_reference_no(
         settings_doc = frappe.get_cached_doc("HMS TZ Setting", company)
 
     point_of_care_id = get_point_of_care_id(point_of_care)
-    
+
     if not practitioner_no:
         practitioner_no = frappe.get_cached_value("Healthcare Practitioner", practitioner, "tz_mct_code")
 
@@ -673,7 +673,7 @@ def get_poc_reference_no(
         data = {}
         if r.text:
             data = json.loads(r.text)
-        
+
         add_log(
             request_type="GeneratePOCReferenceNo",
             request_url=url,

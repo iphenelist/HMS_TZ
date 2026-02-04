@@ -3,13 +3,15 @@
 
 
 import json
+from time import sleep
+
 import frappe
 import requests
-from time import sleep
 from frappe.model.document import Document
-from frappe.utils import add_to_date, now_datetime, get_datetime
-from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
+from frappe.utils import add_to_date, get_datetime, now_datetime
+
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
+from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 class HMSTZSetting(Document):
@@ -17,10 +19,10 @@ class HMSTZSetting(Document):
 	def get_nhif_token(self):
 		if self.enable_nhif_api == 0:
 			frappe.throw("Please Enable NHIF API to proceed..")
-		
+
 		if self.nhif_token_expiry and get_datetime(self.nhif_token_expiry) > now_datetime():
 			return self.nhif_token
-		
+
 		payload = {
 			"grant_type": self.nhif_grant_type,
 			"client_id": self.facility_code,
@@ -82,12 +84,12 @@ class HMSTZSetting(Document):
 					continue
 				else:
 					raise e
-	
+
 	@frappe.whitelist()
 	def get_jubilee_token(self):
 		if self.enable_jubilee_api == 0:
 			frappe.throw("Please Enable Jubilee API to proceed..")
-		
+
 		if self.jubilee_token_expiry and get_datetime(self.jubilee_token_expiry) > now_datetime():
 			return self.jubilee_token
 
@@ -102,8 +104,8 @@ class HMSTZSetting(Document):
 		# {
 		# 	"Accept": "application/json",
 		# 	"Content-Type": "application/json"
-		# } 
-		
+		# }
+
 		#{"Content-Type": "form-data"}
 
 		url = f"{self.jubilee_url}/jubileeapi/Token"
