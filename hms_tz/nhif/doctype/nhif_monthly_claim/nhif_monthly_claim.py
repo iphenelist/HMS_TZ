@@ -81,5 +81,4 @@ def submit_monthly_claim_via_api(data):
     nmc_doc.reload()
 
     nmc_doc.submit()
-    nmc_doc.reload()
     return nmc_doc.name
