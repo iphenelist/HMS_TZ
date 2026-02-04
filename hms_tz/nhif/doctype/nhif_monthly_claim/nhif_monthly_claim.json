@@ -24,6 +24,7 @@
   "column_break_fq5ae",
   "submitted_by",
   "section_break_gvner",
+  "submission_remarks",
   "amended_from"
  ],
  "fields": [
@@ -148,12 +149,18 @@
   {
    "fieldname": "column_break_fq5ae",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_remarks",
+   "fieldtype": "Small Text",
+   "label": "Submission Remarks"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-20 10:43:04.334220",
+ "modified": "2026-02-04 16:07:21.537601",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Monthly Claim",
@@ -174,6 +181,8 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

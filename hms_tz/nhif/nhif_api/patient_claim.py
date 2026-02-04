@@ -413,7 +413,7 @@ def submit_monthly_claim(doc):
         "ClaimMonth": doc.claim_month,
         "FoliosSubmitted": doc.folio_submitted,
         "TotalAmountClaimed": doc.total_amount_claimed,
-        "SubmissionRemarks": doc.submission_remarks,
+        "SubmissionRemarks": doc.get("submission_remarks") or "",
     }
     payload = json.dumps(payload)
 
