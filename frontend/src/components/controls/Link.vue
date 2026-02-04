@@ -63,10 +63,10 @@
 </template>
 
 <script setup>
-import Autocomplete from './Autocomplete.vue'
-import { watchDebounced } from '@vueuse/core'
-import { createResource } from 'frappe-ui'
-import { useAttrs, computed, ref, watch } from 'vue'
+import Autocomplete from "./Autocomplete.vue";
+import { watchDebounced } from "@vueuse/core";
+import { createResource } from "frappe-ui";
+import { useAttrs, computed, ref, watch } from "vue";
 
 const props = defineProps({
   doctype: {
@@ -75,58 +75,58 @@ const props = defineProps({
   },
   modelValue: {
     type: String,
-    default: '',
+    default: "",
   },
-	filters: {
-		type: Object,
-		default: {},
-	},
+  filters: {
+    type: Object,
+    default: {},
+  },
   hideMe: {
     type: Boolean,
     default: false,
   },
-})
+});
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits(["update:modelValue", "change"]);
 
-const attrs = useAttrs()
+const attrs = useAttrs();
 
-const valuePropPassed = computed(() => 'value' in attrs)
+const valuePropPassed = computed(() => "value" in attrs);
 
 const value = computed({
   get: () => (valuePropPassed.value ? attrs.value : props.modelValue),
   set: (val) => {
     return (
       val?.value &&
-      emit(valuePropPassed.value ? 'change' : 'update:modelValue', val?.value)
-    )
+      emit(valuePropPassed.value ? "change" : "update:modelValue", val?.value)
+    );
   },
-})
+});
 
-const autocomplete = ref(null)
-const text = ref('')
+const autocomplete = ref(null);
+const text = ref("");
 
 watchDebounced(
   () => autocomplete.value?.query,
   (val) => {
-    val = val || ''
-    if (text.value === val) return
-    text.value = val
-    reload(val)
+    val = val || "";
+    if (text.value === val) return;
+    text.value = val;
+    reload(val);
   },
   { debounce: 300, immediate: true }
-)
+);
 
 watchDebounced(
   () => props.doctype,
-  () => reload(''),
+  () => reload(""),
   { debounce: 300, immediate: true }
-)
+);
 
 const options = createResource({
-  url: 'frappe.desk.search.search_link',
+  url: "frappe.desk.search.search_link",
   cache: [props.doctype, text.value, props.hideMe],
-  method: 'POST',
+  method: "POST",
   params: {
     txt: text.value,
     doctype: props.doctype,
@@ -137,17 +137,17 @@ const options = createResource({
       return {
         label: option.value,
         value: option.value,
-      }
-    })
-    if (!props.hideMe && props.doctype == 'User') {
+      };
+    });
+    if (!props.hideMe && props.doctype == "User") {
       allData.unshift({
-        label: '@me',
-        value: '@me',
-      })
+        label: "@me",
+        value: "@me",
+      });
     }
-    return allData
+    return allData;
   },
-})
+});
 
 function reload(val) {
   if (
@@ -155,7 +155,7 @@ function reload(val) {
     val === options.params?.txt &&
     props.doctype === options.params?.doctype
   )
-    return
+    return;
 
   options.update({
     params: {
@@ -163,24 +163,24 @@ function reload(val) {
       doctype: props.doctype,
       filters: props.filters,
     },
-  })
-  options.reload()
+  });
+  options.reload();
 }
 
 function clearValue(close) {
-  emit(valuePropPassed.value ? 'change' : 'update:modelValue', '')
-  close()
+  emit(valuePropPassed.value ? "change" : "update:modelValue", "");
+  close();
 }
 
 const labelClasses = computed(() => {
   return [
     {
-      sm: 'text-xs',
-      md: 'text-base',
-    }[attrs.size || 'sm'],
-    'text-gray-600',
-  ]
-})
+      sm: "text-xs",
+      md: "text-base",
+    }[attrs.size || "sm"],
+    "text-gray-600",
+  ];
+});
 </script>
 
 <style scoped>

@@ -5,14 +5,13 @@
 </template>
 
 <script setup>
-import AppointmentGrid from '@/components/appointments/AppointmentGrid.vue'
-import { usePageMeta } from 'frappe-ui'
-
+import AppointmentGrid from "@/components/appointments/AppointmentGrid.vue";
+import { usePageMeta } from "frappe-ui";
 
 usePageMeta(() => {
   return {
-    title: 'Appointments - HMS TZ',
-    description: 'Manage appointments and practitioner schedules'
-  }
-})
+    title: "Appointments - HMS TZ",
+    description: "Manage appointments and practitioner schedules",
+  };
+});
 </script>
