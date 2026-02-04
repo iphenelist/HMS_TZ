@@ -311,6 +311,7 @@ var schedule_inpatient = function (frm) {
         label: "Service Unit Type",
         fieldname: "service_unit_type",
         options: "Healthcare Service Unit Type",
+        reqd: 1,
       },
       {
         fieldtype: "Int",
@@ -322,6 +323,7 @@ var schedule_inpatient = function (frm) {
         fieldtype: "Long Text",
         label: "Admission Instructions",
         fieldname: "admission_instruction",
+        reqd: 1,
       },
     ],
     primary_action_label: __("Order Admission"),
