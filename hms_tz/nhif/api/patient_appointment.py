@@ -9,7 +9,7 @@ import json
 import frappe
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, date_diff, getdate, nowdate, nowtime
+from frappe.utils import cint, date_diff, nowdate, nowtime
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_receivable_account
 
 from hms_tz.hms_tz.doctype.patient.patient import create_customer
@@ -112,7 +112,7 @@ def invoice_appointment(name, mops=[]):
         appointment_doc.save()
         appointment_doc.reload()
         appointment_doc.clear_cache()
-    
+
     set_follow_up(appointment_doc, "invoice_appointment")
     automate_invoicing = frappe.db.get_single_value("Healthcare Settings", "automate_appointment_invoicing")
 
@@ -156,7 +156,7 @@ def invoice_appointment(name, mops=[]):
 
                         if mop.get("payment_reference"):
                             new_row["payment_reference"] = mop.get("payment_reference")
-                        
+
                         sales_invoice.append("payments", new_row)
 
             else:
@@ -176,11 +176,11 @@ def invoice_appointment(name, mops=[]):
         appointment_doc.invoiced = 1
 
         if (
-            len(mops) > 0 and 
+            len(mops) > 0 and
             appointment_doc.mode_of_payment != mops[0].get("mode_of_payment")
         ):
             appointment_doc.mode_of_payment = mops[0].get("mode_of_payment")
-        
+
         appointment_doc.db_update()
 
         appointment_doc.reload()
@@ -302,7 +302,7 @@ def make_vital(appointment_doc, method):
 def make_encounter(doc, method):
     if doc.is_new():
         return
-    
+
     _date = ""
     if doc.doctype == "Vital Signs":
         if not doc.appointment or doc.inpatient_record:
@@ -385,13 +385,13 @@ def update_insurance_subscription(insurance_subscription, data):
 
     if subscription_doc.company:
         filters["company"] = subscription_doc.company
-    
+
     plan_list = frappe.db.get_list(
         "Healthcare Insurance Coverage Plan",
         filters=filters,
         fields=["name", "insurance_company", "coverage_plan_name"],
     )
-    
+
     plan = plan_list[0] if len(plan_list) == 1 else None
 
     if plan:
@@ -696,7 +696,7 @@ def validate_schemes_for_fasttrack_and_followups(
     type_info = get_visit_type_details(appointment_type)
 
     plan_info = frappe.get_cached_value(
-        "Healthcare Insurance Coverage Plan", plan_name, 
+        "Healthcare Insurance Coverage Plan", plan_name,
         ["nhif_scheme_id", "has_followup_charges", "has_fasttrack_charges"],
         as_dict=True,
     )
@@ -711,14 +711,14 @@ def validate_schemes_for_fasttrack_and_followups(
         and not apply_fasttrack_charge
     ):
         return True
-    
+
     elif (
         apply_fasttrack_charge
         and plan_info.has_fasttrack_charges
         and type_info.get("has_fasttrack_charges")
     ):
         return True
-    
+
     else:
         return False
 

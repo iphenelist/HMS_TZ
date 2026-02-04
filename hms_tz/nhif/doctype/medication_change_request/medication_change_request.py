@@ -4,33 +4,34 @@
 
 from __future__ import unicode_literals
 
+from time import sleep
+
 import frappe
 from frappe import _
-from time import sleep
-from frappe.query_builder import DocType
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
-from frappe.utils import get_url_to_form, nowdate, get_fullname
-from hms_tz.nhif.api.delivery_note import update_drug_prescription
+from frappe.query_builder import DocType
+from frappe.utils import get_fullname, get_url_to_form, nowdate
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
-    msgThrow,
-    get_item_rate,
-    get_mop_amount,
-    get_item_refcode,
-    get_drug_quantity,
-    validate_stock_item,
-    set_service_amounts,
     get_discount_percent,
+    get_drug_quantity,
+    get_item_rate,
+    get_item_refcode,
+    get_mop_amount,
     get_template_company_option,
     get_warehouse_from_service_unit,
+    msgThrow,
+    set_service_amounts,
     validate_nhif_patient_claim_status,
+    validate_stock_item,
 )
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
+    create_revenue_entry_from_inpatient_cash_mcr,
     create_revenue_entry_from_insurance_mcr,
     update_returned_or_cancelled_revenue_entry,
-    create_revenue_entry_from_inpatient_cash_mcr
 )
+from hms_tz.nhif.api.delivery_note import update_drug_prescription
 
 
 class MedicationChangeRequest(Document):
@@ -98,7 +99,7 @@ class MedicationChangeRequest(Document):
                 self.appointment,
                 "mode_of_payment",
             )
-        
+
         for item in self.drug_prescription:
             if not self.sales_order:
                 self.validate_item_insurance_coverage(item, "throw")
@@ -153,7 +154,7 @@ class MedicationChangeRequest(Document):
             frappe.throw(
                 "Please select Patient Encounter to create Medication Change Request."
             )
-        
+
         encounter_doc = get_patient_encounter_doc(self.patient_encounter)
         if (
             not encounter_doc.insurance_coverage_plan
@@ -166,7 +167,7 @@ class MedicationChangeRequest(Document):
                         Please create medication change request for Cash Patient OPD via Sales Order"
                 )
             )
-        
+
         return encounter_doc
 
     def set_missing_values(self, encounter_doc):
@@ -389,7 +390,7 @@ class MedicationChangeRequest(Document):
 
         if row.has_copayment == 0:
             return
-        
+
         original_items = [d.drug_code for d in self.original_pharmacy_prescription if d.has_copayment == 1]
 
         if row.drug_code not in original_items:
@@ -407,7 +408,7 @@ class MedicationChangeRequest(Document):
 
         if not self.insurance_company or "NHIF" not in self.insurance_company:
             return
-        
+
         if (
             row.get("prescribe")
             or row.get("is_not_available_inhouse")
@@ -416,7 +417,7 @@ class MedicationChangeRequest(Document):
             or row.get("preapproval_status") in ["Accepted", "REJECTED"]
         ):
             return
-        
+
         if not row.get("preapproval_status"):
             msgThrow(
                 _(f"{frappe.bold(row.drug_code)} requires pre-approval."),
@@ -639,7 +640,7 @@ class MedicationChangeRequest(Document):
 
     def update_hsr_and_hre(self):
         """Update Healthcare Service Request and Hospital Revenue Entry after Medication Change Request is submitted"""
-        
+
         frappe.enqueue(
             "hms_tz.nhif.doctype.medication_change_request.medication_change_request.update_hsr_hre_for_mcr",
             timeout=300,
@@ -703,7 +704,7 @@ def set_amount(self, row, mop=""):
     elif not self.insurance_subscription:
         if not row.prescribe:
             row.prescribe = 1
-        
+
         row.amount = get_mop_amount(item_code, mop, self.company, self.patient)
 
 
@@ -877,31 +878,31 @@ def get_service_unit(warehouse, company, service_unit_type):
         fields=["name"],
         limit=1
     )
-    
+
     if service_units:
         return service_units[0].name
-    
+
     return None
 
 
 def update_hsr_hre_for_mcr(mcr_name):
     """Update Healthcare Service Request with new Drug Prescription
-    
+
     This function is called via enqueue after MCR submission.
     It compares original vs current drugs in MCR to determine:
     - Which drugs were removed (need to delete from HSR)
-    - Which drugs were added (need to add to HSR)  
+    - Which drugs were added (need to add to HSR)
     - Which drugs remain (need to update in HSR)
-    
+
     Args:
         mcr_name: Medication Change Request name
     """
-    
+
     sleep(60)
 
     # Reload MCR document fresh from database
     mcr_doc = frappe.get_doc("Medication Change Request", mcr_name)
-    
+
     # Original items = items that were in MCR before user made changes
     original_drug_codes = set()
     for d in mcr_doc.original_pharmacy_prescription:
@@ -936,12 +937,12 @@ def update_hsr_hre_for_mcr(mcr_name):
         )
 
         re_update_drug_prescription(mcr_doc.delivery_note)
-    except Exception as e:
+    except Exception:
         frappe.log_error(
             title=f"Error: MCR: {mcr_doc.name} updating HSR and HRE",
             message=frappe.get_traceback(),
         )
-    
+
 
 def update_insurance_hsr_hre(
     mcr_doc,
@@ -959,7 +960,7 @@ def update_insurance_hsr_hre(
 
     if not mcr_doc.insurance_subscription:
         return
-    
+
     # For insurance patients or non-inpatients, proceed with HSR updates
     hsr_id = frappe.get_cached_value(
         "Healthcare Service Request",
@@ -972,7 +973,7 @@ def update_insurance_hsr_hre(
 
     services_to_be_removed = []
     hsr_doc = frappe.get_doc("Healthcare Service Request", hsr_id)
-    
+
     # Step 1: Identify HSR services and payments to remove (for removed drugs)
     for service in hsr_doc.services:
         if service.service_type == "Medication" and service.service_name in removed_drug_codes:
@@ -981,7 +982,7 @@ def update_insurance_hsr_hre(
     for payment in hsr_doc.payments:
         if payment.service_type == "Medication" and payment.service_name in removed_drug_codes:
             services_to_be_removed.append(payment)
-    
+
     # Step 2: Delete removed services and payments, and cancel their HRE
     for service in services_to_be_removed:
         # If it's a payment, cancel its HRE first
@@ -993,7 +994,7 @@ def update_insurance_hsr_hre(
                 is_cancelled=1,
                 remarks=f"Reason for Service Replacement: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else "",
             )
-        
+
         frappe.delete_doc(
             service.doctype,
             service.name,
@@ -1003,10 +1004,10 @@ def update_insurance_hsr_hre(
         )
 
     hsr_doc.reload()
-    
+
     # Step 3: Build drug map from the UPDATED encounter for adding/updating services
     encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
-    
+
     drug_map = {}
     for d in encounter_doc.drug_prescription:
         if (
@@ -1065,7 +1066,7 @@ def update_cash_inpatient_hre(
     enc_details = frappe.get_cached_value("Patient Encounter", mcr_doc.patient_encounter, ["inpatient_record","insurance_subscription"], as_dict=True)
     if enc_details.insurance_subscription or not enc_details.inpatient_record:
         return
-    
+
     hre = DocType("Hospital Revenue Entry")
     updated_by = get_fullname(frappe.session.user)
 
@@ -1090,12 +1091,12 @@ def update_cash_inpatient_hre(
                 )
             )
             cancel_query.run()
-    
+
     # Create HRE for newly added drugs and update qty, rate & amount for unchanged drugs
     if len(added_drug_codes) > 0 or len(unchanged_drug_codes) > 0:
         new_ref_docnames = []
         remarks = f"Reason for Qty Change: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else ""
-        
+
         encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
         for d in encounter_doc.drug_prescription:
             if d.is_cancelled == 1 or d.is_not_available_inhouse == 1:
@@ -1103,7 +1104,7 @@ def update_cash_inpatient_hre(
 
             if d.drug_code in added_drug_codes:
                 new_ref_docnames.append(d.name)
-            
+
             if d.drug_code in unchanged_drug_codes:
                 qty = d.quantity - d.quantity_returned
                 amount = d.amount * qty
@@ -1127,10 +1128,10 @@ def update_cash_inpatient_hre(
                     )
                 )
                 update_query.run()
-        
+
         if len(new_ref_docnames) > 0:
             create_revenue_entry_from_inpatient_cash_mcr(mcr_doc, new_ref_docnames)
-    
+
 
 def add_or_update_service(
     hsr_doc,
@@ -1141,7 +1142,7 @@ def add_or_update_service(
     unchanged_drug_codes,
 ):
     """Add or update services in the Healthcare Service Request
-    
+
     Args:
         hsr_doc: Healthcare Service Request document
         drug_map: Dict mapping drug_code to list of Drug Prescription rows
@@ -1150,7 +1151,7 @@ def add_or_update_service(
         added_drug_codes: Set of drug codes that were newly added in MCR
         unchanged_drug_codes: Set of drug codes that existed before and still exist
     """
-    
+
     new_ref_docnames_for_hre = []
 
     # Process each drug in the map
@@ -1159,24 +1160,24 @@ def add_or_update_service(
         # (these would be drugs from other parts of the encounter not related to this MCR)
         if drug_code not in added_drug_codes and drug_code not in unchanged_drug_codes:
             continue
-            
+
         existing_service = None
-        
+
         # Check if service already exists in HSR
         for service in hsr_doc.services:
             if service.service_type == "Medication" and service.service_name == drug_code:
                 existing_service = service
                 break
-        
+
         # Calculate aggregated values from all prescriptions of this drug
         total_qty = sum(row.delivered_quantity or row.quantity for row in prescriptions)
         has_copayment = any(row.has_copayment for row in prescriptions)
         is_restricted = any(row.is_restricted for row in prescriptions)
         discount_applied = any(row.hms_tz_is_discount_applied for row in prescriptions)
-        
+
         # Use the first prescription for reference fields
         first_prescription = prescriptions[0]
-        
+
         if existing_service and drug_code in unchanged_drug_codes:
             # Update existing service (drug existed before and still exists, possibly with qty change)
             existing_service.qty = total_qty
@@ -1186,7 +1187,7 @@ def add_or_update_service(
             existing_service.department_hsu = first_prescription.healthcare_service_unit
             existing_service.ref_docname = first_prescription.name
             existing_service.ref_doctype = first_prescription.doctype
-            
+
             # Recalculate amounts
             updated_service = set_service_amounts(
                 existing_service,
@@ -1194,9 +1195,9 @@ def add_or_update_service(
                 hsr_doc.insurance_company,
                 hsr_doc.insurance_subscription,
             )
-            
+
             updated_service.db_update()
-            
+
             # Update corresponding payment entries
             new_payment = update_service_payments(
                 hsr_doc,
@@ -1228,9 +1229,9 @@ def add_or_update_service(
                 "payor_plan": hsr_doc.insurance_coverage_plan,
                 "item_code": get_item_refcode("Medication", drug_code),
             })
-            
+
             new_service.percent_covered = hsr_doc.get_percent_covered(item_obj=new_service)
-            
+
             # Calculate amounts for new service
             updated_service = set_service_amounts(
                 new_service,
@@ -1262,18 +1263,18 @@ def update_service_payments(
     mcr_comment
 ):
     """Update existing HSR payment entries for a service
-    
+
     This function handles multiple payment entries for a single medication/drug.
     Each payment entry represents different payment methods (Insurance, Cash, etc.)
     with their own percent_covered and amounts.
     """
-    
+
     # Find existing payments for this service
     existing_payments = []
     for payment in hsr_doc.payments:
         if payment.service_type == "Medication" and payment.service_name == service_row.service_name:
             existing_payments.append(payment)
-    
+
     if existing_payments:
         updated_by = get_fullname(frappe.session.user)
         hre_comment = f"Reason for Qty Change: <br><br>{frappe.bold(mcr_comment)}" if mcr_comment else ""
@@ -1348,7 +1349,7 @@ def create_service_payments(
     """Create payment entries for a new service"""
 
     ref_code = get_item_refcode("Medication", service_row.get("service_name"))
-    
+
     # Get percent_covered from service_row or default to 100
     percent_covered = service_row.get("percent_covered") or 100
 
@@ -1392,7 +1393,7 @@ def create_service_payments(
     new_payment.flags.ignore_mandatory = True
     new_payment.insert()
     new_payment.reload()
-    
+
     return new_payment
 
 
@@ -1410,6 +1411,6 @@ def re_update_drug_prescription(delivery_note):
     dn_doc = frappe.get_doc("Delivery Note", delivery_note)
     if dn_doc.docstatus == 0:
         return
-    
+
     update_drug_prescription(dn_doc)
 

@@ -388,7 +388,7 @@ def transfer_patient(inpatient_record, service_unit, check_in, check_out=None, l
                     "occupancy_status",
                     "Vacant",
                 )
-    
+
     if service_unit:
         item_line = inpatient_record.append("inpatient_occupancies", {})
         item_line.service_unit = service_unit
@@ -400,13 +400,13 @@ def transfer_patient(inpatient_record, service_unit, check_in, check_out=None, l
             "occupancy_status",
             "Occupied",
         )
-    
+
     if poc_reference_no:
         inpatient_record.poc_reference_no = poc_reference_no
 
     if service_unit or leave_from or poc_reference_no:
         inpatient_record.save(ignore_permissions=True)
-    
+
     return True
 
 
@@ -476,7 +476,7 @@ def validate_discharge(inpatient_record):
                 + f"LRPMT Returns: {frappe.bold(d.name)} to return and cancel items\
                 was not submitted <br>"
             )
-        
+
         lrpmt_msg += """<div style="border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;">\
               <p class="text-center"><i>please contact relevent department to Submit/Cancel draft LRPMT Returns\
                 before Scheduling Discharge</i></p>

@@ -9,7 +9,6 @@ from datetime import date
 import frappe
 from erpnext import get_default_company
 from frappe import _
-from frappe.query_builder import DocType
 from frappe.utils import flt, getdate, nowdate
 from frappe.utils.background_jobs import enqueue
 

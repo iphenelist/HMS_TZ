@@ -2,7 +2,7 @@ import json
 
 import frappe
 import requests
-from frappe.utils import get_fullname, get_datetime
+from frappe.utils import get_datetime, get_fullname
 
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
@@ -188,7 +188,7 @@ def create_service_referral(doc):
         doc.referral_no = data.get("ReferralNo") or data.get("ReferrralNo")
         doc.referral_id = data.get("ReferralID")
         doc.referral_status = "Success"
-        
+
         doc.add_comment(
             comment_type="Comment",
             text=f"Service Referral created successfully!<br><br><b>Message from NHIF:</b><br>{data.get('ReferralID')}",
@@ -315,7 +315,7 @@ def create_healthcare_referral(data):
     referral_doc.save(ignore_permissions=True)
     referral_doc.reload()
     return True
-    
+
 
 def get_disease_code(code):
     # Convert the ICD code of CDC to NHIF

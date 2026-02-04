@@ -1,21 +1,22 @@
 import json
+from time import sleep
+
 import frappe
 import requests
 from frappe import _
-from time import sleep
-from frappe.query_builder import DocType
 from frappe.model.naming import make_autoname
+from frappe.query_builder import DocType
+from frappe.utils import create_batch, now_datetime
 from frappe.utils.background_jobs import enqueue
-from frappe.utils import flt, now_datetime, create_batch
-from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
+
 from hms_tz.api.insurance import (
-    get_insurance_items,
-    delete_price_package,
-    delete_hsic_data,
-    get_items_for_price_list,
     create_insurance_price_list,
-    handle_insurance_prices
+    delete_price_package,
+    get_insurance_items,
+    get_items_for_price_list,
+    handle_insurance_prices,
 )
+from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
 
 def get_jubilee_price_packages(company):
@@ -117,7 +118,7 @@ def create_price_package(packages, company, log_name):
                 row.get("CleanName"),
             )
         )
-    
+
     frappe.db.bulk_insert(
         "Jubilee Price Package",
         fields=fields,
@@ -143,7 +144,7 @@ def set_package_diff(company):
 
     if len(logs) < 2:
         return
-    
+
     new_price_packages = []
     changed_price_packages = []
     deleted_price_packages = []
@@ -159,7 +160,7 @@ def set_package_diff(company):
 
     new_price_packages = [item for code, item in current_items.items() if code not in previous_items]
     deleted_price_packages = [item for code, item in previous_items.items() if code not in current_items]
-    
+
     for key, current_item in current_items.items():
         if key in previous_items:
             previous_item = previous_items[key]
@@ -206,7 +207,7 @@ def add_price_packages_records(doc, rec, type, service_map):
     for e in rec:
         if not service_map.get(e.get("ItemCode")):
             continue
-    
+
         services = service_map.get(e.get("ItemCode"))
         for svc in services:
             price_row = doc.append("price_package", {})
