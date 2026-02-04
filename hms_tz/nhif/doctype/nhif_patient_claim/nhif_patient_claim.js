@@ -180,16 +180,20 @@ function show_signature_method_dialog(frm) {
               ${__("Please select the signature method")}
             </p>
             <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
-              <div class="signature-option" data-method="signature" 
+              <div class="signature-option" data-method="signature"
                    style="cursor: pointer; padding: 20px; border: 2px solid #ccc; border-radius: 10px; width: 150px; text-align: center; transition: all 0.3s;">
                 <i class="fa fa-pencil" style="font-size: 48px; color: #5e64ff;"></i>
-                <p style="margin-top: 10px; font-weight: bold;">${__("Signature")}</p>
+                <p style="margin-top: 10px; font-weight: bold;">${__(
+                  "Signature"
+                )}</p>
                 <small>${__("Draw signature with pen")}</small>
               </div>
               <div class="signature-option" data-method="fingerprint"
                    style="cursor: pointer; padding: 20px; border: 2px solid #ccc; border-radius: 10px; width: 150px; text-align: center; transition: all 0.3s;">
                 <i class="fa fa-hand-paper-o" style="font-size: 48px; color: #28a745;"></i>
-                <p style="margin-top: 10px; font-weight: bold;">${__("Fingerprint")}</p>
+                <p style="margin-top: 10px; font-weight: bold;">${__(
+                  "Fingerprint"
+                )}</p>
                 <small>${__("Use fingerprint device")}</small>
               </div>
             </div>
@@ -237,13 +241,13 @@ function show_signature_method_dialog(frm) {
  */
 async function capture_signature_and_sign(frm) {
   try {
-    const signature = await new Signature({ 
+    const signature = await new Signature({
       label: __("Sign Folio"),
       title: __("Sign Folio - Draw Signature"),
     });
-    
+
     if (!signature) {
-      frappe.msgprint(__("Signature failed, please try again."))
+      frappe.msgprint(__("Signature failed, please try again."));
       return;
     }
 

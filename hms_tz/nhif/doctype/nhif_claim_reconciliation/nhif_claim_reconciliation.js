@@ -13,7 +13,8 @@ frappe.ui.form.on("NHIF Claim Reconciliation", {
     const can_submit =
       frm.doc.docstatus === 1 &&
       frm.doc.total_amount_claimed === frm.doc.erp_total_amount_claimed &&
-      frm.doc.number_of_submitted_claims === frm.doc.erp_number_of_submitted_claims;
+      frm.doc.number_of_submitted_claims ===
+        frm.doc.erp_number_of_submitted_claims;
 
     frm.set_df_property("submit_monthly_claim", "hidden", can_submit ? 0 : 1);
   },

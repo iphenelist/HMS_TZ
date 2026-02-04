@@ -117,14 +117,14 @@ frappe.ui.form.on("Lab Test", {
             frm.save().then(() => {
               frm.reload_doc();
             });
-            
+
             frappe.show_alert(
               {
                 message: __(
                   "<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold;'>\
                                 Approval Request Successful. Reference Number: " +
-                  r.message.reference_no +
-                  "</h4>"
+                    r.message.reference_no +
+                    "</h4>"
                 ),
                 indicator: "green",
               },
@@ -255,7 +255,7 @@ frappe.ui.form.on("Lab Test", {
           frm.save().then(() => {
             frm.reload_doc();
           });
-          
+
           frappe.show_alert(
             {
               message: __(
@@ -297,7 +297,9 @@ frappe.ui.form.on("Lab Test", {
     let biometricData;
 
     if (frm.doc.biometric_method === "FACIAL") {
-      biometricData = await new FacialRecognition({ label: "Get POC Reference No" });
+      biometricData = await new FacialRecognition({
+        label: "Get POC Reference No",
+      });
       if (!biometricData) {
         frappe.msgprint(__("Face capture failed. Please try again."));
         return;
@@ -316,18 +318,17 @@ frappe.ui.form.on("Lab Test", {
               <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
             </div>
             <br>
-            <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-          ),
+            <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
           () => resolve(true),
           () => resolve(false)
         );
       });
-      
+
       if (!confirmed) {
         return;
       }
 
-      biometricData = {Data: "", fpCode: ""};
+      biometricData = { Data: "", fpCode: "" };
     }
     frappe.call({
       method: "hms_tz.nhif.utils.get_poc_reference_no_for_lrpmt",
@@ -348,7 +349,7 @@ frappe.ui.form.on("Lab Test", {
             frm.save().then(() => {
               frm.reload_doc();
             });
-            
+
             frappe.utils.play_sound("submit");
           } else {
             frappe.utils.play_sound("error");
@@ -397,18 +398,17 @@ frappe.ui.form.on("Lab Test", {
               <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
             </div>
             <br>
-            <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-          ),
+            <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
           () => resolve(true),
           () => resolve(false)
         );
       });
-      
+
       if (!confirmed) {
         return;
       }
 
-      biometricData = {Data: "", fpCode: ""};
+      biometricData = { Data: "", fpCode: "" };
     }
 
     frappe.call({

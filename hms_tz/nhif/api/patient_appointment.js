@@ -167,7 +167,6 @@ frappe.ui.form.on("Patient Appointment", {
         frm.toggle_display(["referring_practitioner"], false);
         // frm.toggle_reqd("referring_practitioner", false);
         frm.toggle_enable("referring_practitioner", false);
-
       }
 
       if (visit_type.requires_remarks == 1) {
@@ -183,7 +182,10 @@ frappe.ui.form.on("Patient Appointment", {
         }
       }
 
-      if (frm.doc.insurance_company && !frm.doc.insurance_company.includes("NHIF")) {
+      if (
+        frm.doc.insurance_company &&
+        !frm.doc.insurance_company.includes("NHIF")
+      ) {
         if (visit_type.description) {
           // frm.set_intro(__(`${visit_type.description}`, "blue"));
           frm.sidebar.set_intro(__(`${visit_type.description}`));
@@ -358,7 +360,9 @@ frappe.ui.form.on("Patient Appointment", {
     } else if (frm.doc.biometric_method == "NONE" && !frm.doc.remarks) {
       frappe.msgprint({
         title: __("Remarks Missing"),
-        message: __("Please provide remarks for the selected Biometric Method")
+        message: __(
+          "Please provide remarks for the selected Biometric Method"
+        ),
       });
       return;
     }
@@ -393,8 +397,7 @@ frappe.ui.form.on("Patient Appointment", {
               <p class="text-center"><i>Biometric Method: <b>${frm.doc.biometric_method}</b> is only used when Patient is not able to take fingerprint or face.</i></p>
               </div>
               <br>
-              <p class="text-center"><i>Are you sure you want to continue?</i></p>`
-            ),
+              <p class="text-center"><i>Are you sure you want to continue?</i></p>`),
             () => resolve(true),
             () => resolve(false)
           );
@@ -436,7 +439,10 @@ frappe.ui.form.on("Patient Appointment", {
               frm.set_value("nhif_employer_name", card.EmployerName);
               frm.set_value("fpcode", card.fpCode);
               frm.set_value("poc_reference_no", card.ReferenceNo);
-              frm.set_value("years_of_insurance", card.ServiceYear === null ? 0 : parseInt(card.ServiceYear));
+              frm.set_value(
+                "years_of_insurance",
+                card.ServiceYear === null ? 0 : parseInt(card.ServiceYear)
+              );
               frm.save().then(() => {
                 frm.reload_doc();
               });
@@ -470,7 +476,9 @@ frappe.ui.form.on("Patient Appointment", {
       if (frm.doc.biometric_method === "FACIAL") {
         frappe.msgprint(__("Failed to capture face photo. Please try again."));
       } else if (frm.doc.biometric_method === "FINGERPRINT") {
-        frappe.msgprint(__("Failed to capture fingerprint. Please try again."));
+        frappe.msgprint(
+          __("Failed to capture fingerprint. Please try again.")
+        );
       }
     }
   },
@@ -631,70 +639,73 @@ frappe.ui.form.on("Patient Appointment", {
   apply_fasttrack: async (frm) => {
     if (["Cancelled", "Closed"].includes(frm.doc.status)) {
       if (frm.doc.apply_fasttrack_charge == 1) {
-        frappe.show_alert("Fasttrack Charge can not be applied for cancelled or closed appointments");
+        frappe.show_alert(
+          "Fasttrack Charge can not be applied for cancelled or closed appointments"
+        );
       }
       return;
     }
 
-    if (
-      frm.doc.invoiced ||
-      frm.doc.healthcare_package_order
-    ) {
+    if (frm.doc.invoiced || frm.doc.healthcare_package_order) {
       if (frm.doc.apply_fasttrack_charge == 1) {
-        frappe.show_alert("Fasttrack Charge can not be applied for invoiced appointments");
+        frappe.show_alert(
+          "Fasttrack Charge can not be applied for invoiced appointments"
+        );
       }
       return;
     }
 
     const insurance_company = frm.doc.insurance_company;
     if (!insurance_company || !insurance_company.includes("NHIF")) {
-      return
+      return;
     }
 
-    frappe.call({
-      method: 'hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups',
-      args: {
-        insurance_subscription: frm.doc.insurance_subscription,
-        appointment_type: frm.doc.appointment_type,
-        apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
-      }
-    })
-      .then(r => {
+    frappe
+      .call({
+        method:
+          "hms_tz.nhif.api.patient_appointment.validate_schemes_for_fasttrack_and_followups",
+        args: {
+          insurance_subscription: frm.doc.insurance_subscription,
+          appointment_type: frm.doc.appointment_type,
+          apply_fasttrack_charge: frm.doc.apply_fasttrack_charge,
+        },
+      })
+      .then((r) => {
         if (r.message) {
           applyFasttrackCheck(frm, frm.doc.appointment_type);
         } else {
-          frm.toggle_display('apply_fasttrack_charge', false);
-          frm.toggle_enable('apply_fasttrack_charge', false);
+          frm.toggle_display("apply_fasttrack_charge", false);
+          frm.toggle_enable("apply_fasttrack_charge", false);
           if (
-            frm.doc.apply_fasttrack_charge == 1
-            && !["Cancelled", "Closed"].includes(frm.doc.status)
-            && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+            frm.doc.apply_fasttrack_charge == 1 &&
+            !["Cancelled", "Closed"].includes(frm.doc.status) &&
+            (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
           ) {
             frm.set_value("apply_fasttrack_charge", 0);
           }
           frm.trigger("get_consulting_charge_item");
-          frm.trigger('get_insurance_amount');
+          frm.trigger("get_insurance_amount");
         }
       });
 
     function applyFasttrackCheck(frm, appointment_type) {
       if (appointment_type.includes("Follow")) {
         if (
-          frm.doc.apply_fasttrack_charge == 1
-          && !["Cancelled", "Closed"].includes(frm.doc.status)
-          && (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
+          frm.doc.apply_fasttrack_charge == 1 &&
+          !["Cancelled", "Closed"].includes(frm.doc.status) &&
+          (!frm.doc.ref_vital_signs || !frm.doc.ref_patient_encounter)
         ) {
           frm.set_value("apply_fasttrack_charge", 0);
         }
-        frm.toggle_display('apply_fasttrack_charge', false);
-        frm.toggle_enable('apply_fasttrack_charge', false);
+        frm.toggle_display("apply_fasttrack_charge", false);
+        frm.toggle_enable("apply_fasttrack_charge", false);
         frm.trigger("get_consulting_charge_item");
-        frm.trigger('get_insurance_amount');
+        frm.trigger("get_insurance_amount");
       } else {
         frm.toggle_display("apply_fasttrack_charge", true);
         frm.toggle_enable("apply_fasttrack_charge", true);
         frm.trigger("get_consulting_charge_item");
-        frm.trigger('get_insurance_amount');
+        frm.trigger("get_insurance_amount");
       }
     }
   },
@@ -704,7 +715,6 @@ frappe.ui.form.on("Patient Appointment", {
       frm.toggle_reqd("remarks", true);
       frm.toggle_enable(["remarks"], true);
     } else {
-
       let visit_type = get_visit_type_details(frm.doc.appointment_type);
       if (!visit_type || (visit_type && visit_type.requires_remarks != 1)) {
         frm.toggle_display(["remarks"], false);
@@ -712,7 +722,7 @@ frappe.ui.form.on("Patient Appointment", {
         frm.toggle_enable(["remarks"], false);
       }
     }
-  }
+  },
 });
 
 const check_and_set_availability = (frm) => {
@@ -801,7 +811,7 @@ const check_and_set_availability = (frm) => {
             .set_value("Patient Referral", frm.doc.patient_referral, {
               status: "Completed",
             })
-            .then(() => { });
+            .then(() => {});
         }
       },
     });
@@ -956,8 +966,9 @@ const check_and_set_availability = (frm) => {
 									data-name=${start_str}
 									data-duration=${interval}
 									data-service-unit="${slot_details[i].service_unit || ""}"
-									style="margin: 0 10px 10px 0; width: 72px;" ${disabled ? 'disabled="disabled"' : ""
-                      }>
+									style="margin: 0 10px 10px 0; width: 72px;" ${
+                    disabled ? 'disabled="disabled"' : ""
+                  }>
 									${start_str.substring(0, start_str.length - 3)} ${count}
 								</button>`;
                   })
@@ -1081,8 +1092,9 @@ const check_and_set_availability = (frm) => {
 										data-service-unit="${present_events[i].service_unit || ""}"
 										data-availability="${present_events[i].availability || ""}"
 										flag-fixed-duration=${1}
-										style="margin: 0 10px 10px 0; width: 72px;" ${disabled ? 'disabled="disabled"' : ""
-                        }>
+										style="margin: 0 10px 10px 0; width: 72px;" ${
+                      disabled ? 'disabled="disabled"' : ""
+                    }>
 										${start_str.substring(0, start_str.length - 3)} ${count}
 									</button>`;
                     })
@@ -1156,14 +1168,14 @@ const get_visit_type_details = (appointment_type) => {
   frappe.call({
     method: "hms_tz.nhif.api.patient_appointment.get_visit_type_details",
     args: {
-      appointment_type: appointment_type
+      appointment_type: appointment_type,
     },
     async: false,
     callback: (data) => {
       if (data.message) {
         visit_type = data.message;
       }
-    }
+    },
   });
 
   return visit_type;

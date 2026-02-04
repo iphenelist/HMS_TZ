@@ -1,7 +1,7 @@
 /**
  * Signature Pad Class for HMS TZ
  * A reusable signature capture component that can be used across the application.
- * 
+ *
  * Usage:
  *   const signature = await new Signature({ label: "Sign Document" });
  *   if (signature) {
@@ -18,7 +18,7 @@ export class Signature {
     this.lineColor = opts.lineColor || "#000";
     this.lineWidth = opts.lineWidth || 3;
     this.backgroundColor = opts.backgroundColor || "#fff";
-    
+
     // Canvas state
     this.canvas = null;
     this.ctx = null;
@@ -74,22 +74,24 @@ export class Signature {
     return `
       <div class="signature-pad-container" style="text-align: center; padding: 10px;">
         <p style="margin-bottom: 15px; color: #666;">
-          ${__("Please draw your signature below using a pen, stylus, or mouse")}
+          ${__(
+            "Please draw your signature below using a pen, stylus, or mouse"
+          )}
         </p>
         <div class="signature-canvas-wrapper" style="
-          border: 2px solid #ccc; 
-          border-radius: 10px; 
-          background-color: ${this.backgroundColor}; 
-          margin: 0 auto; 
+          border: 2px solid #ccc;
+          border-radius: 10px;
+          background-color: ${this.backgroundColor};
+          margin: 0 auto;
           display: inline-block;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         ">
-          <canvas 
-            id="hms-signature-canvas" 
-            width="${this.canvasWidth}" 
-            height="${this.canvasHeight}" 
+          <canvas
+            id="hms-signature-canvas"
+            width="${this.canvasWidth}"
+            height="${this.canvasHeight}"
             style="
-              cursor: crosshair; 
+              cursor: crosshair;
               touch-action: none;
               display: block;
               border-radius: 8px;
@@ -102,7 +104,9 @@ export class Signature {
           </button>
         </div>
         <p style="margin-top: 10px; font-size: 12px; color: #999;">
-          <i class="fa fa-info-circle"></i> ${__("Click and drag to draw your signature")}
+          <i class="fa fa-info-circle"></i> ${__(
+            "Click and drag to draw your signature"
+          )}
         </p>
       </div>
     `;
@@ -116,7 +120,7 @@ export class Signature {
     }
 
     this.ctx = this.canvas.getContext("2d");
-    
+
     // Set up canvas styles
     this.ctx.strokeStyle = this.lineColor;
     this.ctx.lineWidth = this.lineWidth;
@@ -145,10 +149,18 @@ export class Signature {
     this.canvas.addEventListener("mouseleave", (e) => this.stopDrawing(e));
 
     // Touch events for tablet/mobile
-    this.canvas.addEventListener("touchstart", (e) => this.startDrawing(e), { passive: false });
-    this.canvas.addEventListener("touchmove", (e) => this.draw(e), { passive: false });
-    this.canvas.addEventListener("touchend", (e) => this.stopDrawing(e), { passive: false });
-    this.canvas.addEventListener("touchcancel", (e) => this.stopDrawing(e), { passive: false });
+    this.canvas.addEventListener("touchstart", (e) => this.startDrawing(e), {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchmove", (e) => this.draw(e), {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchend", (e) => this.stopDrawing(e), {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchcancel", (e) => this.stopDrawing(e), {
+      passive: false,
+    });
 
     // Pointer events (for stylus support)
     this.canvas.addEventListener("pointerdown", (e) => this.startDrawing(e));
@@ -183,7 +195,7 @@ export class Signature {
 
   startDrawing(e) {
     e.preventDefault();
-    
+
     const coords = this.getCoordinates(e);
     if (!coords) return;
 
@@ -222,7 +234,7 @@ export class Signature {
 
   clearCanvas() {
     if (!this.ctx) return;
-    
+
     this.ctx.fillStyle = this.backgroundColor;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.hasDrawn = false;
@@ -230,13 +242,22 @@ export class Signature {
 
   isCanvasBlank() {
     if (!this.hasDrawn) return true;
-    
-    const pixelData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
+
+    const pixelData = this.ctx.getImageData(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height
+    ).data;
 
     // Check if all pixels match the background color
     // For white background (255, 255, 255)
     for (let i = 0; i < pixelData.length; i += 4) {
-      if (pixelData[i] !== 255 || pixelData[i + 1] !== 255 || pixelData[i + 2] !== 255) {
+      if (
+        pixelData[i] !== 255 ||
+        pixelData[i + 1] !== 255 ||
+        pixelData[i + 2] !== 255
+      ) {
         return false;
       }
     }
@@ -254,9 +275,9 @@ export class Signature {
     }
 
     const signatureData = this.canvas.toDataURL("image/png");
-    
+
     this.dialog.hide();
-    
+
     if (this.signaturePromiseResolve) {
       this.signaturePromiseResolve({
         Data: signatureData,
@@ -268,7 +289,7 @@ export class Signature {
 
   cancel() {
     this.dialog.hide();
-    
+
     if (this.signaturePromiseResolve) {
       this.signaturePromiseResolve(null);
     }

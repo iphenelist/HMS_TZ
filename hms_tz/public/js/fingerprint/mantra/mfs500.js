@@ -1,12 +1,12 @@
 /**
  * Mantra MFS500 Fingerprint Device Integration
- * 
+ *
  * This module integrates with the MorFinAuthClientService running on the local machine.
  * The service must be installed and running on the Windows client machine.
- * 
+ *
  * Driver: MorFin_Driver_1.4.0.0.exe
  * Client Service: MorFinAuthClientService.exe
- * 
+ *
  * Default port: 8030
  * Base URL: http://localhost:8030/morfinauth/
  */
@@ -15,15 +15,15 @@ export class MFS500 {
   constructor() {
     this.samples = null;
     this.fingerprintAcquired = false;
-    
+
     this.isScanning = false;
     this.currentScanController = null;
-    
+
     this.onSamplesAcquired = null;
-    
+
     this.baseUrl = "http://localhost:8030/morfinauth/";
     this.connectedDevice = null;
-    
+
     this.captureSettings = {
       Quality: 60,
       Timeout: 10,
@@ -43,11 +43,11 @@ export class MFS500 {
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const options = {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json; charset=utf-8',
+          "Content-Type": "application/json; charset=utf-8",
         },
-        signal: controller.signal
+        signal: controller.signal,
       };
 
       if (jsonData) {
@@ -73,69 +73,69 @@ export class MFS500 {
    * Get HTTP error message
    */
   getHttpError(error) {
-    if (error.name === 'AbortError') {
-      return 'Request timeout';
-    } else if (error.message.includes('fetch')) {
-      return 'Service Unavailable';
-    } else if (error.message.includes('404')) {
-      return 'Requested page not found';
-    } else if (error.message.includes('500')) {
-      return 'Internal Server Error';
+    if (error.name === "AbortError") {
+      return "Request timeout";
+    } else if (error.message.includes("fetch")) {
+      return "Service Unavailable";
+    } else if (error.message.includes("404")) {
+      return "Requested page not found";
+    } else if (error.message.includes("500")) {
+      return "Internal Server Error";
     }
-    return error.message || 'Unhandled Error';
+    return error.message || "Unhandled Error";
   }
 
   /**
    * Get device info from MorFinAuth service
    */
-  async getDeviceInfo(connectedDvc = '', clientKey = '') {
+  async getDeviceInfo(connectedDvc = "", clientKey = "") {
     const request = {
       ConnectedDvc: connectedDvc,
-      ClientKey: clientKey
+      ClientKey: clientKey,
     };
-    return await this.postToService('info', request);
+    return await this.postToService("info", request);
   }
 
   /**
    * Check if device is connected
    */
-  async isDeviceConnected(connectedDvc = '') {
+  async isDeviceConnected(connectedDvc = "") {
     const request = {
-      ConnectedDvc: connectedDvc
+      ConnectedDvc: connectedDvc,
     };
-    return await this.postToService('checkdevice', request);
+    return await this.postToService("checkdevice", request);
   }
 
   /**
    * Initialize device
    */
-  async initDevice(connectedDvc = '', clientKey = '') {
+  async initDevice(connectedDvc = "", clientKey = "") {
     const request = {
       ConnectedDvc: connectedDvc,
-      ClientKey: clientKey
+      ClientKey: clientKey,
     };
-    return await this.postToService('initdevice', request);
+    return await this.postToService("initdevice", request);
   }
 
   /**
    * Uninitialize device
    */
   async uninitDevice() {
-    return await this.postToService('uninitdevice');
+    return await this.postToService("uninitdevice");
   }
 
   /**
    * Get list of supported devices
    */
   async getSupportedDeviceList() {
-    return await this.postToService('supporteddevicelist');
+    return await this.postToService("supporteddevicelist");
   }
 
   /**
    * Get list of connected devices
    */
   async getConnectedDeviceList() {
-    return await this.postToService('connecteddevicelist');
+    return await this.postToService("connecteddevicelist");
   }
 
   /**
@@ -144,9 +144,9 @@ export class MFS500 {
   async captureFinger(quality, timeout) {
     const request = {
       Quality: quality,
-      TimeOut: timeout
+      TimeOut: timeout,
     };
-    return await this.postToService('capture', request);
+    return await this.postToService("capture", request);
   }
 
   /**
@@ -155,9 +155,9 @@ export class MFS500 {
    */
   async getImage(imgFormat = 0) {
     const request = {
-      ImgFormat: imgFormat
+      ImgFormat: imgFormat,
     };
-    return await this.postToService('getimage', request);
+    return await this.postToService("getimage", request);
   }
 
   /**
@@ -166,9 +166,9 @@ export class MFS500 {
    */
   async getTemplate(tmpFormat = 0) {
     const request = {
-      TmpFormat: tmpFormat
+      TmpFormat: tmpFormat,
     };
-    return await this.postToService('gettemplate', request);
+    return await this.postToService("gettemplate", request);
   }
 
   /**
@@ -178,9 +178,9 @@ export class MFS500 {
     const request = {
       ProbTemplate: probFMR,
       GalleryTemplate: galleryFMR,
-      TmpFormat: tmpFormat
+      TmpFormat: tmpFormat,
     };
-    return await this.postToService('verify', request);
+    return await this.postToService("verify", request);
   }
 
   /**
@@ -191,9 +191,9 @@ export class MFS500 {
       Quality: quality,
       TimeOut: timeout,
       GalleryTemplate: galleryFMR,
-      TmpFormat: tmpFormat
+      TmpFormat: tmpFormat,
     };
-    return await this.postToService('match', request);
+    return await this.postToService("match", request);
   }
 
   /**
@@ -202,15 +202,15 @@ export class MFS500 {
    */
   extractDeviceNameFromDescription(errorDescription) {
     if (!errorDescription) return null;
-    
+
     // Handle format: "Connected Device :MFS500" or "Connected Device:MFS500"
-    if (errorDescription.includes(':')) {
-      const parts = errorDescription.split(':');
+    if (errorDescription.includes(":")) {
+      const parts = errorDescription.split(":");
       if (parts.length >= 2) {
         return parts[1].trim();
       }
     }
-    
+
     return null;
   }
 
@@ -220,9 +220,12 @@ export class MFS500 {
   async enumerateDevices() {
     try {
       const result = await this.getConnectedDeviceList();
-      
+
       if (!result.httpStatus) {
-        console.log("MFS500: MorFinAuthClientService not available -", result.err);
+        console.log(
+          "MFS500: MorFinAuthClientService not available -",
+          result.err
+        );
         return [];
       }
 
@@ -230,31 +233,32 @@ export class MFS500 {
       if (data && (data.ErrorCode === "0" || data.ErrorCode === 0)) {
         const devices = [];
         let deviceName = null;
-        
-        deviceName = this.extractDeviceNameFromDescription(data.ErrorDescription);
-        
+
+        deviceName = this.extractDeviceNameFromDescription(
+          data.ErrorDescription
+        );
+
         if (deviceName) {
           const device = {
             name: `MANTRA ${deviceName}`,
-            type: 'mfs500',
+            type: "mfs500",
             deviceId: deviceName,
             originalDevice: {
               name: deviceName,
-              status: 'Connected'
-            }
+              status: "Connected",
+            },
           };
-          
+
           devices.push(device);
           this.connectedDevice = device;
-          
+
           // await this.initDevice(deviceName);
           return devices;
         }
       }
-      
+
       console.log("MFS500: No devices found");
       return [];
-      
     } catch (error) {
       console.error("Error checking MFS500 devices:", error);
       return [];
@@ -269,8 +273,9 @@ export class MFS500 {
     this.currentScanController = new AbortController();
 
     try {
-      const deviceName = deviceInfo?.deviceId || this.connectedDevice?.deviceId || '';
-      
+      const deviceName =
+        deviceInfo?.deviceId || this.connectedDevice?.deviceId || "";
+
       const initResult = await this.initDevice(deviceName);
 
       const captureResult = await this.captureFinger(
@@ -288,7 +293,7 @@ export class MFS500 {
         let wsqImage = null;
 
         const imageResult = await this.getImage(2); // 0 = WSQ format
-        
+
         if (imageResult.httpStatus && imageResult.data) {
           wsqImage = imageResult.data.ImgData;
         }
@@ -298,22 +303,24 @@ export class MFS500 {
           this.fingerprintAcquired = true;
 
           if (this.onSamplesAcquired) {
-            this.onSamplesAcquired(this.samples, 'mfs500');
+            this.onSamplesAcquired(this.samples, "mfs500");
           }
-          
+
           return wsqImage;
         } else {
           throw new Error("No WSQ fingerprint data in response");
         }
       } else {
         // Handle error
-        const errorMsg = this.getErrorMessage(data?.ErrorCode, data?.ErrorDescription);
+        const errorMsg = this.getErrorMessage(
+          data?.ErrorCode,
+          data?.ErrorDescription
+        );
         throw new Error(errorMsg);
       }
-
     } catch (error) {
       // Don't show error if scan was intentionally cancelled
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         console.log("MFS500 scan cancelled");
         return;
       }
@@ -321,9 +328,14 @@ export class MFS500 {
       console.error("MFS500 capture error:", error);
 
       let errorMessage;
-      if (error.message === 'Service Unavailable' || error.message.includes('fetch')) {
-        errorMessage = __("MFS500 service is not running. Please ensure MorFinAuthClientService is installed and running on port 8030.");
-      } else if (error.message.includes('timeout')) {
+      if (
+        error.message === "Service Unavailable" ||
+        error.message.includes("fetch")
+      ) {
+        errorMessage = __(
+          "MFS500 service is not running. Please ensure MorFinAuthClientService is installed and running on port 8030."
+        );
+      } else if (error.message.includes("timeout")) {
         errorMessage = __("Fingerprint capture timeout. Please try again.");
       } else {
         errorMessage = __(`Failed to capture fingerprint: ${error.message}`);
@@ -342,24 +354,24 @@ export class MFS500 {
    */
   getErrorMessage(errorCode, defaultMessage) {
     const errorMessages = {
-      '-1': 'Unknown error occurred',
-      '-2': 'Device not connected',
-      '-3': 'Device not initialized',
-      '-4': 'Capture failed',
-      '-5': 'Invalid parameter',
-      '-6': 'Capture timeout - no finger detected',
-      '-7': 'Poor quality fingerprint',
-      '-8': 'Device is busy',
-      '-9': 'Device communication error',
-      '-10': 'License error',
-      '-1301': 'Device not found',
-      '-1302': 'Device initialization failed',
-      '-1303': 'Capture already in progress',
-      '-1304': 'Invalid image quality',
-      '-1305': 'Invalid template format',
-      '-1306': 'Device disconnected during capture',
-      '-1307': 'Operation cancelled by user',
-      '-1308': 'Service not responding'
+      "-1": "Unknown error occurred",
+      "-2": "Device not connected",
+      "-3": "Device not initialized",
+      "-4": "Capture failed",
+      "-5": "Invalid parameter",
+      "-6": "Capture timeout - no finger detected",
+      "-7": "Poor quality fingerprint",
+      "-8": "Device is busy",
+      "-9": "Device communication error",
+      "-10": "License error",
+      "-1301": "Device not found",
+      "-1302": "Device initialization failed",
+      "-1303": "Capture already in progress",
+      "-1304": "Invalid image quality",
+      "-1305": "Invalid template format",
+      "-1306": "Device disconnected during capture",
+      "-1307": "Operation cancelled by user",
+      "-1308": "Service not responding",
     };
 
     const code = String(errorCode);
@@ -398,17 +410,17 @@ export class MFS500 {
    */
   formatFingerprintImage(sample) {
     if (!sample) {
-      return '/assets/hms_tz/images/fingerprint.png';
+      return "/assets/hms_tz/images/fingerprint.png";
     }
-    
+
     // Check if already has data URI prefix
-    if (sample.startsWith('data:')) {
+    if (sample.startsWith("data:")) {
       return sample;
     }
-    
+
     // For templates (ISO/ANSI), we can't display them as images
     // Return a placeholder fingerprint image
-    return '/assets/hms_tz/images/fingerprint.png';
+    return "/assets/hms_tz/images/fingerprint.png";
   }
 
   /**
@@ -416,10 +428,10 @@ export class MFS500 {
    */
   async resetDeviceState() {
     console.log("MFS500 device reset");
-    
+
     // Cancel any ongoing operations
     await this.cancelScan();
-    
+
     // Reset internal state
     this.samples = null;
     this.fingerprintAcquired = false;
@@ -468,7 +480,7 @@ export class MFS500 {
   setCaptureSettings(settings) {
     this.captureSettings = {
       ...this.captureSettings,
-      ...settings
+      ...settings,
     };
   }
 }

@@ -37,40 +37,44 @@ frappe.ui.form.on("Patient", {
 
     if (!frm.doc.insurance_provider) return;
 
-    frm.fields_dict.card_no.$input.off("focusout.card_no_handler").on("focusout.card_no_handler", function () {
-      if (frm._card_no_api_in_progress) return;
-      if (frm._national_id_api_in_progress) return;
+    frm.fields_dict.card_no.$input
+      .off("focusout.card_no_handler")
+      .on("focusout.card_no_handler", function () {
+        if (frm._card_no_api_in_progress) return;
+        if (frm._national_id_api_in_progress) return;
 
-      frm._card_no_api_in_progress = true;
-      frm._national_id_api_in_progress = true;
-      get_patient_info(frm, "card_no").finally(() => {
-        frm._card_no_api_in_progress = false;
-        frm._national_id_api_in_progress = false;
+        frm._card_no_api_in_progress = true;
+        frm._national_id_api_in_progress = true;
+        get_patient_info(frm, "card_no").finally(() => {
+          frm._card_no_api_in_progress = false;
+          frm._national_id_api_in_progress = false;
+        });
+        frm.set_df_property("card_no", "read_only", 1);
       });
-      frm.set_df_property("card_no", "read_only", 1);
-    });
   },
   national_id: function (frm) {
     frm.trigger("set_card_type_options");
 
     if (!frm.doc.insurance_provider) return;
 
-    frm.fields_dict.national_id.$input.off("focusout.national_id_handler").on("focusout.national_id_handler", function () {
-      if (frm._card_no_api_in_progress) return;
-      if (frm._national_id_api_in_progress) return;
-      
-      frm._card_no_api_in_progress = true;
-      frm._national_id_api_in_progress = true;
-      get_patient_info(frm, "national_id").finally(() => {
-        frm._card_no_api_in_progress = false;
-        frm._national_id_api_in_progress = false;
+    frm.fields_dict.national_id.$input
+      .off("focusout.national_id_handler")
+      .on("focusout.national_id_handler", function () {
+        if (frm._card_no_api_in_progress) return;
+        if (frm._national_id_api_in_progress) return;
+
+        frm._card_no_api_in_progress = true;
+        frm._national_id_api_in_progress = true;
+        get_patient_info(frm, "national_id").finally(() => {
+          frm._card_no_api_in_progress = false;
+          frm._national_id_api_in_progress = false;
+        });
+        frm.set_df_property("national_id", "read_only", 1);
       });
-      frm.set_df_property("national_id", "read_only", 1);
-    });
   },
   insurance_provider: function (frm) {
     frm.trigger("set_card_type_options");
-    
+
     let field_name = frm.doc.card_no ? "card_no" : "national_id";
 
     if (frm.doc.insurance_provider && frm.doc[field_name]) {
@@ -382,32 +386,31 @@ function update_nhif_patient_info(frm, patient_data) {
   );
 }
 
-
 function get_jubilee_patient_info(frm) {
-    frappe.call({
-      method: 'hms_tz.jubilee.api.api.get_member_card_detials',
-      args: {
-          'card_no': frm.doc.card_no,
-          // TODO: Impplement National ID search for Jubilee, if API supports it
-          'insurance_provider': frm.doc.insurance_provider
-      },
-      freeze: true,
-      freeze_message: __("Please Wait..."),
-      callback: function (data) {
-          if (data.message && data.message !== "Error") {
-            frappe.utils.play_sound("submit");
+  frappe.call({
+    method: "hms_tz.jubilee.api.api.get_member_card_detials",
+    args: {
+      card_no: frm.doc.card_no,
+      // TODO: Impplement National ID search for Jubilee, if API supports it
+      insurance_provider: frm.doc.insurance_provider,
+    },
+    freeze: true,
+    freeze_message: __("Please Wait..."),
+    callback: function (data) {
+      if (data.message && data.message !== "Error") {
+        frappe.utils.play_sound("submit");
 
-            const cardinfo = data.message["Description"];
-            if (!frm.is_new()) {
-                const d = new frappe.ui.Dialog({
-                    title: "Patient's information",
-                    primary_action_label: 'Submit',
-                    primary_action(values) {
-                        update_jubilee_patient_info(frm, cardinfo);
-                        d.hide();
-                    }
-                });
-                $(`<div class="modal-body ui-front">
+        const cardinfo = data.message["Description"];
+        if (!frm.is_new()) {
+          const d = new frappe.ui.Dialog({
+            title: "Patient's information",
+            primary_action_label: "Submit",
+            primary_action(values) {
+              update_jubilee_patient_info(frm, cardinfo);
+              d.hide();
+            },
+          });
+          $(`<div class="modal-body ui-front">
                   <table class="table table-bordered">
                     <thead>
                       <tr>
@@ -442,7 +445,7 @@ function get_jubilee_patient_info(frm) {
                           <td>${frm.doc.mobile}</td>
                           <td>${cardinfo.Phone}</td>
                       </tr>
-                      <tr> 
+                      <tr>
                           <td>Gender</td>
                           <td>${frm.doc.sex}</td>
                           <td>${cardinfo.Gender}</td>
@@ -460,42 +463,50 @@ function get_jubilee_patient_info(frm) {
                     </tbody>
                   </table>
                 </div>`).appendTo(d.body);
-                d.show();
-            }
-            else {
-                update_jubilee_patient_info(frm, cardinfo);
-            }
-          } else {
-              frappe.utils.play_sound("error");
-              frappe.show_alert({
-                  message: __("Failed to get patient's information"),
-                  indicator: 'red'
-              }, 10);
-          }
-      },
-      onerror: function (data) {
-          frappe.utils.play_sound("error");
-          frappe.show_alert({
-              message: __("Failed to get patient's information"),
-              indicator: 'red'
-          }, 10);
+          d.show();
+        } else {
+          update_jubilee_patient_info(frm, cardinfo);
+        }
+      } else {
+        frappe.utils.play_sound("error");
+        frappe.show_alert(
+          {
+            message: __("Failed to get patient's information"),
+            indicator: "red",
+          },
+          10
+        );
       }
-    });
+    },
+    onerror: function (data) {
+      frappe.utils.play_sound("error");
+      frappe.show_alert(
+        {
+          message: __("Failed to get patient's information"),
+          indicator: "red",
+        },
+        10
+      );
+    },
+  });
 }
 
 function update_jubilee_patient_info(frm, cardinfo) {
-    frm.set_value("first_name", cardinfo.FirstName);
-    frm.set_value("middle_name", cardinfo.MiddleName);
-    frm.set_value("last_name", cardinfo.LastName);
-    frm.set_value("patient_name", cardinfo.MemberName);
-    frm.set_value("sex", cardinfo.Gender);
-    frm.set_value("dob", cardinfo.Dob);
-    frm.set_value("nhif_employername", cardinfo.Company);
-    frm.set_value("membership_no", cardinfo.PrincipleMemberNo);
-    frm.set_value("mobile", cardinfo.Phone);
-    frm.save();
-    frappe.show_alert({
-        message: __("Patient's information is updated"),
-        indicator: 'green'
-    }, 10);
+  frm.set_value("first_name", cardinfo.FirstName);
+  frm.set_value("middle_name", cardinfo.MiddleName);
+  frm.set_value("last_name", cardinfo.LastName);
+  frm.set_value("patient_name", cardinfo.MemberName);
+  frm.set_value("sex", cardinfo.Gender);
+  frm.set_value("dob", cardinfo.Dob);
+  frm.set_value("nhif_employername", cardinfo.Company);
+  frm.set_value("membership_no", cardinfo.PrincipleMemberNo);
+  frm.set_value("mobile", cardinfo.Phone);
+  frm.save();
+  frappe.show_alert(
+    {
+      message: __("Patient's information is updated"),
+      indicator: "green",
+    },
+    10
+  );
 }
