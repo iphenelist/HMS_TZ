@@ -28,3 +28,8 @@ ignore = [
   "E402",
   "E741",
 ]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit",
+]
