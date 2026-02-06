@@ -1,4 +1,1 @@
-frappe
-erpnext
-healthcare
-pre-commit
+# dependencies are managed in pyproject.toml
