@@ -1,6 +1,21 @@
+[project]
+name = "hms_tz"
+authors = [
+    { name = "Aakvatech", email = "info@aakvatech.com" }
+]
+description = "Hms Tz"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+]
 
 [tool.black]
 line-length = 120

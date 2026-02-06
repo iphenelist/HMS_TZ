@@ -1,2 +1,1 @@
-# frappe, erpnext, healthcare are resolved by Frappe's bench dependency system
-pre-commit
+# managed by pyproject.toml
