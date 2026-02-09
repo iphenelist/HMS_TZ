@@ -9,7 +9,7 @@ from frappe.query_builder import DocType
 from frappe.query_builder import functions as fn
 from frappe.query_builder.functions import Coalesce
 from frappe.utils import add_days, flt, getdate, nowdate
-from pypika.terms import ValueWrapper  # Case, Criterion, , Not
+from pypika.terms import Case, ValueWrapper
 
 
 def execute(filters=None):
@@ -990,12 +990,25 @@ def get_hsr_payment_data(filters):
     Fetch insurance transaction data from Healthcare Service Request
     and its child table Healthcare Service Request Payment.
     This covers both OPD and IPD insurance patients.
+
+    Category is derived from service_type using a CASE expression
+    instead of joining template doctypes.
     """
     hsr = DocType("Healthcare Service Request")
     hsrp = DocType("Healthcare Service Request Payment")
     pa = DocType("Patient Appointment")
     ipd_rec = DocType("Inpatient Record")
-    item = DocType("Item")
+
+    # Map service_type to category using CASE/WHEN
+    category_case = (
+        Case()
+        .when(hsrp.service_type == "Lab Test Template", "Laboratory")
+        .when(hsrp.service_type == "Radiology Examination Template", "Radiology")
+        .when(hsrp.service_type == "Clinical Procedure Template", "Procedure")
+        .when(hsrp.service_type == "Medication", "Medication")
+        .when(hsrp.service_type == "Therapy Type", "Physiotherapy")
+        .else_(hsrp.service_type)
+    )
 
     # Build the query using frappe.query_builder
     query = (
@@ -1006,15 +1019,13 @@ def get_hsr_payment_data(filters):
         .on(hsr.appointment == pa.name)
         .left_join(ipd_rec)
         .on(pa.name == ipd_rec.patient_appointment)
-        .left_join(item)
-        .on(hsrp.service_name == item.item_name)
         .select(
             fn.Date(hsr.posting_datetime).as_("date"),
-            Coalesce(item.item_group, hsrp.service_type).as_("category"),
+            category_case.as_("category"),
             hsrp.service_name.as_("description"),
             (hsrp.qty - Coalesce(hsrp.qty_returned, 0)).as_("quantity"),
-            hsrp.rate.as_("rate"),
-            ((hsrp.qty - Coalesce(hsrp.qty_returned, 0)) * hsrp.rate).as_("amount"),
+            (hsrp.rate * (Coalesce(hsrp.percent_covered, 0) / 100)).as_("rate"),
+            ((hsrp.qty - Coalesce(hsrp.qty_returned, 0)) * hsrp.rate * (Coalesce(hsrp.percent_covered, 0) / 100)).as_("amount"),
             pa.patient.as_("patient"),
             pa.patient_name.as_("patient_name"),
             pa.appointment_type.as_("appointment_type"),
