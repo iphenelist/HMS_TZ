@@ -12,7 +12,7 @@
     // Git commit message settings
     "git.inputValidationSubjectLength": 72,
     "git.inputValidationLength": 500,
-    "git.inputValidation": "always",
+    "git.inputValidation": true,
     
     // Conventional Commits settings
     "conventionalCommits.scopes": [
