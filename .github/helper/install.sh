@@ -49,6 +49,11 @@ bench get-app healthcare --branch "$BRANCH_TO_CLONE"
 bench get-app hms_tz "${GITHUB_WORKSPACE}"
 
 bench setup requirements --dev
+
+# setuptools is required by the dropbox package (frappe dependency)
+# which imports pkg_resources. Python 3.11+ venvs no longer include
+# setuptools by default, so we install it explicitly.
+~/frappe-bench/env/bin/pip install setuptools
 echo "::endgroup::"
 
 echo "::group::Build & Install Site"
