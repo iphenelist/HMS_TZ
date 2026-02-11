@@ -303,7 +303,7 @@ jinja = {
 # Testing
 # -------
 
-# before_tests = "hms_tz.install.before_tests"
+before_tests = "hms_tz.install.before_tests"
 
 # Overriding Methods
 # ------------------------------
