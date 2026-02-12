@@ -44,6 +44,15 @@ def create_fields_from_json(custom_fields_obj):
 
         doctype_custom_fields_dict[doctype].append(custom_field_dict)
 
+    # Sort fields so that Dynamic Link fields are created after Link fields.
+    # Frappe validates that a Dynamic Link's `options` references an existing
+    # Link field with options="DocType". If the Link field hasn't been created
+    # yet (because it appears later in the list), the validation fails.
+    for doctype in doctype_custom_fields_dict:
+        doctype_custom_fields_dict[doctype].sort(
+            key=lambda f: 1 if f.get("fieldtype") == "Dynamic Link" else 0
+        )
+
     create_custom_fields(doctype_custom_fields_dict, update=False)
 
 
