@@ -2420,7 +2420,7 @@ def execute():
             "value": 1,
         },
         {
-            "doctype": "Medical Code",
+            "doctype": "Code Value",
             "fieldname": "description",
             "property": "in_standard_filter",
             "property_type": "Check",
