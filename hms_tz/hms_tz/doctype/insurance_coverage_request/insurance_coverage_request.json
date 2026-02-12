@@ -121,7 +121,7 @@
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "label": "Medical Code",
-   "options": "Medical Code"
+   "options": "Code Value"
   },
   {
    "fieldname": "section_break_14",
