@@ -2235,7 +2235,7 @@ def execute():
                 "label": "Referred From",
                 "fieldname": "referred_from",
                 "insert_after": "how_did_you_hear_about_us",
-                "options": "Referred From",
+                "options": "Healthcare Facility",
                 "depends_on": 'eval:doc.how_did_you_hear_about_us == "Referred"',
             },
         ],
