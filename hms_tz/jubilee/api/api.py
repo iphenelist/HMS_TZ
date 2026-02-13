@@ -135,3 +135,76 @@ def create_jubilee_subscription(patient_id, card_no, insurance_provider):
             f"<h3>AUTO</h3> Healthcare Insurance Subscription: {sub_doc.name} is created for {plan[0].name}"
         )
     )
+
+
+@frappe.whitelist()
+def get_authorization_number(
+    company,
+    card_no,
+    appointment_no,
+    insurance_subscription,
+    insurance_provider="Jubilee",
+):
+    if insurance_provider != "Jubilee":
+        return
+
+    if not company:
+        frappe.throw(_("Company is required to get authorization number"))
+
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", company)
+
+    if not setting_doc.enable_jubilee_api:
+        frappe.throw(
+            f"HMS TZ Setting for company: {company} does not have Jubilee API enabled."
+        )
+
+    if not card_no:
+        frappe.msgprint(
+            _(
+                f"Please set Card No in Healthcare Insurance Subscription {insurance_subscription}"
+            )
+        )
+        return
+
+    token = setting_doc.get_jubilee_token()
+    headers = {"Content-Type": "application/json", "Authorization": "Bearer " + token}
+    url = f"{setting_doc.jubilee_url}/jubileeapi/CheckVerification?MemberNo={str(card_no)}"
+
+    r = requests.get(url, headers=headers, timeout=60)
+
+    if r.status_code != 200:
+        data = json.loads(r.text) if r.text else {}
+        add_jubilee_log(
+            request_type="AuthorizeCard",
+            request_url=url,
+            request_header=headers,
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype="Patient Appointment",
+            ref_docname=appointment_no,
+            company=company,
+            card_no=card_no,
+        )
+        frappe.throw(
+            _(f"Failed to Authorize Card<br><br>Status Code: {r.status_code}<br>Jubilee Response: <b>{data.get('Description')}<b>")
+        )
+    else:
+        data = json.loads(r.text)
+        add_jubilee_log(
+            request_type="AuthorizeCard",
+            request_url=url,
+            request_header=headers,
+            response_data=data,
+            status_code=r.status_code,
+            ref_doctype="Patient Appointment",
+            ref_docname=appointment_no,
+            company=company,
+            card_no=card_no,
+            authorization_no=data.get("AuthorizationNo", ""),
+        )
+        if data.get("AuthorizationNo") and "OK" not in data.get("Status"):
+            frappe.throw(title=data.get("Status"), msg=data["Description"])
+
+        frappe.msgprint(_(data["Description"]), alert=True)
+        return data
+
