@@ -1,6 +1,11 @@
+import os
+
 import frappe
 from erpnext.setup.utils import before_tests as erpnext_before_tests
 from healthcare.healthcare.utils import before_tests as healthcare_before_tests
+
+from hms_tz.patches.custom_fields.create_custom_fields import execute as create_custom_fields
+from hms_tz.patches.property_setter.create_property_setters import execute as create_property_setters
 
 
 def before_tests():
@@ -41,17 +46,13 @@ def setup_hms_tz_test_data():
     The test runner does not trigger migrations or after_migrate hooks,
     so we must apply all custom fields and property setters explicitly.
 
-    This runs:
-    1. All individual Python patches from patches.txt that create custom
-       fields or property setters (~37 custom field + ~10 property setter
-       patches covering ~58 doctypes).
-    2. The JSON-based create_custom_fields/create_property_setters used
-       by after_migrate hooks (covers ~26 doctypes from exported JSON).
-
-    Together these ensure the full schema that hms_tz code expects.
+    Ordering is critical:
+    1. Custom fields must be created FIRST (both Python patches and JSON).
+    2. Property setters run AFTER, because some set doctype-level properties
+       like ``image_field`` to a custom fieldname. If that fieldname doesn't
+       exist yet, Frappe's field validation fails on the next custom field
+       insert for that doctype.
     """
-    import os
-
     patches_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "patches.txt"
     )
@@ -59,15 +60,21 @@ def setup_hms_tz_test_data():
     with open(patches_file) as f:
         patches = f.read().splitlines()
 
-    # Run all custom_fields and property_setter patches from patches.txt
+    custom_field_patches = []
+    property_setter_patches = []
+
     for patch_path in patches:
         patch_path = patch_path.strip()
         if not patch_path or patch_path.startswith("[") or patch_path.startswith("#"):
             continue
 
-        if ".custom_fields." not in patch_path and ".property_setter." not in patch_path:
-            continue
+        if ".custom_fields." in patch_path:
+            custom_field_patches.append(patch_path)
+        elif ".property_setter." in patch_path:
+            property_setter_patches.append(patch_path)
 
+    # Phase 1: Create all custom fields (Python patches then JSON-based)
+    for patch_path in custom_field_patches:
         try:
             frappe.get_attr(patch_path + ".execute")()
         except Exception as e:
@@ -76,10 +83,16 @@ def setup_hms_tz_test_data():
                 message=str(e),
             )
 
-    # Also run the JSON-based after_migrate hooks (covers additional fields
-    # exported from a live site that may not be in the Python patches).
-    from hms_tz.patches.custom_fields.create_custom_fields import execute as create_custom_fields
-    from hms_tz.patches.property_setter.create_property_setters import execute as create_property_setters
-
     create_custom_fields()
+
+    # Phase 2: Apply all property setters (Python patches then JSON-based)
+    for patch_path in property_setter_patches:
+        try:
+            frappe.get_attr(patch_path + ".execute")()
+        except Exception as e:
+            frappe.log_error(
+                title=f"hms_tz before_tests: patch failed - {patch_path}",
+                message=str(e),
+            )
+
     create_property_setters()
