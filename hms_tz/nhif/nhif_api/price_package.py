@@ -24,7 +24,6 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 def enqueue_get_nhif_price_packages(company):
     enqueue(
         method=get_price_package,
-        job_name="get_nhif_price_packages",
         queue="long",
         timeout=7200,
         is_async=True,
