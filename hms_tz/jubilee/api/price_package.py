@@ -20,7 +20,40 @@ from hms_tz.api.insurance import (
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
 
-def get_jubilee_price_packages(company):
+@frappe.whitelist()
+def enqueue_get_jubilee_price_packages(company):
+    enqueue(
+        method=get_price_package,
+        queue="default",
+        timeout=7200,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Fetch price package via backgroud job", alert=True)
+
+
+@frappe.whitelist()
+def process_jubilee_records(company):
+    enqueue(
+        method=process_jubilee_prices,
+        queue="default",
+        timeout=3600,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Processing Jubilee prices via backaground job", alert=True)
+
+    enqueue(
+        method=process_jubilee_coverages,
+        queue="default",
+        timeout=3600,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Processing Jubilee Coverages via backaground job", alert=True)
+
+
+def get_price_package(company):
     if not company:
         frappe.throw(_("No companies found to connect to Jubilee"))
 
