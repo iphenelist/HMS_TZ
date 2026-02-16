@@ -32,10 +32,29 @@ def get_columns():
             "width": 150,
         },
         {
+            "fieldname": "gender",
+            "label": _("Gender"),
+            "fieldtype": "Data",
+            "width": 100,
+        },
+        {
             "fieldname": "patient_appointment",
             "label": _("Patient Appointment"),
             "fieldtype": "Link",
             "options": "Patient Appointment",
+            "width": 150,
+        },
+        {
+            "fieldname": "appointment_date",
+            "label": _("Appointment Date"),
+            "fieldtype": "Date",
+            "width": 120,
+        },
+        {
+            "fieldname": "practitioner",
+            "label": _("Practitioner"),
+            "fieldtype": "Link",
+            "options": "Healthcare Practitioner",
             "width": 150,
         },
         {
@@ -69,18 +88,6 @@ def get_columns():
             "width": 130,
         },
         {
-            "fieldname": "gender",
-            "label": _("Gender"),
-            "fieldtype": "Data",
-            "width": 100,
-        },
-        {
-            "fieldname": "appointment_date",
-            "label": _("Appointment Date"),
-            "fieldtype": "Date",
-            "width": 120,
-        },
-        {
             "fieldname": "admitted_date",
             "label": _("Admitted Date"),
             "fieldtype": "Date",
@@ -100,6 +107,116 @@ def get_columns():
         },
     ]
     return columns
+
+
+def process_merged_items(raw_data):
+    """
+    Process NHIF claim items to handle merged items and add practitioner information.
+    When items are merged, ref_docname contains comma-separated values.
+    This function splits such items into separate rows and fetches the actual quantity and
+    amount for each item from the Healthcare Service Request.
+    """
+    processed_data = []
+
+    for row in raw_data:
+        ref_docname_list = [
+            name.strip()
+            for name in str(row.get("ref_docname") or "").split(",")
+            if name.strip()
+        ]
+        ref_doctype = row.get("service_type")
+        coverage_plan_name = row.get("coverage_plan_name") or ""
+        item_code = row.get("item_code") or ""
+        details_map = get_hsr_details_batch(
+            ref_docname_list, ref_doctype, coverage_plan_name, item_code
+        )
+
+        if len(ref_docname_list) > 1:
+            # Merged items - create a separate row for each ref_docname
+            for ref_docname in ref_docname_list:
+                hsr_details = details_map.get(ref_docname, {})
+                new_row = row.copy()
+                new_row["qty"] = hsr_details.get("qty", 0)
+                new_row["amount_claimed"] = hsr_details.get("amount", 0)
+                new_row["practitioner"] = hsr_details.get("practitioner")
+                new_row.pop("ref_docname", None)
+                new_row.pop("item_code", None)
+                new_row.pop("coverage_plan_name", None)
+                processed_data.append(new_row)
+        else:
+            # Single item - get practitioner from Healthcare Service Request
+            ref_docname = ref_docname_list[0] if ref_docname_list else ""
+            hsr_details = details_map.get(ref_docname, {})
+            row["practitioner"] = hsr_details.get("practitioner")
+            row.pop("ref_docname", None)
+            row.pop("item_code", None)
+            row.pop("coverage_plan_name", None)
+            processed_data.append(row)
+
+    return processed_data
+
+
+def get_hsr_details_batch(ref_docname_list, ref_doctype, coverage_plan_name, item_code):
+    """
+    Fetch qty, amount, and practitioner for multiple ref_docnames in a single query
+    by joining Healthcare Service Request Payment with its parent.
+    Returns a dict keyed by ref_docname.
+    """
+    if not ref_docname_list:
+        return {}
+
+    hsr = DocType("Healthcare Service Request")
+    hsrp = DocType("Healthcare Service Request Payment")
+
+    results = (
+        frappe.qb.from_(hsrp)
+        .inner_join(hsr)
+        .on(hsrp.parent == hsr.name)
+        .select(
+            hsrp.ref_docname,
+            (hsrp.qty - hsrp.qty_returned).as_("qty"),
+            hsrp.amount,
+            hsr.practitioner,
+        )
+        .where(
+            (hsrp.ref_docname.isin(ref_docname_list))
+            & (hsrp.ref_doctype == ref_doctype)
+            & (hsrp.payor_plan == coverage_plan_name)
+            & (hsrp.item_code == item_code)
+        )
+        .run(as_dict=True)
+    )
+
+    details_map = {}
+    for r in results:
+        details_map[r.ref_docname] = {
+            "qty": r.get("qty", 0),
+            "amount": r.get("amount", 0),
+            "practitioner": r.get("practitioner"),
+        }
+
+    # For Patient Appointment, batch fetch practitioners from the appointments
+    if ref_doctype == "Patient Appointment":
+        pa = DocType("Patient Appointment")
+        pa_results = (
+            frappe.qb.from_(pa)
+            .select(pa.name, pa.practitioner)
+            .where(pa.name.isin(ref_docname_list))
+            .run(as_dict=True)
+        )
+        pa_map = {r.name: r.practitioner for r in pa_results}
+        for name in ref_docname_list:
+            if name in details_map:
+                details_map[name]["practitioner"] = pa_map.get(name) or details_map[name]["practitioner"]
+            else:
+                details_map[name] = {"qty": 1, "amount": 0, "practitioner": pa_map.get(name)}
+
+    # Fill defaults for any ref_docnames not found
+    for name in ref_docname_list:
+        if name not in details_map:
+            details_map[name] = {"qty": 1, "amount": 0, "practitioner": None}
+
+    return details_map
 
 
 def get_data(filters):
@@ -125,6 +242,9 @@ def get_data(filters):
             npc.date_admitted.as_("admitted_date"),
             npc.date_discharge.as_("discharge_date"),
             npc.folio_no.as_("folio_no"),
+            npci.ref_docname.as_("ref_docname"),
+            npci.item_code.as_("item_code"),
+            npc.coverage_plan_name.as_("coverage_plan_name"),
         )
         .where(
             (npc.company == filters.get("company"))
@@ -138,7 +258,12 @@ def get_data(filters):
     else:
         data_query = data_query.where(npc.docstatus == 1)
 
-    return data_query.run(as_dict=True)
+    raw_data = data_query.run(as_dict=True)
+
+    # Process data to handle merged items and add practitioner information
+    processed_data = process_merged_items(raw_data)
+
+    return processed_data
 
 
 # SELECT
