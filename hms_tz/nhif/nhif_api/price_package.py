@@ -358,9 +358,6 @@ def process_nhif_coverages(company, facility_code, coverage_plan=None):
         "start_date",
         "end_date",
     ]
-    service_map = get_insurance_items("NHIF")
-    price_package_map = get_price_package_map(company, facility_code)
-
     filters = {
         "insurance_company": ["like", "NHIF%"],
         "is_active": 1,
@@ -374,6 +371,12 @@ def process_nhif_coverages(company, facility_code, coverage_plan=None):
         fields=["name", "nhif_scheme_id"],
         filters=filters,
     )
+
+    if len(coverage_plan_list) == 0:
+        frappe.throw("No active coverage plan found for NHIF")
+
+    service_map = get_insurance_items("NHIF")
+    price_package_map = get_price_package_map(company, facility_code)
 
     for plan in coverage_plan_list:
         print(f"Processing Insurance Coverage {plan}")
