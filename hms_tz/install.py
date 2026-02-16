@@ -1,6 +1,11 @@
+import os
+
 import frappe
 from erpnext.setup.utils import before_tests as erpnext_before_tests
 from healthcare.healthcare.utils import before_tests as healthcare_before_tests
+
+from hms_tz.patches.custom_fields.create_custom_fields import execute as create_custom_fields
+from hms_tz.patches.property_setter.create_property_setters import execute as create_property_setters
 
 
 def before_tests():
@@ -19,24 +24,75 @@ def before_tests():
     Item Groups, etc.) before hms_tz's own test records are created.
     """
 
-
     # 1. ERPNext: runs setup_complete() → install_fixtures (Warehouse Types,
     #    Genders, Item Groups, Territories, etc.), creates Company, Fiscal Year,
     #    enables all roles for Administrator, sets selling/stock defaults.
     erpnext_before_tests()
-
 
     # 2. Healthcare: creates Frappe Care LLC (if needed), Medical Departments,
     #    Antibiotics, Lab Test UOMs, Dosages, Prescription Durations,
     #    Healthcare Item Groups, Sensitivities, Healthcare Service Units, etc.
     healthcare_before_tests()
 
-    # 3. hms_tz-specific setup
-    # setup_hms_tz_test_data()
+    # 3. hms_tz-specific setup: custom fields, property setters, etc.
+    setup_hms_tz_test_data()
 
     frappe.db.commit()
 
 
 def setup_hms_tz_test_data():
-    """Create any additional master data specific to hms_tz tests."""
-    return
+    """Create all hms_tz custom fields and property setters.
+
+    The test runner does not trigger migrations or after_migrate hooks,
+    so we must apply all custom fields and property setters explicitly.
+
+    Ordering is critical:
+    1. Custom fields must be created FIRST (both Python patches and JSON).
+    2. Property setters run AFTER, because some set doctype-level properties
+       like ``image_field`` to a custom fieldname. If that fieldname doesn't
+       exist yet, Frappe's field validation fails on the next custom field
+       insert for that doctype.
+    """
+    patches_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "patches.txt"
+    )
+
+    with open(patches_file) as f:
+        patches = f.read().splitlines()
+
+    custom_field_patches = []
+    property_setter_patches = []
+
+    for patch_path in patches:
+        patch_path = patch_path.strip()
+        if not patch_path or patch_path.startswith("[") or patch_path.startswith("#"):
+            continue
+
+        if ".custom_fields." in patch_path:
+            custom_field_patches.append(patch_path)
+        elif ".property_setter." in patch_path:
+            property_setter_patches.append(patch_path)
+
+    # Phase 1: Create all custom fields (Python patches then JSON-based)
+    for patch_path in custom_field_patches:
+        try:
+            frappe.get_attr(patch_path + ".execute")()
+        except Exception as e:
+            frappe.log_error(
+                title=f"hms_tz before_tests: patch failed - {patch_path}",
+                message=str(e),
+            )
+
+    create_custom_fields()
+
+    # Phase 2: Apply all property setters (Python patches then JSON-based)
+    for patch_path in property_setter_patches:
+        try:
+            frappe.get_attr(patch_path + ".execute")()
+        except Exception as e:
+            frappe.log_error(
+                title=f"hms_tz before_tests: patch failed - {patch_path}",
+                message=str(e),
+            )
+
+    create_property_setters()
