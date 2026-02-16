@@ -13,7 +13,7 @@ from hms_tz.api.insurance import (
     delete_hsic_data,
     delete_price_package,
     get_insurance_items,
-    get_items_for_price_list,
+    get_packages_for_price_list,
     handle_insurance_prices,
 )
 from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
@@ -319,7 +319,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
         price_list_name = "NHIF-" + scheme + "-" + facility_code
         create_insurance_price_list(company, price_list_name, default_currency, "NHIF", scheme)
 
-    item_list = get_items_for_price_list("NHIF Price Package", company, "NHIF", item_code)
+    item_list = get_packages_for_price_list("NHIF Price Package", company, "NHIF", item_code)
 
     for batch in create_batch(item_list, 1000):
         for item in batch:
