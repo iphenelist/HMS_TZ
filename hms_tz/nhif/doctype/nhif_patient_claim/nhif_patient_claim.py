@@ -81,8 +81,6 @@ class NHIFPatientClaim(Document):
                 items,
             )
 
-        self.reload()
-
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
@@ -184,7 +182,6 @@ class NHIFPatientClaim(Document):
         self.posting_date = nowdate()
         self.serial_no = int(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
-        self.patient_file_no = self.patient
         self.attendance_date, self.attendance_time = frappe.get_cached_value(
             "Patient Appointment",
             self.patient_appointment,
@@ -324,7 +321,6 @@ class NHIFPatientClaim(Document):
     def set_patient_claim_item(self, encounter_list):
         service_requests = []
         self.clinical_notes = ""
-        # childs_map = get_child_map()
         self.nhif_patient_claim_item = []
 
         if not self.inpatient_record:
@@ -864,7 +860,6 @@ class NHIFPatientClaim(Document):
             folio_doc.folio_no += 1
             folio_doc.posting_date = now_datetime()
             folio_doc.save(ignore_permissions=True)
-            # folio_doc.reload()
 
         self.folio_no = folio_no
         self.db_set("folio_no", folio_no)
@@ -1254,7 +1249,6 @@ def reconcile_repeated_items(claim_no):
     claim_doc.original_nhif_patient_claim_item = reconcile_items(claim_doc.original_nhif_patient_claim_item)
 
     claim_doc.save(ignore_permissions=True)
-    claim_doc.reload()
     return True
 
 
