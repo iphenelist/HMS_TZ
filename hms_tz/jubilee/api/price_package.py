@@ -219,7 +219,8 @@ def set_package_diff(company):
         or len(new_price_packages) > 0
         or len(deleted_price_packages) > 0
     ):
-        service_map = get_insurance_items("The Jubilee Insurance (T) Ltd", for_prices=True)
+        jubilee_customer = frappe.get_single_value("HMS TZ Setting", "jubilee_customer_name")
+        service_map = get_insurance_items(jubilee_customer, for_prices=True)
 
         doc = frappe.new_doc("Jubilee Update")
 
@@ -272,7 +273,8 @@ def process_jubilee_prices(company, item=None):
 
     create_insurance_price_list(company, price_list_name, default_currency, "Jubilee")
 
-    item_list = get_packages_for_price_list(company, item)
+    jubilee_customer = frappe.get_single_value("HMS TZ Setting", "jubilee_customer_name")
+    item_list = get_packages_for_price_list("Jubilee Price Package", company, jubilee_customer, item)
 
     for batch in create_batch(item_list, 1000):
         for item in batch:
@@ -320,7 +322,8 @@ def process_jubilee_coverages(company, coverage_plan=None):
     if len(coverage_plan_list) == 0:
         frappe.throw("No active coverage plan found for Jubilee")
 
-    service_map = get_insurance_items("Jubilee")
+    jubilee_customer = frappe.get_single_value("HMS TZ Setting", "jubilee_customer_name")
+    service_map = get_insurance_items(jubilee_customer)
     services = service_map.values()
 
     for plan in coverage_plan_list:
