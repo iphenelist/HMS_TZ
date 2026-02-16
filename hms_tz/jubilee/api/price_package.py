@@ -13,7 +13,7 @@ from hms_tz.api.insurance import (
     create_insurance_price_list,
     delete_price_package,
     get_insurance_items,
-    get_items_for_price_list,
+    get_packages_for_price_list,
     handle_insurance_prices,
 )
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
@@ -238,7 +238,7 @@ def process_jubilee_prices(company, item=None):
 
     create_insurance_price_list(company, price_list_name, default_currency, "Jubilee")
 
-    item_list = get_items_for_price_list(company, item)
+    item_list = get_packages_for_price_list(company, item)
 
     for batch in create_batch(item_list, 1000):
         for item in batch:
