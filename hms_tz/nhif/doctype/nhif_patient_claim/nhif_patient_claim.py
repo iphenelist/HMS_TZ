@@ -302,10 +302,8 @@ class NHIFPatientClaim(Document):
         for row in diagnosis_list:
             new_row = self.append("nhif_patient_claim_disease", {})
             if row.parentfield == "patient_encounter_preliminary_diagnosis":
-                new_row.diagnosis_type = "Provisional Diagnosis"
                 new_row.status = "Provisional"
             elif row.parentfield == "patient_encounter_final_diagnosis":
-                new_row.diagnosis_type = "Final Diagnosis"
                 new_row.status = "Final"
             new_row.patient_encounter = row.parent
             new_row.codification_table = row.name

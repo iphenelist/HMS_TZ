@@ -5,7 +5,6 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "diagnosis_type",
   "status",
   "medical_code",
   "disease_code",
@@ -18,34 +17,26 @@
  ],
  "fields": [
   {
-   "fetch_from": "medical_code.code_value",
-   "fetch_if_empty": 1,
-   "fieldname": "disease_code",
-   "fieldtype": "Data",
+   "fieldname": "status",
+   "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Disease Code",
-   "permlevel": 1
-  },
-  {
-   "fieldname": "date_created",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "Date Created",
-   "permlevel": 1
-  },
-  {
-   "fieldname": "diagnosis_type",
-   "fieldtype": "Data",
-   "label": "Diagnosis Type",
-   "permlevel": 1
+   "label": "Status",
+   "options": "Provisional\nFinal"
   },
   {
    "fieldname": "medical_code",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Medical Code",
-   "options": "Code Value",
-   "permlevel": 1
+   "options": "Code Value"
+  },
+  {
+   "fetch_from": "medical_code.code_value",
+   "fetch_if_empty": 1,
+   "fieldname": "disease_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Disease Code"
   },
   {
    "fetch_from": "medical_code.definition",
@@ -60,17 +51,17 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "codification_table",
-   "fieldtype": "Link",
-   "label": "Codification Table",
-   "options": "Codification Table",
-   "read_only": 1
-  },
-  {
    "fieldname": "patient_encounter",
    "fieldtype": "Link",
    "label": "Patient Encounter",
    "options": "Patient Encounter",
+   "read_only": 1
+  },
+  {
+   "fieldname": "codification_table",
+   "fieldtype": "Link",
+   "label": "Codification Table",
+   "options": "Codification Table",
    "read_only": 1
   },
   {
@@ -81,17 +72,17 @@
    "read_only": 1
   },
   {
-   "fieldname": "status",
-   "fieldtype": "Select",
+   "fieldname": "date_created",
+   "fieldtype": "Datetime",
    "in_list_view": 1,
-   "label": "Status",
-   "options": "Provisional\nFinal"
+   "label": "Date Created",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-27 01:57:43.582352",
+ "modified": "2026-02-16 15:44:02.702348",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim Disease",
