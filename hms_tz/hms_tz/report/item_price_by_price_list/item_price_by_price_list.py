@@ -144,10 +144,9 @@ def build_template_query(template_config, filters):
         .select(
             temp[template_config.get("template_name_field")].as_("template_name"),
             temp[template_config.get("item_code_field")].as_("item_code"),
-            Case()
-                .when(temp.disabled == 0, "Active")
-                .else_("Disabled")
-                .as_("status"),
+            Case().when(temp.disabled == 0, "Active")
+            .else_("Disabled")
+            .as_("status"),
             temp[template_config.get("item_group_field")].as_("item_group"),
             IfNull(ip.price_list, "NO PRICE").as_("price_list"),
             IfNull(ip.price_list_rate, 0).as_("price_list_rate"),
