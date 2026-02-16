@@ -60,14 +60,14 @@ def process_nhif_records(company):
     frappe.msgprint("Processing NHIF prices via backaground job", alert=True)
 
     enqueue(
-        method=process_insurance_coverages,
+        method=process_nhif_coverages,
         queue="long",
         timeout=10000000,
         is_async=True,
         company=company,
         facility_code=facility_code,
     )
-    frappe.msgprint("Processing NHIF Insurance Coverage via backaground job", alert=True)
+    frappe.msgprint("Processing NHIF Coverages via backaground job", alert=True)
 
 
 @frappe.whitelist()
@@ -332,10 +332,11 @@ def process_nhif_prices(company, facility_code, item_code=None):
         frappe.db.commit()
 
 @frappe.whitelist()
-def process_insurance_coverages(company, facility_code, coverage_plan=None):
+def process_nhif_coverages(company, facility_code, coverage_plan=None):
     print("Getting Insurance Coverage Items")
     hsic_data = []
     plans_for_deletion = []
+
     fields = [
         "name",
         "creation",
