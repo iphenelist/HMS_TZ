@@ -29,7 +29,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Medical Code",
-   "options": "Medical Code"
+   "options": "Code Value"
   },
   {
    "fetch_from": "medical_code.code_value",
