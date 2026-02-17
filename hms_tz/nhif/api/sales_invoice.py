@@ -31,7 +31,7 @@ def validate(doc, method):
             )
 
         # do not validate stock for cash inpatient sales invoice
-        if doc.enabled_auto_create_delivery_notes == 0:
+        if doc.get("enabled_auto_create_delivery_notes") == 0:
             continue
 
         validate_stock_item(item, item.warehouse, method)
@@ -43,14 +43,15 @@ def validate(doc, method):
 def validate_create_delivery_note(doc):
     if not doc.patient:
         return
-    if doc.enabled_auto_create_delivery_notes == 0:
+    if doc.get("enabled_auto_create_delivery_notes") == 0:
         return
 
     inpatient_record = frappe.get_cached_value("Patient", doc.patient, "inpatient_record")
     if inpatient_record:
         insurance_subscription = frappe.get_cached_value("Inpatient Record", inpatient_record, "insurance_subscription")
         if not insurance_subscription:
-            doc.enabled_auto_create_delivery_notes = 0
+            if hasattr(doc, "enabled_auto_create_delivery_notes"):
+                doc.enabled_auto_create_delivery_notes = 0
 
 
 @frappe.whitelist()
@@ -70,7 +71,7 @@ def before_submit(doc, method):
         )
 
     # do not validate stock for cash inpatient sales invoice
-    if doc.enabled_auto_create_delivery_notes == 1:
+    if getattr(doc, "enabled_auto_create_delivery_notes", 0) == 1:
         for row in doc.items:
             if frappe.get_cached_value("Item", row.item_code, "is_stock_item") == 1:
                 validate_stock_item(row, row.warehouse, method)
