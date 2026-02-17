@@ -1239,23 +1239,6 @@
         "doctype": "Property Setter"
     },
     {
-        "name": "Patient Encounter-naming_series-default",
-        "owner": "Administrator",
-        "creation": "2021-01-06 11:10:31.102089",
-        "modified": "2020-12-28 17:23:08.602564",
-        "modified_by": "Administrator",
-        "docstatus": 0,
-        "idx": 0,
-        "is_system_generated": 1,
-        "doctype_or_field": "DocField",
-        "doc_type": "Patient Encounter",
-        "field_name": "naming_series",
-        "property": "default",
-        "property_type": "Text",
-        "value": "HPE-.abbr.-.YY..MM..DD.-.###",
-        "doctype": "Property Setter"
-    },
-    {
         "name": "Patient Encounter-naming_series-options",
         "owner": "Administrator",
         "creation": "2021-01-06 11:10:25.861429",
@@ -1268,6 +1251,23 @@
         "doc_type": "Patient Encounter",
         "field_name": "naming_series",
         "property": "options",
+        "property_type": "Text",
+        "value": "HPE-.abbr.-.YY..MM..DD.-.###",
+        "doctype": "Property Setter"
+    },
+    {
+        "name": "Patient Encounter-naming_series-default",
+        "owner": "Administrator",
+        "creation": "2021-01-06 11:10:31.102089",
+        "modified": "2020-12-28 17:23:08.602564",
+        "modified_by": "Administrator",
+        "docstatus": 0,
+        "idx": 0,
+        "is_system_generated": 1,
+        "doctype_or_field": "DocField",
+        "doc_type": "Patient Encounter",
+        "field_name": "naming_series",
+        "property": "default",
         "property_type": "Text",
         "value": "HPE-.abbr.-.YY..MM..DD.-.###",
         "doctype": "Property Setter"
