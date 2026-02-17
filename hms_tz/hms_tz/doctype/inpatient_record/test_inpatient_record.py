@@ -152,6 +152,12 @@ def create_patient():
         patient = frappe.new_doc("Patient")
         patient.first_name = "_Test IPD Patient"
         patient.sex = "Female"
+        patient.mobile = "255700000001"
+        patient.dob = "1990-01-01"
+        patient.common_occupation = "Secretary"
+        patient.ethnicity = "African"
+        patient.demography = "City Centre"
+        patient.how_did_you_hear_about_us = "I know you"
         patient.save(ignore_permissions=True)
         patient = patient.name
     return patient
