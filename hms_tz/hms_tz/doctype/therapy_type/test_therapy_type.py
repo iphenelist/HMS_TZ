@@ -30,6 +30,12 @@ def create_therapy_type():
 
     therapy_type = frappe.db.exists("Therapy Type", "Basic Rehab")
     if not therapy_type:
+        # Get the first available company and service unit for company_options
+        company = frappe.db.get_value("Company", {}, "name")
+        service_unit = frappe.db.get_value(
+            "Healthcare Service Unit", {"company": company}, "name"
+        ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+
         therapy_type = frappe.new_doc("Therapy Type")
         therapy_type.therapy_type = "Basic Rehab"
         therapy_type.default_duration = 30
@@ -44,6 +50,13 @@ def create_therapy_type():
                 "exercise_type": exercise.name,
                 "counts_target": 10,
                 "assistance_level": "Passive",
+            },
+        )
+        therapy_type.append(
+            "company_options",
+            {
+                "company": company,
+                "service_unit": service_unit,
             },
         )
         therapy_type.save()

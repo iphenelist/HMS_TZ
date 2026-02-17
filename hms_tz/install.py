@@ -82,7 +82,10 @@ def before_tests():
     # 3. hms_tz accounting dimensions (Healthcare Practitioner, Healthcare Service Unit)
     create_accounting_dimensions()
 
-    # 4. hms_tz-specific setup: custom fields, property setters, etc.
+    # 4. hms_tz master data required by tests (lookup records for mandatory fields)
+    create_test_master_data()
+
+    # 5. hms_tz-specific setup: custom fields, property setters, etc.
     setup_hms_tz_test_data()
 
     frappe.db.commit()
@@ -144,3 +147,40 @@ def setup_hms_tz_test_data():
             )
 
     create_property_setters()
+
+
+def create_test_master_data():
+    """Create lookup records needed by mandatory custom fields on Patient, etc.
+
+    These are hms_tz doctypes whose records must exist before test Patient
+    documents can be saved (the custom fields are reqd=1).
+    """
+    master_records = [
+        {"doctype": "Occupation", "occupation": "Secretary"},
+        {"doctype": "Ethnicity", "ethnicity": "African"},
+        {"doctype": "Demography", "demography": "City Centre"},
+        {"doctype": "Healthcare Ward Type", "ward_type_name": "General Ward"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Phisiotherapy"},
+    ]
+
+    # Campaign is a Frappe/CRM doctype used by how_did_you_hear_about_us
+    if not frappe.db.exists("Campaign", "I know you"):
+        try:
+            frappe.get_doc({"doctype": "Campaign", "campaign_name": "I know you"}).insert(
+                ignore_permissions=True
+            )
+        except Exception:
+            pass
+
+    for record in master_records:
+        dt = record["doctype"]
+        # The name is derived from the naming field; use the first non-doctype value
+        name_value = list(record.values())[1]
+        if not frappe.db.exists(dt, name_value):
+            try:
+                frappe.get_doc(record).insert(ignore_permissions=True)
+            except Exception:
+                frappe.log_error(
+                    title=f"hms_tz before_tests: failed to create {dt} '{name_value}'",
+                    message=frappe.get_traceback(),
+                )

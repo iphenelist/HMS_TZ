@@ -127,6 +127,19 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
         template.sample = create_lab_test_sample()
         template.sample_qty = 5.0
 
+    # company_options is mandatory
+    company = frappe.db.get_value("Company", {}, "name")
+    service_unit = frappe.db.get_value(
+        "Healthcare Service Unit", {"company": company}, "name"
+    ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+    template.append(
+        "company_options",
+        {
+            "company": company,
+            "service_unit": service_unit,
+        },
+    )
+
     template.save()
     return template
 

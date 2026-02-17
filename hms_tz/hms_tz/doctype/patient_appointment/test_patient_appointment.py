@@ -165,6 +165,12 @@ def create_patient():
         patient = frappe.new_doc("Patient")
         patient.first_name = "_Test Patient"
         patient.sex = "Female"
+        patient.mobile = "255700000002"
+        patient.dob = "1990-01-01"
+        patient.common_occupation = "Secretary"
+        patient.ethnicity = "African"
+        patient.demography = "City Centre"
+        patient.how_did_you_hear_about_us = "I know you"
         patient.save(ignore_permissions=True)
         patient = patient.name
     return patient
@@ -226,6 +232,20 @@ def create_clinical_procedure_template():
     template.is_billable = 1
     template.description = "Knee Surgery and Rehab"
     template.rate = 50000
+
+    # company_options is mandatory
+    company = frappe.db.get_value("Company", {}, "name")
+    service_unit = frappe.db.get_value(
+        "Healthcare Service Unit", {"company": company}, "name"
+    ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+    template.append(
+        "company_options",
+        {
+            "company": company,
+            "service_unit": service_unit,
+        },
+    )
+
     template.save()
     return template
 
