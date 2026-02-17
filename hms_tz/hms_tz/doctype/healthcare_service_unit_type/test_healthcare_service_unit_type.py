@@ -23,6 +23,13 @@ def get_unit_type():
     if frappe.db.exists("Healthcare Service Unit Type", "Inpatient Rooms"):
         return frappe.get_cached_doc("Healthcare Service Unit Type", "Inpatient Rooms")
 
+    # Ensure Healthcare Ward Type exists
+    if not frappe.db.exists("Healthcare Ward Type", "General Ward"):
+        frappe.get_doc({
+            "doctype": "Healthcare Ward Type",
+            "ward_type_name": "General Ward",
+        }).insert(ignore_permissions=True)
+
     unit_type = frappe.new_doc("Healthcare Service Unit Type")
     unit_type.service_unit_type = "Inpatient Rooms"
     unit_type.inpatient_occupancy = 1
@@ -32,5 +39,6 @@ def get_unit_type():
     unit_type.uom = "Hour"
     unit_type.no_of_hours = 1
     unit_type.rate = 4000
+    unit_type.ward_type = "General Ward"
     unit_type.save()
     return unit_type

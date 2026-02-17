@@ -20,6 +20,14 @@ class TestTherapyType(unittest.TestCase):
 
 def create_therapy_type():
     exercise = create_exercise_type()
+
+    # Ensure Healthcare Points of Care record exists for default value
+    if not frappe.db.exists("Healthcare Points of Care", "Phisiotherapy"):
+        frappe.get_doc({
+            "doctype": "Healthcare Points of Care",
+            "point_of_care_name": "Phisiotherapy",
+        }).insert(ignore_permissions=True)
+
     therapy_type = frappe.db.exists("Therapy Type", "Basic Rehab")
     if not therapy_type:
         therapy_type = frappe.new_doc("Therapy Type")
