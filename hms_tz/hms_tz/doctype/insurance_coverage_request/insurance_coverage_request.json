@@ -14,7 +14,6 @@
   "patient",
   "patient_name",
   "column_break_4",
-  "insurance_assignment",
   "insurance_company",
   "section_break_7",
   "sales_invoice",
@@ -71,12 +70,6 @@
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "insurance_assignment",
-   "fieldtype": "Link",
-   "label": "Insurance Assignment",
-   "options": "Insurance Assignment"
   },
   {
    "fieldname": "insurance_company",
