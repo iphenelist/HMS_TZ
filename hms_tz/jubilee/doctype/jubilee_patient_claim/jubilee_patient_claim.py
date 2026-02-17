@@ -28,10 +28,8 @@ from frappe.utils import (
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 
-from hms_tz.hms_tz.nhif.doctype.nhif_patient_claim import nhif_patient_claim
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
-from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, get_item_rate, to_base64
-from hms_tz.nhif.api.patient_encounter import finalized_encounter
+from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
 
 pa = DocType("Patient Appointment")
 pe = DocType("Patient Encounter")
@@ -105,7 +103,7 @@ class JubileePatientClaim(Document):
                 "docstatus",
             ]:
                 new_row[fieldname] = None
-            
+
             items.append(new_row)
 
         if len(items) > 0:
@@ -122,7 +120,7 @@ class JubileePatientClaim(Document):
                 finalized_encounter(last_encounter)
 
             self.set_claim_values()
-        
+
         self.calculate_totals()
 
         if not self.is_new():
@@ -134,7 +132,7 @@ class JubileePatientClaim(Document):
 
     def validate(self):
         self.validate_appointment_info()
-    
+
     def on_trash(self):
         # check if claim number exist in appointment record
         jubilee_patient_claim = frappe.db.get_value(
@@ -148,7 +146,7 @@ class JubileePatientClaim(Document):
     def before_submit(self):
         if not self.allow_changes:
             self.db_set("allow_changes", 1)
-        
+
         start_datetime = now_datetime()
 
         self.validate_multiple_appointments_per_authorization_no()
@@ -162,7 +160,7 @@ class JubileePatientClaim(Document):
 
         if self.bypass_sending_to_jubilee == 0:
             self.send_jubilee_claim()
-        
+
         end_datetime = now_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
         frappe.msgprint(
@@ -305,7 +303,7 @@ class JubileePatientClaim(Document):
             self.claim_month = int(self.attendance_date.strftime("%m"))
 
     def set_patient_claim_disease(self, encounter_list):
-        self.nhif_patient_claim_disease = []
+        self.jubilee_patient_claim_disease = []
         encounter_ids = [d.encounter for d in encounter_list if d.encounter]
 
         diagnosis_list = (
@@ -332,7 +330,7 @@ class JubileePatientClaim(Document):
         ).run(as_dict=True)
 
         for row in diagnosis_list:
-            new_row = self.append("nhif_patient_claim_disease", {})
+            new_row = self.append("jubilee_patient_claim_disease", {})
             if row.parentfield == "patient_encounter_preliminary_diagnosis":
                 new_row.status = "Provisional"
             elif row.parentfield == "patient_encounter_final_diagnosis":
@@ -496,7 +494,7 @@ class JubileePatientClaim(Document):
         new_row.ref_docname = occupancy.name
         new_row.date_created = occupancy.modified
         new_row.item_crt_by = get_fullname(occupancy.modified_by)
-    
+
     def add_consultancy_claim_item(self, consultancy, checkin_date):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
             new_row = self.append("jubilee_patient_claim_item", {})
@@ -568,7 +566,7 @@ class JubileePatientClaim(Document):
             self.clinical_notes = (
                 " ".join([patient_name, gender, date_of_birth, years]) + "<br>"
             )
-        
+
         encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 
         department = frappe.get_cached_value("Healthcare Practitioner", encounter_doc.practitioner, "department")
@@ -645,10 +643,10 @@ class JubileePatientClaim(Document):
 
     def calculate_totals(self):
         self.total_amount = 0
-        for item in self.nhif_patient_claim_item:
+        for item in self.jubilee_patient_claim_item:
             item.amount_claimed = item.unit_price * item.item_quantity
             self.total_amount += item.amount_claimed
-    
+
     @frappe.whitelist()
     def get_appointments(self):
         appointment_list = frappe.db.get_all(
