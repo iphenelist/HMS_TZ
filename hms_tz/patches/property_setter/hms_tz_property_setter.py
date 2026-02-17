@@ -1590,13 +1590,6 @@ def execute():
             "value": 1,
         },
         {
-            "doctype": "Sales Invoice Item",
-            "fieldname": "item_tax_template",
-            "property": "fetch_from",
-            "property_type": "Small Text",
-            "value": "item_code.default_tax_template",
-        },
-        {
             "doctype": "Practitioner Availability",
             "for_doctype": True,
             "fieldname": "",
