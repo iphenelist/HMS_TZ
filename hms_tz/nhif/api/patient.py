@@ -25,12 +25,13 @@ def validate(doc, method):
     check_card_number(doc.card_no, doc.is_new(), doc.name, "validate")
 
     # replace initial 0 with 255 and remove all the unnecessray characters
-    doc.mobile = remove_special_characters(doc.mobile)
-    if doc.mobile[0] == "0":
-        doc.mobile = "255" + doc.mobile[1:]
+    if doc.mobile:
+        doc.mobile = remove_special_characters(doc.mobile)
+        if doc.mobile and doc.mobile[0] == "0":
+            doc.mobile = "255" + doc.mobile[1:]
     if doc.next_to_kin_mobile_no:
         doc.next_to_kin_mobile_no = remove_special_characters(doc.next_to_kin_mobile_no)
-        if doc.next_to_kin_mobile_no[0] == "0":
+        if doc.next_to_kin_mobile_no and doc.next_to_kin_mobile_no[0] == "0":
             doc.next_to_kin_mobile_no = "255" + doc.next_to_kin_mobile_no[1:]
     validate_mobile_number(doc.name, doc.mobile)
     if not doc.is_new():
