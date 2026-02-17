@@ -8,6 +8,51 @@ from hms_tz.patches.custom_fields.create_custom_fields import execute as create_
 from hms_tz.patches.property_setter.create_property_setters import execute as create_property_setters
 
 
+def after_install():
+    """Hook called after hms_tz app installation on a site."""
+    create_accounting_dimensions()
+    frappe.db.commit()
+
+
+def create_accounting_dimensions():
+    """Create Accounting Dimensions for Healthcare Practitioner and Healthcare Service Unit.
+
+    These dimensions add corresponding custom fields on all applicable
+    accounting doctypes (Sales Invoice, Purchase Invoice, Journal Entry, etc.).
+    hms_tz code relies on these fields existing on transaction line items.
+    """
+    dimensions = [
+        {
+            "document_type": "Healthcare Practitioner",
+            "label": "Healthcare Practitioner",
+        },
+        {
+            "document_type": "Healthcare Service Unit",
+            "label": "Healthcare Service Unit",
+        },
+    ]
+
+    for dimension_data in dimensions:
+        document_type = dimension_data["document_type"]
+
+        if frappe.db.exists("Accounting Dimension", {"document_type": document_type}):
+            continue
+
+        try:
+            doc = frappe.new_doc("Accounting Dimension")
+            doc.document_type = document_type
+            doc.label = dimension_data["label"]
+            doc.disabled = 0
+            doc.save(ignore_permissions=True)
+            frappe.db.commit()
+        except Exception:
+            frappe.log_error(
+                title=f"Error creating Accounting Dimension for '{document_type}'",
+                message=frappe.get_traceback(),
+            )
+            frappe.db.rollback()
+
+
 def before_tests():
     """Setup required master data before running tests.
 
@@ -34,7 +79,10 @@ def before_tests():
     #    Healthcare Item Groups, Sensitivities, Healthcare Service Units, etc.
     healthcare_before_tests()
 
-    # 3. hms_tz-specific setup: custom fields, property setters, etc.
+    # 3. hms_tz accounting dimensions (Healthcare Practitioner, Healthcare Service Unit)
+    create_accounting_dimensions()
+
+    # 4. hms_tz-specific setup: custom fields, property setters, etc.
     setup_hms_tz_test_data()
 
     frappe.db.commit()
