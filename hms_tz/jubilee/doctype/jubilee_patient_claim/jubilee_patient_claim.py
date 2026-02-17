@@ -1,18 +1,19 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2020, Aakvatech and contributors
+# Copyright (c) 2024, Aakvatech and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
-
+import calendar
 import json
 import os
+import uuid
 
 import frappe
+import requests
 from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 from frappe.utils import (
     cint,
+    date_diff,
     get_datetime,
     get_fullname,
     get_time,
@@ -22,14 +23,15 @@ from frappe.utils import (
     nowdate,
     nowtime,
     time_diff_in_seconds,
+    unique,
 )
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 
-from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
+from hms_tz.hms_tz.nhif.doctype.nhif_patient_claim import nhif_patient_claim
+from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
+from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, get_item_rate, to_base64
 from hms_tz.nhif.api.patient_encounter import finalized_encounter
-from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
-from hms_tz.nhif.nhif_api.patient_claim import submit_folio
 
 pa = DocType("Patient Appointment")
 pe = DocType("Patient Encounter")
@@ -37,11 +39,11 @@ ct = DocType("Codification Table")
 hsr = DocType("Healthcare Service Request")
 
 
-class NHIFPatientClaim(Document):
+class JubileePatientClaim(Document):
     def before_insert(self):
         if frappe.db.exists(
             {
-                "doctype": "NHIF Patient Claim",
+                "doctype": "Jubilee Patient Claim",
                 "patient": self.patient,
                 "patient_appointment": self.patient_appointment,
                 "cardno": self.cardno,
@@ -49,17 +51,50 @@ class NHIFPatientClaim(Document):
             }
         ):
             frappe.throw(
-                f"NHIF Patient Claim is already exist for patient: #<b>{self.patient}</b> with appointment: #<b>{self.patient_appointment}</b>"
+                f"Jubilee Patient Claim is already exist for patient: #<b>{self.patient}</b> with appointment: #<b>{self.patient_appointment}</b>"
             )
 
         self.validate_appointment_info()
         self.validate_multiple_appointments_per_authorization_no("before_insert")
 
     def after_insert(self):
-        self.set_folio_count()
+        folio_counter = frappe.db.get_all(
+            "Insurance Folio Counter",
+            filters={
+                "company": self.company,
+                "claim_year": self.claim_year,
+                "claim_month": self.claim_month,
+                "insurance_provider": "Jubilee"
+            },
+            fields=["name", "folio_no"],
+            page_length=1,
+        )
+
+        folio_no = 1
+        if len(folio_counter) == 0:
+            new_folio_doc = frappe.get_doc(
+                {
+                    "doctype": "Insurance Folio Counter",
+                    "company": self.company,
+                    "claim_year": self.claim_year,
+                    "claim_month": self.claim_month,
+                    "posting_date": now_datetime(),
+                    "insurance_provider": "Jubilee",
+                    "folio_no": folio_no,
+                }
+            ).insert(ignore_permissions=True)
+            new_folio_doc.reload()
+        else:
+            folio_no = cint(folio_counter[0].folio_no) + 1
+            frappe.set_value("Insurance Folio Counter", folio_counter[0].name, {
+                    "folio_no": folio_no,
+                    "posting_date": now_datetime()
+                }
+            )
+        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
 
         items = []
-        for row in self.nhif_patient_claim_item:
+        for row in self.jubilee_patient_claim_item:
             new_row = row.as_dict()
             for fieldname in [
                 "name",
@@ -70,77 +105,72 @@ class NHIFPatientClaim(Document):
                 "docstatus",
             ]:
                 new_row[fieldname] = None
-
+            
             items.append(new_row)
 
         if len(items) > 0:
             frappe.set_value(
-                self.doctype,
-                self.name,
-                "original_nhif_patient_claim_item",
-                items,
+                self.doctype, self.name, "original_jubilee_patient_claim_item", items
             )
 
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
-            final_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
-            if len(final_encounter) == 0:
+            finalized_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
+            if len(finalized_encounter) == 0:
                 last_encounter = encounter_list[-1].encounter
                 finalized_encounter(last_encounter)
 
-            self.set_claim_values(encounter_list)
-
+            self.set_claim_values()
+        
         self.calculate_totals()
 
         if not self.is_new():
-            self.set_folio_count()
-            update_original_patient_claim(self)
+            self.update_original_patient_claim()
 
-            frappe.qb.update(pa).set(pa.nhif_patient_claim, self.name).where(pa.name == self.patient_appointment).run()
+            frappe.qb.update(pa).set(pa.jubilee_patient_claim, self.name).where(
+                pa.name == self.patient_appointment
+            ).run()
 
     def validate(self):
         self.validate_appointment_info()
-
+    
     def on_trash(self):
         # check if claim number exist in appointment record
-        nhif_patient_claim = frappe.db.get_value(
+        jubilee_patient_claim = frappe.db.get_value(
             "Patient Appointment",
             self.patient_appointment,
-            "nhif_patient_claim",
+            "jubilee_patient_claim",
         )
-        if nhif_patient_claim == self.name:
-            frappe.qb.update(pa).set(pa.nhif_patient_claim, "").where(pa.name == self.patient_appointment).run()
+        if jubilee_patient_claim == self.name:
+            frappe.qb.update(pa).set(pa.jubilee_patient_claim, "").where(pa.name == self.patient_appointment).run()
 
     def before_submit(self):
         if not self.allow_changes:
             self.db_set("allow_changes", 1)
-
-        start_datetime = get_datetime()
+        
+        start_datetime = now_datetime()
 
         self.validate_multiple_appointments_per_authorization_no()
 
-        validate_item_status(self)
+        self.validate_item_status()
 
         if not self.patient_signature:
             get_missing_patient_signature(self)
 
-        # if self.folio_signed == 0:
-        #     frappe.throw(
-        #         _("Please sign the folio to NHIF before submitting the claim.")
-        #     )
+        self.validate_submit_date()
 
-        validate_submit_date(self)
-
-        if self.bypass_sending_to_nhif == 0:
-            submit_folio(self)
-
-        end_datetime = get_datetime()
+        if self.bypass_sending_to_jubilee == 0:
+            self.send_jubilee_claim()
+        
+        end_datetime = now_datetime()
         time_in_seconds = time_diff_in_seconds(str(end_datetime), str(start_datetime))
-        frappe.msgprint("Total time used to submit folio in seconds = " + str(time_in_seconds))
+        frappe.msgprint(
+            "Total time to complete the process in seconds = " + str(time_in_seconds)
+        )
 
     def on_submit(self):
-        track_changes_of_claim_items(self)
+        pass
 
     def get_patient_encounters(self):
         appointments = []
@@ -178,9 +208,14 @@ class NHIFPatientClaim(Document):
         return patient_encounters
 
     def set_claim_values(self, encounter_list):
-        self.facility_code = frappe.get_cached_value("HMS TZ Setting", self.company, "facility_code")
+        self.facility_code = frappe.get_cached_value(
+            "HMS TZ Setting",
+            self.company,
+            "facility_code",
+        )
+
         self.posting_date = nowdate()
-        self.serial_no = int(self.name[-9:])
+        self.serial_no = cint(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
         self.attendance_date, self.attendance_time = frappe.get_cached_value(
             "Patient Appointment",
@@ -321,7 +356,7 @@ class NHIFPatientClaim(Document):
     def set_patient_claim_item(self, encounter_list):
         service_requests = []
         self.clinical_notes = ""
-        self.nhif_patient_claim_item = []
+        self.jubilee_patient_claim_item = []
 
         if not self.inpatient_record:
             for d in encounter_list:
@@ -398,10 +433,10 @@ class NHIFPatientClaim(Document):
         if hsr_row.is_cancelled:
             return
 
-        if not hsr_row.insurance_company or "NHIF" not in hsr_row.insurance_company:
+        if not hsr_row.insurance_company or "Jubilee" not in hsr_row.insurance_company:
             return
 
-        new_row = self.append("nhif_patient_claim_item", {})
+        new_row = self.append("jubilee_patient_claim_item", {})
         new_row.item_name = hsr_row.service_name
         new_row.item_code = hsr_row.item_code
         new_row.item_quantity = (hsr_row.qty or 0) - (hsr_row.qty_returned or 0)
@@ -449,7 +484,7 @@ class NHIFPatientClaim(Document):
             }
         )
 
-        new_row = self.append("nhif_patient_claim_item", {})
+        new_row = self.append("jubilee_patient_claim_item", {})
         new_row.item_name = occupancy.service_unit
         new_row.item_code = get_item_refcode(item)
         new_row.item_quantity = 1
@@ -461,10 +496,10 @@ class NHIFPatientClaim(Document):
         new_row.ref_docname = occupancy.name
         new_row.date_created = occupancy.modified
         new_row.item_crt_by = get_fullname(occupancy.modified_by)
-
+    
     def add_consultancy_claim_item(self, consultancy, checkin_date):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
-            new_row = self.append("nhif_patient_claim_item", {})
+            new_row = self.append("jubilee_patient_claim_item", {})
             new_row.item_name = consultancy.consultation_item
             new_row.item_code = get_item_refcode(consultancy.consultation_item)
             new_row.item_quantity = 1
@@ -485,7 +520,7 @@ class NHIFPatientClaim(Document):
             patient_appointment_list = json.loads(self.hms_tz_claim_appointment_list)
 
         sorted_claim_items = sorted(
-            self.nhif_patient_claim_item,
+            self.jubilee_patient_claim_item,
             key=lambda k: (
                 k.get("ref_doctype"),
                 k.get("item_code"),
@@ -497,7 +532,7 @@ class NHIFPatientClaim(Document):
             row.idx = idx
             idx += 1
 
-        self.nhif_patient_claim_item = sorted_claim_items
+        self.jubilee_patient_claim_item = sorted_claim_items
 
         appointment_idx = 1
         for appointment_no in patient_appointment_list:
@@ -507,8 +542,8 @@ class NHIFPatientClaim(Document):
             if appointment_doc.has_no_consultation_charges == 1:
                 continue
 
-            if not self.inpatient_record and not appointment_doc.follow_up:
-                new_row = self.append("nhif_patient_claim_item", {})
+            if not appointment_doc.follow_up:
+                new_row = self.append("jubilee_patient_claim_item", {})
                 new_row.item_name = appointment_doc.billing_item
                 new_row.item_code = get_item_refcode(appointment_doc.billing_item)
                 new_row.item_quantity = 1
@@ -527,9 +562,13 @@ class NHIFPatientClaim(Document):
             patient_name = f"Patient: <b>{self.patient_name}</b>,"
             date_of_birth = f"Date of Birth: <b>{self.date_of_birth}</b>,"
             gender = f"Gender: <b>{self.gender}</b>,"
-            years = f"Age: <b>{(frappe.utils.date_diff(nowdate(), self.date_of_birth))//365} years</b>,"
-            self.clinical_notes = " ".join([patient_name, gender, date_of_birth, years]) + "<br>"
-
+            years = (
+                f"Age: <b>{(date_diff(nowdate(), self.date_of_birth))//365} years</b>,"
+            )
+            self.clinical_notes = (
+                " ".join([patient_name, gender, date_of_birth, years]) + "<br>"
+            )
+        
         encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
 
         department = frappe.get_cached_value("Healthcare Practitioner", encounter_doc.practitioner, "department")
@@ -604,18 +643,16 @@ class NHIFPatientClaim(Document):
                     serv_info += f", Medical Code: {row.medical_code}"
                 self.clinical_notes += f"Therapy: <b>{row.therapy_type}</b> {serv_info} <br>"
 
-        # self.clinical_notes = self.clinical_notes.replace('"', " ")
-
     def calculate_totals(self):
         self.total_amount = 0
         for item in self.nhif_patient_claim_item:
             item.amount_claimed = item.unit_price * item.item_quantity
             self.total_amount += item.amount_claimed
-
+    
     @frappe.whitelist()
     def get_appointments(self):
         appointment_list = frappe.db.get_all(
-            "NHIF Patient Claim",
+            "Jubilee Patient Claim",
             filters={
                 "patient": self.patient,
                 "authorization_no": self.authorization_no,
@@ -627,10 +664,12 @@ class NHIFPatientClaim(Document):
             frappe.throw(
                 _(
                     f"<p style='text-align: center; font-size: 12pt; background-color: #FFD700;'>\
-                    <strong>This Authorization no: {frappe.bold(self.authorization_no)} was used only once on <br> NHIF Patient Claim: {frappe.bold(self.name)} </strong>\
+                    <strong>This Authorization no: {frappe.bold(self.authorization_no)} \
+                    as used only once on <br> Jubilee Patient Claim: {frappe.bold(self.name)} </strong>\
                     </p>"
                 )
             )
+
         app_list = []
         for app_name in appointment_list:
             if app_name["hms_tz_claim_appointment_list"]:
@@ -638,20 +677,14 @@ class NHIFPatientClaim(Document):
                 app_list += app_numbers
 
                 for d in app_numbers:
-                    frappe.db.set_value(
-                        "Patient Appointment",
-                        d,
-                        "nhif_patient_claim",
-                        self.name,
-                    )
+                    frappe.qb.update(pa).set(pa.jubilee_patient_claim, self.name).where(
+                        pa.name == d
+                    ).run()
             else:
                 app_list.append(app_name["patient_appointment"])
-                frappe.db.set_value(
-                    "Patient Appointment",
-                    app_name["patient_appointment"],
-                    "nhif_patient_claim",
-                    self.name,
-                )
+                frappe.qb.update(pa).set(pa.jubilee_patient_claim, self.name).where(
+                    pa.name == app_name["patient_appointment"]
+                ).run()
 
         app_list = list(set(app_list))
         self.allow_changes = 0
@@ -660,22 +693,28 @@ class NHIFPatientClaim(Document):
         self.save(ignore_permissions=True)
 
     def validate_appointment_info(self):
-        appointment_doc = frappe.get_cached_doc("Patient Appointment", self.patient_appointment)
-        if self.authorization_no != appointment_doc.authorization_number:
-            url = frappe.utils.get_url_to_form("Patient Appointment", self.patient_appointment)
+        appointment_details = frappe.db.get_value(
+            "Patient Appointment",
+            self.patient_appointment,
+            ["authorization_number", "coverage_plan_card_number"],
+            as_dict=1,
+        )
+
+        if self.authorization_no != appointment_details.authorization_number:
+            url = get_url_to_form("Patient Appointment", self.patient_appointment)
             frappe.throw(
                 _(
                     f"Authorization Number: <b>{self.authorization_no}</b> of this Claim is not same to \
-                  Authorization Number: <b>{appointment_doc.authorization_number}</b> on Patient Appointment: <a href='{url}'><b>{self.patient_appointment}</b></a><br><br>\
+                  Authorization Number: <b>{appointment_details.authorization_number}</b> on Patient Appointment: <a href='{url}'><b>{self.patient_appointment}</b></a><br><br>\
                   <b>Please rectify before creating this Claim</b>"
                 )
             )
-        if self.cardno != appointment_doc.coverage_plan_card_number:
-            url = frappe.utils.get_url_to_form("Patient Appointment", self.patient_appointment)
+        if self.cardno != appointment_details.coverage_plan_card_number:
+            url = get_url_to_form("Patient Appointment", self.patient_appointment)
             frappe.throw(
                 _(
                     f"Card Number: <b>{self.cardno}</b> of this Claim is not same to \
-                  Card Number: <b>{appointment_doc.coverage_plan_card_number}</b> on Patient Appointment: <a href='{url}'><b>{self.patient_appointment}</b></a><br><br>\
+                  Card Number: <b>{appointment_details.coverage_plan_card_number}</b> on Patient Appointment: <a href='{url}'><b>{self.patient_appointment}</b></a><br><br>\
                   <b>Please rectify before creating this Claim</b>"
                 )
             )
@@ -685,36 +724,34 @@ class NHIFPatientClaim(Document):
 
         # Check if there are multiple claims with same authorization number
         claim_details = frappe.db.get_all(
-            "NHIF Patient Claim",
+            "Jubilee Patient Claim",
             filters={
                 "patient": self.patient,
                 "authorization_no": self.authorization_no,
                 "cardno": self.cardno,
                 "docstatus": 0,
             },
-            fields=[
-                "name",
-                "patient",
-                "patient_name",
-                "hms_tz_claim_appointment_list",
-            ],
+            fields=["name", "patient", "patient_name", "hms_tz_claim_appointment_list"],
         )
         claim_name_list = ""
         merged_appointments = []
         for claim in claim_details:
-            url = get_url_to_form("NHIF Patient Claim", claim["name"])
+            url = get_url_to_form("Jubilee Patient Claim", claim["name"])
             claim_name_list += f"<a href='{url}'><b>{claim['name']}</b> </a> , "
-
             if claim["hms_tz_claim_appointment_list"]:
-                merged_appointments += json.loads(claim["hms_tz_claim_appointment_list"])
+                merged_appointments += json.loads(
+                    claim["hms_tz_claim_appointment_list"]
+                )
 
         if len(claim_details) > 1 and not caller:
             frappe.throw(
-                f"<p style='text-align: justify; font-size: 14px;'>This Authorization Number: <b>{self.authorization_no}</b> has used multiple times in NHIF Patient Claim: {claim_name_list}. \
-                Please merge these <b>{len(claim_details)}</b> claims to Proceed</p>")
+                f"<p style='text-align: justify; font-size: 14px;'>\
+                This Authorization Number: <b>{self.authorization_no}</b> \
+                has used multiple times in Jubilee Patient Claim: {claim_name_list}. \
+                Please merge these <b>{len(claim_details)}</b> claims to Proceed</p>"
+            )
 
-        # rock: 139
-        # Check if there are multiple appointments with same authorization number
+        # Check if there are multiple patient appointments with same authorization number
         appointment_documents = frappe.db.get_all(
             "Patient Appointment",
             filters={
@@ -727,71 +764,141 @@ class NHIFPatientClaim(Document):
         )
 
         if len(appointment_documents) > 1:
-            validate_hold_card_status(
-                self,
-                appointment_documents,
-                claim_details,
-                merged_appointments,
-                caller,
+            self.validate_hold_card_status(
+                appointment_documents, claim_details, merged_appointments, caller
             )
-        else:
-            if caller:
-                frappe.msgprint("Release Patient Card", 20, alert=True)
+        elif caller:
+            frappe.msgprint("Release Patient Card", 20, alert=True)
+
+    def validate_hold_card_status(
+        self, appointment_documents, claim_details, merged_appointments, caller=None
+    ):
+        msg = f"<p style='text-align: justify; font-size: 14px'>Patient: <b>{self.patient}</b>-<b>{self.patient_name}</b> has multiple appointments: <br>"
+
+        # check if there is any merging done before
+        reqd_throw_count = 0
+        for appointment in appointment_documents:
+            url = get_url_to_form("Patient Appointment", appointment)
+            msg += f"<a href='{url}'><b>{appointment}</b></a> , "
+
+            if merged_appointments:
+                for app in unique(merged_appointments):
+                    if appointment == app:
+                        reqd_throw_count += 1
+
+        if caller:
+            unique_claims_appointments = 0
+            if len(unique(merged_appointments)) < len(claim_details):
+                unique_claims_appointments = len(claim_details)
+            else:
+                unique_claims_appointments = len(unique(merged_appointments))
+
+            if (len(appointment_documents) - 1) == unique_claims_appointments:
+                frappe.msgprint("<strong>Release Patient Card</strong>", 20, alert=True)
+                frappe.msgprint("<strong>Release Patient Card</strong>")
+            else:
+                msg += f"<br> with same authorization no: <b>{self.authorization_no}</b><br><br>\
+					Please <strong>Hold patient card</strong> until claims for all <b>{len(appointment_documents)}</b> appointments to be created.</p>"
+                frappe.msgprint("<strong>Please Hold Card</strong>", 20, alert=True)
+                frappe.msgprint(str(msg))
+
+            return
+
+        msg += f"<br> with same authorization no: <b>{self.authorization_no}</b><br><br> Please consider <strong>merging of claims</strong>\
+			if Claims for all <b>{len(appointment_documents)}</b> appointments have already been created</p>"
+
+        if reqd_throw_count < len(appointment_documents):
+            frappe.throw(msg)
+
+    def validate_item_status(self):
+        for row in self.jubilee_patient_claim_item:
+            if row.status == "Draft":
+                frappe.throw(
+                    f"Item: {frappe.bold(row.item_name)}, doctype: {frappe.bold(row.ref_doctype)}. \
+                    RowNo: {frappe.bold(row.idx)} is in <strong>Draft</strong>,\
+                    please contact relevant department for clarification"
+                )
+
+    def validate_submit_date(self):
+        submit_claim_month, submit_claim_year = frappe.get_cached_value(
+            "HMS TZ Setting",
+            self.company,
+            ["submit_claim_month", "submit_claim_year"],
+        )
+
+        if not (submit_claim_month or submit_claim_year):
+            frappe.msgprint(
+                frappe.bold(
+                    "Submit Claim Month or Submit Claim Year not found,\
+                    please inform IT department to set it on HMS TZ Setting"
+                ),
+                alert=True,
+            )
+
+        if (
+            self.claim_month != submit_claim_month
+            or self.claim_year != submit_claim_year
+        ):
+            frappe.throw(
+                f"Claim Month: {frappe.bold(calendar.month_name[self.claim_month])} or Claim Year: {frappe.bold(self.claim_year)} \
+                of this document is not same to Submit Claim Month: {frappe.bold(calendar.month_name[submit_claim_month])} \
+                or Submit Claim Year: {frappe.bold(submit_claim_year)} on HMS TZ Setting"
+            )
 
     def get_lab_results(self, row):
-            if not row.lab_test:
-                return
+        if not row.lab_test:
+            return
 
-            lab_test_doc = frappe.get_cached_doc("Lab Test", row.lab_test)
-            if lab_test_doc.workflow_state == "Lab Test Requested":
-                return
+        lab_test_doc = frappe.get_cached_doc("Lab Test", row.lab_test)
+        if lab_test_doc.workflow_state == "Lab Test Requested":
+            return
 
-            result = ""
+        result = ""
 
-            if lab_test_doc.normal_test_items:
-                result += '<div align="center"><i><u><b>Normal Test Results</b></u></i></div>'
-                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
-                result += '<tr bgcolor="#CCCCCC"><th>Test Name</th><th>Result</th><th>UOM</th></tr>'
+        if lab_test_doc.normal_test_items:
+            result += '<div align="center"><i><u><b>Normal Test Results</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += '<tr bgcolor="#CCCCCC"><th>Test Name</th><th>Result</th><th>UOM</th></tr>'
 
-                for item in lab_test_doc.normal_test_items:
-                    result += f'<tr><td>{item.lab_test_name}</td>'
-                    result += f'<td>{item.result_value}</td>'
-                    result += f'<td>{item.lab_test_uom or ""}</td></tr>'
+            for item in lab_test_doc.normal_test_items:
+                result += f'<tr><td>{item.lab_test_name}</td>'
+                result += f'<td>{item.result_value}</td>'
+                result += f'<td>{item.lab_test_uom or ""}</td></tr>'
 
-                result += '</table><br>'
+            result += '</table><br>'
 
-            # Descriptive test items table
-            if lab_test_doc.descriptive_test_items:
-                result += '<div align="center"><i><u><b>Descriptive Test Results</b></u></i></div>'
-                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
-                result += '<tr bgcolor="#CCCCCC"><th>Test Particulars</th><th>Result</th></tr>'
+        # Descriptive test items table
+        if lab_test_doc.descriptive_test_items:
+            result += '<div align="center"><i><u><b>Descriptive Test Results</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += '<tr bgcolor="#CCCCCC"><th>Test Particulars</th><th>Result</th></tr>'
 
-                for item in lab_test_doc.descriptive_test_items:
-                    result += f'<tr><td>{item.lab_test_particulars}</td>'
-                    result += f'<td>{item.result_value}</td></tr>'
+            for item in lab_test_doc.descriptive_test_items:
+                result += f'<tr><td>{item.lab_test_particulars}</td>'
+                result += f'<td>{item.result_value}</td></tr>'
 
-                result += '</table><br>'
+            result += '</table><br>'
 
-            # Sensitivity test items table
-            if lab_test_doc.sensitivity_test_items:
-                result += '<div align="center"><i><u><b>Sensitivity Test Results</b></u></i></div>'
-                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
-                result += '<tr bgcolor="#CCCCCC"><th>Antibiotic</th><th>Sensitivity</th></tr>'
+        # Sensitivity test items table
+        if lab_test_doc.sensitivity_test_items:
+            result += '<div align="center"><i><u><b>Sensitivity Test Results</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += '<tr bgcolor="#CCCCCC"><th>Antibiotic</th><th>Sensitivity</th></tr>'
 
-                for item in lab_test_doc.sensitivity_test_items:
-                    result += f'<tr><td>{item.antibiotic}</td>'
-                    result += f'<td>{item.antibiotic_sensitivity}</td></tr>'
+            for item in lab_test_doc.sensitivity_test_items:
+                result += f'<tr><td>{item.antibiotic}</td>'
+                result += f'<td>{item.antibiotic_sensitivity}</td></tr>'
 
-                result += '</table><br>'
+            result += '</table><br>'
 
-            # Custom result
-            if lab_test_doc.custom_result:
-                result += '<div align="center"><i><u><b>Custom Result</b></u></i></div>'
-                result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
-                result += f'<tr><td>{lab_test_doc.custom_result}</td></tr>'
-                result += '</table><br>'
+        # Custom result
+        if lab_test_doc.custom_result:
+            result += '<div align="center"><i><u><b>Custom Result</b></u></i></div>'
+            result += '<table border="1" cellpadding="5" cellspacing="0" width="90%" align="center">'
+            result += f'<tr><td>{lab_test_doc.custom_result}</td></tr>'
+            result += '</table><br>'
 
-            return result
+        return result
 
     def get_radiology_results(self, row):
         if not row.radiology_examination:
@@ -830,7 +937,7 @@ class NHIFPatientClaim(Document):
             return
 
         folio_counter = frappe.db.get_all(
-            "NHIF Folio Counter",
+            "Insurance Folio Counter",
             filters={
                 "company": self.company,
                 "claim_year": self.claim_year,
@@ -844,7 +951,7 @@ class NHIFPatientClaim(Document):
         if len(folio_counter) == 0:
             new_folio_doc = frappe.get_doc(
                 {
-                    "doctype": "NHIF Folio Counter",
+                    "doctype": "Insurance Folio Counter",
                     "company": self.company,
                     "claim_year": self.claim_year,
                     "claim_month": self.claim_month,
@@ -854,7 +961,7 @@ class NHIFPatientClaim(Document):
             ).insert(ignore_permissions=True)
             new_folio_doc.reload()
         else:
-            folio_doc = frappe.get_doc("NHIF Folio Counter", folio_counter[0].name)
+            folio_doc = frappe.get_doc("Insurance Folio Counter", folio_counter[0].name)
             folio_no = cint(folio_doc.folio_no) + 1
 
             folio_doc.folio_no += 1
@@ -864,115 +971,342 @@ class NHIFPatientClaim(Document):
         self.folio_no = folio_no
         self.db_set("folio_no", folio_no)
 
-def get_missing_patient_signature(self):
-    if self.patient:
-        patient_doc = frappe.get_cached_doc("Patient", self.patient)
-        signature = patient_doc.patient_signature
-        if not signature:
-            frappe.throw(_("Patient signature is required"))
-        self.patient_signature = signature
+    @frappe.whitelist()
+    def send_jubilee_claim(self):
+        json_data, json_data_wo_files = self.get_payload()
+        setting_doc = frappe.get_cached_doc("HMS TZ Setting", self.company)
+        token = setting_doc.get_jubilee_token()
 
+        headers = {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json",
+        }
+        url = str(setting_doc.jubilee_url) + "/jubileeapi/SendClaim"
 
-def validate_submit_date(self):
-    import calendar
+        r = None
+        try:
+            r = requests.post(url, headers=headers, data=json_data, timeout=300)
 
-    submit_claim_month, submit_claim_year = frappe.get_cached_value(
-        "HMS TZ Setting",
-        self.company,
-        ["submit_claim_month", "submit_claim_year"],
-    )
+            if r.status_code != 200:
+                frappe.throw(
+                    f"Jubilee Server responded with HTTP status code: {r.status_code}<br><br>{str(r.text) if r.text else str(r)}"
+                )
+            else:
+                data = json.loads(r.text)
+                if data.get("status") == "ERROR":
+                    frappe.throw(str(data.get("description")))
 
-    if not (submit_claim_month or submit_claim_year):
-        frappe.msgprint(
-            frappe.bold(
-                "Submit Claim Month or Submit Claim Year not found,\
-                please inform IT department to set it on HMS TZ Setting"
-            ),
-            alert=True,
-        )
-        return
+                else:
+                    frappe.msgprint(str(data.get("description")))
+                    if data:
+                        add_jubilee_log(
+                            request_type="SubmitClaim",
+                            request_url=url,
+                            request_header=headers,
+                            request_body=json_data_wo_files,
+                            response_data=data,
+                            status_code=r.status_code,
+                            ref_doctype=self.doctype,
+                            ref_docname=self.name,
+                            company=self.company,
+                        )
 
-    if self.claim_month != submit_claim_month or self.claim_year != submit_claim_year:
-        frappe.throw(
-            f"Claim Month: {frappe.bold(calendar.month_name[self.claim_month])} or Claim Year: {frappe.bold(self.claim_year)} \
-                of this document is not same to Submit Claim Month: {frappe.bold(calendar.month_name[submit_claim_month])}\
-                or Submit Claim Year: {frappe.bold(submit_claim_year)} on HMS TZ Setting")
+                    frappe.msgprint(
+                        _("The claim has been sent successfully"), alert=True
+                    )
 
+        except Exception:
+            add_jubilee_log(
+                request_type="SubmitClaim",
+                request_url=url,
+                request_header=headers,
+                request_body=json_data,
+                response_data=(r.text if str(r) else "NO RESPONSE r. Timeout???"),
+                status_code=(
+                    r.status_code if str(r) else "NO STATUS CODE r. Timeout???"
+                ),
+                ref_doctype=self.doctype,
+                ref_docname=self.name,
+                company=self.company,
+            )
+            self.add_comment(
+                comment_type="Comment",
+                text=r.text if str(r) else "NO RESPONSE",
+            )
+            frappe.db.commit()
 
-def validate_item_status(self):
-    for row in self.nhif_patient_claim_item:
-        if row.status == "Draft":
             frappe.throw(
-                f"Item: {frappe.bold(row.item_name)}, doctype: {frappe.bold(row.ref_doctype)}. RowNo: {frappe.bold(row.idx)} is in <strong>Draft</strong>,\
-                please contact relevant department for clarification")
+                "This folio was NOT submitted due to the error above!. \
+                Please retry after resolving the problem. "
+                + str(now_datetime())
+            )
 
+    def get_payload(self):
+        folio_data = frappe._dict()
+        folio_data.entities = []
+        entities = frappe._dict()
+        entities.FolioID = str(uuid.uuid1())
+        entities.ClaimYear = self.claim_year
+        entities.ClaimYear = self.claim_year
+        entities.ClaimMonth = self.claim_month
+        entities.FolioNo = self.folio_no
+        entities.SerialNo = self.serial_no
+        entities.CardNo = self.cardno.strip()
+        entities.BillNo = self.name
+        entities.FirstName = self.first_name
+        entities.LastName = self.last_name
+        entities.Gender = self.gender
+        entities.DateOfBirth = str(self.date_of_birth)
+        entities.Age = f"{(date_diff(nowdate(), self.date_of_birth)) // 365}"
+        entities.TelephoneNo = self.telephone_no
+        entities.PatientFileNo = self.patient
+        entities.AuthorizationNo = self.authorization_no
+        entities.AttendanceDate = str(self.attendance_date)
+        entities.PatientTypeCode = self.patient_type_code
+        if self.patient_type_code == "IN":
+            entities.DateAdmitted = (
+                str(self.date_admitted) + " " + str(self.admitted_time)
+            )
+            entities.DateDischarged = (
+                str(self.date_discharge) + " " + str(self.discharge_time)
+            )
+        entities.PractitionerNo = ", ".join([d.mct_code for d in self.practitioners if d.mct_code]),
+        # entities.PractitionerName = self.practitioner_name
+        entities.ProviderID = (
+            frappe.get_cached_value(
+                "HMS TZ Setting",
+                self.company,
+                "jubilee_provider_id",
+            )
+        )
+        entities.ClinicalNotes = self.clinical_notes
+        entities.AmountClaimed = self.total_amount
+        entities.DelayReason = self.delayreason
+        entities.LateSubmissionReason = self.delayreason
+        entities.LateAuthorizationReason = ""
+        entities.EmergencyAuthorizationReason = get_emergency_reason(
+            self.patient_appointment
+        )
+        entities.CreatedBy = self.item_crt_by
+        entities.DateCreated = str(self.posting_date)
+        entities.LastModifiedBy = get_fullname(frappe.session.user)
+        entities.LastModified = str(now_datetime())
+        entities.PatientFile = generate_pdf(self)
+        entities.ClaimFile = get_claim_pdf_file(self)
 
-def validate_hold_card_status(
-    self,
-    appointment_documents,
-    claim_details,
-    merged_appointments,
-    caller=None,
-):
-    msg = f"<p style='text-align: justify; font-size: 14px'>Patient: <b>{self.patient}</b>-<b>{self.patient_name}</b> has multiple appointments: <br>"
-    # check if there is any merging done before
-    reqd_throw_count = 0
-    for appointment in appointment_documents:
-        url = get_url_to_form("Patient Appointment", appointment)
-        msg += f"<a href='{url}'><b>{appointment}</b></a> , "
+        entities.FolioDiseases = []
+        for disease in self.jubilee_patient_claim_disease:
+            FolioDisease = frappe._dict()
+            FolioDisease.DiseaseCode = disease.disease_code
+            FolioDisease.Remarks = disease.description or ""
+            FolioDisease.Status = disease.status
+            FolioDisease.CreatedBy = disease.item_crt_by
+            FolioDisease.DateCreated = str(disease.date_created)
+            FolioDisease.LastModifiedBy = disease.item_crt_by
+            FolioDisease.LastModified = str(disease.date_created)
+            entities.FolioDiseases.append(FolioDisease)
 
-        if merged_appointments:
-            for app in frappe.utils.unique(merged_appointments):
-                if appointment == app:
-                    reqd_throw_count += 1
+        entities.FolioItems = []
+        for item in self.jubilee_patient_claim_item:
+            FolioItem = frappe._dict()
+            FolioItem.ItemCode = item.item_code
+            FolioItem.OtherDetails = "Treated"
+            FolioItem.ItemQuantity = item.item_quantity
+            FolioItem.UnitPrice = item.unit_price
+            FolioItem.AmountClaimed = item.amount_claimed
+            FolioItem.ApprovalRefNo = item.approval_ref_no or ""
+            FolioItem.CreatedBy = item.item_crt_by
+            FolioItem.DateCreated = str(item.date_created)
+            FolioItem.LastModifiedBy = item.item_crt_by
+            FolioItem.LastModified = str(item.date_created)
+            entities.FolioItems.append(FolioItem)
 
-    # rock 163
-    if caller:
-        unique_claims_appointments = 0
-        if len(frappe.utils.unique(merged_appointments)) < len(claim_details):
-            unique_claims_appointments = len(claim_details)
-        else:
-            unique_claims_appointments = len(frappe.utils.unique(merged_appointments))
+        folio_data.entities.append(entities)
+        jsonStr = json.dumps(folio_data)
 
-        if (len(appointment_documents) - 1) == unique_claims_appointments:
-            frappe.msgprint("<strong>Release Patient Card</strong>", 20, alert=True)
-            frappe.msgprint("<strong>Release Patient Card</strong>")
-        else:
-            msg += f"<br> with same authorization no: <b>{self.authorization_no}</b><br><br>\
-                Please <strong>Hold patient card</strong> until claims for all <b>{len(appointment_documents)}</b> appointments to be created.</p>"
-            frappe.msgprint("<strong>Please Hold Card</strong>", 20, alert=True)
-            frappe.msgprint(str(msg))
+        # Strip off the patient file
+        folio_data.entities[0].PatientFile = "Stripped off"
+        folio_data.entities[0].ClaimFile = "Stripped off"
+        jsonStr_wo_files = json.dumps(folio_data)
+        return jsonStr, jsonStr_wo_files
 
-        return
+    def update_original_patient_claim(self):
+        """Update original patient claim incase merging if done for this claim"""
 
-    msg += f"<br> with same authorization no: <b>{self.authorization_no}</b><br><br> Please consider <strong>merging of claims</strong>\
-        if Claims for all <b>{len(appointment_documents)}</b> appointments have already been created</p>"
+        ref_docnames = []
+        for item in self.original_jubilee_patient_claim_item:
+            if item.ref_docname:
+                d = item.ref_docname.split(",")
+                ref_docnames.extend(d)
 
-    if reqd_throw_count < len(appointment_documents):
-        frappe.throw(msg)
+        for row in self.jubilee_patient_claim_item:
+            if row.ref_docname not in ref_docnames:
+                new_row = row.as_dict()
+                for fieldname in [
+                    "name",
+                    "owner",
+                    "creation",
+                    "modified",
+                    "modified_by",
+                    "docstatus",
+                ]:
+                    new_row[fieldname] = None
+
+                self.append("original_jubilee_patient_claim_item", new_row)
+
+    @frappe.whitelist()
+    def reconcile_repeated_items(self):
+        def reconcile_items(claim_items):
+            unique_items = []
+            repeated_items = []
+            unique_refcodes = []
+
+            for row in claim_items:
+                if row.item_code not in unique_refcodes:
+                    unique_refcodes.append(row.item_code)
+                    unique_items.append(row)
+                else:
+                    repeated_items.append(row)
+
+            if len(repeated_items) > 0:
+                items = []
+                for item in unique_items:
+                    ref_docnames = []
+                    ref_encounters = []
+
+                    for d in repeated_items:
+                        if item.item_code == d.item_code:
+                            item.item_quantity += d.item_quantity
+                            item.amount_claimed += d.amount_claimed
+
+                            if d.approval_ref_no:
+                                approval_ref_no = None
+                                if item.approval_ref_no:
+                                    approval_ref_no = (
+                                        str(item.approval_ref_no)
+                                        + ","
+                                        + str(d.approval_ref_no)
+                                    )
+                                else:
+                                    approval_ref_no = d.approval_ref_no
+
+                                item.approval_ref_no = approval_ref_no
+
+                            if d.patient_encounter:
+                                ref_encounters.append(d.patient_encounter)
+                            if d.ref_docname:
+                                ref_docnames.append(d.ref_docname)
+
+                            if item.status != "Submitted" and d.status == "Submitted":
+                                item.status = "Submitted"
+
+                    if item.patient_encounter:
+                        ref_encounters.append(item.patient_encounter)
+                    if item.ref_docname:
+                        ref_docnames.append(item.ref_docname)
+
+                    if len(ref_encounters) > 0:
+                        item.patient_encounter = ",".join(set(ref_encounters))
+
+                    if len(ref_docnames) > 0:
+                        item.ref_docname = ",".join(set(ref_docnames))
+
+                    items.append(item)
+
+                for record in repeated_items:
+                    frappe.delete_doc(
+                        record.doctype,
+                        record.name,
+                        force=True,
+                        ignore_permissions=True,
+                        ignore_on_trash=True,
+                        delete_permanently=True,
+                    )
+                return items
+
+            else:
+                return unique_items
+
+        # claim_doc = frappe.get_doc("Jubilee Patient Claim", self.name)
+        self.allow_changes = 1
+        self.jubilee_patient_claim_item = reconcile_items(
+            self.jubilee_patient_claim_item
+        )
+        self.original_jubilee_patient_claim_item = reconcile_items(
+            self.original_jubilee_patient_claim_item
+        )
+
+        self.save(ignore_permissions=True)
+        return True
 
 
 def get_item_refcode(item_code):
     code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item_code, "customer_name": "NHIF"},
+        filters={"parent": item_code, "customer_name": ["like", "%Jubilee%"]},
         fields=["ref_code"],
     )
     if len(code_list) == 0:
-        frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+        frappe.throw(_(f"Item: {item_code} has not Jubilee Code Reference"))
+        # return None
 
     ref_code = code_list[0].ref_code
     if not ref_code:
-        frappe.throw(_(f"Item {item_code} has not NHIF Code Reference"))
+        frappe.throw(_(f"Item: {item_code} has not Jubilee Code Reference"))
+        # return None
 
     return ref_code
+
+
+def get_LRPMT_status(encounter_no, row, child):
+    status = None
+    if child["doctype"] == "Therapy Type" or row.get(child["ref_docname"]):
+        status = "Submitted"
+
+    elif child["doctype"] == "Lab Test Template" and not row.get(child["ref_docname"]):
+        lab_workflow_state = frappe.get_value(
+            "Lab Test",
+            {
+                "ref_docname": encounter_no,
+                "ref_doctype": "Patient Encounter",
+                "hms_tz_ref_childname": row.name,
+            },
+            "workflow_state",
+        )
+        if lab_workflow_state and lab_workflow_state != "Lab Test Requested":
+            status = "Submitted"
+        else:
+            status = "Draft"
+    else:
+        status = "Draft"
+
+    return status
+
+
+def get_missing_patient_signature(doc):
+    if doc.patient:
+        signature = frappe.get_cached_value("Patient", doc.patient, "patient_signature")
+        if not signature:
+            frappe.throw(_("Patient signature is required"))
+
+        doc.patient_signature = signature
+
+
+def get_emergency_reason(appointment):
+    remarks = frappe.db.get_value(
+        "Patient Appointment",
+        {"name": appointment},
+        "remarks",
+    )
+
+    return remarks or ""
 
 
 def generate_pdf(doc):
     file_list = frappe.db.get_all(
         "File",
         filters={
-            "attached_to_doctype": "NHIF Patient Claim",
+            "attached_to_doctype": "Jubilee Patient Claim",
             "file_name": str(doc.name + ".pdf"),
         },
     )
@@ -983,15 +1317,12 @@ def generate_pdf(doc):
             return to_base64(pdf)
 
     data_list = []
-    data = doc.patient_encounters
-
-    for i in data:
+    for i in doc.patient_encounters:
         data_list.append(i.name)
 
     doctype = dict({"Patient Encounter": data_list})
-
     print_format = ""
-    default_print_format = frappe.db.get_cached_value(
+    default_print_format = frappe.db.get_value(
         "Property Setter",
         dict(property="default_print_format", doc_type="Patient Encounter"),
         "value",
@@ -1001,12 +1332,14 @@ def generate_pdf(doc):
     else:
         print_format = "Patient File"
 
-    pdf = download_multi_pdf(doctype, doc.name, print_format=print_format, no_letterhead=1)
+    pdf = download_multi_pdf(
+        doctype, doc.name, print_format=print_format, no_letterhead=1
+    )
     if pdf:
         ret = frappe.get_doc(
             {
                 "doctype": "File",
-                "attached_to_doctype": "NHIF Patient Claim",
+                "attached_to_doctype": "Jubilee Patient Claim",
                 "attached_to_name": doc.name,
                 "folder": "Home/Attachments",
                 "file_name": doc.name + ".pdf",
@@ -1017,8 +1350,7 @@ def generate_pdf(doc):
         )
         ret.save(ignore_permissions=1)
         # ret.db_update()
-        base64_data = to_base64(pdf)
-        return base64_data
+        return to_base64(pdf)
 
 
 def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
@@ -1055,38 +1387,36 @@ def get_claim_pdf_file(doc):
     file_list = frappe.db.get_all(
         "File",
         filters={
-            "attached_to_doctype": "NHIF Patient Claim",
+            "attached_to_doctype": "Jubilee Patient Claim",
             "file_name": str(doc.name + "-claim.pdf"),
         },
     )
     if file_list:
         for file in file_list:
-            frappe.delete_doc("File", file.name, ignore_permissions=True)
+            frappe.delete_doc("File", file.name, ignore_permissions=True, force=True)
 
-    doctype = doc.doctype
-    docname = doc.name
-    default_print_format = frappe.get_cached_value(
+    default_print_format = frappe.db.get_value(
         "Property Setter",
-        dict(property="default_print_format", doc_type=doctype),
+        dict(property="default_print_format", doc_type=doc.doctype),
         "value",
     )
     if default_print_format:
         print_format = default_print_format
     else:
-        print_format = "NHIF Form 2A & B"
+        print_format = "Jubilee Form 2A & B"
 
-    # print_format = "NHIF Form 2A & B"
+    html = frappe.get_print(
+        doc.doctype, doc.name, print_format, doc=None, no_letterhead=1
+    )
 
-    html = frappe.get_print(doctype, docname, print_format, doc=None, no_letterhead=1)
-
-    filename = f"{docname.replace(' ', '-').replace('/', '-')}-claim"
+    filename = f"""{doc.name.replace(" ", "-").replace("/", "-")}-claim"""
     pdf = get_pdf(html)
     if pdf:
         ret = frappe.get_doc(
             {
                 "doctype": "File",
                 "attached_to_doctype": doc.doctype,
-                "attached_to_name": docname,
+                "attached_to_name": doc.name,
                 "folder": "Home/Attachments",
                 "file_name": filename + ".pdf",
                 "file_url": "/private/files/" + filename + ".pdf",
@@ -1096,188 +1426,9 @@ def get_claim_pdf_file(doc):
         )
         ret.insert(ignore_permissions=True)
         ret.db_update()
-
         if not ret.name:
             frappe.throw("ret name not exist")
-
         base64_data = to_base64(pdf)
         return base64_data
     else:
         frappe.throw(_("Failed to generate pdf"))
-
-
-def get_child_map():
-    childs_map = [
-        {
-            "table": "lab_test_prescription",
-            "doctype": "Lab Test Template",
-            "item": "lab_test_code",
-            "item_name": "lab_test_name",
-            "comment": "lab_test_comment",
-            "ref_doctype": "Lab Test",
-            "ref_docname": "lab_test",
-        },
-        {
-            "table": "radiology_procedure_prescription",
-            "doctype": "Radiology Examination Template",
-            "item": "radiology_examination_template",
-            "item_name": "radiology_procedure_name",
-            "comment": "radiology_test_comment",
-            "ref_doctype": "Radiology Examination",
-            "ref_docname": "radiology_examination",
-        },
-        {
-            "table": "procedure_prescription",
-            "doctype": "Clinical Procedure Template",
-            "item": "procedure",
-            "item_name": "procedure_name",
-            "comment": "comments",
-            "ref_doctype": "Clinical Procedure",
-            "ref_docname": "clinical_procedure",
-        },
-        {
-            "table": "drug_prescription",
-            "doctype": "Medication",
-            "item": "drug_code",
-            "item_name": "drug_name",
-            "comment": "comment",
-            "ref_doctype": "Delivery Note Item",
-            "ref_docname": "dn_detail",
-        },
-        {
-            "table": "therapies",
-            "doctype": "Therapy Type",
-            "item": "therapy_type",
-            "item_name": "therapy_type",
-            "comment": "comment",
-            "ref_doctype": "",
-            "ref_docname": "",
-        },
-    ]
-    return childs_map
-
-
-def get_LRPMT_status(row):
-    status = row.lrpmt_status
-    if status == "Draft" and row.lrpmt_doctype == "Lab Test":
-        lab_workflow_state = frappe.get_cached_value(
-            "Lab Test",
-            row.lrpmt_docname,
-            "workflow_state",
-        )
-        if lab_workflow_state and lab_workflow_state != "Lab Test Requested":
-            status = "Submitted"
-
-    if not status:
-        status = "Draft"
-
-    return status
-
-
-@frappe.whitelist()
-def reconcile_repeated_items(claim_no):
-    def reconcile_items(claim_items):
-        unique_items = []
-        repeated_items = []
-        unique_refcodes = []
-
-        for row in claim_items:
-            if row.item_code not in unique_refcodes:
-                unique_refcodes.append(row.item_code)
-                unique_items.append(row)
-            else:
-                repeated_items.append(row)
-
-        if len(repeated_items) > 0:
-            items = []
-            for item in unique_items:
-                ref_docnames = []
-                ref_encounters = []
-
-                for d in repeated_items:
-                    if item.item_code == d.item_code:
-                        item.item_quantity += d.item_quantity
-                        item.amount_claimed += d.amount_claimed
-
-                        if d.approval_ref_no:
-                            approval_ref_no = None
-                            if item.approval_ref_no:
-                                approval_ref_no = str(item.approval_ref_no) + "," + str(d.approval_ref_no)
-                            else:
-                                approval_ref_no = d.approval_ref_no
-
-                            item.approval_ref_no = approval_ref_no
-
-                        if d.patient_encounter:
-                            ref_encounters.append(d.patient_encounter)
-                        if d.ref_docname:
-                            ref_docnames.append(d.ref_docname)
-
-                        if item.status != "Submitted" and d.status == "Submitted":
-                            item.status = "Submitted"
-
-                if item.patient_encounter:
-                    ref_encounters.append(item.patient_encounter)
-                if item.ref_docname:
-                    ref_docnames.append(item.ref_docname)
-
-                if len(ref_encounters) > 0:
-                    item.patient_encounter = ",".join(set(ref_encounters))
-
-                if len(ref_docnames) > 0:
-                    item.ref_docname = ",".join(set(ref_docnames))
-
-                items.append(item)
-
-            for record in repeated_items:
-                frappe.delete_doc(
-                    record.doctype,
-                    record.name,
-                    force=True,
-                    ignore_permissions=True,
-                    ignore_on_trash=True,
-                    delete_permanently=True,
-                )
-            return items
-
-        else:
-            return unique_items
-
-    claim_doc = frappe.get_cached_doc("NHIF Patient Claim", claim_no)
-    claim_doc.allow_changes = 1
-    claim_doc.nhif_patient_claim_item = reconcile_items(claim_doc.nhif_patient_claim_item)
-    claim_doc.original_nhif_patient_claim_item = reconcile_items(claim_doc.original_nhif_patient_claim_item)
-
-    claim_doc.save(ignore_permissions=True)
-    return True
-
-
-def update_original_patient_claim(doc):
-    """Update original patient claim incase merging if done for this claim"""
-
-    ref_docnames = []
-    for item in doc.original_nhif_patient_claim_item:
-        if item.ref_docname:
-            d = item.ref_docname.split(",")
-            ref_docnames.extend(d)
-
-    for row in doc.nhif_patient_claim_item:
-        if row.ref_docname not in ref_docnames:
-            ref_docnames.append(row.ref_docname)
-
-            new_row = row.as_dict()
-            for fieldname in [
-                "name",
-                "owner",
-                "creation",
-                "modified",
-                "modified_by",
-                "docstatus",
-                "parent",
-                "parentfield",
-                "parenttype",
-                "idx",
-            ]:
-                new_row[fieldname] = None
-
-            doc.append("original_nhif_patient_claim_item", new_row)

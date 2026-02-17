@@ -283,7 +283,7 @@ def get_payload(doc):
         "Gender": doc.gender,
         "DateOfBirth": str(doc.date_of_birth),
         "TelephoneNo": doc.telephone_no,
-        "PatientFileNo": doc.patient_file_no,
+        "PatientFileNo": doc.patient,
         "BillNo": doc.name,
         "ClinicalNotes": doc.clinical_notes,
         "AuthorizationNo": doc.authorization_no,
