@@ -59,6 +59,7 @@
   "column_break_hcbi3",
   "get_nhif_token",
   "nhif_token_expiry",
+  "nhif_customer_name",
   "section_break_mbni",
   "nhif_token",
   "section_break_16",
@@ -81,6 +82,7 @@
   "column_break_pspm",
   "jubilee_provider_id",
   "jubilee_url",
+  "jubilee_customer_name",
   "column_break_ubwd",
   "enable_jubilee_api",
   "get_jubilee_token",
@@ -610,11 +612,31 @@
    "fieldtype": "Date",
    "label": "Start Date",
    "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_nhif_api == 1",
+   "description": "This is used to fetch items with Refcode from Item doctype during processing of covered items",
+   "fieldname": "nhif_customer_name",
+   "fieldtype": "Link",
+   "label": "NHIF Customer Name",
+   "mandatory_depends_on": "eval: doc.enable_nhif_api == 1",
+   "options": "Customer",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval: doc.enable_jubilee_api == 1",
+   "description": "This is used to fetch items with Refcode from Item doctype during processing of covered items",
+   "fieldname": "jubilee_customer_name",
+   "fieldtype": "Link",
+   "label": "Jubilee Customer Name",
+   "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1",
+   "options": "Customer",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 08:39:49.296438",
+ "modified": "2026-02-16 12:55:19.137895",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",

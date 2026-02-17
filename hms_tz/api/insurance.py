@@ -254,7 +254,7 @@ def get_service_unit_types(insurance_customer_name):
 
 
 
-def get_items_for_price_list(
+def get_packages_for_price_list(
     doctype_name,
     company,
     insurance_customer_name,

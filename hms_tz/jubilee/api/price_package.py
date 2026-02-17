@@ -6,20 +6,54 @@ import requests
 from frappe import _
 from frappe.model.naming import make_autoname
 from frappe.query_builder import DocType
-from frappe.utils import create_batch, now_datetime
+from frappe.utils import create_batch, now_datetime, nowdate
 from frappe.utils.background_jobs import enqueue
 
 from hms_tz.api.insurance import (
     create_insurance_price_list,
+    delete_hsic_data,
     delete_price_package,
     get_insurance_items,
-    get_items_for_price_list,
+    get_packages_for_price_list,
     handle_insurance_prices,
 )
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
 
-def get_jubilee_price_packages(company):
+@frappe.whitelist()
+def enqueue_get_jubilee_price_packages(company):
+    enqueue(
+        method=get_price_package,
+        queue="default",
+        timeout=7200,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Fetch price package via backgroud job", alert=True)
+
+
+@frappe.whitelist()
+def process_jubilee_records(company):
+    enqueue(
+        method=process_jubilee_prices,
+        queue="default",
+        timeout=3600,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Processing Jubilee prices via backaground job", alert=True)
+
+    enqueue(
+        method=process_jubilee_coverages,
+        queue="default",
+        timeout=3600,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Processing Jubilee Coverages via backaground job", alert=True)
+
+
+def get_price_package(company):
     if not company:
         frappe.throw(_("No companies found to connect to Jubilee"))
 
@@ -185,7 +219,8 @@ def set_package_diff(company):
         or len(new_price_packages) > 0
         or len(deleted_price_packages) > 0
     ):
-        service_map = get_insurance_items("The Jubilee Insurance (T) Ltd", for_prices=True)
+        jubilee_customer = frappe.get_single_value("HMS TZ Setting", "jubilee_customer_name")
+        service_map = get_insurance_items(jubilee_customer, for_prices=True)
 
         doc = frappe.new_doc("Jubilee Update")
 
@@ -238,7 +273,8 @@ def process_jubilee_prices(company, item=None):
 
     create_insurance_price_list(company, price_list_name, default_currency, "Jubilee")
 
-    item_list = get_items_for_price_list(company, item)
+    jubilee_customer = frappe.get_single_value("HMS TZ Setting", "jubilee_customer_name")
+    item_list = get_packages_for_price_list("Jubilee Price Package", company, jubilee_customer, item)
 
     for batch in create_batch(item_list, 1000):
         for item in batch:
@@ -246,3 +282,86 @@ def process_jubilee_prices(company, item=None):
 
         frappe.db.commit()
 
+
+
+def process_jubilee_coverages(company, coverage_plan=None):
+    DocType("Healthcare Service Insurance Coverage")
+    hsic_data = []
+    plans_for_deletion = []
+
+    fields = [
+        "name",
+        "creation",
+        "owner",
+        "modified",
+        "modified_by",
+        "healthcare_service",
+        "healthcare_service_template",
+        "is_active",
+        "healthcare_insurance_coverage_plan",
+        "company",
+        "is_auto_generated",
+        "start_date",
+        "end_date",
+    ]
+
+    coverage_plan_list = None
+    if coverage_plan:
+        coverage_plan_list = [{"name": coverage_plan}]
+    else:
+        coverage_plan_list = frappe.get_all(
+            "Healthcare Insurance Coverage Plan",
+            fields={"name"},
+            filters={
+                "insurance_company": ["like", "%Jubilee%"],
+                "company": company,
+                "is_active": 1,
+            },
+        )
+
+    if len(coverage_plan_list) == 0:
+        frappe.throw("No active coverage plan found for Jubilee")
+
+    jubilee_customer = frappe.get_single_value("HMS TZ Setting", "jubilee_customer_name")
+    service_map = get_insurance_items(jubilee_customer)
+    services = service_map.values()
+
+    for plan in coverage_plan_list:
+        has_data = False
+        for svc in services:
+            hsic_name = frappe.generate_hash(length=10)
+
+            row = (
+                hsic_name,
+                now_datetime(),
+                frappe.session.user,
+                now_datetime(),
+                frappe.session.user,
+                svc.get("service_type"),
+                svc.get("service_name"),
+                1,
+                plan.get("name"),
+                company,
+                1,
+                nowdate(),
+                "2099-12-31",
+            )
+            hsic_data.append(row)
+
+            if not has_data and row:
+                has_data = True
+
+        if has_data:
+            plans_for_deletion.append(plan.name)
+
+    delete_hsic_data(plans_for_deletion)
+
+    sleep(30)
+    frappe.db.bulk_insert(
+        "Healthcare Service Insurance Coverage",
+        fields=fields,
+        values=hsic_data,
+        ignore_duplicates=True,
+    )
+    frappe.db.commit()
+    return True

@@ -13,7 +13,7 @@ from hms_tz.api.insurance import (
     delete_hsic_data,
     delete_price_package,
     get_insurance_items,
-    get_items_for_price_list,
+    get_packages_for_price_list,
     handle_insurance_prices,
 )
 from hms_tz.nhif.doctype.nhif_custom_excluded_services.nhif_custom_excluded_services import get_custom_excluded_services
@@ -24,7 +24,6 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 def enqueue_get_nhif_price_packages(company):
     enqueue(
         method=get_price_package,
-        job_name="get_nhif_price_packages",
         queue="long",
         timeout=7200,
         is_async=True,
@@ -60,14 +59,14 @@ def process_nhif_records(company):
     frappe.msgprint("Processing NHIF prices via backaground job", alert=True)
 
     enqueue(
-        method=process_insurance_coverages,
+        method=process_nhif_coverages,
         queue="long",
         timeout=10000000,
         is_async=True,
         company=company,
         facility_code=facility_code,
     )
-    frappe.msgprint("Processing NHIF Insurance Coverage via backaground job", alert=True)
+    frappe.msgprint("Processing NHIF Coverages via backaground job", alert=True)
 
 
 @frappe.whitelist()
@@ -259,7 +258,8 @@ def set_package_diff(company):
                 changed_price_packages.append(new_row)
 
     if len(changed_price_packages) > 0 or len(new_price_packages) > 0 or len(deleted_price_packages) > 0:
-        service_map = get_insurance_items("NHIF", for_prices=True)
+        nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+        service_map = get_insurance_items(nhif_customer, for_prices=True)
 
         doc = frappe.new_doc("NHIF Update")
 
@@ -319,7 +319,8 @@ def process_nhif_prices(company, facility_code, item_code=None):
         price_list_name = "NHIF-" + scheme + "-" + facility_code
         create_insurance_price_list(company, price_list_name, default_currency, "NHIF", scheme)
 
-    item_list = get_items_for_price_list("NHIF Price Package", company, "NHIF", item_code)
+    nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+    item_list = get_packages_for_price_list("NHIF Price Package", company, nhif_customer, item_code)
 
     for batch in create_batch(item_list, 1000):
         for item in batch:
@@ -332,10 +333,11 @@ def process_nhif_prices(company, facility_code, item_code=None):
         frappe.db.commit()
 
 @frappe.whitelist()
-def process_insurance_coverages(company, facility_code, coverage_plan=None):
+def process_nhif_coverages(company, facility_code, coverage_plan=None):
     print("Getting Insurance Coverage Items")
     hsic_data = []
     plans_for_deletion = []
+
     fields = [
         "name",
         "creation",
@@ -358,9 +360,6 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
         "start_date",
         "end_date",
     ]
-    service_map = get_insurance_items("NHIF")
-    price_package_map = get_price_package_map(company, facility_code)
-
     filters = {
         "insurance_company": ["like", "NHIF%"],
         "is_active": 1,
@@ -374,6 +373,13 @@ def process_insurance_coverages(company, facility_code, coverage_plan=None):
         fields=["name", "nhif_scheme_id"],
         filters=filters,
     )
+
+    if len(coverage_plan_list) == 0:
+        frappe.throw("No active coverage plan found for NHIF")
+
+    nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+    service_map = get_insurance_items(nhif_customer)
+    price_package_map = get_price_package_map(company, facility_code)
 
     for plan in coverage_plan_list:
         print(f"Processing Insurance Coverage {plan}")
@@ -551,7 +557,8 @@ def sync_copayment_items(data):
         "percentcovered",
     ]
 
-    service_map = get_insurance_items("NHIF", for_prices=True)
+    nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+    service_map = get_insurance_items(nhif_customer, for_prices=True)
 
     for row in data:
         ncs_name = make_autoname(key="hash")

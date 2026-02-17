@@ -67,6 +67,22 @@ frappe.ui.form.on("HMS TZ Setting", {
         },
       };
     });
+    frm.set_query("nhif_customer_name", () => {
+      return {
+        filters: {
+          disabled: 0,
+          name: ["like", "%NHIF%"],
+        },
+      };
+    });
+    frm.set_query("jubilee_customer_name", () => {
+      return {
+        filters: {
+          disabled: 0,
+          name: ["like", "%Jubilee%"],
+        },
+      };
+    });
   },
 
   get_nhif_token: (frm) => {
