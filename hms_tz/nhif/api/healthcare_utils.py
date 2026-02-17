@@ -620,12 +620,12 @@ def get_item_form_LRPT(LRPT_doc):
 def update_dimensions(doc):
     for item in doc.items:
         refd, refn = get_references(item)
-        if doc.healthcare_practitioner:
+        if doc.get("healthcare_practitioner"):
             item.healthcare_practitioner = doc.healthcare_practitioner
         elif refd and refn:
             item.healthcare_practitioner = get_healthcare_practitioner(item)
 
-        if doc.healthcare_service_unit and not item.healthcare_service_unit and not refn:
+        if doc.get("healthcare_service_unit") and not item.get("healthcare_service_unit") and not refn:
             item.healthcare_service_unit = doc.healthcare_service_unit
 
         if refd and refn:

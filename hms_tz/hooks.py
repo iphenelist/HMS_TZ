@@ -90,7 +90,7 @@ doctype_list_js = {
 # ------------
 
 # before_install = "hms_tz.install.before_install"
-# after_install = "hms_tz.install.after_install"
+after_install = "hms_tz.install.after_install"
 
 
 after_migrate = [
