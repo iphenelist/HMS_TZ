@@ -1,4 +1,5 @@
 import os
+import sys
 
 import frappe
 from erpnext import get_default_company
@@ -109,7 +110,83 @@ def setup_hms_tz_test_data():
        like ``image_field`` to a custom fieldname. If that fieldname doesn't
        exist yet, Frappe's field validation fails on the next custom field
        insert for that doctype.
+
+    Fault tolerance:
+    During test setup we temporarily replace Frappe's ``create_custom_fields``
+    and ``make_property_setter`` with wrappers that catch errors per-field /
+    per-setter.  This means a single bad definition never blocks the remaining
+    fields in the same patch file.
     """
+    import frappe.custom.doctype.custom_field.custom_field as cf_module
+    import frappe.custom.doctype.property_setter.property_setter as ps_module
+
+    _original_create_custom_fields = cf_module.create_custom_fields
+    _original_make_property_setter = ps_module.make_property_setter
+
+    # ── fault-tolerant wrapper for create_custom_fields ──────────────
+    def _safe_create_custom_fields(custom_fields, ignore_validate=False, update=True):
+        """Try batch first; on failure, fall back to per-field creation."""
+        try:
+            _original_create_custom_fields(
+                custom_fields, ignore_validate=ignore_validate, update=update
+            )
+        except Exception:
+            # Batch failed — retry each field individually so one bad
+            # field does not block the rest.
+            for doctypes, fields in custom_fields.items():
+                if isinstance(fields, dict):
+                    fields = (fields,)
+                if isinstance(doctypes, str):
+                    doctypes = (doctypes,)
+                for doctype in doctypes:
+                    for df in fields:
+                        fieldname = (
+                            df.get("fieldname")
+                            or frappe.scrub(df.get("label", ""))
+                            or "unknown"
+                        )
+                        try:
+                            _original_create_custom_fields(
+                                {doctype: [df]},
+                                ignore_validate=ignore_validate,
+                                update=update,
+                            )
+                        except Exception as e:
+                            print(
+                                f"WARNING [hms_tz]: custom field "
+                                f"'{doctype}.{fieldname}' skipped: {e}",
+                                file=sys.stderr,
+                            )
+
+    # ── fault-tolerant wrapper for make_property_setter ──────────────
+    def _safe_make_property_setter(*args, **kwargs):
+        """Wrap make_property_setter so one failure never stops the loop."""
+        try:
+            _original_make_property_setter(*args, **kwargs)
+        except Exception as e:
+            doctype = args[0] if args else kwargs.get("doctype", "?")
+            fieldname = args[1] if len(args) > 1 else kwargs.get("fieldname", "?")
+            prop = args[2] if len(args) > 2 else kwargs.get("property", "?")
+            print(
+                f"WARNING [hms_tz]: property setter "
+                f"'{doctype}.{fieldname}.{prop}' skipped: {e}",
+                file=sys.stderr,
+            )
+
+    # ── install the wrappers ──────────────────────────────────────────
+    cf_module.create_custom_fields = _safe_create_custom_fields
+    ps_module.make_property_setter = _safe_make_property_setter
+
+    try:
+        _run_patches_and_json_loaders()
+    finally:
+        # Always restore original functions, even if something goes wrong
+        cf_module.create_custom_fields = _original_create_custom_fields
+        ps_module.make_property_setter = _original_make_property_setter
+
+
+def _run_patches_and_json_loaders():
+    """Execute all custom field / property setter patches and JSON loaders."""
     patches_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "patches.txt"
     )
@@ -135,24 +212,41 @@ def setup_hms_tz_test_data():
         try:
             frappe.get_attr(patch_path + ".execute")()
         except Exception as e:
-            frappe.log_error(
-                title=f"hms_tz before_tests: patch failed - {patch_path}",
-                message=str(e),
+            print(
+                f"WARNING [hms_tz before_tests]: custom field patch failed - {patch_path}: {e}",
+                file=sys.stderr,
             )
 
-    create_custom_fields()
+    try:
+        create_custom_fields()
+    except Exception as e:
+        print(
+            f"WARNING [hms_tz before_tests]: JSON custom fields creation failed: {e}",
+            file=sys.stderr,
+        )
+
+    # Commit and clear cache so DocType meta objects are rebuilt with
+    # the newly created custom fields before property setters run.
+    frappe.db.commit()
+    frappe.clear_cache()
 
     # Phase 2: Apply all property setters (Python patches then JSON-based)
     for patch_path in property_setter_patches:
         try:
             frappe.get_attr(patch_path + ".execute")()
         except Exception as e:
-            frappe.log_error(
-                title=f"hms_tz before_tests: patch failed - {patch_path}",
-                message=str(e),
+            print(
+                f"WARNING [hms_tz before_tests]: property setter patch failed - {patch_path}: {e}",
+                file=sys.stderr,
             )
 
-    create_property_setters()
+    try:
+        create_property_setters()
+    except Exception as e:
+        print(
+            f"WARNING [hms_tz before_tests]: JSON property setters creation failed: {e}",
+            file=sys.stderr,
+        )
 
 
 def create_test_master_data():
