@@ -6,13 +6,14 @@ from __future__ import unicode_literals
 import unittest
 
 import frappe
+from erpnext import get_default_company
 from frappe.utils import getdate, nowtime
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
     get_income_account,
     get_receivable_account,
 )
 from healthcare.healthcare.doctype.patient_medical_record.test_patient_medical_record import (
-    create_lab_test_template as create_blood_test_template,
+    create_lab_test_template as _healthcare_create_blood_test_template,
 )
 
 from hms_tz.hms_tz.doctype.lab_test.lab_test import create_multiple
@@ -113,6 +114,7 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
     template.is_billable = 1
     template.lab_test_description = "Insulin Resistance"
     template.lab_test_rate = 2000
+    template.points_of_care = "Laboratory"
 
     for entry in ["FBS", "Insulin", "IR"]:
         template.append(
@@ -128,7 +130,7 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
         template.sample_qty = 5.0
 
     # company_options is mandatory
-    company = frappe.db.get_value("Company", {}, "name")
+    company = get_default_company()
     service_unit = frappe.db.get_value(
         "Healthcare Service Unit", {"company": company}, "name"
     ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
@@ -141,6 +143,38 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
     )
 
     template.save()
+    return template
+
+
+def create_blood_test_template(medical_department):
+    """Wrapper around healthcare's create_lab_test_template that adds
+    hms_tz-specific mandatory fields (company_options, points_of_care)."""
+    template = _healthcare_create_blood_test_template(medical_department)
+
+    needs_save = False
+    # Ensure points_of_care is set
+    if not template.get("points_of_care"):
+        template.points_of_care = "Laboratory"
+        needs_save = True
+
+    # Ensure company_options has at least one row
+    if not template.get("company_options"):
+        company = get_default_company()
+        service_unit = frappe.db.get_value(
+            "Healthcare Service Unit", {"company": company}, "name"
+        ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+        template.append(
+            "company_options",
+            {
+                "company": company,
+                "service_unit": service_unit,
+            },
+        )
+        needs_save = True
+
+    if needs_save:
+        template.save(ignore_permissions=True)
+
     return template
 
 
@@ -185,12 +219,13 @@ def create_sales_invoice():
     insulin_resistance_template = create_lab_test_template()
     blood_test_template = create_blood_test_template(medical_department)
 
+    company = get_default_company()
     sales_invoice = frappe.new_doc("Sales Invoice")
     sales_invoice.patient = patient
     sales_invoice.customer = frappe.get_cached_value("Patient", patient, "customer")
     sales_invoice.due_date = getdate()
-    sales_invoice.company = "_Test Company"
-    sales_invoice.debit_to = get_receivable_account("_Test Company")
+    sales_invoice.company = company
+    sales_invoice.debit_to = get_receivable_account(company)
 
     tests = [insulin_resistance_template, blood_test_template]
     for entry in tests:
@@ -203,7 +238,7 @@ def create_sales_invoice():
                 "qty": 1,
                 "uom": "Nos",
                 "conversion_factor": 1,
-                "income_account": get_income_account(None, "_Test Company"),
+                "income_account": get_income_account(None, company),
                 "rate": entry.lab_test_rate,
                 "amount": entry.lab_test_rate,
             },
@@ -221,11 +256,18 @@ def create_patient_encounter():
     insulin_resistance_template = create_lab_test_template()
     blood_test_template = create_blood_test_template(medical_department)
 
+    company = get_default_company()
     patient_encounter = frappe.new_doc("Patient Encounter")
     patient_encounter.patient = patient
     patient_encounter.practitioner = create_practitioner()
     patient_encounter.encounter_date = getdate()
     patient_encounter.encounter_time = nowtime()
+    patient_encounter.company = company
+    patient_encounter.healthcare_service_unit = frappe.db.get_value(
+        "Healthcare Service Unit",
+        {"is_group": 0, "company": company},
+        "name",
+    ) or frappe.db.get_value("Healthcare Service Unit", {"is_group": 0}, "name")
 
     tests = [insulin_resistance_template, blood_test_template]
     for entry in tests:
@@ -245,7 +287,7 @@ def create_practitioner():
     practitioner = frappe.db.exists("Healthcare Practitioner", "_Test Healthcare Practitioner")
 
     if not practitioner:
-        company = frappe.db.get_value("Company", {}, "name")
+        company = get_default_company()
         practitioner = frappe.new_doc("Healthcare Practitioner")
         practitioner.first_name = "_Test Healthcare Practitioner"
         practitioner.gender = "Female"
