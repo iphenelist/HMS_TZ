@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
@@ -53,7 +54,27 @@ def create_fields_from_json(custom_fields_obj):
             key=lambda f: 1 if f.get("fieldtype") == "Dynamic Link" else 0
         )
 
-    create_custom_fields(doctype_custom_fields_dict, update=False)
+    # Try creating all fields in one batch first (fast path).
+    # If that fails, fall back to creating fields one-by-one per doctype
+    # so that a single bad field does not block the rest.
+    try:
+        create_custom_fields(doctype_custom_fields_dict, update=False)
+    except Exception:
+        for doctype, fields in doctype_custom_fields_dict.items():
+            for df in fields:
+                fieldname = df.get("fieldname", df.get("label", "unknown"))
+                try:
+                    create_custom_fields({doctype: [df]}, update=False)
+                except Exception as e:
+                    print(
+                        f"WARNING [hms_tz]: Failed to create custom field "
+                        f"'{fieldname}' on '{doctype}': {e}",
+                        file=sys.stderr,
+                    )
+                    frappe.log_error(
+                        title=f"hms_tz: custom field failed - {doctype}.{fieldname}",
+                        message=frappe.get_traceback(),
+                    )
 
 
 def execute():
@@ -65,8 +86,18 @@ def execute():
         )
     )
     for file in files:
-        data = load_json(file)
-        create_fields_from_json(data)
+        try:
+            data = load_json(file)
+            create_fields_from_json(data)
+        except Exception as e:
+            print(
+                f"WARNING [hms_tz]: Failed to process custom fields from '{file}': {e}",
+                file=sys.stderr,
+            )
+            frappe.log_error(
+                title=f"hms_tz: custom field file failed - {file}",
+                message=frappe.get_traceback(),
+            )
 
 
 @frappe.whitelist()
