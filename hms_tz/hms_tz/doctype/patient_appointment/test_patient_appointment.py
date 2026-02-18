@@ -23,11 +23,11 @@ class TestPatientAppointment(unittest.TestCase):
         patient, medical_department, practitioner = create_healthcare_docs()
         frappe.db.set_value("Healthcare Settings", None, "automate_appointment_invoicing", 0)
         appointment = create_appointment(patient, practitioner, nowdate())
-        self.assertEquals(appointment.status, "Open")
+        self.assertEqual(appointment.status, "Open")
         appointment = create_appointment(patient, practitioner, add_days(nowdate(), 2))
-        self.assertEquals(appointment.status, "Scheduled")
+        self.assertEqual(appointment.status, "Scheduled")
         create_encounter(appointment)
-        self.assertEquals(
+        self.assertEqual(
             frappe.get_cached_value("Patient Appointment", appointment.name, "status"),
             "Closed",
         )
@@ -315,36 +315,44 @@ def create_overlap_service_unit_type():
 
 
 def create_service_unit(service_unit_type):
-    service_unit = frappe.db.exists("Healthcare Service Unit", "_Test service_unit")
-    if not service_unit:
-        service_unit = frappe.new_doc("Healthcare Service Unit")
-        service_unit.healthcare_service_unit_name = "_Test service_unit"
-        service_unit.service_unit_type = service_unit_type
-        service_unit.company = get_default_company()
-        service_unit.parent_healthcare_service_unit = frappe.db.get_value(
-            "Healthcare Service Unit", {"is_group": 1}, "name"
-        )
-        service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
-        service_unit.save(ignore_permissions=True)
-        service_unit = service_unit.name
-    return service_unit
+    company = get_default_company()
+    company_abbr = frappe.get_cached_value("Company", company, "abbr")
+    expected_name = f"_Test service_unit - {company_abbr}"
+
+    if frappe.db.exists("Healthcare Service Unit", expected_name):
+        return expected_name
+
+    service_unit = frappe.new_doc("Healthcare Service Unit")
+    service_unit.healthcare_service_unit_name = "_Test service_unit"
+    service_unit.service_unit_type = service_unit_type
+    service_unit.company = company
+    service_unit.parent_healthcare_service_unit = frappe.db.get_value(
+        "Healthcare Service Unit", {"is_group": 1}, "name"
+    )
+    service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
+    service_unit.save(ignore_permissions=True)
+    return service_unit.name
 
 
 def create_overlap_service_unit(overlap_service_unit_type):
-    overlap_service_unit = frappe.db.exists("Healthcare Service Unit", "_Test overlap_service_unit")
-    if not overlap_service_unit:
-        overlap_service_unit = frappe.new_doc("Healthcare Service Unit")
-        overlap_service_unit.healthcare_service_unit_name = "_Test overlap_service_unit"
-        overlap_service_unit.total_service_unit_capacity = 3
-        overlap_service_unit.service_unit_type = overlap_service_unit_type
-        overlap_service_unit.company = get_default_company()
-        overlap_service_unit.parent_healthcare_service_unit = frappe.db.get_value(
-            "Healthcare Service Unit", {"is_group": 1}, "name"
-        )
-        overlap_service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
-        overlap_service_unit.save(ignore_permissions=True)
-        overlap_service_unit = overlap_service_unit.name
-    return overlap_service_unit
+    company = get_default_company()
+    company_abbr = frappe.get_cached_value("Company", company, "abbr")
+    expected_name = f"_Test overlap_service_unit - {company_abbr}"
+
+    if frappe.db.exists("Healthcare Service Unit", expected_name):
+        return expected_name
+
+    overlap_service_unit = frappe.new_doc("Healthcare Service Unit")
+    overlap_service_unit.healthcare_service_unit_name = "_Test overlap_service_unit"
+    overlap_service_unit.total_service_unit_capacity = 3
+    overlap_service_unit.service_unit_type = overlap_service_unit_type
+    overlap_service_unit.company = company
+    overlap_service_unit.parent_healthcare_service_unit = frappe.db.get_value(
+        "Healthcare Service Unit", {"is_group": 1}, "name"
+    )
+    overlap_service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
+    overlap_service_unit.save(ignore_permissions=True)
+    return overlap_service_unit.name
 
 
 def create_patient_n(x):
