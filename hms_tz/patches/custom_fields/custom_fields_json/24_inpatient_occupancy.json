@@ -1,6 +1,29 @@
 [
   {
     "dt": "Inpatient Occupancy",
+    "fieldname": "amount",
+    "fieldtype": "Currency",
+    "insert_after": "check_out",
+    "label": "Amount"
+  },
+  {
+    "dt": "Inpatient Occupancy",
+    "fieldname": "hms_tz_is_discount_applied",
+    "fieldtype": "Check",
+    "insert_after": "amount",
+    "label": "Is Discount Applied",
+    "default": "0"
+  },
+  {
+    "dt": "Inpatient Occupancy",
+    "fieldname": "is_confirmed",
+    "fieldtype": "Check",
+    "insert_after": "invoiced",
+    "label": "Is Confirmed",
+    "default": "0"
+  },
+  {
+    "dt": "Inpatient Occupancy",
     "fieldname": "hre_created",
     "fieldtype": "Check",
     "insert_after": "is_confirmed",
