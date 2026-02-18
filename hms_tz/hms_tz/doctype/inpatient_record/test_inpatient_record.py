@@ -114,12 +114,10 @@ def get_healthcare_service_unit():
         service_unit.inpatient_occupancy = 1
         service_unit.occupancy_status = "Vacant"
         service_unit.is_group = 0
-        service_unit_parent_name = frappe.db.exists(
-            {
-                "doctype": "Healthcare Service Unit",
-                "healthcare_service_unit_name": "All Healthcare Service Units",
-                "is_group": 1,
-            }
+        service_unit_parent_name = frappe.db.get_value(
+            "Healthcare Service Unit",
+            {"healthcare_service_unit_name": "All Healthcare Service Units", "is_group": 1},
+            "name",
         )
         if not service_unit_parent_name:
             parent_service_unit = frappe.new_doc("Healthcare Service Unit")
@@ -129,7 +127,7 @@ def get_healthcare_service_unit():
             parent_service_unit.save(ignore_permissions=True)
             service_unit.parent_healthcare_service_unit = parent_service_unit.name
         else:
-            service_unit.parent_healthcare_service_unit = service_unit_parent_name[0][0]
+            service_unit.parent_healthcare_service_unit = service_unit_parent_name
         service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
         service_unit.save(ignore_permissions=True)
         return service_unit.name

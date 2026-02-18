@@ -85,6 +85,8 @@ class TestPatientAppointment(unittest.TestCase):
     def test_appointment_cancel(self):
         patient, medical_department, practitioner = create_healthcare_docs()
         frappe.db.set_value("Healthcare Settings", None, "enable_free_follow_ups", 1)
+        frappe.db.set_value("Healthcare Settings", None, "max_visits", 1)
+        frappe.db.set_value("Healthcare Settings", None, "valid_days", 7)
         appointment = create_appointment(patient, practitioner, nowdate())
         fee_validity = frappe.get_cached_value(
             "Fee Validity Reference",
