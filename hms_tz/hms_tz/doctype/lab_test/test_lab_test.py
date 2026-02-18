@@ -245,11 +245,15 @@ def create_practitioner():
     practitioner = frappe.db.exists("Healthcare Practitioner", "_Test Healthcare Practitioner")
 
     if not practitioner:
+        company = frappe.db.get_value("Company", {}, "name")
         practitioner = frappe.new_doc("Healthcare Practitioner")
         practitioner.first_name = "_Test Healthcare Practitioner"
         practitioner.gender = "Female"
         practitioner.op_consulting_charge = 500
         practitioner.inpatient_visit_charge = 500
+        practitioner.national_id = "19900101-00001-00001-01"
+        practitioner.abbreviation = "THP"
+        practitioner.hms_tz_company = company
         practitioner.save(ignore_permissions=True)
         practitioner = practitioner.name
 
