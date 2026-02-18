@@ -1,8 +1,10 @@
 import os
 
 import frappe
+from erpnext import get_default_company
 from erpnext.setup.utils import before_tests as erpnext_before_tests
 from healthcare.healthcare.utils import before_tests as healthcare_before_tests
+from healthcare.setup import setup_healthcare
 
 from hms_tz.patches.custom_fields.create_custom_fields import execute as create_custom_fields
 from hms_tz.patches.property_setter.create_property_setters import execute as create_property_setters
@@ -77,7 +79,11 @@ def before_tests():
     # 2. Healthcare: creates Frappe Care LLC (if needed), Medical Departments,
     #    Antibiotics, Lab Test UOMs, Dosages, Prescription Durations,
     #    Healthcare Item Groups, Sensitivities, Healthcare Service Units, etc.
+    #    NOTE: healthcare_before_tests() only calls setup_healthcare() when no
+    #    Company exists.  Since erpnext_before_tests() already created one,
+    #    we must call setup_healthcare() explicitly afterwards.
     healthcare_before_tests()
+    setup_healthcare()
 
     # 3. hms_tz accounting dimensions (Healthcare Practitioner, Healthcare Service Unit)
     create_accounting_dimensions()
@@ -161,10 +167,14 @@ def create_test_master_data():
         {"doctype": "Demography", "demography": "City Centre"},
         {"doctype": "Healthcare Ward Type", "ward_type_name": "General Ward"},
         {"doctype": "Healthcare Points of Care", "point_of_care_name": "Phisiotherapy"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Laboratory"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Pharmacy"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Radiology"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Procedure"},
     ]
 
     # Appointment Type is mandatory on Patient Appointment (healthcare doctype)
-    for appt_type in ["Outpatient Visit", "Direct Cash"]:
+    for appt_type in ["Normal Visit", "Direct Cash"]:
         if not frappe.db.exists("Appointment Type", appt_type):
             try:
                 frappe.get_doc({
@@ -210,28 +220,21 @@ def create_test_healthcare_service_unit():
     Healthcare Service Unit Link.  Healthcare's ``before_tests`` only creates
     the group root node "All Healthcare Service Units" — we need a leaf node.
     """
-    company = frappe.db.get_value("Company", {}, "name")
+    company = get_default_company()
     # Check if any non-group service unit already exists
     existing = frappe.db.get_value(
-        "Healthcare Service Unit", {"is_group": 0}, "name"
+        "Healthcare Service Unit", {"is_group": 0, "company": company}, "name"
     )
     if existing:
         return
 
     parent = frappe.db.get_value(
-        "Healthcare Service Unit", {"is_group": 1}, "name"
+        "Healthcare Service Unit", {"is_group": 1, "company": company}, "name"
     )
     # Ensure Healthcare Room Type exists (room_type is mandatory on HSU)
-    room_type = frappe.db.get_value("Healthcare Room Type", {}, "name")
-    if not room_type:
-        try:
-            frappe.get_doc({
-                "doctype": "Healthcare Room Type",
-                "room_type_name": "General Ward",
-            }).insert(ignore_permissions=True)
-            room_type = "General Ward"
-        except Exception:
-            pass
+    room_type = _ensure_room_type()
+    # Ensure Healthcare Ward Type exists (ward_type is mandatory on HSUT via custom field)
+    _ensure_ward_type()
 
     try:
         su = frappe.new_doc("Healthcare Service Unit")
@@ -242,8 +245,41 @@ def create_test_healthcare_service_unit():
         if parent:
             su.parent_healthcare_service_unit = parent
         su.save(ignore_permissions=True)
+    except frappe.DuplicateEntryError:
+        pass
     except Exception:
         frappe.log_error(
             title="hms_tz before_tests: failed to create Healthcare Service Unit",
             message=frappe.get_traceback(),
         )
+
+
+def _ensure_room_type():
+    """Ensure a Healthcare Room Type exists and return its name."""
+    room_type = frappe.db.get_value("Healthcare Room Type", {}, "name")
+    if not room_type:
+        try:
+            frappe.get_doc({
+                "doctype": "Healthcare Room Type",
+                "room_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
+            room_type = "General Ward"
+        except frappe.DuplicateEntryError:
+            room_type = "General Ward"
+        except Exception:
+            pass
+    return room_type
+
+
+def _ensure_ward_type():
+    """Ensure Healthcare Ward Type 'General Ward' exists."""
+    if not frappe.db.exists("Healthcare Ward Type", "General Ward"):
+        try:
+            frappe.get_doc({
+                "doctype": "Healthcare Ward Type",
+                "ward_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
+        except frappe.DuplicateEntryError:
+            pass
+        except Exception:
+            pass

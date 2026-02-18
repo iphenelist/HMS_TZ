@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import unittest
 
 import frappe
+from erpnext import get_default_company
 from frappe.utils import add_days, nowdate
 
 from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import make_encounter, update_status
@@ -14,10 +15,9 @@ from hms_tz.hms_tz.doctype.patient_appointment.patient_appointment import make_e
 class TestPatientAppointment(unittest.TestCase):
     def setUp(self):
         frappe.db.sql("""delete from `tabPatient Appointment`""")
+        frappe.db.sql("""delete from `tabFee Validity Reference`""")
         frappe.db.sql("""delete from `tabFee Validity`""")
         frappe.db.sql("""delete from `tabPatient Encounter`""")
-        frappe.db.sql("""delete from `tabHealthcare Service Unit Type`""")
-        frappe.db.sql("""delete from `tabHealthcare Service Unit`""")
 
     def test_status(self):
         patient, medical_department, practitioner = create_healthcare_docs()
@@ -85,13 +85,14 @@ class TestPatientAppointment(unittest.TestCase):
     def test_appointment_cancel(self):
         patient, medical_department, practitioner = create_healthcare_docs()
         frappe.db.set_value("Healthcare Settings", None, "enable_free_follow_ups", 1)
+        frappe.db.set_value("Healthcare Settings", None, "automate_appointment_invoicing", 0)
         frappe.db.set_value("Healthcare Settings", None, "max_visits", 1)
         frappe.db.set_value("Healthcare Settings", None, "valid_days", 7)
         appointment = create_appointment(patient, practitioner, nowdate())
-        fee_validity = frappe.get_cached_value(
-            "Fee Validity Reference",
-            {"appointment": appointment.name},
-            "parent",
+        fee_validity = frappe.db.get_value(
+            "Fee Validity",
+            {"patient": patient, "practitioner": practitioner},
+            "name",
         )
         # fee validity created
         self.assertTrue(fee_validity)
@@ -100,7 +101,7 @@ class TestPatientAppointment(unittest.TestCase):
         update_status(appointment.name, "Cancelled")
         # check fee validity updated
         self.assertEqual(
-            frappe.get_cached_value("Fee Validity", fee_validity, "visited"),
+            frappe.db.get_value("Fee Validity", fee_validity, "visited"),
             visited - 1,
         )
 
@@ -149,7 +150,7 @@ def create_healthcare_docs():
         medical_department = medical_department.name
 
     if not practitioner:
-        company = frappe.db.get_value("Company", {}, "name")
+        company = get_default_company()
         practitioner = frappe.new_doc("Healthcare Practitioner")
         practitioner.first_name = "_Test Healthcare Practitioner"
         practitioner.gender = "Female"
@@ -191,6 +192,11 @@ def create_encounter(appointment):
         encounter.encounter_date = appointment.appointment_date
         encounter.encounter_time = appointment.appointment_time
         encounter.company = appointment.company
+        encounter.healthcare_service_unit = frappe.db.get_value(
+            "Healthcare Service Unit",
+            {"is_group": 0, "company": appointment.company},
+            "name",
+        ) or frappe.db.get_value("Healthcare Service Unit", {"is_group": 0}, "name")
         encounter.save()
         encounter.submit()
         return encounter
@@ -200,12 +206,13 @@ def create_appointment(patient, practitioner, appointment_date, invoice=0, proce
     item = create_healthcare_service_items()
     frappe.db.set_value("Healthcare Settings", None, "inpatient_visit_charge_item", item)
     frappe.db.set_value("Healthcare Settings", None, "op_consulting_charge_item", item)
+    company = get_default_company()
     appointment = frappe.new_doc("Patient Appointment")
     appointment.patient = patient
     appointment.practitioner = practitioner
     appointment.department = "_Test Medical Department"
     appointment.appointment_date = appointment_date
-    appointment.company = "_Test Company"
+    appointment.company = company
     appointment.duration = 15
     # appointment_type is mandatory on the doctype
     if not frappe.db.exists("Appointment Type", "Normal Visit"):
@@ -247,8 +254,16 @@ def create_clinical_procedure_template():
     template.description = "Knee Surgery and Rehab"
     template.rate = 50000
 
+    # points_of_care is mandatory (reqd=1) on Clinical Procedure Template
+    if not frappe.db.exists("Healthcare Points of Care", "Procedure Room"):
+        frappe.get_doc({
+            "doctype": "Healthcare Points of Care",
+            "point_of_care_name": "Procedure Room",
+        }).insert(ignore_permissions=True)
+    template.points_of_care = "Procedure Room"
+
     # company_options is mandatory
-    company = frappe.db.get_value("Company", {}, "name")
+    company = get_default_company()
     service_unit = frappe.db.get_value(
         "Healthcare Service Unit", {"company": company}, "name"
     ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
@@ -267,21 +282,33 @@ def create_clinical_procedure_template():
 def create_service_unit_type():
     service_unit_type = frappe.db.exists("Healthcare Service Unit Type", "_Test service_unit_type")
     if not service_unit_type:
+        if not frappe.db.exists("Healthcare Ward Type", "General Ward"):
+            frappe.get_doc({
+                "doctype": "Healthcare Ward Type",
+                "ward_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
         service_unit_type = frappe.new_doc("Healthcare Service Unit Type")
         service_unit_type.service_unit_type = "_Test service_unit_type"
         service_unit_type.allow_appointments = 1
+        service_unit_type.ward_type = "General Ward"
         service_unit_type.save(ignore_permissions=True)
         service_unit_type = service_unit_type.name
-        return service_unit_type
+    return service_unit_type
 
 
 def create_overlap_service_unit_type():
     overlap_service_unit_type = frappe.db.exists("Healthcare Service Unit Type", "_Test overlap_service_unit_type")
     if not overlap_service_unit_type:
+        if not frappe.db.exists("Healthcare Ward Type", "General Ward"):
+            frappe.get_doc({
+                "doctype": "Healthcare Ward Type",
+                "ward_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
         overlap_service_unit_type = frappe.new_doc("Healthcare Service Unit Type")
         overlap_service_unit_type.service_unit_type = "_Test overlap_service_unit_type"
         overlap_service_unit_type.allow_appointments = 1
         overlap_service_unit_type.overlap_appointments = 1
+        overlap_service_unit_type.ward_type = "General Ward"
         overlap_service_unit_type.save(ignore_permissions=True)
         overlap_service_unit_type = overlap_service_unit_type.name
     return overlap_service_unit_type
@@ -293,6 +320,11 @@ def create_service_unit(service_unit_type):
         service_unit = frappe.new_doc("Healthcare Service Unit")
         service_unit.healthcare_service_unit_name = "_Test service_unit"
         service_unit.service_unit_type = service_unit_type
+        service_unit.company = get_default_company()
+        service_unit.parent_healthcare_service_unit = frappe.db.get_value(
+            "Healthcare Service Unit", {"is_group": 1}, "name"
+        )
+        service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
         service_unit.save(ignore_permissions=True)
         service_unit = service_unit.name
     return service_unit
@@ -305,6 +337,11 @@ def create_overlap_service_unit(overlap_service_unit_type):
         overlap_service_unit.healthcare_service_unit_name = "_Test overlap_service_unit"
         overlap_service_unit.total_service_unit_capacity = 3
         overlap_service_unit.service_unit_type = overlap_service_unit_type
+        overlap_service_unit.company = get_default_company()
+        overlap_service_unit.parent_healthcare_service_unit = frappe.db.get_value(
+            "Healthcare Service Unit", {"is_group": 1}, "name"
+        )
+        overlap_service_unit.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
         overlap_service_unit.save(ignore_permissions=True)
         overlap_service_unit = overlap_service_unit.name
     return overlap_service_unit
@@ -317,6 +354,12 @@ def create_patient_n(x):
         patient = frappe.new_doc("Patient")
         patient.first_name = "_Test Patient" + x
         patient.sex = "Female"
+        patient.mobile = "2557000000" + x.zfill(2)
+        patient.dob = "1990-01-01"
+        patient.common_occupation = "Secretary"
+        patient.ethnicity = "African"
+        patient.demography = "City Centre"
+        patient.how_did_you_hear_about_us = "I know you"
         patient.save(ignore_permissions=True)
         patient = patient.name
     return patient
@@ -328,8 +371,15 @@ def create_appointments(patient, practitioner, appointment_date, service_unit):
     appointment.practitioner = practitioner
     appointment.department = "_Test Medical Department"
     appointment.appointment_date = appointment_date
-    appointment.company = "_Test Company"
+    appointment.company = get_default_company()
     appointment.service_unit = service_unit
     appointment.duration = 30
+    if not frappe.db.exists("Appointment Type", "Normal Visit"):
+        frappe.get_doc({
+            "doctype": "Appointment Type",
+            "appointment_type": "Normal Visit",
+            "default_duration": 15,
+        }).insert(ignore_permissions=True)
+    appointment.appointment_type = "Normal Visit"
     appointment.save(ignore_permissions=True)
     return appointment

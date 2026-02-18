@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import unittest
 
 import frappe
+from erpnext import get_default_company
 
 
 class TestTherapyType(unittest.TestCase):
@@ -31,7 +32,7 @@ def create_therapy_type():
     therapy_type = frappe.db.exists("Therapy Type", "Basic Rehab")
     if not therapy_type:
         # Get the first available company and service unit for company_options
-        company = frappe.db.get_value("Company", {}, "name")
+        company = get_default_company()
         service_unit = frappe.db.get_value(
             "Healthcare Service Unit", {"company": company}, "name"
         ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
@@ -60,6 +61,7 @@ def create_therapy_type():
         therapy_type.item_code = "Basic Rehab"
         therapy_type.item_name = "Basic Rehab"
         therapy_type.item_group = "Services"
+        therapy_type.points_of_care = "Phisiotherapy"
         therapy_type.append(
             "exercises",
             {
