@@ -80,7 +80,10 @@ jobs:
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
-        run: bench --site test_site run-tests --app hms_tz
+        run: |
+          rm -f sites/test_site/.test_log
+          bench --site test_site clear-cache
+          bench --site test_site run-tests --app hms_tz --skip-test-records
         env:
           TYPE: server
 
