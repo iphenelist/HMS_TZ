@@ -164,15 +164,16 @@ def create_test_master_data():
     ]
 
     # Appointment Type is mandatory on Patient Appointment (healthcare doctype)
-    if not frappe.db.exists("Appointment Type", "Outpatient Visit"):
-        try:
-            frappe.get_doc({
-                "doctype": "Appointment Type",
-                "appointment_type": "Outpatient Visit",
-                "default_duration": 15,
-            }).insert(ignore_permissions=True)
-        except Exception:
-            pass
+    for appt_type in ["Outpatient Visit", "Direct Cash"]:
+        if not frappe.db.exists("Appointment Type", appt_type):
+            try:
+                frappe.get_doc({
+                    "doctype": "Appointment Type",
+                    "appointment_type": appt_type,
+                    "default_duration": 15,
+                }).insert(ignore_permissions=True)
+            except Exception:
+                pass
 
     # Campaign is a Frappe/CRM doctype used by how_did_you_hear_about_us
     if not frappe.db.exists("Campaign", "I know you"):
