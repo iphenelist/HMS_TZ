@@ -184,3 +184,41 @@ def create_test_master_data():
                     title=f"hms_tz before_tests: failed to create {dt} '{name_value}'",
                     message=frappe.get_traceback(),
                 )
+
+    # Ensure a non-group Healthcare Service Unit exists for company_options
+    # child table rows on Lab Test Template, Therapy Type, etc.
+    create_test_healthcare_service_unit()
+
+
+def create_test_healthcare_service_unit():
+    """Ensure at least one non-group Healthcare Service Unit exists.
+
+    Many template doctypes (Therapy Type, Lab Test Template, Clinical Procedure
+    Template) have a mandatory ``company_options`` child table that requires a
+    Healthcare Service Unit Link.  Healthcare's ``before_tests`` only creates
+    the group root node "All Healthcare Service Units" — we need a leaf node.
+    """
+    company = frappe.db.get_value("Company", {}, "name")
+    # Check if any non-group service unit already exists
+    existing = frappe.db.get_value(
+        "Healthcare Service Unit", {"is_group": 0}, "name"
+    )
+    if existing:
+        return
+
+    parent = frappe.db.get_value(
+        "Healthcare Service Unit", {"is_group": 1}, "name"
+    )
+    try:
+        su = frappe.new_doc("Healthcare Service Unit")
+        su.healthcare_service_unit_name = "_Test Service Unit"
+        su.company = company
+        su.is_group = 0
+        if parent:
+            su.parent_healthcare_service_unit = parent
+        su.save(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(
+            title="hms_tz before_tests: failed to create Healthcare Service Unit",
+            message=frappe.get_traceback(),
+        )

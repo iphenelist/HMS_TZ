@@ -218,6 +218,9 @@ def set_beds_price(self):
 
 
 def after_insert(doc, method):
+    if not doc.admission_encounter:
+        return
+
     encounter_list = [doc.admission_encounter]
     create_healthcare_docs(doc.admission_encounter, encounter_list, method="after_insert")
 

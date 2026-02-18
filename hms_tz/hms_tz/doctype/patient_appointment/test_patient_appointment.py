@@ -147,12 +147,16 @@ def create_healthcare_docs():
         medical_department = medical_department.name
 
     if not practitioner:
+        company = frappe.db.get_value("Company", {}, "name")
         practitioner = frappe.new_doc("Healthcare Practitioner")
         practitioner.first_name = "_Test Healthcare Practitioner"
         practitioner.gender = "Female"
         practitioner.department = medical_department
         practitioner.op_consulting_charge = 500
         practitioner.inpatient_visit_charge = 500
+        practitioner.national_id = "19900101-00001-00001-01"
+        practitioner.abbreviation = "THP"
+        practitioner.hms_tz_company = company
         practitioner.save(ignore_permissions=True)
         practitioner = practitioner.name
 
