@@ -720,6 +720,11 @@ def manage_fee_validity(appointment):
         fee_validity.save(ignore_permissions=True)
     else:
         fee_validity = create_fee_validity(appointment)
+        if fee_validity:
+            # The first appointment counts as a visit
+            fee_validity.visited = 1
+            fee_validity.append("ref_appointments", {"appointment": appointment.name})
+            fee_validity.save(ignore_permissions=True)
     return fee_validity
 
 
