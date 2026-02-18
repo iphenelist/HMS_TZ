@@ -163,6 +163,17 @@ def create_test_master_data():
         {"doctype": "Healthcare Points of Care", "point_of_care_name": "Phisiotherapy"},
     ]
 
+    # Appointment Type is mandatory on Patient Appointment (healthcare doctype)
+    if not frappe.db.exists("Appointment Type", "Outpatient Visit"):
+        try:
+            frappe.get_doc({
+                "doctype": "Appointment Type",
+                "appointment_type": "Outpatient Visit",
+                "default_duration": 15,
+            }).insert(ignore_permissions=True)
+        except Exception:
+            pass
+
     # Campaign is a Frappe/CRM doctype used by how_did_you_hear_about_us
     if not frappe.db.exists("Campaign", "I know you"):
         try:
@@ -209,11 +220,24 @@ def create_test_healthcare_service_unit():
     parent = frappe.db.get_value(
         "Healthcare Service Unit", {"is_group": 1}, "name"
     )
+    # Ensure Healthcare Room Type exists (room_type is mandatory on HSU)
+    room_type = frappe.db.get_value("Healthcare Room Type", {}, "name")
+    if not room_type:
+        try:
+            frappe.get_doc({
+                "doctype": "Healthcare Room Type",
+                "room_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
+            room_type = "General Ward"
+        except Exception:
+            pass
+
     try:
         su = frappe.new_doc("Healthcare Service Unit")
         su.healthcare_service_unit_name = "_Test Service Unit"
         su.company = company
         su.is_group = 0
+        su.room_type = room_type
         if parent:
             su.parent_healthcare_service_unit = parent
         su.save(ignore_permissions=True)

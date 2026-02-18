@@ -205,6 +205,14 @@ def create_appointment(patient, practitioner, appointment_date, invoice=0, proce
     appointment.appointment_date = appointment_date
     appointment.company = "_Test Company"
     appointment.duration = 15
+    # appointment_type is mandatory on the doctype
+    if not frappe.db.exists("Appointment Type", "Normal Visit"):
+        frappe.get_doc({
+            "doctype": "Appointment Type",
+            "appointment_type": "Normal Visit",
+            "default_duration": 15,
+        }).insert(ignore_permissions=True)
+    appointment.appointment_type = "Normal Visit"
     if invoice:
         appointment.mode_of_payment = "Cash"
         appointment.paid_amount = 500
