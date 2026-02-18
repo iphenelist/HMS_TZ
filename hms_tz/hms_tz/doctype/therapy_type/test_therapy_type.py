@@ -46,6 +46,7 @@ def create_therapy_type():
             su.healthcare_service_unit_name = "_Test Therapy Service Unit"
             su.company = company
             su.is_group = 0
+            su.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
             if parent:
                 su.parent_healthcare_service_unit = parent
             su.save(ignore_permissions=True)
