@@ -1872,13 +1872,15 @@ def delete_or_cancel_draft_document():
     before_7_days_date = add_to_date(nowdate(), days=-7, as_string=False)
     before_2_days_date = add_to_date(nowdate(), days=-2, as_string=False)
 
-    appointments = frappe.db.sql(
-        f"""
-        SELECT name FROM `tabPatient Appointment`
-        WHERE status = "Open" AND appointment_date < '{before_7_days_date}'
-    """,
-        as_dict=1,
-    )
+    pa = DocType("Patient Appointment")
+    appointments = (
+        frappe.qb.from_(pa)
+        .select(pa.name)
+        .where(
+            (pa.status == "Open")
+            & (pa.appointment_date < before_7_days_date)
+        )
+    ).run(as_dict=True)
 
     for app_doc in appointments:
         try:
@@ -1895,13 +1897,15 @@ def delete_or_cancel_draft_document():
             )
         frappe.db.commit()
 
-    vital_docs = frappe.db.sql(
-        f"""
-        SELECT name FROM `tabVital Signs`
-        WHERE docstatus = 0 AND signs_date < '{before_7_days_date}'
-    """,
-        as_dict=1,
-    )
+    vs = DocType("Vital Signs")
+    vital_docs = (
+        frappe.qb.from_(vs)
+        .select(vs.name)
+        .where(
+            (vs.docstatus == 0)
+            & (vs.signs_date < before_7_days_date)
+        )
+    ).run(as_dict=True)
 
     for vs_doc in vital_docs:
         try:
@@ -1915,15 +1919,16 @@ def delete_or_cancel_draft_document():
             )
         frappe.db.commit()
 
-    delivery_documents = frappe.db.sql(
-        f"""
-        SELECT name FROM `tabDelivery Note`
-        WHERE docstatus = 0
-        AND workflow_state != "Not Serviced"
-        AND posting_date < '{before_2_days_date}'
-    """,
-        as_dict=1,
-    )
+    dn = DocType("Delivery Note")
+    delivery_documents = (
+        frappe.qb.from_(dn)
+        .select(dn.name)
+        .where(
+            (dn.docstatus == 0)
+            & (dn.workflow_state != "Not Serviced")
+            & (dn.posting_date < before_2_days_date)
+        )
+    ).run(as_dict=True)
 
     for delivery_note in delivery_documents:
         delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note.name)
