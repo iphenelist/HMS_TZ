@@ -67,7 +67,7 @@ def validate_inpatient_occupancies(doc):
             valid = False
         if str(row.check_out) != str(old_row.check_out):
             valid = False
-        if str(row.amount) != str(old_row.amount):
+        if str(row.get("amount", 0)) != str(old_row.get("amount", 0)):
             valid = False
         if row.left != old_row.left:
             valid = False
@@ -178,7 +178,7 @@ def set_beds_price(self):
         discount_percent = get_discount_percent(self.insurance_company)
 
     for bed in self.inpatient_occupancies:
-        if bed.amount == 0:
+        if bed.get("amount", 0) == 0:
             if self.insurance_subscription:
                 service_unit_type = frappe.get_cached_value(
                     "Healthcare Service Unit",
@@ -214,7 +214,7 @@ def set_beds_price(self):
                 bed.amount = get_mop_amount(item_code, mode_of_payment, self.company, self.patient)
                 payment_type = mode_of_payment
             frappe.msgprint(
-                _(f"{payment_type} Bed prices set for {item_code} as of {str(bed.check_in)} for amount {str(bed.amount)}"))
+                _(f"{payment_type} Bed prices set for {item_code} as of {str(bed.check_in)} for amount {str(bed.get('amount', 0))}"))
 
 
 def after_insert(doc, method):
