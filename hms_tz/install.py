@@ -1,8 +1,11 @@
 import os
+import sys
 
 import frappe
+from erpnext import get_default_company
 from erpnext.setup.utils import before_tests as erpnext_before_tests
 from healthcare.healthcare.utils import before_tests as healthcare_before_tests
+from healthcare.setup import setup_healthcare
 
 from hms_tz.patches.custom_fields.create_custom_fields import execute as create_custom_fields
 from hms_tz.patches.property_setter.create_property_setters import execute as create_property_setters
@@ -77,12 +80,19 @@ def before_tests():
     # 2. Healthcare: creates Frappe Care LLC (if needed), Medical Departments,
     #    Antibiotics, Lab Test UOMs, Dosages, Prescription Durations,
     #    Healthcare Item Groups, Sensitivities, Healthcare Service Units, etc.
+    #    NOTE: healthcare_before_tests() only calls setup_healthcare() when no
+    #    Company exists.  Since erpnext_before_tests() already created one,
+    #    we must call setup_healthcare() explicitly afterwards.
     healthcare_before_tests()
+    setup_healthcare()
 
     # 3. hms_tz accounting dimensions (Healthcare Practitioner, Healthcare Service Unit)
     create_accounting_dimensions()
 
-    # 4. hms_tz-specific setup: custom fields, property setters, etc.
+    # 4. hms_tz master data required by tests (lookup records for mandatory fields)
+    create_test_master_data()
+
+    # 5. hms_tz-specific setup: custom fields, property setters, etc.
     setup_hms_tz_test_data()
 
     frappe.db.commit()
@@ -100,7 +110,83 @@ def setup_hms_tz_test_data():
        like ``image_field`` to a custom fieldname. If that fieldname doesn't
        exist yet, Frappe's field validation fails on the next custom field
        insert for that doctype.
+
+    Fault tolerance:
+    During test setup we temporarily replace Frappe's ``create_custom_fields``
+    and ``make_property_setter`` with wrappers that catch errors per-field /
+    per-setter.  This means a single bad definition never blocks the remaining
+    fields in the same patch file.
     """
+    import frappe.custom.doctype.custom_field.custom_field as cf_module
+    import frappe.custom.doctype.property_setter.property_setter as ps_module
+
+    _original_create_custom_fields = cf_module.create_custom_fields
+    _original_make_property_setter = ps_module.make_property_setter
+
+    # ── fault-tolerant wrapper for create_custom_fields ──────────────
+    def _safe_create_custom_fields(custom_fields, ignore_validate=False, update=True):
+        """Try batch first; on failure, fall back to per-field creation."""
+        try:
+            _original_create_custom_fields(
+                custom_fields, ignore_validate=ignore_validate, update=update
+            )
+        except Exception:
+            # Batch failed — retry each field individually so one bad
+            # field does not block the rest.
+            for doctypes, fields in custom_fields.items():
+                if isinstance(fields, dict):
+                    fields = (fields,)
+                if isinstance(doctypes, str):
+                    doctypes = (doctypes,)
+                for doctype in doctypes:
+                    for df in fields:
+                        fieldname = (
+                            df.get("fieldname")
+                            or frappe.scrub(df.get("label", ""))
+                            or "unknown"
+                        )
+                        try:
+                            _original_create_custom_fields(
+                                {doctype: [df]},
+                                ignore_validate=ignore_validate,
+                                update=update,
+                            )
+                        except Exception as e:
+                            print(
+                                f"WARNING [hms_tz]: custom field "
+                                f"'{doctype}.{fieldname}' skipped: {e}",
+                                file=sys.stderr,
+                            )
+
+    # ── fault-tolerant wrapper for make_property_setter ──────────────
+    def _safe_make_property_setter(*args, **kwargs):
+        """Wrap make_property_setter so one failure never stops the loop."""
+        try:
+            _original_make_property_setter(*args, **kwargs)
+        except Exception as e:
+            doctype = args[0] if args else kwargs.get("doctype", "?")
+            fieldname = args[1] if len(args) > 1 else kwargs.get("fieldname", "?")
+            prop = args[2] if len(args) > 2 else kwargs.get("property", "?")
+            print(
+                f"WARNING [hms_tz]: property setter "
+                f"'{doctype}.{fieldname}.{prop}' skipped: {e}",
+                file=sys.stderr,
+            )
+
+    # ── install the wrappers ──────────────────────────────────────────
+    cf_module.create_custom_fields = _safe_create_custom_fields
+    ps_module.make_property_setter = _safe_make_property_setter
+
+    try:
+        _run_patches_and_json_loaders()
+    finally:
+        # Always restore original functions, even if something goes wrong
+        cf_module.create_custom_fields = _original_create_custom_fields
+        ps_module.make_property_setter = _original_make_property_setter
+
+
+def _run_patches_and_json_loaders():
+    """Execute all custom field / property setter patches and JSON loaders."""
     patches_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "patches.txt"
     )
@@ -126,21 +212,168 @@ def setup_hms_tz_test_data():
         try:
             frappe.get_attr(patch_path + ".execute")()
         except Exception as e:
-            frappe.log_error(
-                title=f"hms_tz before_tests: patch failed - {patch_path}",
-                message=str(e),
+            print(
+                f"WARNING [hms_tz before_tests]: custom field patch failed - {patch_path}: {e}",
+                file=sys.stderr,
             )
 
-    create_custom_fields()
+    try:
+        create_custom_fields()
+    except Exception as e:
+        print(
+            f"WARNING [hms_tz before_tests]: JSON custom fields creation failed: {e}",
+            file=sys.stderr,
+        )
+
+    # Commit and clear cache so DocType meta objects are rebuilt with
+    # the newly created custom fields before property setters run.
+    frappe.db.commit()
+    frappe.clear_cache()
 
     # Phase 2: Apply all property setters (Python patches then JSON-based)
     for patch_path in property_setter_patches:
         try:
             frappe.get_attr(patch_path + ".execute")()
         except Exception as e:
-            frappe.log_error(
-                title=f"hms_tz before_tests: patch failed - {patch_path}",
-                message=str(e),
+            print(
+                f"WARNING [hms_tz before_tests]: property setter patch failed - {patch_path}: {e}",
+                file=sys.stderr,
             )
 
-    create_property_setters()
+    try:
+        create_property_setters()
+    except Exception as e:
+        print(
+            f"WARNING [hms_tz before_tests]: JSON property setters creation failed: {e}",
+            file=sys.stderr,
+        )
+
+
+def create_test_master_data():
+    """Create lookup records needed by mandatory custom fields on Patient, etc.
+
+    These are hms_tz doctypes whose records must exist before test Patient
+    documents can be saved (the custom fields are reqd=1).
+    """
+    master_records = [
+        {"doctype": "Occupation", "occupation": "Secretary"},
+        {"doctype": "Ethnicity", "ethnicity": "African"},
+        {"doctype": "Demography", "demography": "City Centre"},
+        {"doctype": "Healthcare Ward Type", "ward_type_name": "General Ward"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Phisiotherapy"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Laboratory"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Pharmacy"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Radiology"},
+        {"doctype": "Healthcare Points of Care", "point_of_care_name": "Procedure"},
+    ]
+
+    # Appointment Type is mandatory on Patient Appointment (healthcare doctype)
+    for appt_type in ["Normal Visit", "Direct Cash"]:
+        if not frappe.db.exists("Appointment Type", appt_type):
+            try:
+                frappe.get_doc({
+                    "doctype": "Appointment Type",
+                    "appointment_type": appt_type,
+                    "default_duration": 15,
+                }).insert(ignore_permissions=True)
+            except Exception:
+                pass
+
+    # Campaign is a Frappe/CRM doctype used by how_did_you_hear_about_us
+    if not frappe.db.exists("Campaign", "I know you"):
+        try:
+            frappe.get_doc({"doctype": "Campaign", "campaign_name": "I know you"}).insert(
+                ignore_permissions=True
+            )
+        except Exception:
+            pass
+
+    for record in master_records:
+        dt = record["doctype"]
+        # The name is derived from the naming field; use the first non-doctype value
+        name_value = list(record.values())[1]
+        if not frappe.db.exists(dt, name_value):
+            try:
+                frappe.get_doc(record).insert(ignore_permissions=True)
+            except Exception:
+                frappe.log_error(
+                    title=f"hms_tz before_tests: failed to create {dt} '{name_value}'",
+                    message=frappe.get_traceback(),
+                )
+
+    # Ensure a non-group Healthcare Service Unit exists for company_options
+    # child table rows on Lab Test Template, Therapy Type, etc.
+    create_test_healthcare_service_unit()
+
+
+def create_test_healthcare_service_unit():
+    """Ensure at least one non-group Healthcare Service Unit exists.
+
+    Many template doctypes (Therapy Type, Lab Test Template, Clinical Procedure
+    Template) have a mandatory ``company_options`` child table that requires a
+    Healthcare Service Unit Link.  Healthcare's ``before_tests`` only creates
+    the group root node "All Healthcare Service Units" — we need a leaf node.
+    """
+    company = get_default_company()
+    # Check if any non-group service unit already exists
+    existing = frappe.db.get_value(
+        "Healthcare Service Unit", {"is_group": 0, "company": company}, "name"
+    )
+    if existing:
+        return
+
+    parent = frappe.db.get_value(
+        "Healthcare Service Unit", {"is_group": 1, "company": company}, "name"
+    )
+    # Ensure Healthcare Room Type exists (room_type is mandatory on HSU)
+    room_type = _ensure_room_type()
+    # Ensure Healthcare Ward Type exists (ward_type is mandatory on HSUT via custom field)
+    _ensure_ward_type()
+
+    try:
+        su = frappe.new_doc("Healthcare Service Unit")
+        su.healthcare_service_unit_name = "_Test Service Unit"
+        su.company = company
+        su.is_group = 0
+        su.room_type = room_type
+        if parent:
+            su.parent_healthcare_service_unit = parent
+        su.save(ignore_permissions=True)
+    except frappe.DuplicateEntryError:
+        pass
+    except Exception:
+        frappe.log_error(
+            title="hms_tz before_tests: failed to create Healthcare Service Unit",
+            message=frappe.get_traceback(),
+        )
+
+
+def _ensure_room_type():
+    """Ensure a Healthcare Room Type exists and return its name."""
+    room_type = frappe.db.get_value("Healthcare Room Type", {}, "name")
+    if not room_type:
+        try:
+            frappe.get_doc({
+                "doctype": "Healthcare Room Type",
+                "room_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
+            room_type = "General Ward"
+        except frappe.DuplicateEntryError:
+            room_type = "General Ward"
+        except Exception:
+            pass
+    return room_type
+
+
+def _ensure_ward_type():
+    """Ensure Healthcare Ward Type 'General Ward' exists."""
+    if not frappe.db.exists("Healthcare Ward Type", "General Ward"):
+        try:
+            frappe.get_doc({
+                "doctype": "Healthcare Ward Type",
+                "ward_type_name": "General Ward",
+            }).insert(ignore_permissions=True)
+        except frappe.DuplicateEntryError:
+            pass
+        except Exception:
+            pass

@@ -38,7 +38,7 @@ def create_sales_order(doc, method):
         ],
         as_dict=True,
     )
-    if company_details.auto_create_sales_order_from_encounter == 0:
+    if not company_details or company_details.auto_create_sales_order_from_encounter == 0:
         return
 
     if not company_details.sales_order_opd_pharmacy and not company_details.sales_order_ipd_pharmacy:

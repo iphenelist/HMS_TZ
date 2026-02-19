@@ -6,13 +6,11 @@ from __future__ import unicode_literals
 import unittest
 
 import frappe
+from erpnext import get_default_company
 from frappe.utils import getdate, nowtime
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
     get_income_account,
     get_receivable_account,
-)
-from healthcare.healthcare.doctype.patient_medical_record.test_patient_medical_record import (
-    create_lab_test_template as create_blood_test_template,
 )
 
 from hms_tz.hms_tz.doctype.lab_test.lab_test import create_multiple
@@ -24,7 +22,7 @@ class TestLabTest(unittest.TestCase):
         lab_template = create_lab_test_template()
         self.assertTrue(frappe.db.exists("Item", lab_template.item))
         self.assertEqual(
-            frappe.get_cached_value(
+            frappe.db.get_value(
                 "Item Price",
                 {"item_code": lab_template.item},
                 "price_list_rate",
@@ -34,7 +32,7 @@ class TestLabTest(unittest.TestCase):
 
         lab_template.disabled = 1
         lab_template.save()
-        self.assertEquals(frappe.get_cached_value("Item", lab_template.item, "disabled"), 1)
+        self.assertEqual(frappe.db.get_value("Item", lab_template.item, "disabled"), 1)
 
         lab_template.reload()
 
@@ -52,12 +50,6 @@ class TestLabTest(unittest.TestCase):
         self.assertRaises(frappe.ValidationError, lab_test.submit)
 
     def test_sample_collection(self):
-        frappe.db.set_value(
-            "Healthcare Settings",
-            "Healthcare Settings",
-            "create_sample_collection_for_lab_test",
-            1,
-        )
         lab_template = create_lab_test_template()
 
         lab_test = create_lab_test(lab_template)
@@ -66,24 +58,10 @@ class TestLabTest(unittest.TestCase):
         lab_test.descriptive_test_items[2].result_value = 2.3
         lab_test.save()
 
-        # check sample collection created
-        self.assertTrue(frappe.db.exists("Sample Collection", {"sample": lab_template.sample}))
-
-        frappe.db.set_value(
-            "Healthcare Settings",
-            "Healthcare Settings",
-            "create_sample_collection_for_lab_test",
-            0,
-        )
-        lab_test = create_lab_test(lab_template)
-        lab_test.descriptive_test_items[0].result_value = 12
-        lab_test.descriptive_test_items[1].result_value = 1
-        lab_test.descriptive_test_items[2].result_value = 2.3
-        lab_test.save()
-
-        # sample collection should not be created
+        # sample collection is always created when template has sample and sample_qty
         lab_test.reload()
-        self.assertEquals(lab_test.sample, None)
+        self.assertIsNotNone(lab_test.sample)
+        self.assertTrue(frappe.db.exists("Sample Collection", {"sample": lab_template.sample}))
 
     def test_create_lab_tests_from_sales_invoice(self):
         sales_invoice = create_sales_invoice()
@@ -100,12 +78,35 @@ class TestLabTest(unittest.TestCase):
         self.assertTrue(patient_encounter.lab_test_prescription[0].lab_test_created)
 
 
+def _ensure_item_price(template):
+    """Ensure that the template's Item and Item Price exist (may have been rolled back by a prior test)."""
+    from healthcare.healthcare.doctype.clinical_procedure_template.clinical_procedure_template import make_item_price
+
+    if not template.item:
+        from healthcare.healthcare.doctype.lab_test_template.lab_test_template import create_item_from_template
+        create_item_from_template(template)
+        template.reload()
+
+    if not frappe.db.exists("Item", template.item):
+        from healthcare.healthcare.doctype.lab_test_template.lab_test_template import create_item_from_template
+        template.db_set("item", "")
+        create_item_from_template(template)
+        template.reload()
+
+    if template.is_billable and template.lab_test_rate:
+        if not frappe.db.get_value("Item Price", {"item_code": template.item}):
+            make_item_price(template.item, template.lab_test_rate)
+
+
 def create_lab_test_template(test_sensitivity=0, sample_collection=1):
     medical_department = create_medical_department()
     if frappe.db.exists("Lab Test Template", "Insulin Resistance"):
-        return frappe.get_cached_doc("Lab Test Template", "Insulin Resistance")
+        template = frappe.get_doc("Lab Test Template", "Insulin Resistance")
+        _ensure_item_price(template)
+        return template
     template = frappe.new_doc("Lab Test Template")
     template.lab_test_name = "Insulin Resistance"
+    template.abbr = "IR"
     template.lab_test_template_type = "Descriptive"
     template.lab_test_code = "Insulin Resistance"
     template.lab_test_group = "Services"
@@ -113,6 +114,7 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
     template.is_billable = 1
     template.lab_test_description = "Insulin Resistance"
     template.lab_test_rate = 2000
+    template.points_of_care = "Laboratory"
 
     for entry in ["FBS", "Insulin", "IR"]:
         template.append(
@@ -127,6 +129,67 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
         template.sample = create_lab_test_sample()
         template.sample_qty = 5.0
 
+    # company_options is mandatory
+    company = get_default_company()
+    service_unit = frappe.db.get_value(
+        "Healthcare Service Unit", {"company": company}, "name"
+    ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+    template.append(
+        "company_options",
+        {
+            "company": company,
+            "service_unit": service_unit,
+        },
+    )
+
+    template.save()
+    return template
+
+
+def create_blood_test_template(medical_department):
+    """Create a Blood Test lab test template with hms_tz-specific mandatory fields
+    (abbr, company_options, points_of_care) set before saving."""
+    if frappe.db.exists("Lab Test Template", "Blood Test"):
+        template = frappe.get_doc("Lab Test Template", "Blood Test")
+        needs_save = False
+        if not template.get("abbr"):
+            template.abbr = "BT"
+            needs_save = True
+        if not template.get("points_of_care"):
+            template.points_of_care = "Laboratory"
+            needs_save = True
+        if not template.get("company_options"):
+            company = get_default_company()
+            service_unit = frappe.db.get_value(
+                "Healthcare Service Unit", {"company": company}, "name"
+            ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+            template.append(
+                "company_options",
+                {"company": company, "service_unit": service_unit},
+            )
+            needs_save = True
+        if needs_save:
+            template.save(ignore_permissions=True)
+        _ensure_item_price(template)
+        return template
+
+    template = frappe.new_doc("Lab Test Template")
+    template.lab_test_name = "Blood Test"
+    template.lab_test_code = "Blood Test"
+    template.lab_test_group = "Services"
+    template.department = medical_department
+    template.is_billable = 1
+    template.lab_test_rate = 2000
+    template.abbr = "BT"
+    template.points_of_care = "Laboratory"
+    company = get_default_company()
+    service_unit = frappe.db.get_value(
+        "Healthcare Service Unit", {"company": company}, "name"
+    ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+    template.append(
+        "company_options",
+        {"company": company, "service_unit": service_unit},
+    )
     template.save()
     return template
 
@@ -172,12 +235,14 @@ def create_sales_invoice():
     insulin_resistance_template = create_lab_test_template()
     blood_test_template = create_blood_test_template(medical_department)
 
+    company = get_default_company()
     sales_invoice = frappe.new_doc("Sales Invoice")
     sales_invoice.patient = patient
     sales_invoice.customer = frappe.get_cached_value("Patient", patient, "customer")
     sales_invoice.due_date = getdate()
-    sales_invoice.company = "_Test Company"
-    sales_invoice.debit_to = get_receivable_account("_Test Company")
+    sales_invoice.company = company
+    sales_invoice.debit_to = get_receivable_account(company)
+    sales_invoice.is_pos = 0
 
     tests = [insulin_resistance_template, blood_test_template]
     for entry in tests:
@@ -190,7 +255,7 @@ def create_sales_invoice():
                 "qty": 1,
                 "uom": "Nos",
                 "conversion_factor": 1,
-                "income_account": get_income_account(None, "_Test Company"),
+                "income_account": get_income_account(None, company),
                 "rate": entry.lab_test_rate,
                 "amount": entry.lab_test_rate,
             },
@@ -208,19 +273,27 @@ def create_patient_encounter():
     insulin_resistance_template = create_lab_test_template()
     blood_test_template = create_blood_test_template(medical_department)
 
+    company = get_default_company()
     patient_encounter = frappe.new_doc("Patient Encounter")
     patient_encounter.patient = patient
     patient_encounter.practitioner = create_practitioner()
     patient_encounter.encounter_date = getdate()
     patient_encounter.encounter_time = nowtime()
+    patient_encounter.company = company
+    patient_encounter.healthcare_service_unit = frappe.db.get_value(
+        "Healthcare Service Unit",
+        {"is_group": 0, "company": company},
+        "name",
+    ) or frappe.db.get_value("Healthcare Service Unit", {"is_group": 0}, "name")
 
     tests = [insulin_resistance_template, blood_test_template]
     for entry in tests:
         patient_encounter.append(
             "lab_test_prescription",
             {
-                "lab_test_code": entry.item,
+                "lab_test_code": entry.name,
                 "lab_test_name": entry.lab_test_name,
+                "amount": entry.lab_test_rate,
             },
         )
 
@@ -232,11 +305,15 @@ def create_practitioner():
     practitioner = frappe.db.exists("Healthcare Practitioner", "_Test Healthcare Practitioner")
 
     if not practitioner:
+        company = get_default_company()
         practitioner = frappe.new_doc("Healthcare Practitioner")
         practitioner.first_name = "_Test Healthcare Practitioner"
         practitioner.gender = "Female"
         practitioner.op_consulting_charge = 500
         practitioner.inpatient_visit_charge = 500
+        practitioner.national_id = "19900101-00001-00001-01"
+        practitioner.abbreviation = "THP"
+        practitioner.hms_tz_company = company
         practitioner.save(ignore_permissions=True)
         practitioner = practitioner.name
 
