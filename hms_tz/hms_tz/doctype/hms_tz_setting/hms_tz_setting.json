@@ -10,6 +10,10 @@
   "company",
   "column_break_zmnx",
   "facility_code",
+  "patient_appointment_conf_section",
+  "cancel_appointment_after",
+  "delivery_note_conf_section",
+  "cancel_delivery_note_after",
   "hms_tz_settings_section",
   "auto_finalize_patient_encounter",
   "valid_days_to_auto_finalize_encounter",
@@ -632,11 +636,37 @@
    "mandatory_depends_on": "eval: doc.enable_jubilee_api == 1",
    "options": "Customer",
    "search_index": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "patient_appointment_conf_section",
+   "fieldtype": "Section Break",
+   "label": "Patient Appointment Conf"
+  },
+  {
+   "default": "7",
+   "description": "Cancel appointments if they stay draft for this number of day(s)",
+   "fieldname": "cancel_appointment_after",
+   "fieldtype": "Int",
+   "label": "Cancel Draft Appointment After"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "delivery_note_conf_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Note Conf"
+  },
+  {
+   "default": "2",
+   "description": "Cancel delivery notes if they stay draft for this number of day(s)",
+   "fieldname": "cancel_delivery_note_after",
+   "fieldtype": "Int",
+   "label": "Cancel Draft Delivery Note After"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-16 12:55:19.137895",
+ "modified": "2026-02-19 16:15:30.420690",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
