@@ -2441,13 +2441,7 @@ def execute():
             "property_type": "Check",
             "value": 1,
         },
-        {
-            "doctype": "Shift Type",
-            "fieldname": "last_sync_of_checkin",
-            "property": "in_list_view",
-            "property_type": "Check",
-            "value": 1,
-        },
+
         {
             "doctype": "POS Profile",
             "fieldname": "update_stock",
@@ -2518,27 +2512,7 @@ def execute():
             "property_type": "Check",
             "value": 1,
         },
-        {
-            "doctype": "Fees",
-            "fieldname": "receivable_account",
-            "property": "fetch_from",
-            "property_type": "Small Text",
-            "value": "fee_structure.receivable_account",
-        },
-        {
-            "doctype": "Fees",
-            "fieldname": "income_account",
-            "property": "fetch_from",
-            "property_type": "Small Text",
-            "value": "fee_structure.income_account",
-        },
-        {
-            "doctype": "Fees",
-            "fieldname": "cost_center",
-            "property": "fetch_from",
-            "property_type": "Small Text",
-            "value": "fee_structure.cost_center",
-        },
+
         {
             "doctype": "Lab Test",
             "for_doctype": True,
