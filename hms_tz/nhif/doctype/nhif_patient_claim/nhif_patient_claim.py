@@ -327,14 +327,14 @@ class NHIFPatientClaim(Document):
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
 
-                if not d.service_request:
+                if not d.get("service_request"):
                     continue
 
-                if d.service_request in service_requests:
+                if d.get("service_request") in service_requests:
                     continue
 
-                service_requests.append(d.service_request)
-                service_request_doc = frappe.get_doc("Healthcare Service Request", d.service_request)
+                service_requests.append(d.get("service_request"))
+                service_request_doc = frappe.get_doc("Healthcare Service Request", d.get("service_request"))
                 for row in service_request_doc.get("payments"):
                     self.add_LRPMT_claim_item(row, d)
 
@@ -373,14 +373,14 @@ class NHIFPatientClaim(Document):
                     # service is not chargeable and encounters will be ignored
                     self.set_clinical_notes(d.encounter)
 
-                    if not d.service_request:
+                    if not d.get("service_request"):
                         continue
 
-                    if d.service_request in service_requests:
+                    if d.get("service_request") in service_requests:
                         continue
 
-                    service_requests.append(d.service_request)
-                    service_request_doc = frappe.get_doc("Healthcare Service Request", d.service_request)
+                    service_requests.append(d.get("service_request"))
+                    service_request_doc = frappe.get_doc("Healthcare Service Request", d.get("service_request"))
                     for row in service_request_doc.get("payments"):
                         if (
                             not occupancy.is_service_chargeable and
