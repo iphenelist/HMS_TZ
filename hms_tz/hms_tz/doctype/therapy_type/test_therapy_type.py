@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import unittest
 
 import frappe
+from erpnext import get_default_company
 
 
 class TestTherapyType(unittest.TestCase):
@@ -15,7 +16,7 @@ class TestTherapyType(unittest.TestCase):
 
         therapy_type.disabled = 1
         therapy_type.save()
-        self.assertEquals(frappe.get_cached_value("Item", therapy_type.item, "disabled"), 1)
+        self.assertEqual(frappe.get_cached_value("Item", therapy_type.item, "disabled"), 1)
 
 
 def create_therapy_type():
@@ -30,6 +31,28 @@ def create_therapy_type():
 
     therapy_type = frappe.db.exists("Therapy Type", "Basic Rehab")
     if not therapy_type:
+        # Get the first available company and service unit for company_options
+        company = get_default_company()
+        service_unit = frappe.db.get_value(
+            "Healthcare Service Unit", {"company": company}, "name"
+        ) or frappe.db.get_value("Healthcare Service Unit", {}, "name")
+
+        if not service_unit:
+            parent = frappe.db.get_value(
+                "Healthcare Service Unit",
+                {"is_group": 1},
+                "name",
+            )
+            su = frappe.new_doc("Healthcare Service Unit")
+            su.healthcare_service_unit_name = "_Test Therapy Service Unit"
+            su.company = company
+            su.is_group = 0
+            su.room_type = frappe.db.get_value("Healthcare Room Type", {}, "name") or "General Ward"
+            if parent:
+                su.parent_healthcare_service_unit = parent
+            su.save(ignore_permissions=True)
+            service_unit = su.name
+
         therapy_type = frappe.new_doc("Therapy Type")
         therapy_type.therapy_type = "Basic Rehab"
         therapy_type.default_duration = 30
@@ -38,12 +61,20 @@ def create_therapy_type():
         therapy_type.item_code = "Basic Rehab"
         therapy_type.item_name = "Basic Rehab"
         therapy_type.item_group = "Services"
+        therapy_type.points_of_care = "Phisiotherapy"
         therapy_type.append(
             "exercises",
             {
                 "exercise_type": exercise.name,
                 "counts_target": 10,
                 "assistance_level": "Passive",
+            },
+        )
+        therapy_type.append(
+            "company_options",
+            {
+                "company": company,
+                "service_unit": service_unit,
             },
         )
         therapy_type.save()

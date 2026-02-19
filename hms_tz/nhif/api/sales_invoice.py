@@ -106,16 +106,16 @@ def create_healthcare_docs(doc, method):
             # check if item is from Service Request
             # its service document will be created from Healthcare Service
             # Request
-            if item.service_request:
+            if item.get("service_request"):
                 frappe.db.set_value(
                     "Healthcare Service Request Payment",
-                    item.service_request,
+                    item.get("service_request"),
                     {
                         "sales_invoice_number": doc.name,
                         "invoiced": 1,
                     },
                 )
-                service_request_ids.append(item.service_request)
+                service_request_ids.append(item.get("service_request"))
                 continue
 
             child = frappe.get_doc(item.reference_dt, item.reference_dn)
@@ -239,10 +239,10 @@ def reset_invoiced_status(doc):
                         "sales_invoice_number": "",
                     },
                 )
-                if row.service_request and row.reference_dt != "Inpatient Occupancy":
+                if row.get("service_request") and row.reference_dt != "Inpatient Occupancy":
                     frappe.db.set_value(
                         "Healthcare Service Request Payment",
-                        row.service_request,
+                        row.get("service_request"),
                         {
                             "invoiced": 0,
                             "sales_invoice_number": "",

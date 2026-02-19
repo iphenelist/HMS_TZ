@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 import frappe
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
@@ -44,14 +45,26 @@ def create_property_setter_from_json(property_setters_obj):
 
         property_setter_dict = {field: property_setter.get(field) for field in field_list if field in property_setter}
 
-        make_property_setter(
-            doctype=property_setter_dict.get("doc_type"),
-            fieldname=property_setter_dict.get("field_name", None),
-            property=property_setter_dict.get("property"),
-            value=property_setter_dict.get("value"),
-            property_type=property_setter_dict.get("property_type"),
-            for_doctype=for_doctype,
-        )
+        try:
+            make_property_setter(
+                doctype=property_setter_dict.get("doc_type"),
+                fieldname=property_setter_dict.get("field_name", None),
+                property=property_setter_dict.get("property"),
+                value=property_setter_dict.get("value"),
+                property_type=property_setter_dict.get("property_type"),
+                for_doctype=for_doctype,
+            )
+        except Exception as e:
+            ps_name = property_setter.get("name", "unknown")
+            print(
+                f"WARNING [hms_tz]: Failed to create property setter "
+                f"'{ps_name}': {e}",
+                file=sys.stderr,
+            )
+            frappe.log_error(
+                title=f"hms_tz: property setter failed - {ps_name}",
+                message=frappe.get_traceback(),
+            )
 
 
 def execute():
@@ -63,5 +76,15 @@ def execute():
         )
     )
     for file in files:
-        data = load_json(file)
-        create_property_setter_from_json(data)
+        try:
+            data = load_json(file)
+            create_property_setter_from_json(data)
+        except Exception as e:
+            print(
+                f"WARNING [hms_tz]: Failed to process property setters from '{file}': {e}",
+                file=sys.stderr,
+            )
+            frappe.log_error(
+                title=f"hms_tz: property setter file failed - {file}",
+                message=frappe.get_traceback(),
+            )
