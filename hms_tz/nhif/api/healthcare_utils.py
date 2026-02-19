@@ -23,6 +23,8 @@ from frappe.utils import (
     nowtime,
 )
 
+from hms_tz.hms_tz.utils import manage_fee_validity
+
 
 def get_childs_map():
     childs_map = {
@@ -1880,15 +1882,18 @@ def delete_or_cancel_draft_document():
 
     for app_doc in appointments:
         try:
-            doc = frappe.get_cached_doc("Patient Appointment", app_doc.name)
-            doc.status = "Cancelled"
-            doc.save(ignore_permissions=True)
+            frappe.db.set_value("Patient Appointment", app_doc.name, "status", "Cancelled")
+            appointment_doc = frappe.get_cached_doc("Patient Appointment", app_doc.name)
+            appointment_doc.status = "Cancelled"
+
+            manage_fee_validity(appointment_doc)
 
         except Exception:
             frappe.log_error(
                 frappe.get_traceback(),
                 str("Error in cancelling draft appointment"),
             )
+        frappe.db.commit()
 
     vital_docs = frappe.db.sql(
         f"""
