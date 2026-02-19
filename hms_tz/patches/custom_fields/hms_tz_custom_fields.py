@@ -1220,6 +1220,10 @@ def execute():
                 "label": "Workflow State",
                 "fieldname": "workflow_state",
                 "insert_after": "ref_docname",
+                "options": "Workflow State",
+                "hidden": 1,
+                "no_copy": 1,
+                "allow_on_submit": 1,
             },
             {
                 "fieldname": "hms_tz_insurance_coverage_plan",
@@ -1567,6 +1571,8 @@ def execute():
                 "fieldtype": "Link",
                 "label": "System",
                 "fieldname": "system",
+                "insert_after": "compliant_duration",
+                "options": "Organ System",
             },
         ],
         "Patient Encounter": [
