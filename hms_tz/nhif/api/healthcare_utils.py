@@ -1862,87 +1862,109 @@ def get_template_company_option(template=None, company=None, method=None):
 
 def delete_or_cancel_draft_document():
     """
-    A routine to
-        1. Cancel open appointments after every 7 days,
-        2. Delete draft vital signs after every 7 days and
-        3. Cancel draft delivery note after every 2 days
-    this routine runs every day on 2:30am at night
+    A nightly routine (runs at 2:30am) that, per company based on HMS TZ Setting:
+        1. Cancels open appointments older than the configured days
+        2. Deletes draft vital signs older than the configured days
+        3. Cancels draft delivery notes older than the configured days
     """
 
-    before_7_days_date = add_to_date(nowdate(), days=-7, as_string=False)
-    before_2_days_date = add_to_date(nowdate(), days=-2, as_string=False)
-
-    pa = DocType("Patient Appointment")
-    appointments = (
-        frappe.qb.from_(pa)
-        .select(pa.name)
-        .where(
-            (pa.status == "Open")
-            & (pa.appointment_date < before_7_days_date)
-        )
-    ).run(as_dict=True)
-
-    for app_doc in appointments:
-        try:
-            frappe.db.set_value("Patient Appointment", app_doc.name, "status", "Cancelled")
-            appointment_doc = frappe.get_cached_doc("Patient Appointment", app_doc.name)
-            appointment_doc.status = "Cancelled"
-
-            manage_fee_validity(appointment_doc)
-
-        except Exception:
-            frappe.log_error(
-                title=str(f"Cancelling draft appointment: {app_doc.name}"),
-                message=frappe.get_traceback(),
+    def cancel_open_appointments(company, days_before):
+        before_date = add_to_date(nowdate(), days=-days_before, as_string=False)
+        pa = DocType("Patient Appointment")
+        appointments = (
+            frappe.qb.from_(pa)
+            .select(pa.name)
+            .where(
+                (pa.status == "Open")
+                & (pa.company == company)
+                & (pa.appointment_date < before_date)
             )
-        frappe.db.commit()
+        ).run(as_dict=True)
+        for app_doc in appointments:
+            try:
+                frappe.db.set_value("Patient Appointment", app_doc.name, "status", "Cancelled")
+                appointment_doc = frappe.get_doc("Patient Appointment", app_doc.name)
 
-    vs = DocType("Vital Signs")
-    vital_docs = (
-        frappe.qb.from_(vs)
-        .select(vs.name)
-        .where(
-            (vs.docstatus == 0)
-            & (vs.signs_date < before_7_days_date)
-        )
-    ).run(as_dict=True)
+                manage_fee_validity(appointment_doc)
 
-    for vs_doc in vital_docs:
-        try:
-            doc = frappe.get_cached_doc("Vital Signs", vs_doc.name)
-            doc.delete()
+            except Exception:
+                frappe.log_error(
+                    title=f"Error for Cancelling draft appointment: {frappe.bold(app_doc.name)}",
+                    message=frappe.get_traceback(),
+                )
+            frappe.db.commit()
 
-        except Exception:
-            frappe.log_error(
-                title=str(f"Deleting draft vital signs: {vs_doc.name}"),
-                message=frappe.get_traceback(),
+    def delete_draft_vital_signs(company, days_before):
+        before_date = add_to_date(nowdate(), days=-days_before, as_string=False)
+        vs = DocType("Vital Signs")
+        vital_docs = (
+            frappe.qb.from_(vs)
+            .select(vs.name)
+            .where(
+                (vs.docstatus == 0)
+                & (vs.company == company)
+                & (vs.signs_date < before_date)
             )
-        frappe.db.commit()
+        ).run(as_dict=True)
 
-    dn = DocType("Delivery Note")
-    delivery_documents = (
-        frappe.qb.from_(dn)
-        .select(dn.name)
-        .where(
-            (dn.docstatus == 0)
-            & (dn.workflow_state != "Not Serviced")
-            & (dn.posting_date < before_2_days_date)
-        )
-    ).run(as_dict=True)
+        for vs_doc in vital_docs:
+            try:
+                doc = frappe.get_cached_doc("Vital Signs", vs_doc.name)
+                doc.delete()
 
-    for delivery_note in delivery_documents:
-        delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note.name)
-        try:
-            return_quatity_or_cancel_delivery_note_via_lrpmt_returns(delivery_note_doc, "Backend")
+            except Exception:
+                frappe.log_error(
+                    title=f"Error for Deleting draft vital signs: {frappe.bold(vs_doc.name)}",
+                    message=frappe.get_traceback(),
+                )
+            frappe.db.commit()
 
-        except Exception:
-            frappe.log_error(
-                title=str(f"Error for Return or Cancel Delivery Note: {frappe.bold(delivery_note_doc.name)} Via LRPMT Returns"),
-                message=frappe.get_traceback(),
+    def cancel_draft_delivery_notes(company, days_before):
+        before_date = add_to_date(nowdate(), days=-days_before, as_string=False)
+        dn = DocType("Delivery Note")
+        delivery_documents = (
+            frappe.qb.from_(dn)
+            .select(dn.name)
+            .where(
+                (dn.docstatus == 0)
+                & (dn.company == company)
+                & (dn.posting_date < before_date)
+                & (dn.workflow_state != "Not Serviced")
             )
+        ).run(as_dict=True)
 
-        frappe.db.commit()
+        for delivery_note in delivery_documents:
+            delivery_note_doc = frappe.get_cached_doc("Delivery Note", delivery_note.name)
+            try:
+                return_quatity_or_cancel_delivery_note_via_lrpmt_returns(delivery_note_doc, "Backend")
 
+            except Exception:
+                frappe.log_error(
+                    title=f"Error for Return or Cancel Delivery Note: {frappe.bold(delivery_note_doc.name)} Via LRPMT Returns",
+                    message=frappe.get_traceback(),
+                )
+
+            frappe.db.commit()
+
+    settings = frappe.db.get_all(
+        "HMS TZ Setting",
+        fields=[
+            "company",
+            "cancel_appointment_after",
+            "cancel_delivery_note_after"
+        ],
+    )
+
+    if len(settings) == 0:
+        return
+
+    for setting in settings:
+        if setting.cancel_appointment_after != 0:
+            cancel_open_appointments(setting.company, setting.cancel_appointment_after)
+            delete_draft_vital_signs(setting.company, setting.cancel_appointment_after)
+
+        if setting.cancel_delivery_note_after != 0:
+            cancel_draft_delivery_notes(setting.company, setting.cancel_delivery_note_after)
 
 @frappe.whitelist()
 def return_quatity_or_cancel_delivery_note_via_lrpmt_returns(source_doc, method):
