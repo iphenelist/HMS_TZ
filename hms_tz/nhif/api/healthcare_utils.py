@@ -170,7 +170,7 @@ def get_healthcare_services_to_invoice(
             new_row["service"] = item
             new_row["rate"] = rate
             new_row["qty"] = row.qty
-            new_row["service_request"] = row.service_request
+            new_row["service_request"] = row.get("service_request")
 
             services_to_invoice.append(new_row)
 
@@ -821,7 +821,7 @@ def set_healthcare_services(doc, checked_values):
         if checked_item["description"]:
             item_line.description = checked_item["description"]
 
-        if checked_item["service_request"]:
+        if checked_item.get("service_request"):
             item_line.service_request = checked_item["service_request"]
 
         if checked_item["dt"] not in [
@@ -2041,16 +2041,16 @@ def create_invoiced_items_if_not_created(from_date='', to_date=''):
             # check if item is from Service Request
             # its service document will be created from Healthcare Service
             # Request
-            if item.service_request:
+            if item.get("service_request"):
                 frappe.db.set_value(
                     "Healthcare Service Request Payment",
-                    item.service_request,
+                    item.get("service_request"),
                     {
                         "sales_invoice_number": si_doc.name,
                         "invoiced": 1,
                     },
                 )
-                service_request_ids.append(item.service_request)
+                service_request_ids.append(item.get("service_request"))
                 item.hms_tz_is_lrp_item_created = 1
                 item.db_update()
 
