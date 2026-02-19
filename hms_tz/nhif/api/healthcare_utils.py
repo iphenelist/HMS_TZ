@@ -1892,8 +1892,8 @@ def delete_or_cancel_draft_document():
 
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(),
-                str("Error in cancelling draft appointment"),
+                title=str(f"Cancelling draft appointment: {app_doc.name}"),
+                message=frappe.get_traceback(),
             )
         frappe.db.commit()
 
@@ -1914,8 +1914,8 @@ def delete_or_cancel_draft_document():
 
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(),
-                str("Error in deleting draft vital signs"),
+                title=str(f"Deleting draft vital signs: {vs_doc.name}"),
+                message=frappe.get_traceback(),
             )
         frappe.db.commit()
 
@@ -1937,10 +1937,8 @@ def delete_or_cancel_draft_document():
 
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(),
-                str(
-                    f"Error for Return or Cancel Delivery Note: {frappe.bold(delivery_note_doc.name)} Via LRPMT Returns"
-                ),
+                title=str(f"Error for Return or Cancel Delivery Note: {frappe.bold(delivery_note_doc.name)} Via LRPMT Returns"),
+                message=frappe.get_traceback(),
             )
 
         frappe.db.commit()
