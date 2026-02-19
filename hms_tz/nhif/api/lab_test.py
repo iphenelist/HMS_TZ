@@ -9,7 +9,7 @@ import frappe
 from frappe import _
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 from frappe.query_builder import DocType
-from frappe.utils import get_fullname, getdate
+from frappe.utils import flt, get_fullname, getdate
 
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
     create_revenue_entry,
@@ -77,6 +77,14 @@ def set_normals(doc):
 
             if not row.result_value:
                 continue
+
+            try:
+                float(row.result_value)
+            except ValueError:
+                row.detailed_normal_range = ""
+                row.result_status = ""
+                continue
+
             data_normals = calc_data_normals(normals, row.result_value)
             row.detailed_normal_range = data_normals["detailed_normal_range"]
             row.result_status = data_normals["result_status"]
@@ -84,7 +92,7 @@ def set_normals(doc):
 
 def calc_data_normals(data, value):
     data = frappe._dict(data)
-    value = float(value)
+    value = flt(value)
     result = {"detailed_normal_range": "", "result_status": ""}
 
     if data.min and not data.max:
