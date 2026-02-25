@@ -3,5 +3,18 @@
 /* eslint-disable */
 
 frappe.query_reports["Item Price by Price List"] = {
-  filters: [],
+  filters: [
+    {
+      fieldname: "price_list",
+      label: __("Price List"),
+      fieldtype: "Link",
+      options: "Price List",
+    },
+    {
+      fieldname: "item_code",
+      label: __("Item Code"),
+      fieldtype: "Link",
+      options: "Item",
+    }
+  ],
 };
