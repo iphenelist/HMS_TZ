@@ -99,6 +99,8 @@
    "default": "now",
    "fieldname": "posting_datetime",
    "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Posting Datetime",
    "read_only": 1,
    "search_index": 1
@@ -118,6 +120,7 @@
   {
    "fieldname": "source_doctype",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Source Doctype",
    "options": "DocType",
    "reqd": 1,
@@ -126,6 +129,7 @@
   {
    "fieldname": "source_docname",
    "fieldtype": "Dynamic Link",
+   "in_standard_filter": 1,
    "label": "Source Docname",
    "options": "source_doctype",
    "reqd": 1,
@@ -202,7 +206,6 @@
    "fieldname": "national_id",
    "fieldtype": "Data",
    "in_preview": 1,
-   "in_standard_filter": 1,
    "label": "National ID",
    "read_only": 1,
    "search_index": 1
@@ -264,6 +267,7 @@
    "default": "0",
    "fieldname": "has_copayment",
    "fieldtype": "Check",
+   "in_standard_filter": 1,
    "label": "Has Copayment",
    "read_only": 1,
    "search_index": 1
@@ -274,7 +278,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-18 20:19:48.135915",
+ "modified": "2026-02-25 15:21:30.352743",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Healthcare Service Request",
