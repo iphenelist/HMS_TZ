@@ -183,11 +183,12 @@ def get_diseases(company=None):
                     update_medical_code(disease)
                 else:
                     create_medical_code(disease)
-            except Exception:
+            except Exception as e:
                 traceback = frappe.get_traceback()
                 frappe.log_error(
                     title=f"Disease: {disease.get('DiseaseCode')} {disease.get('ICDVersionCode')}",
-                    message=traceback,
+                    message=f"Error: <b>{e}</b>\n\n<br>{traceback}",
+                    reference_doctype="Code Value",
                 )
 
 
@@ -208,6 +209,10 @@ def update_medical_code(disease):
         has_changed = True
         mc_doc.is_non_specific = disease.get("IsNonSpecific")
 
+    if mc_doc.disabled == 1:
+        has_changed = True
+        mc_doc.disabled = 0
+
     if has_changed:
         mc_doc.save(ignore_permissions=True)
 
@@ -219,4 +224,3 @@ def create_medical_code(disease):
     mc_doc.definition = disease.get("DiseaseName")
     mc_doc.is_non_specific = disease.get("IsNonSpecific")
     mc_doc.save(ignore_permissions=True)
-    mc_doc.reload()
