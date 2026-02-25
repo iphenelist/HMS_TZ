@@ -113,6 +113,8 @@ class NHIFPatientClaim(Document):
             frappe.qb.update(pa).set(pa.nhif_patient_claim, "").where(pa.name == self.patient_appointment).run()
 
     def before_submit(self):
+        self.validate_reqd_fields()
+
         if not self.allow_changes:
             self.db_set("allow_changes", 1)
 
@@ -863,6 +865,10 @@ class NHIFPatientClaim(Document):
 
         self.folio_no = folio_no
         self.db_set("folio_no", folio_no)
+
+    def validate_reqd_fields(self):
+        if not self.main_diagnosis_code:
+            frappe.throw(_("Main Diagnosis Code is required"))
 
 def get_missing_patient_signature(self):
     if self.patient:
