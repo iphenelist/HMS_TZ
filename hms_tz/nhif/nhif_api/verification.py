@@ -476,16 +476,8 @@ def authorize_patient(
         )
         return
 
-    # fingerprint_data = fingerprint.replace("-", "+").replace("_", "/")
-    # image_data = base64.b64encode(fingerprint_data.encode("utf-8")).decode("utf-8")
-    # image_data = fingerprint.replace("-", "+").replace("_", "/")
-    image_data = fingerprint
-
     visit_type_id = frappe.get_cached_value("Appointment Type", appointment_type, "visit_type_id")
 
-    url = ""
-    payload = {}
-    request_type = ""
     card_type_info = frappe.get_cached_value(
         "Healthcare Insurance Subscription",
         insurance_subscription,
@@ -494,41 +486,23 @@ def authorize_patient(
     )
 
     biometric_method = biometric_method.upper()
+    payload = {
+        "cardNo": card_no,
+        "biometricMethod": biometric_method,
+        "fpCode": fpcode,
+        "imageData": fingerprint,
+        "visitTypeID": visit_type_id,
+        "referralNo": referral_no,
+        "remarks": remarks,
+    }
 
-    if card_type_info and (not card_type_info.verifier_id or card_type_info.verifier_id == "NHIF"):
-        request_type = "AuthorizeCard"
-        url = f"{settings_doc.nhifservice_url}/api/Verification/AuthorizeCard"
-        payload.update(
-            {
-                "cardNo": card_no,
-                "biometricMethod": biometric_method,
-                "nationalID": national_id,
-                "fpCode": fpcode,
-                "imageData": image_data,
-                "visitTypeID": visit_type_id,
-                "referralNo": referral_no,
-                "remarks": remarks,
-            }
-        )
-
-    elif card_type_info and card_type_info.verifier_id in ("WCF", "ZHSF"):
-        request_type = "VerifyCard"
-        url = f"{settings_doc.nhifservice_url}/api/Verification/VerifyCard"
-        payload.update(
-            {
-                "cardNo": card_no,
-                "verifierID": card_type_info.verifier_id,
-                "cardTypeID": card_type_info.card_type_id,
-                "biometricMethod": biometric_method,
-                "fpCode": fpcode,
-                "imageData": image_data,
-                "visitTypeID": visit_type_id,
-                "referralNo": referral_no,
-                "remarks": remarks,
-            }
-        )
+    if card_type_info:
+        payload["verifierID"] = card_type_info.get("verifier_id") or "NHIF"
+        payload["cardTypeID"] = card_type_info.get("card_type_id") or "NHIFCard"
 
     payload = json.dumps(payload)
+
+    url = f"{settings_doc.nhifservice_url}/api/Verification/VerifyCard"
 
     token = settings_doc.get_nhif_token()
 
@@ -541,7 +515,7 @@ def authorize_patient(
     if r.status_code == 200:
         auth_data = json.loads(r.text)
         add_log(
-            request_type=request_type,
+            request_type="VerifyCard",
             request_url=url,
             request_header=headers,
             request_body=payload,
@@ -585,7 +559,7 @@ def authorize_patient(
         reference_data = get_poc_reference_no(
             "Registration",
             practitioner,
-            image_data,
+            fingerprint,
             fpcode,
             biometric_method,
             company,
@@ -606,7 +580,7 @@ def authorize_patient(
     else:
         auth_data = json.loads(r.text)
         add_log(
-            request_type=request_type,
+            request_type="VerifyCard",
             request_url=url,
             request_header=headers,
             request_body=payload,
