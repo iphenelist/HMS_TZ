@@ -528,24 +528,24 @@ def authorize_patient(
         )
 
         # Ticket No: 1869
-        if auth_data.get("AuthorizationNo") and auth_data.get("AuthorizationStatus") != "ACCEPTED":
+        if auth_data.get("authorizationNo") and auth_data.get("authorizationStatus") != "ACCEPTED":
             frappe.msgprint(
-                title=auth_data.get("AuthorizationStatus"),
-                msg=auth_data["Remarks"],
+                title=auth_data.get("authorizationStatus"),
+                msg=auth_data["remarks"],
             )
 
-        elif not auth_data.get("AuthorizationNo") and auth_data.get("AuthorizationStatus") != "ACCEPTED":
+        elif not auth_data.get("authorizationNo") and auth_data.get("authorizationStatus") != "ACCEPTED":
             frappe.throw(
-                title=auth_data.get("AuthorizationStatus"),
-                msg=auth_data["Remarks"],
+                title=auth_data.get("authorizationStatus"),
+                msg=auth_data["remarks"],
             )
 
-        frappe.msgprint(auth_data["Remarks"], alert=True)
-        add_scheme(auth_data.get("SchemeID"), auth_data.get("SchemeName"))
+        frappe.msgprint(auth_data["remarks"], alert=True)
+        add_scheme(auth_data.get("schemeID"), auth_data.get("schemeName"))
         auth_data = update_insurance_subscription(insurance_subscription, auth_data)
 
         auth_detail = get_authorization_details(
-            auth_data.get("AuthorizationNo"),
+            auth_data.get("authorizationNo"),
             card_no or national_id,
             company,
             settings_doc,
@@ -564,7 +564,7 @@ def authorize_patient(
             biometric_method,
             company,
             appointment_id=ref_docname,
-            authorization_no=auth_data.get("AuthorizationNo"),
+            authorization_no=auth_data.get("authorizationNo"),
             settings_doc=settings_doc,
             ref_doctype=ref_doctype,
             ref_docname=ref_docname,
