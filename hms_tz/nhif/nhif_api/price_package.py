@@ -258,7 +258,7 @@ def set_package_diff(company):
                 changed_price_packages.append(new_row)
 
     if len(changed_price_packages) > 0 or len(new_price_packages) > 0 or len(deleted_price_packages) > 0:
-        nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+        nhif_customer = frappe.get_cached_value("HMS TZ Setting", company, "nhif_customer_name")
         service_map = get_insurance_items(nhif_customer, for_prices=True)
 
         doc = frappe.new_doc("NHIF Update")
@@ -319,7 +319,7 @@ def process_nhif_prices(company, facility_code, item_code=None):
         price_list_name = "NHIF-" + scheme + "-" + facility_code
         create_insurance_price_list(company, price_list_name, default_currency, "NHIF", scheme)
 
-    nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+    nhif_customer = frappe.get_cached_value("HMS TZ Setting", company, "nhif_customer_name")
     item_list = get_packages_for_price_list("NHIF Price Package", company, nhif_customer, item_code)
 
     for batch in create_batch(item_list, 1000):
@@ -377,7 +377,7 @@ def process_nhif_coverages(company, facility_code, coverage_plan=None):
     if len(coverage_plan_list) == 0:
         frappe.throw("No active coverage plan found for NHIF")
 
-    nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+    nhif_customer = frappe.get_cached_value("HMS TZ Setting", company, "nhif_customer_name")
     service_map = get_insurance_items(nhif_customer)
     price_package_map = get_price_package_map(company, facility_code)
 
@@ -530,10 +530,10 @@ def get_nhif_copayment_items(company):
             ref_doctype="NHIF Co-Payment Item",
         )
 
-        sync_copayment_items(data)
+        sync_copayment_items(data, company)
 
 
-def sync_copayment_items(data):
+def sync_copayment_items(data, company):
     if len(data) == 0:
         return
 
@@ -557,7 +557,7 @@ def sync_copayment_items(data):
         "percentcovered",
     ]
 
-    nhif_customer = frappe.get_single_value("HMS TZ Setting", "nhif_customer_name")
+    nhif_customer = frappe.get_cached_value("HMS TZ Setting", company, "nhif_customer_name")
     service_map = get_insurance_items(nhif_customer, for_prices=True)
 
     for row in data:
