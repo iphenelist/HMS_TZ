@@ -267,7 +267,7 @@ def set_package_diff(company):
         add_price_packages_records(doc, new_price_packages, "New", service_map)
         add_price_packages_records(doc, deleted_price_packages, "Deleted", service_map)
 
-        if (doc.get("price_package") and len(doc.price_package)) > 0:
+        if doc.get("price_package") and len(doc.price_package) > 0:
             doc.timestamp = now_datetime()
             doc.user_id = frappe.session.user
             doc.company = company
