@@ -433,15 +433,15 @@ frappe.ui.form.on("Patient Appointment", {
           if (data.message && data.message !== "Error") {
             frappe.utils.play_sound("submit");
             const card = data.message;
-            if (card.AuthorizationStatus == "ACCEPTED") {
-              frm.set_value("coverage_plan_name", card.CoveragePlanName);
-              frm.set_value("authorization_number", card.AuthorizationNo);
-              frm.set_value("nhif_employer_name", card.EmployerName);
+            if (card.authorizationStatus == "ACCEPTED") {
+              frm.set_value("coverage_plan_name", card.coveragePlanName);
+              frm.set_value("authorization_number", card.authorizationNo);
+              frm.set_value("nhif_employer_name", card.employerName);
               frm.set_value("fpcode", card.fpCode);
               frm.set_value("poc_reference_no", card.ReferenceNo);
               frm.set_value(
                 "years_of_insurance",
-                card.ServiceYear === null ? 0 : parseInt(card.ServiceYear)
+                card.serviceYear === null ? 0 : parseInt(card.serviceYear)
               );
               frm.save().then(() => {
                 frm.reload_doc();
