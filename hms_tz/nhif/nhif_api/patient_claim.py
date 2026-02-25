@@ -293,9 +293,7 @@ def get_payload(doc):
         "AttendingPractitioners": [d.mct_code for d in doc.practitioners if d.mct_code],
         "LateSubmissionReason": doc.delayreason,
         "AmountClaimed": doc.total_amount,
-        "MainDiagnosisCode": ", ".join(
-            d.get("DiseaseCode") for d in diseases if d.get("Status") == "Final" and d.get("DiseaseCode")
-        ),
+        "MainDiagnosisCode": doc.main_diagnosis_code,
         "ConfirmationCode": doc.confirmation_code or "",
         "FolioDiseases": diseases,
         "FolioItems": items,
