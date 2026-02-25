@@ -375,11 +375,11 @@ def make_encounter(doc, method):
 def update_insurance_subscription(insurance_subscription, data):
     subscription_doc = frappe.get_cached_doc("Healthcare Insurance Subscription", insurance_subscription)
 
-    if subscription_doc.hms_tz_scheme_id == data["SchemeID"]:
+    if subscription_doc.hms_tz_scheme_id == data["schemeID"]:
         return data
 
     filters = {
-        "nhif_scheme_id": data["SchemeID"],
+        "nhif_scheme_id": data["schemeID"],
         "is_active": 1,
     }
 
@@ -395,13 +395,13 @@ def update_insurance_subscription(insurance_subscription, data):
     plan = plan_list[0] if len(plan_list) == 1 else None
 
     if plan:
-        data["CoveragePlanName"] = plan.name
+        data["coveragePlanName"] = plan.name
         subscription_doc.insurance_company = plan.insurance_company
         subscription_doc.healthcare_insurance_coverage_plan = plan.name
         subscription_doc.coverage_plan_name = plan.coverage_plan_name
 
-    subscription_doc.hms_tz_scheme_id = data["SchemeID"]
-    subscription_doc.hms_tz_scheme_name = data["SchemeName"]
+    subscription_doc.hms_tz_scheme_id = data["schemeID"]
+    subscription_doc.hms_tz_scheme_name = data["schemeName"]
 
     subscription_doc.save(ignore_permissions=True)
 
