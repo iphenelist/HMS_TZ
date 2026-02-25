@@ -553,7 +553,14 @@ def authorize_patient(
             card_no=card_no or national_id,
         )
 
-        if auth_data.get("AuthorizationStatus") != "ACCEPTED":
+        # Ticket No: 1869
+        if auth_data.get("AuthorizationNo") and auth_data.get("AuthorizationStatus") != "ACCEPTED":
+            frappe.msgprint(
+                title=auth_data.get("AuthorizationStatus"),
+                msg=auth_data["Remarks"],
+            )
+
+        elif not auth_data.get("AuthorizationNo") and auth_data.get("AuthorizationStatus") != "ACCEPTED":
             frappe.throw(
                 title=auth_data.get("AuthorizationStatus"),
                 msg=auth_data["Remarks"],
