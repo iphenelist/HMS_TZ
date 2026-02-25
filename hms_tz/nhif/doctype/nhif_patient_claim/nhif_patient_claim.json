@@ -51,6 +51,7 @@
   "practitioner_name",
   "practitioner_no",
   "serial_no",
+  "main_diagnosis_code",
   "column_break_znuxw",
   "patient_type_code",
   "attendance_date",
@@ -187,6 +188,7 @@
   {
    "fieldname": "practitioner_no",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Practitioner No",
    "read_only": 1
   },
@@ -437,6 +439,7 @@
   {
    "fieldname": "practitioner_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Practitioner Name",
    "read_only": 1,
    "search_index": 1
@@ -714,13 +717,19 @@
    "fieldtype": "Small Text",
    "label": "Visit Type Description",
    "read_only": 1
+  },
+  {
+   "fieldname": "main_diagnosis_code",
+   "fieldtype": "Data",
+   "label": "Main Diagnosis Code",
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-16 17:03:45.891972",
+ "modified": "2026-02-25 12:37:53.080241",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim",
