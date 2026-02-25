@@ -1879,6 +1879,7 @@ def validate_preapproval_services(doc):
                 or row.get("is_cancelled")
                 or row.get("is_restricted")
                 or row.get("preapproval_status") in ["Accepted", "REJECTED"]
+                or row.get("preapproval_no")
             ):
                 continue
 
@@ -1886,5 +1887,6 @@ def validate_preapproval_services(doc):
 
     if len(eligible_pre_approval_services) > 0:
         frappe.throw(
-            f"Pre-Approval is required for the <b>{len(eligible_pre_approval_services)}</b> service(s) before submitting this encounter\
-                <br>Please request pre-approval")
+            f"Pre-Approval is required for the <b>{len(eligible_pre_approval_services)}</b> service(s)\
+              before submitting this encounter <br>Please request pre-approval"
+        )
