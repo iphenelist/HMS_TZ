@@ -2081,7 +2081,6 @@ def execute():
                 "label": "Card No",
                 "fieldname": "card_no",
                 "insert_after": "insurance_details",
-                "read_only_depends_on": "eval: doc.card_no",
                 "translatable": 1,
             },
             {

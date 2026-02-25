@@ -501,7 +501,6 @@
         "fetch_if_empty": 0,
         "collapsible": 0,
         "non_negative": 0,
-        "mandatory_depends_on": "eval: !doc.card_no",
         "reqd": 0,
         "unique": 1,
         "is_virtual": 0,
