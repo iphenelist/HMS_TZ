@@ -242,7 +242,7 @@ class MedicationChangeRequest(Document):
                 self.append("drug_prescription", new_row)
 
             # add all cash items from pe for ipd patient
-            if inpatient_record and row.prescribe == 1:
+            if inpatient_record and row.prescribe == 1 and not self.sales_order:
                 new_row = row.as_dict()
                 new_row["name"] = None
                 new_row["parent"] = None
