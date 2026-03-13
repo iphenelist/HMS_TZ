@@ -1503,7 +1503,22 @@ def get_previous_diagnosis_and_lrpmt_items_to_reuse(kwargs, caller):
             },
             order_by="creation desc",
         )
-        data = list({v["item"]: v for v in diagnosis}.values())
+
+        unique_codes = []
+        for diag in diagnosis:
+            if diag.get("item") in unique_codes:
+                continue
+
+            unique_codes.append(diag.get("item"))
+
+            is_diabled = frappe.get_cached_value(
+                "Code Value", diag.get("item"), "disabled"
+            )
+            if is_diabled:
+                continue
+
+            data.append(diag)
+
     else:
         items = frappe.get_all(
             kwargs.doctype,
