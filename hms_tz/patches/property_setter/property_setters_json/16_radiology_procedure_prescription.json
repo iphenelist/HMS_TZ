@@ -96,8 +96,8 @@
         "doc_type": "Radiology Procedure Prescription",
         "field_name": "radiology_test_comment",
         "property": "mandatory_depends_on",
-        "property_type": "Data",
-        "value": "eval:doc.override_subscription == 1 && doc.prescribe != 1;",
+        "property_type": "Small Text",
+        "value": "eval: doc.docstatus == 0;",
         "doctype": "Property Setter"
     },
     {
@@ -115,23 +115,6 @@
         "property": "ready_only",
         "property_type": "Check",
         "value": "0",
-        "doctype": "Property Setter"
-    },
-    {
-        "name": "Radiology Procedure Prescription-radiology_test_comment-reqd",
-        "owner": "nabeel.tharani@hc.shm.or.tz",
-        "creation": "2021-06-21 12:15:32.333056",
-        "modified": "2021-06-21 12:15:32.333056",
-        "modified_by": "nabeel.tharani@hc.shm.or.tz",
-        "docstatus": 0,
-        "idx": 0,
-        "is_system_generated": 0,
-        "doctype_or_field": "DocField",
-        "doc_type": "Radiology Procedure Prescription",
-        "field_name": "radiology_test_comment",
-        "property": "reqd",
-        "property_type": "Check",
-        "value": "1",
         "doctype": "Property Setter"
     }
 ]
