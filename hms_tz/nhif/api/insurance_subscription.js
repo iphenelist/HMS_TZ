@@ -42,6 +42,10 @@ frappe.ui.form.on("Healthcare Insurance Subscription", {
     if (!frm.doc.insurance_company.includes("NHIF")) return;
     if (!frm.doc.coverage_plan_card_number && !frm.doc.national_id) return;
 
+    if (!frm.doc.patient || !frm.doc.patient_name) {
+      return;
+    }
+
     let args = {
       patient: frm.doc.patient,
       patient_name: frm.doc.patient_name,
