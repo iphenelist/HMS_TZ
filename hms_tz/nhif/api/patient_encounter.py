@@ -1513,10 +1513,10 @@ def get_previous_diagnosis_and_lrpmt_items_to_reuse(kwargs, caller):
 
             unique_codes.append(diag.get("item"))
 
-            is_diabled = frappe.get_cached_value(
-                "Code Value", diag.get("item"), "disabled"
+            diagnosis_info = frappe.get_cached_value(
+                "Code Value", diag.get("item"), ["disabled", "is_non_specific"], as_dict=True
             )
-            if is_diabled:
+            if diagnosis_info.get("disabled") or diagnosis_info.get("is_non_specific"):
                 continue
 
             data.append(diag)
