@@ -215,7 +215,6 @@ def validate_point_of_care(doc, field):
             )
 
 
-
 def validate_issued_services(
     ref_doctype,
     ref_docname,
@@ -240,4 +239,16 @@ def validate_issued_services(
     ):
         frappe.throw(
             f"Service is not Issued to NHIF. Please issue NHIF services before proceeding."
+        )
+
+
+def validate_main_diagnosis_code(doc):
+    if (
+        not doc.main_diagnosis_code and
+        doc.insurance_company and
+        "NHIF" in doc.insurance_company
+    ):
+        frappe.throw(
+            title="<b>Main Diagnosis Code Missing</b>",
+            msg= f"<b>Main Diagnosis Code is required for NHIF insured patients. Please set it first.</b>"
         )

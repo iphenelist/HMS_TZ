@@ -34,7 +34,7 @@ from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request
 )
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import create_revenue_entry
 from hms_tz.nhif.api.patient_appointment import calculate_patient_age
-from hms_tz.nhif.utils import validate_point_of_care
+from hms_tz.nhif.utils import validate_main_diagnosis_code, validate_point_of_care
 
 
 def on_trash(doc, method):
@@ -878,6 +878,8 @@ def update_inpatient_record_consultancy(doc):
 
 def before_submit(doc, method):
     if doc.insurance_company and "NHIF" in doc.insurance_company:
+        validate_main_diagnosis_code(doc)
+
         validate_nhif_patient_claim_status(
             "Patient Encounter",
             doc.company,
