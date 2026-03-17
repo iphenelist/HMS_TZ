@@ -117,6 +117,8 @@ frappe.ui.form.on("Patient Encounter", {
       function () {
         return {
           filters: {
+            disabled: 0,
+            is_non_specific: 0,
             code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
           },
         };
@@ -128,6 +130,8 @@ frappe.ui.form.on("Patient Encounter", {
       function () {
         return {
           filters: {
+            disabled: 0,
+            is_non_specific: 0,
             code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
           },
         };
@@ -136,6 +140,8 @@ frappe.ui.form.on("Patient Encounter", {
     frm.set_query("main_diagnosis_code", function () {
       return {
         filters: {
+          disabled: 0,
+          is_non_specific: 0,
           code_system: ["in", ["ICD-9", "ICD-10", "ICD-11"]],
         },
       };
