@@ -75,7 +75,7 @@ class HealthcareReferral(Document):
                 {
                     "status": "Final",
                     "disease_code": d.code,
-                    "description": d.description,
+                    "description": d.definition,
                 }
             )
             unique_diagnosis.append(d.code)
@@ -86,7 +86,7 @@ class HealthcareReferral(Document):
                     {
                         "status": "Provisional",
                         "disease_code": d.code,
-                        "description": d.description,
+                        "description": d.definition,
                     }
                 )
                 unique_diagnosis.append(d.code)
