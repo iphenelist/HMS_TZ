@@ -164,6 +164,7 @@ class NHIFPatientClaim(Document):
                 pe.encounter_date,
                 pe.encounter_type,
                 pe.inpatient_record,
+                pe.main_diagnosis_code,
                 pe.name.as_("encounter"),
                 hsr.name.as_("service_request")
             )
@@ -189,6 +190,16 @@ class NHIFPatientClaim(Document):
             self.patient_appointment,
             ["appointment_date", "appointment_time"],
         )
+
+        # Set Main diagnosis code and convert the code of CDC to NHIF
+        diagnosis_code = frappe.get_cached_value("Code Value", encounter_list[-1].main_diagnosis_code, "code")
+        if diagnosis_code and len(diagnosis_code) > 3 and "." not in diagnosis_code:
+            self.main_diagnosis_code = diagnosis_code[:3] + "." + (diagnosis_code[3:4] or "0")
+        elif diagnosis_code and len(diagnosis_code) <= 5 and "." in diagnosis_code:
+            self.main_diagnosis_code = diagnosis_code
+        else:
+            self.main_diagnosis_code = diagnosis_code[:3]
+
         self.set_practitioner_values(encounter_list)
         self.set_inpatient_values(encounter_list)
         self.set_patient_claim_disease(encounter_list)
