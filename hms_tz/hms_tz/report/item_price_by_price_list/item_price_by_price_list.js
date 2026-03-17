@@ -15,6 +15,6 @@ frappe.query_reports["Item Price by Price List"] = {
       label: __("Item Code"),
       fieldtype: "Link",
       options: "Item",
-    }
+    },
   ],
 };
