@@ -67,13 +67,6 @@ def execute():
         },
         {
             "doctype": "Patient Appointment",
-            "fieldname": "coverage_plan_card_number",
-            "property": "fetch_if_empty",
-            "property_type": "Check",
-            "value": 1,
-        },
-        {
-            "doctype": "Patient Appointment",
             "fieldname": "coverage_plan_name",
             "property": "fetch_if_empty",
             "value": 1,
