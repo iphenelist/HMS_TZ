@@ -2,6 +2,11 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 
+hsr = DocType("Healthcare Service Request")
+hsrp = DocType("Healthcare Service Request Payment")
+pa = DocType("Patient Appointment")
+io = DocType("Inpatient Occupancy")
+ic = DocType("Inpatient Consultancy")
 
 def execute(filters):
     columns = get_columns()
@@ -124,99 +129,121 @@ def process_merged_items(raw_data):
             for name in str(row.get("ref_docname") or "").split(",")
             if name.strip()
         ]
-        ref_doctype = row.get("service_type")
-        coverage_plan_name = row.get("coverage_plan_name") or ""
-        item_code = row.get("item_code") or ""
-        details_map = get_hsr_details_batch(
-            ref_docname_list, ref_doctype, coverage_plan_name, item_code
+        ref_doclist = get_hsr_details_batch(
+            ref_docname_list,
+            row.get("service_type"),
+            row.get("coverage_plan_name"),
+            row.get("item_code"),
+            row.get("patient_appointment")
         )
 
-        if len(ref_docname_list) > 1:
-            # Merged items - create a separate row for each ref_docname
-            for ref_docname in ref_docname_list:
-                hsr_details = details_map.get(ref_docname, {})
-                new_row = row.copy()
-                new_row["qty"] = hsr_details.get("qty", 0)
-                new_row["amount_claimed"] = hsr_details.get("amount", 0)
-                new_row["practitioner"] = hsr_details.get("practitioner")
-                new_row.pop("ref_docname", None)
-                new_row.pop("item_code", None)
-                new_row.pop("coverage_plan_name", None)
-                processed_data.append(new_row)
-        else:
-            # Single item - get practitioner from Healthcare Service Request
-            ref_docname = ref_docname_list[0] if ref_docname_list else ""
-            hsr_details = details_map.get(ref_docname, {})
-            row["practitioner"] = hsr_details.get("practitioner")
-            row.pop("ref_docname", None)
-            row.pop("item_code", None)
-            row.pop("coverage_plan_name", None)
-            processed_data.append(row)
+        for ref_doc in ref_doclist:
+            new_row = row.copy()
+            new_row["qty"] = ref_doc.get("qty", 0)
+            new_row["amount_claimed"] = ref_doc.get("amount", 0)
+            new_row["practitioner"] = ref_doc.get("practitioner")
+            new_row["patient_appointment"] = ref_doc.get("patient_appointment")
+            new_row.pop("ref_docname", None)
+            new_row.pop("item_code", None)
+            new_row.pop("coverage_plan_name", None)
+            processed_data.append(new_row)
 
     return processed_data
 
 
-def get_hsr_details_batch(ref_docname_list, ref_doctype, coverage_plan_name, item_code):
+def get_hsr_details_batch(ref_docname_list, ref_doctype, coverage_plan_name, item_code, appointment):
     """
     Fetch qty, amount, and practitioner for multiple ref_docnames in a single query
     by joining Healthcare Service Request Payment with its parent.
-    Returns a dict keyed by ref_docname.
+    Returns a list of dicts with qty, amount, practitioner, and patient_appointment.
     """
     if not ref_docname_list:
-        return {}
+        return []
 
-    hsr = DocType("Healthcare Service Request")
-    hsrp = DocType("Healthcare Service Request Payment")
+    ref_doclist = []
 
-    results = (
-        frappe.qb.from_(hsrp)
-        .inner_join(hsr)
-        .on(hsrp.parent == hsr.name)
-        .select(
-            hsrp.ref_docname,
-            (hsrp.qty - hsrp.qty_returned).as_("qty"),
-            hsrp.amount,
-            hsr.practitioner,
-        )
-        .where(
-            (hsrp.ref_docname.isin(ref_docname_list))
-            & (hsrp.ref_doctype == ref_doctype)
-            & (hsrp.payor_plan == coverage_plan_name)
-            & (hsrp.item_code == item_code)
-        )
-        .run(as_dict=True)
-    )
-
-    details_map = {}
-    for r in results:
-        details_map[r.ref_docname] = {
-            "qty": r.get("qty", 0),
-            "amount": r.get("amount", 0),
-            "practitioner": r.get("practitioner"),
-        }
-
-    # For Patient Appointment, batch fetch practitioners from the appointments
     if ref_doctype == "Patient Appointment":
-        pa = DocType("Patient Appointment")
         pa_results = (
             frappe.qb.from_(pa)
-            .select(pa.name, pa.practitioner)
+            .select(
+                pa.name,
+                pa.paid_amount,
+                pa.practitioner
+            )
             .where(pa.name.isin(ref_docname_list))
             .run(as_dict=True)
         )
-        pa_map = {r.name: r.practitioner for r in pa_results}
-        for name in ref_docname_list:
-            if name in details_map:
-                details_map[name]["practitioner"] = pa_map.get(name) or details_map[name]["practitioner"]
-            else:
-                details_map[name] = {"qty": 1, "amount": 0, "practitioner": pa_map.get(name)}
+        for r in pa_results:
+            ref_doclist.append({
+                "qty": 1,
+                "amount": r.get("paid_amount", 0),
+                "practitioner": r.get("practitioner"),
+                "patient_appointment": r.name,
+            })
+    elif ref_doctype == "Inpatient Occupancy":
+        io_results = (
+            frappe.qb.from_(io)
+            .select(
+                io.name,
+                io.amount,
+            )
+            .where(io.name.isin(ref_docname_list))
+            .run(as_dict=True)
+        )
+        for r in io_results:
+            ref_doclist.append({
+                "qty": 1,
+                "amount": r.get("amount", 0),
+                "patient_appointment": appointment
+            })
+    elif ref_doctype == "Inpatient Consultancy":
+        ic_results = (
+            frappe.qb.from_(ic)
+            .select(
+                ic.name,
+                ic.rate,
+                ic.healthcare_practitioner
+            )
+            .where(ic.name.isin(ref_docname_list))
+            .run(as_dict=True)
+        )
+        for r in ic_results:
+            ref_doclist.append({
+                "qty": 1,
+                "amount": r.get("rate", 0),
+                "practitioner": r.get("healthcare_practitioner"),
+                "patient_appointment": appointment
+            })
+    else:
+        results = (
+            frappe.qb.from_(hsrp)
+            .inner_join(hsr)
+            .on(hsrp.parent == hsr.name)
+            .select(
+                hsrp.ref_docname,
+                (hsrp.qty - hsrp.qty_returned).as_("qty"),
+                hsrp.amount,
+                hsr.practitioner,
+                hsr.appointment
+            )
+            .where(
+                (hsrp.ref_docname.isin(ref_docname_list))
+                & (hsrp.ref_doctype == ref_doctype)
+                & (hsrp.payor_plan == coverage_plan_name)
+                & (hsrp.item_code == item_code)
+            )
+            .run(as_dict=True)
+        )
 
-    # Fill defaults for any ref_docnames not found
-    for name in ref_docname_list:
-        if name not in details_map:
-            details_map[name] = {"qty": 1, "amount": 0, "practitioner": None}
+        for r in results:
+            ref_doclist.append({
+                "qty": r.get("qty", 0),
+                "amount": r.get("amount", 0),
+                "practitioner": r.get("practitioner"),
+                "patient_appointment": r.get("appointment") 
+            })
 
-    return details_map
+    return ref_doclist
 
 
 def get_data(filters):
@@ -260,57 +287,7 @@ def get_data(filters):
 
     raw_data = data_query.run(as_dict=True)
 
-    # Process data to handle merged items and add practitioner information
     processed_data = process_merged_items(raw_data)
 
     return processed_data
 
-
-# SELECT
-#     npc.name AS "NHIF Patient Claim:Link/NHIF Patient Claim:",
-#     npc.patient AS "Patient:Link/Patient:150",
-#     npc.patient_name AS "Patient Name:Data:",
-#     npc.patient_appointment AS "Patient Appointment:Link/Patient Appointment:150",
-#     npci.ref_doctype AS "Service Type:Data:",
-#     npci.item_name,
-#     npc.gender AS "Gender::",
-#     npc.attendance_date AS "Appointment Date:Date:",
-#     npc.date_discharge AS "Discharge Date:Date:",
-#    SUM(npci.amount_claimed) AS "Amount Claimed:Currency:",
-#    SUM(npci.item_quantity) AS "Total Quantity:Int:",
-#    npc.folio_no AS "Folio No::"
-# FROM `tabNHIF Patient Claim` npc
-# INNER JOIN `tabNHIF Patient Claim Item` npci ON npc.name = npci.parent
-# WHERE npc.docstatus = 1
-#   AND npc.claim_month = %(claim_month)s
-#   AND npc.claim_year = %(claim_year)s
-#   AND npc.company = %(company)s
-# GROUP BY npc.patient, npc.patient_appointment, npci.ref_doctype,
-# npci.item_name, npc.gender,npc.attendance_date, npc.date_discharge
-
-
-# "filters": [
-#     {
-#         "fieldname": "claim_month",
-#         "fieldtype": "Int",
-#         "label": "Claim Month",
-#         "mandatory": 1,
-#         "wildcard_filter": 0
-#     },
-#     {
-#         "fieldname": "claim_year",
-#         "fieldtype": "Int",
-#         "label": "Claim Year",
-#         "mandatory": 1,
-#         "wildcard_filter": 0
-#     },
-#     {
-#         "fieldname": "company",
-#         "fieldtype": "Link",
-#         "label": "Company",
-#         "mandatory": 1,
-#         "options": "Company",
-#         "wildcard_filter": 0
-#     }
-# ],
-# "query": "SELECT\n    npc.name AS \"NHIF Patient Claim:Link/NHIF Patient Claim:\",\n    npc.patient AS \"Patient:Link/Patient:150\",\n    npc.patient_name AS \"Patient Name:Data:\",\n    npc.patient_appointment AS \"Patient Appointment:Link/Patient Appointment:150\",\n    npci.ref_doctype AS \"Service Type:Data:\",\n    npci.item_name,\n    npc.gender AS \"Gender::\",\n    npc.attendance_date AS \"Appointment Date:Date:\",\n    npc.date_discharge AS \"Discharge Date:Date:\",\n   SUM(npci.amount_claimed) AS \"Amount Claimed:Currency:\",\n   SUM(npci.item_quantity) AS \"Total Quantity:Int:\",\n   npc.folio_no AS \"Folio No::\"\nFROM `tabNHIF Patient Claim` npc\nINNER JOIN `tabNHIF Patient Claim Item` npci ON npc.name = npci.parent\nWHERE npc.docstatus = 1\n  AND npc.claim_month = %(claim_month)s\n  AND npc.claim_year = %(claim_year)s\n  AND npc.company = %(company)s\nGROUP BY npc.patient, npc.patient_appointment, npci.ref_doctype, npci.item_name, npc.gender,npc.attendance_date, npc.date_discharge",
