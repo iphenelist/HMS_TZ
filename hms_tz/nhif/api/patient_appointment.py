@@ -400,8 +400,8 @@ def update_insurance_subscription(insurance_subscription, data):
         subscription_doc.healthcare_insurance_coverage_plan = plan.name
         subscription_doc.coverage_plan_name = plan.coverage_plan_name
 
-    subscription_doc.hms_tz_scheme_id = data["schemeID"]
-    subscription_doc.hms_tz_scheme_name = data["schemeName"]
+    subscription_doc.hms_tz_scheme_id = data.get("schemeID")
+    subscription_doc.hms_tz_scheme_name = data.get("schemeName")
 
     subscription_doc.save(ignore_permissions=True)
 
