@@ -1813,7 +1813,7 @@
         "hide_seconds": 0,
         "hide_days": 0,
         "sort_options": 0,
-        "fetch_if_empty": 1,
+        "fetch_if_empty": 0,
         "fetch_from": "insurance_subscription.coverage_plan_card_number",
         "collapsible": 0,
         "non_negative": 0,
