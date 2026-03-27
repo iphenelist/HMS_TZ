@@ -366,7 +366,7 @@ def check_employee_wise_availability(date, practitioner_doc):
     if employee:
         # check holiday
         if is_holiday(employee, date):
-            frappe.throw(_(f"{date} is a holiday")(title=_("Not Available")))
+            frappe.throw(msg=_(f"{date} is a holiday"), title=_("Not Available"))
 
         # check leave status
         leave_record = frappe.db.sql(
