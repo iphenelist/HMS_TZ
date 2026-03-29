@@ -45,6 +45,16 @@ def on_submit(doc, methd):
 
 
 def before_submit(doc, method):
+    if not doc.procedure_notes:
+        frappe.throw(
+            title= _("<b style='color: red; font-size: 16px; font-weight: bold;'>Procedure Notes Missing</b>"),
+            msg=_(
+                """<div style='border-left: 4px solid #ffc107; background-color: #fff3cd; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); margin: 10px;'>
+                    <p style='font-size: 16px;'>Procedure notes are required. Please write the Procedure Notes.</p>
+                </div>"""
+            )
+        )
+
     if doc.is_restricted and not doc.approval_number:
         frappe.throw(
             _(f"Approval number is required for <b>{doc.procedure_template}</b>. Please set the Approval Number.")
