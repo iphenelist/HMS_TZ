@@ -4,6 +4,9 @@
 frappe.ui.form.on("Healthcare Referral", {
   setup: (frm) => {
     frm.get_field("diagnosis").grid.cannot_add_rows = true;
+    frm.set_query("practitioner", function () {
+      return { filters: { practitioner_role: "Doctor" } };
+    });
   },
   refresh: (frm) => {
     frm.get_field("diagnosis").grid.cannot_add_rows = true;

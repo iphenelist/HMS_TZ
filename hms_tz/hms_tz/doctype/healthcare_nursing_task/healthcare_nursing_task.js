@@ -2,6 +2,11 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Healthcare Nursing Task", {
+  setup: function (frm) {
+    frm.set_query("practitioner", function () {
+      return { filters: { practitioner_role: "Doctor" } };
+    });
+  },
   refresh: function (frm) {
     frm.set_query("service_unit", function () {
       return {

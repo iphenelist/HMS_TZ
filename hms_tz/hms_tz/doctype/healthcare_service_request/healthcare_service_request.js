@@ -201,4 +201,12 @@ var set_filters = (frm) => {
       },
     };
   });
+
+  frm.set_query("practitioner", () => {
+    return {
+      filters: {
+        practitioner_role: "Doctor",
+      },
+    };
+  });
 };
