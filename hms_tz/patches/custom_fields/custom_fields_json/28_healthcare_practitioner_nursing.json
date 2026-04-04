@@ -1,0 +1,32 @@
+[
+    {
+        "dt": "Healthcare Practitioner",
+        "fieldname": "practitioner_role",
+        "fieldtype": "Select",
+        "label": "Practitioner Role",
+        "options": "Doctor\nNurse\nOther",
+        "insert_after": "healthcare_practitioner_type",
+        "reqd": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Healthcare Practitioner",
+        "fieldname": "nursing_specialization",
+        "fieldtype": "Select",
+        "label": "Nursing Specialization",
+        "options": "\nGeneral Nursing\nCritical Care (ICU)\nSurgical/Theater\nMidwifery\nPediatric\nEmergency",
+        "depends_on": "eval:doc.practitioner_role==\"Nurse\"",
+        "insert_after": "practitioner_role",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Healthcare Practitioner",
+        "fieldname": "nursing_role",
+        "fieldtype": "Select",
+        "label": "Nursing Role",
+        "options": "\nStaff Nurse\nCharge Nurse\nNurse Manager",
+        "depends_on": "eval:doc.practitioner_role==\"Nurse\"",
+        "insert_after": "nursing_specialization",
+        "doctype": "Custom Field"
+    }
+]
