@@ -1,4 +1,9 @@
 frappe.ui.form.on("Clinical Procedure", {
+  setup: function (frm) {
+    frm.set_query("practitioner", function () {
+      return { filters: { practitioner_role: "Doctor" } };
+    });
+  },
   refresh: function (frm) {
     $('[data-label="Not%20Serviced"]').parent().hide();
     frm.remove_custom_button("Start");

@@ -760,6 +760,7 @@ const check_and_set_availability = (frm) => {
               filters: {
                 status: "Active",
                 hms_tz_company: frm.doc.company,
+                practitioner_role: "Doctor",
               },
             };
           },

@@ -29,6 +29,7 @@ frappe.ui.form.on("Patient Appointment", {
       return {
         filters: {
           department: frm.doc.department,
+          practitioner_role: "Doctor",
         },
       };
     });
@@ -54,12 +55,14 @@ frappe.ui.form.on("Patient Appointment", {
         return {
           filters: {
             healthcare_practitioner_type: "External",
+            practitioner_role: "Doctor",
           },
         };
       } else {
         return {
           filters: {
             healthcare_practitioner_type: "Internal",
+            practitioner_role: "Doctor",
           },
         };
       }
