@@ -62,9 +62,7 @@ frappe.ui.form.on("Nursing Schedule", {
       callback: function (r) {
         if (!r.message || r.message.length === 0) {
           frappe.msgprint(
-            __(
-              "No active nurses found for the selected company."
-            )
+            __("No active nurses found for the selected company.")
           );
           return;
         }
@@ -102,9 +100,7 @@ frappe.ui.form.on("Nursing Schedule", {
           });
         } else {
           frappe.msgprint(
-            __(
-              "All active nurses are already in the schedule."
-            )
+            __("All active nurses are already in the schedule.")
           );
         }
       },
