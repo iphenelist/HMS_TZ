@@ -11,7 +11,7 @@ class NursingSchedule(Document):
     def validate(self):
         self.calculate_end_date()
         self.validate_dates()
-        self.validate_duplicate_nurse_shifts()
+        self.validate_duplicate_nurse_assignments()
 
     def calculate_end_date(self):
         """Auto-calculate end_date based on start_date and frequency."""
@@ -54,19 +54,24 @@ class NursingSchedule(Document):
                     title=_("Invalid Dates"),
                 )
 
-    def validate_duplicate_nurse_shifts(self):
-        """Warn if the same nurse appears in conflicting shifts in the same schedule."""
+    def validate_duplicate_nurse_assignments(self):
+        """Warn if the same nurse is assigned to the same location on the same date."""
         seen: dict = {}
-        for row in self.shifts or []:
-            # Check for same nurse, shift type, and assignment target
-            key = (row.nurse, row.shift_type, row.shift_based_on, row.service_unit if row.shift_based_on == 'Service Unit' else row.service_unit_type)
+        for row in self.assignments or []:
+            # Check for same nurse, date, and assignment target
+            location = (
+                row.service_unit
+                if row.assign_based_on == "Service Unit"
+                else row.service_unit_type
+            )
+            key = (row.nurse, row.assignment_date, row.assign_based_on, location)
             if key in seen:
                 frappe.throw(
                     _(
                         "Row #{0}: Nurse <b>{1}</b> is already assigned to the same "
-                        "shift/unit combination in Row #{2}."
+                        "location on the same date in Row #{2}."
                     ).format(row.idx, row.nurse, seen[key]),
-                    title=_("Duplicate Shift Assignment"),
+                    title=_("Duplicate Assignment"),
                 )
             seen[key] = row.idx
 
