@@ -69,3 +69,26 @@ class NursingSchedule(Document):
                     title=_("Duplicate Shift Assignment"),
                 )
             seen[key] = row.idx
+
+
+@frappe.whitelist()
+def get_nurses(company: str) -> list[dict]:
+    """Return active nurses for the given company.
+
+    Filters Healthcare Practitioner records by:
+    - practitioner_role = 'Nurse'
+    - hms_tz_company = the provided company
+    - status = 'Active'
+    """
+    nurses = frappe.db.get_all(
+        "Healthcare Practitioner",
+        filters={
+            "practitioner_role": "Nurse",
+            "hms_tz_company": company,
+            "status": "Active",
+        },
+        fields=["name", "practitioner_name"],
+        order_by="practitioner_name asc",
+    )
+
+    return nurses

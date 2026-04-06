@@ -29,6 +29,56 @@ frappe.ui.form.on("Nursing Schedule", {
   frequency: function (frm) {
     calculate_end_date(frm);
   },
+
+  get_nurses: function (frm) {
+    if (!frm.doc.company) {
+      frappe.msgprint(__("Please select a Company first."));
+      return;
+    }
+
+    frappe.call({
+      method:
+        "hms_tz.hms_tz.doctype.nursing_schedule.nursing_schedule.get_nurses",
+      args: {
+        company: frm.doc.company,
+      },
+      freeze: true,
+      freeze_message: __("Fetching nurses..."),
+      callback: function (r) {
+        if (!r.message || r.message.length === 0) {
+          frappe.msgprint(__("No active nurses found for the selected company."));
+          return;
+        }
+
+        // Collect existing nurse names to avoid duplicates
+        const existing_nurses = new Set(
+          (frm.doc.shifts || []).map((row) => row.nurse)
+        );
+
+        let added_count = 0;
+        r.message.forEach(function (nurse) {
+          if (!existing_nurses.has(nurse.name)) {
+            let row = frm.add_child("shifts");
+            row.nurse = nurse.name;
+            row.nurse_name = nurse.practitioner_name;
+            existing_nurses.add(nurse.name);
+            added_count++;
+          }
+        });
+
+        frm.refresh_field("shifts");
+
+        if (added_count > 0) {
+          frappe.show_alert({
+            message: __("{0} nurse(s) added to the schedule.", [added_count]),
+            indicator: "green",
+          });
+        } else {
+          frappe.msgprint(__("All active nurses are already in the schedule."));
+        }
+      },
+    });
+  },
 });
 
 frappe.ui.form.on("Nurse Schedule Detail", {
