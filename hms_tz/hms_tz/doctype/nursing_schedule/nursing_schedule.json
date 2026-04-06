@@ -12,9 +12,9 @@
         "column_break_01",
         "start_date",
         "end_date",
-        "section_break_shifts",
+        "section_break_assignments",
         "get_nurses",
-        "shifts",
+        "assignments",
         "amended_from"
     ],
     "fields": [
@@ -61,9 +61,9 @@
             "reqd": 1
         },
         {
-            "fieldname": "section_break_shifts",
+            "fieldname": "section_break_assignments",
             "fieldtype": "Section Break",
-            "label": "Shifts"
+            "label": "Assignments"
         },
         {
             "fieldname": "get_nurses",
@@ -72,9 +72,9 @@
             "depends_on": "eval:doc.company && doc.docstatus==0"
         },
         {
-            "fieldname": "shifts",
+            "fieldname": "assignments",
             "fieldtype": "Table",
-            "label": "Shifts",
+            "label": "Assignments",
             "options": "Nurse Schedule Detail",
             "reqd": 0
         },
@@ -89,7 +89,7 @@
         }
     ],
     "links": [],
-    "modified": "2026-04-06 13:05:00.000000",
+    "modified": "2026-04-06 17:30:00.000000",
     "modified_by": "Administrator",
     "module": "Hms Tz",
     "name": "Nursing Schedule",
