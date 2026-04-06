@@ -46,7 +46,9 @@ frappe.ui.form.on("Nursing Schedule", {
       freeze_message: __("Fetching nurses..."),
       callback: function (r) {
         if (!r.message || r.message.length === 0) {
-          frappe.msgprint(__("No active nurses found for the selected company."));
+          frappe.msgprint(
+            __("No active nurses found for the selected company.")
+          );
           return;
         }
 
@@ -74,7 +76,9 @@ frappe.ui.form.on("Nursing Schedule", {
             indicator: "green",
           });
         } else {
-          frappe.msgprint(__("All active nurses are already in the schedule."));
+          frappe.msgprint(
+            __("All active nurses are already in the schedule.")
+          );
         }
       },
     });
