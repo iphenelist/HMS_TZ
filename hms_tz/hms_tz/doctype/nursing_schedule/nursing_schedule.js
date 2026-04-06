@@ -23,21 +23,61 @@ frappe.ui.form.on("Nursing Schedule", {
   },
 
   start_date: function (frm) {
-    if (frm.doc.start_date && frm.doc.end_date) {
-      if (frm.doc.start_date > frm.doc.end_date) {
-        frappe.msgprint(__("Start Date cannot be after End Date."));
-        frm.set_value("start_date", "");
-      }
-    }
+    calculate_end_date(frm);
   },
 
-  end_date: function (frm) {
-    if (frm.doc.start_date && frm.doc.end_date) {
-      if (frm.doc.end_date < frm.doc.start_date) {
-        frappe.msgprint(__("End Date cannot be before Start Date."));
-        frm.set_value("end_date", "");
-      }
+  frequency: function (frm) {
+    calculate_end_date(frm);
+  },
+
+  get_nurses: function (frm) {
+    if (!frm.doc.company) {
+      frappe.msgprint(__("Please select a Company first."));
+      return;
     }
+
+    frappe.call({
+      method:
+        "hms_tz.hms_tz.doctype.nursing_schedule.nursing_schedule.get_nurses",
+      args: {
+        company: frm.doc.company,
+      },
+      freeze: true,
+      freeze_message: __("Fetching nurses..."),
+      callback: function (r) {
+        if (!r.message || r.message.length === 0) {
+          frappe.msgprint(__("No active nurses found for the selected company."));
+          return;
+        }
+
+        // Collect existing nurse names to avoid duplicates
+        const existing_nurses = new Set(
+          (frm.doc.shifts || []).map((row) => row.nurse)
+        );
+
+        let added_count = 0;
+        r.message.forEach(function (nurse) {
+          if (!existing_nurses.has(nurse.name)) {
+            let row = frm.add_child("shifts");
+            row.nurse = nurse.name;
+            row.nurse_name = nurse.practitioner_name;
+            existing_nurses.add(nurse.name);
+            added_count++;
+          }
+        });
+
+        frm.refresh_field("shifts");
+
+        if (added_count > 0) {
+          frappe.show_alert({
+            message: __("{0} nurse(s) added to the schedule.", [added_count]),
+            indicator: "green",
+          });
+        } else {
+          frappe.msgprint(__("All active nurses are already in the schedule."));
+        }
+      },
+    });
   },
 });
 
@@ -51,3 +91,33 @@ frappe.ui.form.on("Nurse Schedule Detail", {
     }
   },
 });
+
+function calculate_end_date(frm) {
+  if (!frm.doc.start_date || !frm.doc.frequency) {
+    frm.set_value("end_date", "");
+    return;
+  }
+
+  const frequency_map = {
+    Daily: { days: 0 },
+    Weekly: { days: 6 },
+    Monthly: { months: 1 },
+    Quarterly: { months: 3 },
+    "Bi-Yearly": { months: 6 },
+    Yearly: { months: 12 },
+  };
+
+  const offset = frequency_map[frm.doc.frequency];
+  if (!offset) return;
+
+  let end_date;
+  if (offset.days !== undefined) {
+    end_date = frappe.datetime.add_days(frm.doc.start_date, offset.days);
+  } else {
+    // Add months, then subtract 1 day to get the last day of the period
+    end_date = frappe.datetime.add_months(frm.doc.start_date, offset.months);
+    end_date = frappe.datetime.add_days(end_date, -1);
+  }
+
+  frm.set_value("end_date", end_date);
+}
