@@ -10,7 +10,7 @@ frappe.ui.form.on("Nursing Schedule", {
     frm.set_query("nurse", "assignments", function () {
       return {
         filters: {
-          status: 'Active',
+          status: "Active",
           practitioner_role: "Nurse",
           hms_tz_company: frm.doc.company,
         },
@@ -69,9 +69,7 @@ frappe.ui.form.on("Nursing Schedule", {
 
         // Collect existing nurse names to avoid duplicates
         const existing_nurses = new Set(
-          (frm.doc.assignments || []).map(
-            (row) => row.nurse
-          )
+          (frm.doc.assignments || []).map((row) => row.nurse)
         );
 
         let added_count = 0;
@@ -92,10 +90,7 @@ frappe.ui.form.on("Nursing Schedule", {
 
         if (added_count > 0) {
           frappe.show_alert({
-            message: __(
-              "{0} nurse(s) added to the schedule.",
-              [added_count]
-            ),
+            message: __("{0} nurse(s) added to the schedule.", [added_count]),
             indicator: "green",
           });
         } else {
@@ -111,24 +106,14 @@ frappe.ui.form.on("Nursing Schedule", {
 frappe.ui.form.on("Nurse Schedule Detail", {
   assignments_add: function (frm, cdt, cdn) {
     if (frm.doc.frequency === "Daily" && frm.doc.end_date) {
-      frappe.model.set_value(
-        cdt,
-        cdn,
-        "assignment_date",
-        frm.doc.end_date
-      );
+      frappe.model.set_value(cdt, cdn, "assignment_date", frm.doc.end_date);
     }
   },
 
   assign_based_on: function (frm, cdt, cdn) {
     let row = locals[cdt][cdn];
     if (row.assign_based_on === "Service Unit") {
-      frappe.model.set_value(
-        cdt,
-        cdn,
-        "service_unit_type",
-        ""
-      );
+      frappe.model.set_value(cdt, cdn, "service_unit_type", "");
     } else {
       frappe.model.set_value(cdt, cdn, "service_unit", "");
     }
@@ -171,16 +156,10 @@ function calculate_end_date(frm) {
 
   let end_date;
   if (offset.days !== undefined) {
-    end_date = frappe.datetime.add_days(
-      frm.doc.start_date,
-      offset.days
-    );
+    end_date = frappe.datetime.add_days(frm.doc.start_date, offset.days);
   } else {
     // Add months, then subtract 1 day to get the last day of the period
-    end_date = frappe.datetime.add_months(
-      frm.doc.start_date,
-      offset.months
-    );
+    end_date = frappe.datetime.add_months(frm.doc.start_date, offset.months);
     end_date = frappe.datetime.add_days(end_date, -1);
   }
 
