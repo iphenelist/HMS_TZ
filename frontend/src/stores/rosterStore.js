@@ -34,8 +34,7 @@ export const useRosterStore = defineStore("roster", () => {
       cols.push({
         date: current.format("YYYY-MM-DD"),
         label: current.format("ddd DD"),
-        isWeekend:
-          current.day() === 0 || current.day() === 6,
+        isWeekend: current.day() === 0 || current.day() === 6,
       });
       current = current.add(1, "day");
     }
@@ -149,14 +148,14 @@ export const useRosterStore = defineStore("roster", () => {
         !(
           c.nurse === change.nurse &&
           c.assignment_date === change.assignment_date
-        ),
+        )
     );
     pendingChanges.value.push(change);
   }
 
   function removePendingChange(nurse, date) {
     pendingChanges.value = pendingChanges.value.filter(
-      (c) => !(c.nurse === nurse && c.assignment_date === date),
+      (c) => !(c.nurse === nurse && c.assignment_date === date)
     );
   }
 

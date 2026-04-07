@@ -3,8 +3,26 @@
 
 frappe.listview_settings["Nursing Schedule"] = {
   onload: function (listview) {
-    listview.page.add_inner_button(__("Open Roster"), function () {
-      window.open("/frontend/nurse-roster");
-    });
+    // Remove default "+ Add Nursing Schedule" and replace with "Open Roster"
+    listview.page.clear_primary_action();
+    listview.page.set_primary_action(
+      __("Open Roster"),
+      function () {
+        window.open("/frontend/nurse-roster");
+      },
+      "es-line-icon-externallink"
+    );
+  },
+
+  refresh: function (listview) {
+    // Re-apply on every refresh since Frappe may reset the primary action
+    listview.page.clear_primary_action();
+    listview.page.set_primary_action(
+      __("Open Roster"),
+      function () {
+        window.open("/frontend/nurse-roster");
+      },
+      "es-line-icon-externallink"
+    );
   },
 };

@@ -90,14 +90,10 @@
       <template #body-content>
         <div class="flex flex-col gap-4">
           <!-- Nurse & Date info -->
-          <div
-            class="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2"
-          >
+          <div class="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
             <div class="text-sm">
               <span class="text-gray-500">Nurse:</span>
-              <span class="ml-1 font-medium text-gray-800">{{
-                nurse
-              }}</span>
+              <span class="ml-1 font-medium text-gray-800">{{ nurse }}</span>
             </div>
             <div class="text-sm">
               <span class="text-gray-500">Date:</span>
@@ -205,14 +201,14 @@ const displayValue = computed(() => {
 
 // Options formatted for autocomplete
 const serviceUnitTypeOptions = computed(() =>
-  props.serviceUnitTypes.map((s) => ({ label: s, value: s })),
+  props.serviceUnitTypes.map((s) => ({ label: s, value: s }))
 );
 
 const serviceUnitOptions = computed(() =>
   props.serviceUnits.map((s) => ({
     label: s.name,
     value: s.name,
-  })),
+  }))
 );
 
 // The currently selected value string
@@ -283,9 +279,7 @@ function openEditDialog() {
       selectedServiceUnitType.value = null;
     } else {
       const val = props.assignment.service_unit_type || "";
-      selectedServiceUnitType.value = val
-        ? { label: val, value: val }
-        : null;
+      selectedServiceUnitType.value = val ? { label: val, value: val } : null;
       selectedServiceUnit.value = null;
     }
   }

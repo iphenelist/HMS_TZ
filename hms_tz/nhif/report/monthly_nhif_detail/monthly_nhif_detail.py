@@ -240,7 +240,7 @@ def get_hsr_details_batch(ref_docname_list, ref_doctype, coverage_plan_name, ite
                 "qty": r.get("qty", 0),
                 "amount": r.get("amount", 0),
                 "practitioner": r.get("practitioner"),
-                "patient_appointment": r.get("appointment") 
+                "patient_appointment": r.get("appointment")
             })
 
     return ref_doclist
