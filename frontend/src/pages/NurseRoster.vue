@@ -208,6 +208,7 @@
                     :date="col.date"
                     :is-weekend="col.isWeekend"
                     :is-past-date="isDatePast(col.date)"
+                    :is-on-leave="store.isNurseOnLeave(nurse.name, col.date)"
                     :assignment="store.getAssignment(nurse.name, col.date)"
                     :service-unit-types="store.serviceUnitTypes"
                     :service-units="store.serviceUnits"

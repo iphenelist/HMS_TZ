@@ -10,11 +10,16 @@ from frappe.utils import add_to_date, getdate
 def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
     """Return nurses and their existing assignments for the given company and date range.
 
+    Nurses fully on leave for the entire date range are excluded.
+    For nurses with partial leave overlap, their leave dates are returned
+    so the frontend can mark those cells as non-editable.
+
     Returns:
         dict with keys:
         - nurses: list of {name, practitioner_name, employee}
         - assignments: list of {nurse, assignment_date, assign_based_on,
           service_unit_type, service_unit, parent, name}
+        - nurse_leave_dates: dict mapping nurse name → list of leave date strings
     """
     if not company or not start_date or not end_date:
         frappe.throw(_("Company, Start Date, and End Date are required."))
@@ -30,7 +35,66 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
         order_by="practitioner_name asc",
     )
 
-    nurse_names = [n.name for n in nurses]
+    # Build employee → nurse mapping for leave lookups
+    employee_nurse_map = {}
+    employee_ids = []
+    for n in nurses:
+        if n.employee:
+            employee_nurse_map[n.employee] = n.name
+            employee_ids.append(n.employee)
+
+    # Query approved leaves overlapping the roster date range
+    nurse_leave_dates: dict[str, list[str]] = {}
+    roster_start = getdate(start_date)
+    roster_end = getdate(end_date)
+
+    if employee_ids:
+        leaves = frappe.db.get_all(
+            "Leave Application",
+            filters={
+                "employee": ["in", employee_ids],
+                "status": "Approved",
+                "from_date": ["<=", end_date],
+                "to_date": [">=", start_date],
+            },
+            fields=["employee", "from_date", "to_date"],
+        )
+
+        for leave in leaves:
+            nurse_name = employee_nurse_map.get(leave.employee)
+            if not nurse_name:
+                continue
+
+            # Calculate the overlap between leave period and roster range
+            overlap_start = max(getdate(leave.from_date), roster_start)
+            overlap_end = min(getdate(leave.to_date), roster_end)
+
+            if nurse_name not in nurse_leave_dates:
+                nurse_leave_dates[nurse_name] = []
+
+            # Generate all leave dates within the overlap
+            current = overlap_start
+            while current <= overlap_end:
+                date_str = current.strftime("%Y-%m-%d")
+                if date_str not in nurse_leave_dates[nurse_name]:
+                    nurse_leave_dates[nurse_name].append(date_str)
+                current = add_to_date(current, days=1)
+
+    # Calculate total roster days for full-leave exclusion
+    total_roster_days = (roster_end - roster_start).days + 1
+
+    # Exclude nurses whose leave covers the entire date range
+    filtered_nurses = []
+    for n in nurses:
+        # leave_days = nurse_leave_dates.get(n.name, [])
+        # if len(leave_days) >= total_roster_days:
+        #     # Nurse is on leave for the entire range — exclude them
+        #     nurse_leave_dates.pop(n.name, None)
+        #     continue
+
+        filtered_nurses.append(n)
+
+    nurse_names = [n.name for n in filtered_nurses]
 
     # Get all assignments in the date range for these nurses
     assignments = []
@@ -55,8 +119,9 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
         )
 
     return {
-        "nurses": nurses,
+        "nurses": filtered_nurses,
         "assignments": assignments,
+        "nurse_leave_dates": nurse_leave_dates,
     }
 
 

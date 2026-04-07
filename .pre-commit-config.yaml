@@ -1,4 +1,4 @@
-exclude: "node_modules|.git"
+exclude: "node_modules|.git|hms_tz/public/frontend"
 default_stages: [pre-commit, manual]
 fail_fast: false
 

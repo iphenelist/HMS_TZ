@@ -4,9 +4,22 @@
     :class="cellClasses"
     @click="handleCellClick"
   >
+    <!-- On Leave cell -->
+    <div
+      v-if="isOnLeave"
+      class="flex h-8 items-center justify-center"
+      title="Nurse is on leave"
+    >
+      <span
+        class="inline-flex items-center rounded-full px-2 py-1 text-xs text-orange-600"
+      >
+        On Leave
+      </span>
+    </div>
+
     <!-- Existing assignment (read-only pill) -->
     <div
-      v-if="assignment && !showDialog"
+      v-else-if="assignment && !showDialog"
       class="flex items-center justify-center gap-1"
     >
       <span
@@ -164,6 +177,7 @@ const props = defineProps({
   date: { type: String, required: true },
   isWeekend: { type: Boolean, default: false },
   isPastDate: { type: Boolean, default: false },
+  isOnLeave: { type: Boolean, default: false },
   assignment: { type: Object, default: null },
   serviceUnitTypes: { type: Array, default: () => [] },
   serviceUnits: { type: Array, default: () => [] },
@@ -215,10 +229,16 @@ const pillClasses = computed(() => {
 });
 
 const cellClasses = computed(() => ({
-  "bg-orange-50/50": props.isWeekend && !showDialog.value,
-  "cursor-pointer": !showDialog.value && !props.assignment && !props.isPastDate,
-  "bg-blue-50/30": props.assignment && !props.assignment._pending,
-  "bg-yellow-50/50": props.assignment?._pending,
+  "bg-red-50/60": props.isOnLeave,
+  "bg-orange-50/50": props.isWeekend && !showDialog.value && !props.isOnLeave,
+  "cursor-pointer":
+    !showDialog.value &&
+    !props.assignment &&
+    !props.isPastDate &&
+    !props.isOnLeave,
+  "bg-blue-50/30":
+    props.assignment && !props.assignment._pending && !props.isOnLeave,
+  "bg-yellow-50/50": props.assignment?._pending && !props.isOnLeave,
 }));
 
 const dialogActions = computed(() => [
@@ -236,8 +256,8 @@ const dialogActions = computed(() => [
 ]);
 
 function handleCellClick() {
-  // Do not allow opening dialog for past dates
-  if (props.isPastDate) return;
+  // Do not allow opening dialog for past dates or leave dates
+  if (props.isPastDate || props.isOnLeave) return;
   if (!props.assignment && !showDialog.value) {
     openNewDialog();
   }
@@ -251,8 +271,8 @@ function openNewDialog() {
 }
 
 function openEditDialog() {
-  // Do not allow editing past dates
-  if (props.isPastDate) return;
+  // Do not allow editing past dates or leave dates
+  if (props.isPastDate || props.isOnLeave) return;
 
   if (props.assignment) {
     editAssignBasedOn.value =
