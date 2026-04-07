@@ -1,6 +1,6 @@
 <template>
   <td
-    class="relative border-b px-1 py-1 text-center"
+    class="relative border border-dashed border-gray-400 rounded-lg px-1 py-1 text-center"
     :class="cellClasses"
     @click="handleCellClick"
   >
@@ -50,7 +50,7 @@
       "
     >
       <svg
-        class="h-5 w-5"
+        class="h-3.5 w-3.5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
