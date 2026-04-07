@@ -1,5 +1,5 @@
 exclude: "node_modules|.git|hms_tz/public/frontend"
-default_stages: [pre-commit, manual]
+default_stages: [commit, manual]
 fail_fast: false
 
 repos:
