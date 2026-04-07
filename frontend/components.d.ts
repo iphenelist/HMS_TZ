@@ -18,8 +18,8 @@ declare module 'vue' {
     PaymentDialog: typeof import('./src/components/appointments/PaymentDialog.vue')['default']
     PractitionerCard: typeof import('./src/components/appointments/PractitionerCard.vue')['default']
     Print: typeof import('./src/components/controls/Print.vue')['default']
+    RosterCell: typeof import('./src/components/roster/RosterCell.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    TestComponent: typeof import('./src/components/TestComponent.vue')['default']
   }
 }
