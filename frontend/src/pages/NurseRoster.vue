@@ -10,7 +10,12 @@
         <div
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white"
         >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -347,7 +352,7 @@ watch(
     if (store.company && store.startDate && store.frequency && store.endDate) {
       store.loadRoster();
     }
-  },
+  }
 );
 
 function goToNursingSchedule() {

@@ -3,22 +3,21 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_to_date, getdate
+from frappe.utils import add_to_date, getdate, today
 
 
 @frappe.whitelist()
 def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
     """Return nurses and their existing assignments for the given company and date range.
 
-    Nurses fully on leave for the entire date range are excluded.
-    For nurses with partial leave overlap, their leave dates are returned
-    so the frontend can mark those cells as non-editable.
+    Nurses fully on leave for the entire date range are kept visible but
+    their leave dates are marked so the frontend can render them as non-editable.
 
     Returns:
         dict with keys:
         - nurses: list of {name, practitioner_name, employee}
-        - assignments: list of {nurse, assignment_date, assign_based_on,
-          service_unit_type, service_unit, parent, name}
+        - assignments: list of {name, nurse, nurse_name, assignment_date,
+          assign_based_on, service_unit_type, service_unit}
         - nurse_leave_dates: dict mapping nurse name → list of leave date strings
     """
     if not company or not start_date or not end_date:
@@ -65,14 +64,12 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
             if not nurse_name:
                 continue
 
-            # Calculate the overlap between leave period and roster range
             overlap_start = max(getdate(leave.from_date), roster_start)
             overlap_end = min(getdate(leave.to_date), roster_end)
 
             if nurse_name not in nurse_leave_dates:
                 nurse_leave_dates[nurse_name] = []
 
-            # Generate all leave dates within the overlap
             current = overlap_start
             while current <= overlap_end:
                 date_str = current.strftime("%Y-%m-%d")
@@ -80,34 +77,20 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
                     nurse_leave_dates[nurse_name].append(date_str)
                 current = add_to_date(current, days=1)
 
-    # Calculate total roster days for full-leave exclusion
-    total_roster_days = (roster_end - roster_start).days + 1
+    nurse_names = [n.name for n in nurses]
 
-    # Exclude nurses whose leave covers the entire date range
-    filtered_nurses = []
-    for n in nurses:
-        # leave_days = nurse_leave_dates.get(n.name, [])
-        # if len(leave_days) >= total_roster_days:
-        #     # Nurse is on leave for the entire range — exclude them
-        #     nurse_leave_dates.pop(n.name, None)
-        #     continue
-
-        filtered_nurses.append(n)
-
-    nurse_names = [n.name for n in filtered_nurses]
-
-    # Get all assignments in the date range for these nurses
+    # Get assignments from Nursing Schedule (individual records)
     assignments = []
     if nurse_names:
         assignments = frappe.db.get_all(
-            "Nurse Schedule Detail",
+            "Nursing Schedule",
             filters={
                 "nurse": ["in", nurse_names],
                 "assignment_date": ["between", [start_date, end_date]],
+                "docstatus": ["!=", 2],
             },
             fields=[
                 "name",
-                "parent",
                 "nurse",
                 "nurse_name",
                 "assignment_date",
@@ -119,7 +102,7 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
         )
 
     return {
-        "nurses": filtered_nurses,
+        "nurses": nurses,
         "assignments": assignments,
         "nurse_leave_dates": nurse_leave_dates,
     }
@@ -133,7 +116,7 @@ def save_roster_assignments(
     frequency: str,
     assignments: list | str,
 ) -> dict:
-    """Batch-save roster assignments.
+    """Batch-save roster assignments as individual Nursing Schedule records.
 
     Each assignment dict should have:
     - nurse: str (Healthcare Practitioner name)
@@ -141,12 +124,12 @@ def save_roster_assignments(
     - assign_based_on: str (Service Unit Type / Service Unit)
     - service_unit_type: str (optional)
     - service_unit: str (optional)
-    - existing_name: str (optional - if editing an existing row)
+    - existing_name: str (optional - for editing/removing existing records)
     - action: str (add / edit / remove)
 
-    This function finds or creates Nursing Schedule documents for the
-    given company/start_date/end_date/frequency and updates their
-    child table rows accordingly.
+    New records are created and immediately submitted.
+    Edits to existing (submitted) records are applied directly to the database.
+    Modifications to records with past assignment dates are blocked.
     """
     import json
 
@@ -156,60 +139,67 @@ def save_roster_assignments(
     if not assignments:
         return {"message": _("No assignments to save.")}
 
-    # Find existing Nursing Schedule for this period, or create one
-    existing_schedule = frappe.db.get_value(
-        "Nursing Schedule",
-        filters={
-            "company": company,
-            "start_date": start_date,
-            "end_date": end_date,
-            "docstatus": ["!=", 2],
-        },
-        fieldname="name",
-    )
-
-    if existing_schedule:
-        schedule = frappe.get_doc("Nursing Schedule", existing_schedule)
-    else:
-        schedule = frappe.new_doc("Nursing Schedule")
-        schedule.company = company
-        schedule.frequency = frequency
-        schedule.start_date = start_date
-        schedule.end_date = end_date
+    today_date = getdate(today())
+    created = 0
+    updated = 0
+    removed = 0
 
     for assignment in assignments:
         action = assignment.get("action", "add")
         existing_name = assignment.get("existing_name")
+        assignment_date = getdate(assignment.get("assignment_date"))
+
+        # Block modifications to past-date assignments
+        if assignment_date < today_date:
+            frappe.msgprint(
+                _("Cannot modify assignment for {0} — date has already passed.").format(
+                    frappe.bold(str(assignment_date))
+                ),
+                alert=True,
+            )
+            continue
 
         if action == "remove" and existing_name:
-            # Remove the row from the child table
-            schedule.assignments = [
-                row for row in schedule.assignments if row.name != existing_name
-            ]
+            # Cancel the submitted record
+            doc = frappe.get_doc("Nursing Schedule", existing_name)
+            if doc.docstatus == 1:
+                doc.cancel()
+            frappe.delete_doc("Nursing Schedule", existing_name, force=True)
+            removed += 1
             continue
 
         if action == "edit" and existing_name:
-            # Find and update the existing row
-            for row in schedule.assignments:
-                if row.name == existing_name:
-                    row.assign_based_on = assignment.get("assign_based_on", "")
-                    row.service_unit_type = assignment.get("service_unit_type", "")
-                    row.service_unit = assignment.get("service_unit", "")
-                    break
+            # Direct DB update on the submitted record
+            update_values = {
+                "assign_based_on": assignment.get("assign_based_on", ""),
+            }
+            if assignment.get("assign_based_on") == "Service Unit Type":
+                update_values["service_unit_type"] = assignment.get("service_unit_type", "")
+                update_values["service_unit"] = ""
+            else:
+                update_values["service_unit"] = assignment.get("service_unit", "")
+                update_values["service_unit_type"] = ""
+
+            frappe.db.set_value(
+                "Nursing Schedule",
+                existing_name,
+                update_values,
+                update_modified=True,
+            )
+            updated += 1
             continue
 
-        # action == "add"
-        # Validate: no duplicate nurse + date
-        duplicate = False
-        for row in schedule.assignments:
-            if (
-                row.nurse == assignment.get("nurse")
-                and str(row.assignment_date) == str(assignment.get("assignment_date"))
-            ):
-                duplicate = True
-                break
-
-        if duplicate:
+        # action == "add" — create and submit a new individual record
+        # Check for duplicate first
+        existing = frappe.db.exists(
+            "Nursing Schedule",
+            {
+                "nurse": assignment.get("nurse"),
+                "assignment_date": assignment.get("assignment_date"),
+                "docstatus": ["!=", 2],
+            },
+        )
+        if existing:
             frappe.msgprint(
                 _("Nurse {0} already has an assignment on {1}. Skipping.").format(
                     assignment.get("nurse"), assignment.get("assignment_date")
@@ -218,22 +208,30 @@ def save_roster_assignments(
             )
             continue
 
-        schedule.append(
-            "assignments",
-            {
-                "nurse": assignment.get("nurse"),
-                "assignment_date": assignment.get("assignment_date"),
-                "assign_based_on": assignment.get("assign_based_on", "Service Unit Type"),
-                "service_unit_type": assignment.get("service_unit_type", ""),
-                "service_unit": assignment.get("service_unit", ""),
-            },
-        )
+        doc = frappe.new_doc("Nursing Schedule")
+        doc.company = company
+        doc.frequency = frequency
+        doc.nurse = assignment.get("nurse")
+        doc.assignment_date = assignment.get("assignment_date")
+        doc.assign_based_on = assignment.get("assign_based_on", "Service Unit Type")
+        doc.service_unit_type = assignment.get("service_unit_type", "")
+        doc.service_unit = assignment.get("service_unit", "")
+        doc.insert(ignore_permissions=False)
+        doc.submit()
+        created += 1
 
-    schedule.save(ignore_permissions=False)
+    frappe.db.commit()
+
+    parts = []
+    if created:
+        parts.append(_("{0} created").format(created))
+    if updated:
+        parts.append(_("{0} updated").format(updated))
+    if removed:
+        parts.append(_("{0} removed").format(removed))
 
     return {
-        "message": _("Roster saved successfully."),
-        "schedule_name": schedule.name,
+        "message": _("Roster saved: {0}.").format(", ".join(parts)) if parts else _("No changes made."),
     }
 
 
