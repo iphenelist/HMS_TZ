@@ -15,6 +15,7 @@ export const useRosterStore = defineStore("roster", () => {
   const assignments = ref([]);
   const serviceUnitTypes = ref([]);
   const serviceUnits = ref([]);
+  const nurseLeaves = ref({});
 
   // Pending changes (tracked before save)
   const pendingChanges = ref([]);
@@ -99,6 +100,7 @@ export const useRosterStore = defineStore("roster", () => {
     onSuccess(data) {
       nurses.value = data.nurses || [];
       assignments.value = data.assignments || [];
+      nurseLeaves.value = data.nurse_leave_dates || {};
       pendingChanges.value = [];
       isLoading.value = false;
     },
@@ -162,6 +164,11 @@ export const useRosterStore = defineStore("roster", () => {
     return pendingChanges.value.length > 0;
   }
 
+  function isNurseOnLeave(nurse, date) {
+    const leaveDates = nurseLeaves.value[nurse];
+    return leaveDates ? leaveDates.includes(date) : false;
+  }
+
   function saveRoster() {
     if (!pendingChanges.value.length) return;
     isSaving.value = true;
@@ -184,6 +191,7 @@ export const useRosterStore = defineStore("roster", () => {
     assignments,
     serviceUnitTypes,
     serviceUnits,
+    nurseLeaves,
     pendingChanges,
     isLoading,
     isSaving,
@@ -197,6 +205,7 @@ export const useRosterStore = defineStore("roster", () => {
     addPendingChange,
     removePendingChange,
     hasPendingChanges,
+    isNurseOnLeave,
     saveRoster,
   };
 });
