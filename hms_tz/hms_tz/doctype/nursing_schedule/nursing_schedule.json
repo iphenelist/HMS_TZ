@@ -18,6 +18,7 @@
   "assign_based_on",
   "service_unit_type",
   "service_unit",
+  "nurse_record_created",
   "amended_from"
  ],
  "fields": [
@@ -98,6 +99,15 @@
    "options": "Healthcare Service Unit"
   },
   {
+   "default": "0",
+   "fieldname": "nurse_record_created",
+   "fieldtype": "Check",
+   "label": "Nurse Record Created",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -108,7 +118,7 @@
   }
  ],
  "links": [],
- "modified": "2026-04-08 00:00:00.000000",
+ "modified": "2026-04-08 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nursing Schedule",
