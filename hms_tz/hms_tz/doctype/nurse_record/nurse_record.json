@@ -1,0 +1,413 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-07 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_header",
+  "appointment",
+  "patient",
+  "patient_name",
+  "inpatient_record",
+  "column_break_header",
+  "company",
+  "gender",
+  "age",
+  "column_break_kgkv",
+  "status",
+  "posting_date",
+  "posting_time",
+  "section_break_hsu",
+  "service_unit",
+  "service_unit_type",
+  "naming_series",
+  "column_break_references",
+  "nurse",
+  "nurse_name",
+  "amended_from",
+  "tab_care_plans",
+  "care_plans",
+  "tab_nursing_notes",
+  "nursing_notes",
+  "previous_notes",
+  "tab_vital_signs",
+  "column_break_hrhg",
+  "column_break_chqn",
+  "record_vital_signs",
+  "section_break_fgmh",
+  "vital_signs_html",
+  "tab_medications",
+  "medications",
+  "tab_observations",
+  "observations",
+  "tab_progress",
+  "progress_notes",
+  "tab_consumables",
+  "consumables_html",
+  "tab_handover",
+  "section_break_handover_notes",
+  "outgoing_notes",
+  "pending_tasks",
+  "critical_alerts",
+  "section_break_handover_ack",
+  "handover_acknowledged",
+  "column_break_handover_ack",
+  "acknowledged_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_header",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "NR-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Series",
+   "options": "NR-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Appointment",
+   "options": "Patient Appointment",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "appointment.patient",
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "appointment.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "nurse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Nurse",
+   "options": "Healthcare Practitioner",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "nurse.practitioner_name",
+   "fieldname": "nurse_name",
+   "fieldtype": "Data",
+   "label": "Nurse Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Open\nIn Progress\nCompleted",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "service_unit",
+   "fieldtype": "Link",
+   "label": "Service Unit",
+   "options": "Healthcare Service Unit"
+  },
+  {
+   "fieldname": "service_unit_type",
+   "fieldtype": "Link",
+   "label": "Service Unit Type",
+   "options": "Healthcare Service Unit Type"
+  },
+  {
+   "fieldname": "column_break_references",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.inpatient_record",
+   "fieldname": "inpatient_record",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Inpatient Record",
+   "options": "Inpatient Record",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Nurse Record",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tab_care_plans",
+   "fieldtype": "Tab Break",
+   "label": "Care Plans"
+  },
+  {
+   "fieldname": "care_plans",
+   "fieldtype": "Table",
+   "label": "Care Plans",
+   "options": "Nurse Care Plan"
+  },
+  {
+   "fieldname": "tab_nursing_notes",
+   "fieldtype": "Tab Break",
+   "label": "Nursing Notes"
+  },
+  {
+   "fieldname": "nursing_notes",
+   "fieldtype": "Text Editor",
+   "label": "Nursing Notes"
+  },
+  {
+   "fieldname": "previous_notes",
+   "fieldtype": "Text Editor",
+   "label": "Previous Notes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tab_vital_signs",
+   "fieldtype": "Tab Break",
+   "label": "Vital Signs"
+  },
+  {
+   "bold": 1,
+   "fieldname": "vital_signs_html",
+   "fieldtype": "HTML",
+   "label": "Vital Signs"
+  },
+  {
+   "fieldname": "tab_medications",
+   "fieldtype": "Tab Break",
+   "label": "Medication Administration"
+  },
+  {
+   "fieldname": "medications",
+   "fieldtype": "Table",
+   "label": "Medications",
+   "options": "Nurse Medication Administration"
+  },
+  {
+   "fieldname": "tab_observations",
+   "fieldtype": "Tab Break",
+   "label": "Observations"
+  },
+  {
+   "fieldname": "observations",
+   "fieldtype": "Table",
+   "label": "Observations",
+   "options": "Nurse Observation"
+  },
+  {
+   "fieldname": "tab_progress",
+   "fieldtype": "Tab Break",
+   "label": "Patient Progress"
+  },
+  {
+   "fieldname": "progress_notes",
+   "fieldtype": "Table",
+   "label": "Progress Notes",
+   "options": "Nurse Progress Note"
+  },
+  {
+   "fieldname": "tab_consumables",
+   "fieldtype": "Tab Break",
+   "label": "Consumables"
+  },
+  {
+   "fieldname": "consumables_html",
+   "fieldtype": "HTML",
+   "label": "Consumables"
+  },
+  {
+   "fieldname": "tab_handover",
+   "fieldtype": "Tab Break",
+   "label": "Handover"
+  },
+  {
+   "fieldname": "section_break_handover_notes",
+   "fieldtype": "Section Break",
+   "label": "Handover Notes"
+  },
+  {
+   "fieldname": "outgoing_notes",
+   "fieldtype": "Text Editor",
+   "label": "Outgoing Notes"
+  },
+  {
+   "fieldname": "pending_tasks",
+   "fieldtype": "Text Editor",
+   "label": "Pending Tasks"
+  },
+  {
+   "fieldname": "critical_alerts",
+   "fieldtype": "Text Editor",
+   "label": "Critical Alerts"
+  },
+  {
+   "fieldname": "section_break_handover_ack",
+   "fieldtype": "Section Break",
+   "label": "Acknowledgement"
+  },
+  {
+   "default": "0",
+   "fieldname": "handover_acknowledged",
+   "fieldtype": "Check",
+   "label": "Handover Acknowledged"
+  },
+  {
+   "depends_on": "eval:doc.handover_acknowledged",
+   "fieldname": "column_break_handover_ack",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.handover_acknowledged",
+   "fieldname": "acknowledged_by",
+   "fieldtype": "Link",
+   "label": "Acknowledged By",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_hsu",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "patient.sex",
+   "fieldname": "gender",
+   "fieldtype": "Link",
+   "label": "Gender",
+   "options": "Gender",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_kgkv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "age",
+   "fieldtype": "HTML",
+   "label": "Age"
+  },
+  {
+   "fieldname": "record_vital_signs",
+   "fieldtype": "Button",
+   "label": "Record Vital Signs"
+  },
+  {
+   "fieldname": "column_break_hrhg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_chqn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_fgmh",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-08 13:39:53.996510",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Nurse Record",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician"
+  }
+ ],
+ "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
+ "search_fields": "patient,nurse,posting_date",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient_name",
+ "track_changes": 1
+}
