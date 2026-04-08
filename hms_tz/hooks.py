@@ -251,6 +251,10 @@ scheduler_events = {
     "hourly": ["hms_tz.nhif.api.healthcare_utils.set_uninvoiced_so_closed"],
     "daily": ["hms_tz.nhif.api.inpatient_record.daily_update_inpatient_occupancies"],
     "cron": {
+        # Routine for every 4 hours: auto-create Nurse Records for admitted patients
+        "0 */4 * * *": [
+            "hms_tz.hms_tz.doctype.nurse_record.nurse_record.create_nurse_records_for_admitted_patients"
+        ],
         # Routine for every day 00:01 am at night
         "1 0 * * *": ["hms_tz.nhif.api.healthcare_utils.auto_submit_nhif_patient_claim"],
         # Routine for every day 01:30am at night
