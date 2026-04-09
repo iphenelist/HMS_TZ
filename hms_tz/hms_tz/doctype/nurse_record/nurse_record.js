@@ -120,6 +120,7 @@ function set_queries(frm) {
 }
 
 function render_vital_signs(frm) {
+  if (!frm.doc.patient) return;
   frappe.call({
     method: "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_vital_signs",
     args: {
