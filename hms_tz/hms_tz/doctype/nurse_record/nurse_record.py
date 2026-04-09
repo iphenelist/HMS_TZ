@@ -1,10 +1,23 @@
 # Copyright (c) 2026, Aakvatech and contributors
 # For license information, please see license.txt
 
+from datetime import timedelta as td
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import nowdate, nowtime
+from frappe.utils import (
+    cint,
+    get_time,
+    now_datetime,
+    nowdate,
+    nowtime,
+    time_diff_in_seconds,
+    to_timedelta,
+)
+from healthcare.healthcare.doctype.patient_encounter.patient_encounter import (
+    get_prescription_dates,
+)
 
 
 class NurseRecord(Document):
@@ -15,6 +28,7 @@ class NurseRecord(Document):
         self.validate_service_unit_fields()
         self.set_status_on_save()
         self.set_previous_notes()
+        self.populate_pending_medications()
 
     def set_inpatient_record(self):
         """Auto-set inpatient_record from the patient if not already set."""
@@ -101,6 +115,83 @@ class NurseRecord(Document):
             """
         self.previous_notes = nurse_info + "\n\n" + (nurse_details.previous_notes or "")
 
+    def populate_pending_medications(self):
+        """Fetch pending IMO entries for this patient and populate the medications child table.
+
+        This runs on every save to keep the pending list up-to-date.
+        Only populates if patient has an active inpatient_record.
+        """
+        if not self.patient or not self.inpatient_record:
+            return
+
+        if self.docstatus != 0:
+            return
+
+        pending_entries = get_pending_imo_entries(self.patient, self.inpatient_record)
+
+        if not pending_entries:
+            return
+
+        existing_imo_entries = {
+            row.imo_entry for row in self.medications if row.imo_entry
+        }
+
+        for entry in pending_entries:
+            if entry.name in existing_imo_entries:
+                continue
+
+            self.append("medications", {
+                "drug": entry.get("drug", ""),
+                "drug_name": entry.get("drug_name", ""),
+                "dosage": str(entry.get("dosage", "")),
+                "scheduled_time": entry.get("time"),
+                "status": "Scheduled",
+                "imo_entry": entry.name,
+                "ref_doctype": entry.get("ref_doctype", ""),
+                "ref_docname": entry.get("ref_docname", ""),
+            })
+
+
+def get_pending_imo_entries(patient, inpatient_record):
+    """Get all pending (not completed) IMO entries for a patient.
+
+    Returns entries for today and any overdue from previous days.
+    """
+    today = nowdate()
+
+    imo_list = frappe.db.get_all(
+        "Inpatient Medication Order",
+        filters={
+            "patient": patient,
+            "inpatient_record": inpatient_record,
+            "docstatus": 1,
+            "status": ["in", ["Pending", "In Process"]],
+        },
+        fields=["name"],
+    )
+
+    if not imo_list:
+        return []
+
+    imo_names = [imo.name for imo in imo_list]
+
+    entries = frappe.db.get_all(
+        "Inpatient Medication Order Entry",
+        filters={
+            "parent": ["in", imo_names],
+            "is_completed": 0,
+            "date": ["<=", today],
+        },
+        fields=[
+            "name", "drug", "drug_name", "dosage", "dosage_form",
+            "date", "time", "instructions", "parent",
+            "ref_doctype", "ref_docname",
+        ],
+        order_by="date asc, time asc",
+    )
+
+    return entries
+
 
 @frappe.whitelist()
 def get_vital_signs(patient, appointment=None):
@@ -179,6 +270,273 @@ def create_vital_signs(patient, nurse_record, **kwargs):
     vs.submit()
 
     return vs.name
+
+
+@frappe.whitelist()
+def mark_medication_administered(imo_entry_name, administered_time, nurse_record=None):
+    """Mark an IMO entry as completed and recalculate remaining schedules if needed.
+
+    Args:
+        imo_entry_name: Name of the Inpatient Medication Order Entry
+        administered_time: Time the medication was actually administered (HH:MM:SS)
+        nurse_record: Optional Nurse Record name for context
+    """
+    imo_entry = frappe.get_doc("Inpatient Medication Order Entry", imo_entry_name)
+
+    frappe.db.set_value(
+        "Inpatient Medication Order Entry",
+        imo_entry_name,
+        "is_completed",
+        1,
+        update_modified=False,
+    )
+
+    imo = frappe.get_doc("Inpatient Medication Order", imo_entry.parent)
+    completed = cint(imo.completed_orders) + 1
+    frappe.db.set_value(
+        "Inpatient Medication Order",
+        imo_entry.parent,
+        "completed_orders",
+        completed,
+        update_modified=False,
+    )
+
+    imo.set_status()
+
+    # Recalculate remaining schedules if time delta > 60 minutes
+    scheduled_time = imo_entry.time
+    actual_time = get_time(administered_time)
+
+    delta_seconds = abs(time_diff_in_seconds(str(actual_time), str(scheduled_time)))
+    if delta_seconds > 3600:  # 60 minutes
+        recalculate_remaining_schedules(
+            imo.name,
+            imo_entry.drug,
+            imo_entry.date,
+            scheduled_time,
+            actual_time,
+        )
+
+    return {"status": "success", "imo_status": imo.status}
+
+
+def recalculate_remaining_schedules(
+    imo_name, drug, reference_date, scheduled_time, actual_time
+):
+    """Recalculate remaining scheduled doses for the same drug on the same day.
+
+    If the administered time differs from the scheduled time, shift all remaining
+    pending entries for that drug on that day forward by the same delta.
+
+    Args:
+        imo_name: Inpatient Medication Order name
+        drug: Item code of the drug
+        reference_date: The date of the administered dose
+        scheduled_time: Originally scheduled time
+        actual_time: Time medication was actually administered
+    """
+
+    # Calculate the time delta
+    scheduled_td = to_timedelta(str(scheduled_time))
+    actual_td = to_timedelta(str(actual_time))
+    delta = actual_td - scheduled_td  # positive = late, negative = early
+
+    # Get remaining pending entries for the same drug on the same day
+    remaining = frappe.db.get_all(
+        "Inpatient Medication Order Entry",
+        filters={
+            "parent": imo_name,
+            "drug": drug,
+            "date": reference_date,
+            "is_completed": 0,
+        },
+        fields=["name", "time"],
+        order_by="time asc",
+    )
+
+    if not remaining:
+        return
+
+    for entry in remaining:
+        old_time = to_timedelta(str(entry.time))
+        new_time = old_time + delta
+
+        # Clamp to same day (don't go past midnight or before 00:00)
+        total_seconds = new_time.total_seconds()
+        if total_seconds < 0:
+            total_seconds = 0
+        elif total_seconds >= 86400:  # 24 hours
+            total_seconds = 86399  # 23:59:59
+
+        hours = int(total_seconds // 3600)
+        minutes = int((total_seconds % 3600) // 60)
+        seconds = int(total_seconds % 60)
+        new_time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        frappe.db.set_value(
+            "Inpatient Medication Order Entry",
+            entry.name,
+            "time",
+            new_time_str,
+            update_modified=False,
+        )
+
+
+@frappe.whitelist()
+def get_completed_medications(patient, inpatient_record):
+    """Fetch all completed medication entries for the history section.
+
+    Returns a list of dicts with drug_name, dosage, date, time, etc.
+    """
+    imo_list = frappe.db.get_all(
+        "Inpatient Medication Order",
+        filters={
+            "patient": patient,
+            "inpatient_record": inpatient_record,
+            "docstatus": 1,
+        },
+        fields=["name"],
+    )
+
+    if not imo_list:
+        return []
+
+    imo_names = [imo.name for imo in imo_list]
+
+    entries = frappe.db.get_all(
+        "Inpatient Medication Order Entry",
+        filters={
+            "parent": ["in", imo_names],
+            "is_completed": 1,
+        },
+        fields=[
+            "name", "drug", "drug_name", "dosage", "dosage_form",
+            "date", "time", "parent",
+        ],
+        order_by="date desc, time desc",
+        limit_page_length=50,
+    )
+
+    return entries
+
+
+@frappe.whitelist()
+def get_medication_progress(patient, inpatient_record):
+    """Returns aggregated data for the medication progress chart.
+
+    Groups by drug_name and counts: total, completed, pending.
+    """
+    imo_list = frappe.db.get_all(
+        "Inpatient Medication Order",
+        filters={
+            "patient": patient,
+            "inpatient_record": inpatient_record,
+            "docstatus": 1,
+        },
+        fields=["name"],
+    )
+
+    if not imo_list:
+        return []
+
+    imo_names = [imo.name for imo in imo_list]
+
+    entries = frappe.db.get_all(
+        "Inpatient Medication Order Entry",
+        filters={
+            "parent": ["in", imo_names],
+        },
+        fields=["drug_name", "is_completed"],
+        limit_page_length=0,
+    )
+
+    # Aggregate by drug_name
+    progress = {}
+    for entry in entries:
+        name = entry.drug_name or "Unknown"
+        if name not in progress:
+            progress[name] = {"drug_name": name, "total": 0, "completed": 0, "pending": 0}
+        progress[name]["total"] += 1
+        if entry.is_completed:
+            progress[name]["completed"] += 1
+        else:
+            progress[name]["pending"] += 1
+
+    return list(progress.values())
+
+
+@frappe.whitelist()
+def get_upcoming_medications(nurse, within_minutes=30):
+    """Check upcoming medications for ALL patients assigned to this nurse.
+
+    Returns list of {patient, patient_name, drug_name, scheduled_time, nurse_record_name}.
+    This is used for the dashboard alert banner showing all patients under the nurse.
+    """
+    today = nowdate()
+    now = now_datetime()
+
+    cutoff_time = (now + td(minutes=cint(within_minutes))).time()
+    current_time = now.time()
+
+    # Get all open Nurse Records for this nurse today
+    nurse_records = frappe.db.get_all(
+        "Nurse Record",
+        filters={
+            "nurse": nurse,
+            "posting_date": today,
+            "docstatus": ["!=", 2],
+        },
+        fields=["name", "patient", "patient_name", "inpatient_record"],
+    )
+
+    if not nurse_records:
+        return []
+
+    results = []
+    for nr in nurse_records:
+        if not nr.inpatient_record:
+            continue
+
+        # Get pending IMO entries for this patient due within the window
+        imo_list = frappe.db.get_all(
+            "Inpatient Medication Order",
+            filters={
+                "patient": nr.patient,
+                "inpatient_record": nr.inpatient_record,
+                "docstatus": 1,
+                "status": ["in", ["Pending", "In Process"]],
+            },
+            fields=["name"],
+        )
+
+        if not imo_list:
+            continue
+
+        imo_names = [imo.name for imo in imo_list]
+
+        upcoming = frappe.db.get_all(
+            "Inpatient Medication Order Entry",
+            filters={
+                "parent": ["in", imo_names],
+                "is_completed": 0,
+                "date": today,
+                "time": [">=", str(current_time)],
+                "time": ["<=", str(cutoff_time)],
+            },
+            fields=["drug_name", "time", "dosage"],
+        )
+
+        for med in upcoming:
+            results.append({
+                "patient": nr.patient,
+                "patient_name": nr.patient_name,
+                "drug_name": med.drug_name,
+                "scheduled_time": str(med.time),
+                "dosage": med.dosage,
+                "nurse_record_name": nr.name,
+            })
+
+    return results
 
 
 def create_nurse_records_for_admitted_patients():
@@ -342,5 +700,173 @@ def create_nurse_records_for_admitted_patients():
                 frappe.db.rollback()
 
 
+def create_imo_from_delivery_note(doc, method):
+    """On submit of Delivery Note, auto-create Inpatient Medication Order.
+
+    Only runs for admitted patients (those with an active inpatient_record).
+    Groups drug prescriptions by patient encounter and creates one IMO per encounter.
+
+    Args:
+        doc: Delivery Note document
+        method: Hook method name (on_submit)
+    """
+    if not doc.patient:
+        return
+
+    if doc.get("reference_doctype") != "Patient Encounter":
+        return
+
+    # Get encounter info from DN
+    encounter_name = doc.get("reference_name")
+    if not encounter_name:
+        return
+
+    # Check if patient is admitted
+    inpatient_record = frappe.db.get_value("Patient", doc.patient, "inpatient_record")
+    if not inpatient_record:
+        return
+
+    # Collect Drug Prescription refs from DN Items
+    drug_prescriptions = []
+    for item in doc.items:
+        ref_dt = item.get("reference_doctype")
+        ref_dn = item.get("reference_name")
+
+        if ref_dt != "Drug Prescription" or not ref_dn:
+            continue
+
+        drug_prescriptions.append({
+            "dp_name": ref_dn,
+        })
+
+    if not drug_prescriptions:
+        return
+
+    start_date = doc.posting_date or nowdate()
+
+    imo = frappe.new_doc("Inpatient Medication Order")
+    imo.patient = doc.patient
+    imo.patient_name = doc.get("patient_name") or ""
+    imo.inpatient_record = inpatient_record
+    imo.patient_encounter = encounter_name
+    imo.practitioner = doc.get("healthcare_practitioner") or ""
+    imo.company = doc.company
+    imo.start_date = start_date
+
+    has_entries = False
+
+    for dp_info in drug_prescriptions:
+        dp_name = dp_info["dp_name"]
+
+        dp = frappe.get_doc("Drug Prescription", dp_name)
+        dosage_name = dp.get("dosage")
+        period = dp.get("period")
+        drug = dp.get("drug_code")
+        drug_name = dp.get("drug_name")
+        dosage_form = dp.get("dosage_form") or ""
+
+        if not dosage_name or not period:
+            # If no dosage/period, create a single entry for today
+            imo.append("medication_orders", {
+                "drug": drug,
+                "drug_name": drug_name,
+                "dosage": 1,
+                "dosage_form": dosage_form,
+                "date": start_date,
+                "time": "08:00:00",
+                "instructions": dp.get("comment") or "",
+                "ref_doctype": "Drug Prescription",
+                "ref_docname": dp_name,
+            })
+            has_entries = True
+            continue
+
+        dates = get_prescription_dates(period, start_date)
+        dosage_doc = frappe.get_doc("Prescription Dosage", dosage_name)
+
+        for date in dates:
+            for dose in dosage_doc.dosage_strength:
+                dose_value = dose.strength or 1
+
+                dose_time = dose.strength_time
+                if not dose_time:
+                    dose_time = _get_default_dose_time(
+                        dose.idx, len(dosage_doc.dosage_strength)
+                    )
+
+                imo.append("medication_orders", {
+                    "drug": drug,
+                    "drug_name": drug_name,
+                    "dosage": dose_value,
+                    "dosage_form": dosage_form,
+                    "date": date,
+                    "time": dose_time,
+                    "instructions": dp.get("comment") or "",
+                    "ref_doctype": "Drug Prescription",
+                    "ref_docname": dp_name,
+                })
+                has_entries = True
+
+    if not has_entries:
+        return
+
+    # Set end_date from the last entry
+    if imo.medication_orders:
+        imo.end_date = imo.medication_orders[-1].date
+
+    try:
+        imo.insert(ignore_permissions=True)
+        imo.submit()
+
+        frappe.msgprint(
+            _(
+                "Inpatient Medication Order {0} created and submitted"
+                " from Delivery Note {1}"
+            ).format(frappe.bold(imo.name), frappe.bold(doc.name)),
+            alert=True,
+        )
+    except frappe.DuplicateEntryError:
+        # IMO already exists for this encounter — skip silently
+        frappe.log_error(
+            title="IMO Creation: Duplicate",
+            message=(
+                f"IMO already exists for encounter {encounter_name}."
+                f" Skipping creation from DN {doc.name}."
+            ),
+            reference_doctype="Delivery Note",
+            reference_name=doc.name,
+        )
+    except Exception:
+        frappe.log_error(
+            title="IMO Creation Error",
+            message=frappe.get_traceback(),
+            reference_doctype="Delivery Note",
+            reference_name=doc.name,
+        )
 
 
+def _get_default_dose_time(idx, total_doses):
+    """Return a sensible default time when strength_time is not set.
+
+    Args:
+        idx: 1-based index of the dose in the dosage strength list
+        total_doses: Total number of doses per day
+
+    Returns:
+        Time string in HH:MM:SS format
+    """
+    defaults = {
+        1: ["08:00:00"],
+        2: ["08:00:00", "20:00:00"],
+        3: ["08:00:00", "14:00:00", "20:00:00"],
+        4: ["06:00:00", "12:00:00", "18:00:00", "00:00:00"],
+    }
+
+    times = defaults.get(total_doses, [])
+    if idx <= len(times):
+        return times[idx - 1]
+
+    # For > 4 doses, distribute evenly across 24 hours
+    interval_hours = 24 / total_doses
+    hour = int((idx - 1) * interval_hours) % 24
+    return f"{hour:02d}:00:00"
