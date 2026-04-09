@@ -28,5 +28,25 @@
         "depends_on": "eval:doc.practitioner_role==\"Nurse\"",
         "insert_after": "nursing_specialization",
         "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "ref_doctype",
+        "fieldtype": "Data",
+        "label": "Reference DocType",
+        "insert_after": "instructions",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "ref_docname",
+        "fieldtype": "Data",
+        "label": "Reference Name",
+        "insert_after": "ref_doctype",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
     }
 ]
