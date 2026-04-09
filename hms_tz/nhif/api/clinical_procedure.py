@@ -34,6 +34,7 @@ def onload(doc, method):
 
 
 def on_submit(doc, methd):
+    validate_swab_count(doc)
     update_procedure_prescription(doc)
     update_revenue_entry(
         "Clinical Procedure",
@@ -82,3 +83,43 @@ def update_procedure_prescription(doc):
             .set(hsrp.lrpmt_status, "Submitted")
             .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
         ).run()
+
+
+def validate_swab_count(doc):
+    """Validate swab and instrument counts match before/after surgery.
+
+    Called from on_submit of Clinical Procedure.
+    """
+    # Only validate if counts have been entered
+    if not doc.get("swab_count_before") and not doc.get("instrument_count_before"):
+        return
+
+    errors = []
+
+    swab_before = doc.get("swab_count_before") or 0
+    swab_after = doc.get("swab_count_after") or 0
+    instrument_before = doc.get("instrument_count_before") or 0
+    instrument_after = doc.get("instrument_count_after") or 0
+
+    if swab_before and swab_before != swab_after:
+        errors.append(
+            _("Swab count mismatch: Before ({0}) ≠ After ({1})").format(
+                swab_before, swab_after
+            )
+        )
+
+    if instrument_before and instrument_before != instrument_after:
+        errors.append(
+            _("Instrument count mismatch: Before ({0}) ≠ After ({1})").format(
+                instrument_before, instrument_after
+            )
+        )
+
+    if errors and not doc.get("count_verified"):
+        frappe.throw(
+            _("Count verification failed:<br>{0}<br><br>"
+              "Please verify counts are correct and check 'Count Verified' to proceed.").format(
+                "<br>".join(errors)
+            )
+        )
+
