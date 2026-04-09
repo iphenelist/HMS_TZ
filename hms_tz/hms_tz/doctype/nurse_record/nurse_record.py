@@ -281,7 +281,15 @@ def mark_medication_administered(imo_entry_name, administered_time, nurse_record
         administered_time: Time the medication was actually administered (HH:MM:SS)
         nurse_record: Optional Nurse Record name for context
     """
-    imo_entry = frappe.get_doc("Inpatient Medication Order Entry", imo_entry_name)
+    imo_entry = frappe.db.get_value(
+        "Inpatient Medication Order Entry",
+        imo_entry_name,
+        ["parent", "drug", "date", "time"],
+        as_dict=True,
+    )
+
+    if not imo_entry or not imo_entry.parent:
+        frappe.throw(_(f"IMO Entry {imo_entry_name} not found or has no parent."))
 
     frappe.db.set_value(
         "Inpatient Medication Order Entry",
@@ -295,12 +303,13 @@ def mark_medication_administered(imo_entry_name, administered_time, nurse_record
     completed = cint(imo.completed_orders) + 1
     frappe.db.set_value(
         "Inpatient Medication Order",
-        imo_entry.parent,
+        imo.name,
         "completed_orders",
         completed,
         update_modified=False,
     )
 
+    imo.reload()
     imo.set_status()
 
     # Recalculate remaining schedules if time delta > 60 minutes
@@ -846,7 +855,17 @@ def create_imo_from_delivery_note(doc, method):
 
 
 def _get_default_dose_time(idx, total_doses):
-    """Return a sensible default time when strength_time is not set.
+    """Return a proportionally distributed time when strength_time is not set.
+
+    Divides 24 hours equally by the number of doses per day, starting from
+    06:00 (common hospital first-dose time).
+
+    Examples:
+        - 1x/day  → 06:00
+        - 2x/day  → 06:00, 18:00  (every 12 hours)
+        - 3x/day  → 06:00, 14:00, 22:00  (every 8 hours)
+        - 4x/day  → 06:00, 12:00, 18:00, 00:00  (every 6 hours)
+        - 6x/day  → 06:00, 10:00, 14:00, 18:00, 22:00, 02:00  (every 4 hours)
 
     Args:
         idx: 1-based index of the dose in the dosage strength list
@@ -855,18 +874,16 @@ def _get_default_dose_time(idx, total_doses):
     Returns:
         Time string in HH:MM:SS format
     """
-    defaults = {
-        1: ["08:00:00"],
-        2: ["08:00:00", "20:00:00"],
-        3: ["08:00:00", "14:00:00", "20:00:00"],
-        4: ["06:00:00", "12:00:00", "18:00:00", "00:00:00"],
-    }
+    if total_doses <= 0:
+        return "06:00:00"
 
-    times = defaults.get(total_doses, [])
-    if idx <= len(times):
-        return times[idx - 1]
-
-    # For > 4 doses, distribute evenly across 24 hours
+    # Calculate the equal interval in hours
     interval_hours = 24 / total_doses
-    hour = int((idx - 1) * interval_hours) % 24
-    return f"{hour:02d}:00:00"
+
+    # Start from 06:00 (common hospital first-dose time), then space evenly
+    start_hour = 6
+    total_minutes = int((start_hour + (idx - 1) * interval_hours) * 60) % (24 * 60)
+
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}:00"
