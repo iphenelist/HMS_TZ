@@ -208,7 +208,10 @@ doc_events = {
         "onload": "hms_tz.nhif.api.delivery_note.onload",
         "after_insert": "hms_tz.nhif.api.delivery_note.after_insert",
         "before_submit": "hms_tz.nhif.api.delivery_note.before_submit",
-        "on_submit": "hms_tz.nhif.api.delivery_note.on_submit",
+        "on_submit": [
+            "hms_tz.nhif.api.delivery_note.on_submit",
+            "hms_tz.hms_tz.doctype.nurse_record.nurse_record.create_imo_from_delivery_note",
+        ],
         "on_cancel": "hms_tz.nhif.api.delivery_note.on_cancel",
     },
     "Inpatient Record": {
