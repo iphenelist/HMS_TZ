@@ -1,0 +1,243 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "patient",
+  "patient_name",
+  "ot_schedule",
+  "column_break_01",
+  "company",
+  "status",
+  "tab_assessment",
+  "asa_grade",
+  "airway_assessment",
+  "mallampati_score",
+  "column_break_assessment",
+  "blood_type",
+  "last_oral_intake",
+  "section_break_history",
+  "allergies",
+  "current_medications",
+  "medical_history_notes",
+  "tab_checks",
+  "fasting_status_verified",
+  "blood_crossmatch_available",
+  "consent_signed",
+  "site_marking_verified",
+  "column_break_checks",
+  "iv_access_secured",
+  "pre_op_labs_reviewed",
+  "tab_requirements",
+  "consumables_requested"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PREOP-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ot_schedule",
+   "fieldtype": "Link",
+   "label": "OT Schedule",
+   "options": "OT Schedule",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_01",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nCompleted\nCleared for Surgery\nNot Cleared",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tab_assessment",
+   "fieldtype": "Tab Break",
+   "label": "Assessment"
+  },
+  {
+   "fieldname": "asa_grade",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "ASA Grade",
+   "options": "\nASA I\nASA II\nASA III\nASA IV\nASA V\nASA VI"
+  },
+  {
+   "default": "Normal",
+   "fieldname": "airway_assessment",
+   "fieldtype": "Select",
+   "label": "Airway Assessment",
+   "options": "Normal\nDifficult\nUnknown"
+  },
+  {
+   "fieldname": "mallampati_score",
+   "fieldtype": "Select",
+   "label": "Mallampati Score",
+   "options": "\nClass I\nClass II\nClass III\nClass IV"
+  },
+  {
+   "fieldname": "column_break_assessment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "blood_type",
+   "fieldtype": "Data",
+   "label": "Blood Type"
+  },
+  {
+   "fieldname": "last_oral_intake",
+   "fieldtype": "Datetime",
+   "label": "Last Oral Intake"
+  },
+  {
+   "fieldname": "section_break_history",
+   "fieldtype": "Section Break",
+   "label": "Medical History"
+  },
+  {
+   "fieldname": "allergies",
+   "fieldtype": "Small Text",
+   "label": "Allergies"
+  },
+  {
+   "fieldname": "current_medications",
+   "fieldtype": "Small Text",
+   "label": "Current Medications"
+  },
+  {
+   "fieldname": "medical_history_notes",
+   "fieldtype": "Text",
+   "label": "Medical History Notes"
+  },
+  {
+   "fieldname": "tab_checks",
+   "fieldtype": "Tab Break",
+   "label": "Pre-Op Checks"
+  },
+  {
+   "default": "0",
+   "fieldname": "fasting_status_verified",
+   "fieldtype": "Check",
+   "label": "Fasting Status Verified"
+  },
+  {
+   "default": "0",
+   "fieldname": "blood_crossmatch_available",
+   "fieldtype": "Check",
+   "label": "Blood Crossmatch Available"
+  },
+  {
+   "default": "0",
+   "fieldname": "consent_signed",
+   "fieldtype": "Check",
+   "label": "Consent Signed"
+  },
+  {
+   "default": "0",
+   "fieldname": "site_marking_verified",
+   "fieldtype": "Check",
+   "label": "Site Marking Verified"
+  },
+  {
+   "fieldname": "column_break_checks",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "iv_access_secured",
+   "fieldtype": "Check",
+   "label": "IV Access Secured"
+  },
+  {
+   "default": "0",
+   "fieldname": "pre_op_labs_reviewed",
+   "fieldtype": "Check",
+   "label": "Pre-Op Labs Reviewed"
+  },
+  {
+   "fieldname": "tab_requirements",
+   "fieldtype": "Tab Break",
+   "label": "Requirements"
+  },
+  {
+   "fieldname": "consumables_requested",
+   "fieldtype": "Table",
+   "label": "Consumables Requested",
+   "options": "Preop Consumable Item"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Preoperative Assessment",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
