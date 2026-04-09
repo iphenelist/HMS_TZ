@@ -38,7 +38,11 @@
   "section_break_fgmh",
   "vital_signs_html",
   "tab_medications",
+  "medication_progress_html",
+  "section_break_pending_meds",
   "medications",
+  "section_break_completed_meds",
+  "completed_medications_html",
   "tab_observations",
   "observations",
   "tab_progress",
@@ -229,10 +233,31 @@
    "label": "Medication Administration"
   },
   {
+   "fieldname": "medication_progress_html",
+   "fieldtype": "HTML",
+   "label": "Medication Progress"
+  },
+  {
+   "fieldname": "section_break_pending_meds",
+   "fieldtype": "Section Break",
+   "label": "Pending Medications"
+  },
+  {
    "fieldname": "medications",
    "fieldtype": "Table",
    "label": "Medications",
    "options": "Nurse Medication Administration"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_completed_meds",
+   "fieldtype": "Section Break",
+   "label": "Completed Medications"
+  },
+  {
+   "fieldname": "completed_medications_html",
+   "fieldtype": "HTML",
+   "label": "Completed Medications"
   },
   {
    "fieldname": "tab_observations",
@@ -356,7 +381,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-08 13:39:53.996510",
+ "modified": "2026-04-09 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nurse Record",
