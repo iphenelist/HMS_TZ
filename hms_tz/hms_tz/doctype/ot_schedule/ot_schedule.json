@@ -1,0 +1,227 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "patient",
+  "patient_name",
+  "procedure_template",
+  "clinical_procedure",
+  "column_break_01",
+  "company",
+  "date",
+  "priority",
+  "status",
+  "section_break_location",
+  "theater_room",
+  "start_time",
+  "estimated_duration",
+  "column_break_time",
+  "end_time",
+  "section_break_team",
+  "primary_surgeon",
+  "assistant_surgeon",
+  "anesthetist",
+  "column_break_team2",
+  "scrub_nurse",
+  "circulating_nurse",
+  "section_break_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "OTS-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "procedure_template",
+   "fieldtype": "Link",
+   "label": "Procedure Template",
+   "options": "Clinical Procedure Template"
+  },
+  {
+   "fieldname": "clinical_procedure",
+   "fieldtype": "Link",
+   "label": "Clinical Procedure",
+   "options": "Clinical Procedure"
+  },
+  {
+   "fieldname": "column_break_01",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "default": "Elective",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Priority",
+   "options": "Elective\nUrgent\nEmergency"
+  },
+  {
+   "default": "Scheduled",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Scheduled\nIn Progress\nCompleted\nCancelled\nPostponed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_location",
+   "fieldtype": "Section Break",
+   "label": "Schedule Details"
+  },
+  {
+   "fieldname": "theater_room",
+   "fieldtype": "Link",
+   "label": "Theater Room",
+   "options": "Healthcare Service Unit"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Time",
+   "label": "Start Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "estimated_duration",
+   "fieldtype": "Duration",
+   "label": "Estimated Duration"
+  },
+  {
+   "fieldname": "column_break_time",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "label": "Actual End Time"
+  },
+  {
+   "fieldname": "section_break_team",
+   "fieldtype": "Section Break",
+   "label": "Surgical Team"
+  },
+  {
+   "fieldname": "primary_surgeon",
+   "fieldtype": "Link",
+   "label": "Primary Surgeon",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "assistant_surgeon",
+   "fieldtype": "Link",
+   "label": "Assistant Surgeon",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "anesthetist",
+   "fieldtype": "Link",
+   "label": "Anesthetist",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "column_break_team2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scrub_nurse",
+   "fieldtype": "Link",
+   "label": "Scrub Nurse",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "circulating_nurse",
+   "fieldtype": "Link",
+   "label": "Circulating Nurse",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "section_break_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "Notes"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "OT Schedule",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
