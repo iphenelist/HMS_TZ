@@ -4,7 +4,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "drug_prescription",
+  "drug",
   "drug_name",
   "dosage",
   "column_break_01",
@@ -14,19 +14,23 @@
   "column_break_02",
   "status",
   "administered_by",
+  "section_break_refs",
+  "imo_entry",
+  "ref_doctype",
+  "column_break_refs2",
+  "ref_docname",
   "section_break_notes",
   "notes"
  ],
  "fields": [
   {
-   "fieldname": "drug_prescription",
+   "fieldname": "drug",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Drug Prescription",
-   "options": "Drug Prescription"
+   "label": "Drug",
+   "options": "Medication"
   },
   {
-   "fetch_from": "drug_prescription.drug_name",
    "fieldname": "drug_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -80,6 +84,34 @@
    "options": "User"
   },
   {
+   "collapsible": 1,
+   "fieldname": "section_break_refs",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "imo_entry",
+   "fieldtype": "Data",
+   "label": "IMO Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Data",
+   "label": "Reference DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_refs2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ref_docname",
+   "fieldtype": "Data",
+   "label": "Reference Name",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_notes",
    "fieldtype": "Section Break"
   },
@@ -91,7 +123,7 @@
  ],
  "istable": 1,
  "links": [],
- "modified": "2026-04-07 00:00:00.000000",
+ "modified": "2026-04-08 22:00:00.000000",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nurse Medication Administration",
