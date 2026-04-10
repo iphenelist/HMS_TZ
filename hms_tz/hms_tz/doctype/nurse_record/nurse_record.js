@@ -296,6 +296,7 @@ function render_pending_medications(frm) {
     callback: (r) => {
       if (r.message && r.message.length > 0) {
         render_pending_meds_table(frm, r.message);
+        console.log();
       } else {
         frm.fields_dict.pending_medications_html.$wrapper.html(
           '<div class="text-muted text-center p-4">' +
@@ -344,9 +345,16 @@ function render_pending_meds_table(frm, entries) {
         : "";
 
     let time_display = e.time ? e.time.substring(0, 5) : "";
-    let is_overdue = e.date < frappe.datetime.get_today();
-    let overdue_class = is_overdue
-      ? ' class="text-danger font-weight-bold"'
+    // Ensure HH:mm format for reliable comparison (pad single-digit hours)
+    if (time_display.length === 5 && time_display.endsWith(":")) {
+      time_display = "0" + time_display.substring(0, 4);
+    }
+    let now_time = frappe.datetime.now_time().substring(0, 5);
+    let is_overdue =
+      e.date < frappe.datetime.get_today() ||
+      (e.date === frappe.datetime.get_today() && time_display < now_time);
+    let overdue_style = is_overdue
+      ? ' style="color: #e53935; font-weight: bold;"'
       : "";
 
     html +=
@@ -360,17 +368,19 @@ function render_pending_meds_table(frm, entries) {
       "<td>" +
       (e.dosage_form || "") +
       "</td>" +
-      "<td" +
-      overdue_class +
-      ">" +
+      "<td>" +
       (e.date || "") +
+      "</td>" +
+      "<td" +
+      overdue_style +
+      ">" +
+      time_display +
       (is_overdue ? " ⚠️" : "") +
       "</td>" +
-      "<td>" +
-      time_display +
-      "</td>" +
-      "<td>" +
-      (held_badge || __("Pending")) +
+      "<td" +
+      overdue_style +
+      ">" +
+      (held_badge || (is_overdue ? __("Overdue") : __("Pending"))) +
       "</td>" +
       '<td class="text-center">' +
       '<button class="btn btn-xs btn-primary btn-update-med" ' +
@@ -481,8 +491,6 @@ function show_update_medication_dialog(
 
   d.show();
 }
-
-// ─── Medication Progress Chart ───
 
 function render_medication_progress(frm) {
   if (!frm.fields_dict.medication_progress_html) return;
@@ -604,8 +612,6 @@ function render_med_progress_chart(frm, data) {
   $wrapper.append(summary_html);
 }
 
-// ─── Completed Medications ───
-
 function render_completed_medications(frm) {
   if (!frm.fields_dict.completed_medications_html) return;
   if (!frm.doc.patient || !frm.doc.inpatient_record) {
@@ -705,8 +711,6 @@ function render_completed_meds_table(frm, entries) {
   $wrapper.append(html);
 }
 
-// ─── Upcoming Medications Alert Banner ───
-
 function check_upcoming_medications(frm) {
   if (!frm.doc.nurse || frm.is_new()) return;
 
@@ -715,7 +719,7 @@ function check_upcoming_medications(frm) {
       "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_upcoming_medications",
     args: {
       nurse: frm.doc.nurse,
-      within_minutes: 30,
+      within_minutes: 60,
     },
     callback: (r) => {
       if (r.message && r.message.length > 0) {
@@ -726,14 +730,57 @@ function check_upcoming_medications(frm) {
 }
 
 function show_medication_alert_banner(frm, medications) {
-  // Build a detailed table of all upcoming medications across all patients
   let total_count = medications.length;
 
-  let table_html =
-    '<table class="table table-sm table-bordered mb-0" ' +
-    'style="background: white; font-size: 12px;">' +
+  // Add dashboard indicator pill with icon
+  frm.dashboard.add_indicator(
+    "💊 " + __("{0} Upcoming Medication(s) within next 1 hour", [total_count]),
+    total_count > 5 ? "red" : "orange"
+  );
+
+  // Build the medication table HTML
+  let rows = medications
+    .map((med) => {
+      let url = frappe.utils.get_form_link(
+        "Nurse Record",
+        med.nurse_record_name
+      );
+      let time_display = med.scheduled_time
+        ? med.scheduled_time.substring(0, 5)
+        : "";
+
+      return (
+        "<tr>" +
+        '<td><a href="' +
+        url +
+        '">' +
+        frappe.utils.escape_html(med.patient_name) +
+        "</a></td>" +
+        "<td>" +
+        frappe.utils.escape_html(med.drug_name || "") +
+        "</td>" +
+        "<td>" +
+        frappe.utils.escape_html(med.dosage || "") +
+        "</td>" +
+        "<td>" +
+        frappe.utils.escape_html(med.dosage_form || "") +
+        "</td>" +
+        "<td><strong>" +
+        time_display +
+        "</strong></td>" +
+        "</tr>"
+      );
+    })
+    .join("");
+
+  let section_html =
+    '<div style="background: #fff8e1; border-left: 4px solid #ff9800; ' +
+    'border-radius: 4px; padding: 8px; max-height: 250px; overflow-y: auto;">' +
+    '<table class="table table-sm mb-0" ' +
+    'style="background: transparent; margin: 0;">' +
     "<thead>" +
-    '<tr style="background: #fff3cd;">' +
+    '<tr style="font-size: 11px; text-transform: uppercase; ' +
+    'color: #6d4c00; border-bottom: 2px solid #ffe0b2;">' +
     "<th>" +
     __("Patient") +
     "</th>" +
@@ -750,70 +797,16 @@ function show_medication_alert_banner(frm, medications) {
     __("Scheduled Time") +
     "</th>" +
     "</tr>" +
-    "</thead><tbody>";
-
-  medications.forEach((med) => {
-    let url = frappe.utils.get_form_link(
-      "Nurse Record",
-      med.nurse_record_name
-    );
-    let time_display = med.scheduled_time
-      ? med.scheduled_time.substring(0, 5)
-      : "";
-
-    table_html +=
-      "<tr>" +
-      '<td><a href="' +
-      url +
-      '" class="font-weight-bold">' +
-      med.patient_name +
-      "</a></td>" +
-      "<td>" +
-      (med.drug_name || "") +
-      "</td>" +
-      "<td>" +
-      (med.dosage || "") +
-      "</td>" +
-      "<td>" +
-      (med.dosage_form || "") +
-      "</td>" +
-      "<td>" +
-      time_display +
-      "</td>" +
-      "</tr>";
-  });
-
-  table_html += "</tbody></table>";
-
-  let alert_html =
-    '<div class="alert alert-warning alert-dismissible fade show" ' +
-    'role="alert" style="margin-bottom: 0; border-radius: 0; padding: 10px;">' +
-    '<div class="d-flex align-items-center mb-2">' +
-    '<span class="mr-2" style="font-size: 1.2em;">⚠️</span>' +
-    "<strong>" +
-    total_count +
-    __(" medication(s) due within the next 30 minutes") +
-    "</strong>" +
-    '<button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close">' +
-    '<span aria-hidden="true">&times;</span>' +
-    "</button>" +
-    "</div>" +
-    '<div style="max-height: 200px; overflow-y: auto;">' +
-    table_html +
-    "</div>" +
+    "</thead>" +
+    "<tbody>" +
+    rows +
+    "</tbody>" +
+    "</table>" +
     "</div>";
 
-  // Insert above the form
-  frm.$wrapper
-    .find(".form-message, .medication-alert-banner")
-    .filter(".medication-alert-banner")
-    .remove();
-  $(alert_html)
-    .addClass("medication-alert-banner")
-    .prependTo(frm.$wrapper.find(".form-page"));
+  frm.dashboard.add_section(section_html);
+  frm.dashboard.show();
 }
-
-// ─── Consumables Placeholder ───
 
 function render_consumables_placeholder(frm) {
   if (!frm.fields_dict.consumables_html) return;
@@ -826,8 +819,6 @@ function render_consumables_placeholder(frm) {
       "</div>"
   );
 }
-
-// ─── Age Display ───
 
 function render_age(frm) {
   if (!frm.fields_dict.age || !frm.fields_dict.age.$wrapper) return;
