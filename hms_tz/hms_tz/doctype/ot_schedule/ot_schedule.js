@@ -3,32 +3,31 @@
 
 frappe.ui.form.on("OT Schedule", {
   setup(frm) {
-    // Filter surgeons to doctors only
-    for (let field of [
-      "primary_surgeon",
-      "assistant_surgeon",
-      "anesthetist",
-    ]) {
-      frm.set_query(field, () => ({
-        filters: { practitioner_role: "Doctor" },
-      }));
-    }
-    // Filter nurses
-    for (let field of ["scrub_nurse", "circulating_nurse"]) {
-      frm.set_query(field, () => ({
-        filters: { practitioner_role: "Nurse" },
-      }));
-    }
     frm.set_query("patient", () => ({
       filters: { status: "Active" },
     }));
     frm.set_query("theater_room", () => ({
-      filters: { disabled: 0 },
+      filters: {
+        disabled: 0,
+        is_group: 0,
+        company: frm.doc.company,
+      },
     }));
+    // Filter practitioner in child table based on role
+    frm.set_query("practitioner", "surgical_team", (doc, cdt, cdn) => {
+      let row = locals[cdt][cdn];
+      let role_filter = "Doctor";
+      if (row.role === "Nurse") {
+        role_filter = "Nurse";
+      }
+      return {
+        filters: { practitioner_role: role_filter },
+      };
+    });
   },
 
   refresh(frm) {
-    if (!frm.is_new() && frm.doc.status === "Scheduled") {
+    if (frm.doc.docstatus === 1 && frm.doc.status === "Scheduled") {
       frm.add_custom_button(
         __("Start Procedure"),
         () => {
@@ -39,12 +38,12 @@ frappe.ui.form.on("OT Schedule", {
       );
 
       frm.add_custom_button(
-        __("Cancel Schedule"),
+        __("Postpone"),
         () => {
           frappe.confirm(
-            __("Are you sure you want to cancel this schedule?"),
+            __("Are you sure you want to postpone this schedule?"),
             () => {
-              frm.set_value("status", "Cancelled");
+              frm.set_value("status", "Postponed");
               frm.save();
             }
           );
@@ -53,7 +52,7 @@ frappe.ui.form.on("OT Schedule", {
       );
     }
 
-    if (frm.doc.status === "In Progress") {
+    if (frm.doc.docstatus === 1 && frm.doc.status === "In Progress") {
       frm.add_custom_button(
         __("Complete"),
         () => {
@@ -66,7 +65,10 @@ frappe.ui.form.on("OT Schedule", {
     }
 
     // Create linked documents
-    if (!frm.is_new() && frm.doc.status !== "Cancelled") {
+    if (
+      frm.doc.docstatus === 1 &&
+      !["Cancelled", "Postponed"].includes(frm.doc.status)
+    ) {
       frm.add_custom_button(
         __("Preoperative Assessment"),
         () => {
