@@ -211,17 +211,16 @@ def get_pending_medications(patient, inpatient_record):
             "status": ["in", ["Pending", "In Process"]],
         },
         fields=["name"],
+        pluck="name",
     )
 
     if not imo_list:
         return []
 
-    imo_names = [imo.name for imo in imo_list]
-
     entries = frappe.db.get_all(
         "Inpatient Medication Order Entry",
         filters={
-            "parent": ["in", imo_names],
+            "parent": ["in", imo_list],
             "is_completed": 0,
             "date": ["<=", today],
         },
@@ -469,7 +468,7 @@ def get_medication_progress(patient, inpatient_record):
 
 
 @frappe.whitelist()
-def get_upcoming_medications(nurse, within_minutes=30):
+def get_upcoming_medications(nurse, within_minutes=60):
     """Check upcoming medications for ALL patients assigned to this nurse.
 
     Returns list of {patient, patient_name, drug_name, scheduled_time, nurse_record_name}.
@@ -481,12 +480,13 @@ def get_upcoming_medications(nurse, within_minutes=30):
     cutoff_time = (now + td(minutes=cint(within_minutes))).time()
     current_time = now.time()
 
-    # Get all open Nurse Records for this nurse today
+    # Get all active Nurse Records for this nurse
     nurse_records = frappe.db.get_all(
         "Nurse Record",
         filters={
             "nurse": nurse,
             "posting_date": today,
+            "status": ["in", ["Open", "In Progress"]],
             "docstatus": ["!=", 2],
         },
         fields=["name", "patient", "patient_name", "inpatient_record"],
@@ -510,17 +510,16 @@ def get_upcoming_medications(nurse, within_minutes=30):
                 "status": ["in", ["Pending", "In Process"]],
             },
             fields=["name"],
+            pluck="name",
         )
 
         if not imo_list:
             continue
 
-        imo_names = [imo.name for imo in imo_list]
-
         upcoming = frappe.db.get_all(
             "Inpatient Medication Order Entry",
             filters=[
-                ["parent", "in", imo_names],
+                ["parent", "in", imo_list],
                 ["is_completed", "=", 0],
                 ["date", "=", today],
                 ["time", ">=", str(current_time)],
