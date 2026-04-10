@@ -50,6 +50,47 @@
         "doctype": "Custom Field"
     },
     {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administration_status",
+        "fieldtype": "Select",
+        "label": "Administration Status",
+        "options": "\nAdministered\nSkipped\nRefused\nHeld",
+        "insert_after": "ref_docname",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administered_time",
+        "fieldtype": "Datetime",
+        "label": "Administered Time",
+        "insert_after": "administration_status",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administered_by",
+        "fieldtype": "Link",
+        "label": "Administered By",
+        "options": "User",
+        "insert_after": "administered_time",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administration_notes",
+        "fieldtype": "Small Text",
+        "label": "Notes",
+        "insert_after": "administered_by",
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
         "dt": "Healthcare Service Unit",
         "fieldname": "disabled",
         "fieldtype": "Check",

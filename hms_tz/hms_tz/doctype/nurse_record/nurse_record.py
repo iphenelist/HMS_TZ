@@ -8,7 +8,6 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import (
     cint,
-    get_time,
     now_datetime,
     nowdate,
     nowtime,
@@ -28,7 +27,6 @@ class NurseRecord(Document):
         self.validate_service_unit_fields()
         self.set_status_on_save()
         self.set_previous_notes()
-        self.populate_pending_medications()
 
     def set_inpatient_record(self):
         """Auto-set inpatient_record from the patient if not already set."""
@@ -115,83 +113,6 @@ class NurseRecord(Document):
             """
         self.previous_notes = nurse_info + "\n\n" + (nurse_details.previous_notes or "")
 
-    def populate_pending_medications(self):
-        """Fetch pending IMO entries for this patient and populate the medications child table.
-
-        This runs on every save to keep the pending list up-to-date.
-        Only populates if patient has an active inpatient_record.
-        """
-        if not self.patient or not self.inpatient_record:
-            return
-
-        if self.docstatus != 0:
-            return
-
-        pending_entries = get_pending_imo_entries(self.patient, self.inpatient_record)
-
-        if not pending_entries:
-            return
-
-        existing_imo_entries = {
-            row.imo_entry for row in self.medications if row.imo_entry
-        }
-
-        for entry in pending_entries:
-            if entry.name in existing_imo_entries:
-                continue
-
-            self.append("medications", {
-                "drug": entry.get("drug", ""),
-                "drug_name": entry.get("drug_name", ""),
-                "dosage": str(entry.get("dosage", "")),
-                "scheduled_time": entry.get("time"),
-                "status": "Scheduled",
-                "imo_entry": entry.name,
-                "ref_doctype": entry.get("ref_doctype", ""),
-                "ref_docname": entry.get("ref_docname", ""),
-            })
-
-
-def get_pending_imo_entries(patient, inpatient_record):
-    """Get all pending (not completed) IMO entries for a patient.
-
-    Returns entries for today and any overdue from previous days.
-    """
-    today = nowdate()
-
-    imo_list = frappe.db.get_all(
-        "Inpatient Medication Order",
-        filters={
-            "patient": patient,
-            "inpatient_record": inpatient_record,
-            "docstatus": 1,
-            "status": ["in", ["Pending", "In Process"]],
-        },
-        fields=["name"],
-    )
-
-    if not imo_list:
-        return []
-
-    imo_names = [imo.name for imo in imo_list]
-
-    entries = frappe.db.get_all(
-        "Inpatient Medication Order Entry",
-        filters={
-            "parent": ["in", imo_names],
-            "is_completed": 0,
-            "date": ["<=", today],
-        },
-        fields=[
-            "name", "drug", "drug_name", "dosage", "dosage_form",
-            "date", "time", "instructions", "parent",
-            "ref_doctype", "ref_docname",
-        ],
-        order_by="date asc, time asc",
-    )
-
-    return entries
-
 
 @frappe.whitelist()
 def get_vital_signs(patient, appointment=None):
@@ -273,14 +194,64 @@ def create_vital_signs(patient, nurse_record, **kwargs):
 
 
 @frappe.whitelist()
-def mark_medication_administered(imo_entry_name, administered_time, nurse_record=None):
-    """Mark an IMO entry as completed and recalculate remaining schedules if needed.
+def get_pending_medications(patient, inpatient_record):
+    """Fetch pending (not completed) IMO entries for a patient.
+
+    Returns entries for today and any overdue from previous days,
+    excluding entries with administration_status = 'Held' separately.
+    """
+    today = nowdate()
+
+    imo_list = frappe.db.get_all(
+        "Inpatient Medication Order",
+        filters={
+            "patient": patient,
+            "inpatient_record": inpatient_record,
+            "docstatus": 1,
+            "status": ["in", ["Pending", "In Process"]],
+        },
+        fields=["name"],
+    )
+
+    if not imo_list:
+        return []
+
+    imo_names = [imo.name for imo in imo_list]
+
+    entries = frappe.db.get_all(
+        "Inpatient Medication Order Entry",
+        filters={
+            "parent": ["in", imo_names],
+            "is_completed": 0,
+            "date": ["<=", today],
+        },
+        fields=[
+            "name", "drug", "drug_name", "dosage", "dosage_form",
+            "date", "time", "instructions", "parent",
+            "administration_status",
+        ],
+        order_by="date asc, time asc",
+    )
+
+    return entries
+
+
+@frappe.whitelist()
+def update_medication_status(
+    imo_entry_name, status, notes=None, nurse_record=None
+):
+    """Update IMO Entry with administration status and related fields.
 
     Args:
         imo_entry_name: Name of the Inpatient Medication Order Entry
-        administered_time: Time the medication was actually administered (HH:MM:SS)
+        status: One of 'Administered', 'Skipped', 'Refused', 'Held'
+        notes: Optional notes/reason
         nurse_record: Optional Nurse Record name for context
     """
+    valid_statuses = ["Administered", "Skipped", "Refused", "Held"]
+    if status not in valid_statuses:
+        frappe.throw(_("Invalid status: {0}").format(status))
+
     imo_entry = frappe.db.get_value(
         "Inpatient Medication Order Entry",
         imo_entry_name,
@@ -289,44 +260,65 @@ def mark_medication_administered(imo_entry_name, administered_time, nurse_record
     )
 
     if not imo_entry or not imo_entry.parent:
-        frappe.throw(_(f"IMO Entry {imo_entry_name} not found or has no parent."))
+        frappe.throw(_("IMO Entry {0} not found or has no parent.").format(imo_entry_name))
 
-    frappe.db.set_value(
-        "Inpatient Medication Order Entry",
-        imo_entry_name,
-        "is_completed",
-        1,
-        update_modified=False,
-    )
+    now = now_datetime()
 
-    imo = frappe.get_doc("Inpatient Medication Order", imo_entry.parent)
-    completed = cint(imo.completed_orders) + 1
-    frappe.db.set_value(
-        "Inpatient Medication Order",
-        imo.name,
-        "completed_orders",
-        completed,
-        update_modified=False,
-    )
+    # Update IMO Entry custom fields
+    update_fields = {
+        "administration_status": status,
+        "administered_time": now,
+        "administered_by": frappe.session.user,
+    }
+    if notes:
+        update_fields["administration_notes"] = notes
 
-    imo.reload()
-    imo.set_status()
+    # For Administered, Skipped, Refused → mark as completed (resolved)
+    # For Held → keep as not completed (stays in pending)
+    if status in ("Administered", "Skipped", "Refused"):
+        update_fields["is_completed"] = 1
 
-    # Recalculate remaining schedules if time delta > 60 minutes
-    scheduled_time = imo_entry.time
-    actual_time = get_time(administered_time)
-
-    delta_seconds = abs(time_diff_in_seconds(str(actual_time), str(scheduled_time)))
-    if delta_seconds > 3600:  # 60 minutes
-        recalculate_remaining_schedules(
-            imo.name,
-            imo_entry.drug,
-            imo_entry.date,
-            scheduled_time,
-            actual_time,
+    for field, value in update_fields.items():
+        frappe.db.set_value(
+            "Inpatient Medication Order Entry",
+            imo_entry_name,
+            field,
+            value,
+            update_modified=False,
         )
 
-    return {"status": "success", "imo_status": imo.status}
+    # Update parent IMO completed count and status
+    if status in ("Administered", "Skipped", "Refused"):
+        imo = frappe.get_doc("Inpatient Medication Order", imo_entry.parent)
+        completed = cint(imo.completed_orders) + 1
+        frappe.db.set_value(
+            "Inpatient Medication Order",
+            imo.name,
+            "completed_orders",
+            completed,
+            update_modified=False,
+        )
+        imo.reload()
+        imo.set_status()
+
+    # Recalculate remaining schedules if administered late (> 60 min delta)
+    if status == "Administered":
+        scheduled_time = imo_entry.time
+        actual_time = now.time()
+
+        delta_seconds = abs(
+            time_diff_in_seconds(str(actual_time), str(scheduled_time))
+        )
+        if delta_seconds > 3600:
+            recalculate_remaining_schedules(
+                imo_entry.parent,
+                imo_entry.drug,
+                imo_entry.date,
+                scheduled_time,
+                actual_time,
+            )
+
+    return {"status": "success", "administration_status": status}
 
 
 def recalculate_remaining_schedules(
@@ -395,7 +387,7 @@ def recalculate_remaining_schedules(
 def get_completed_medications(patient, inpatient_record):
     """Fetch all completed medication entries for the history section.
 
-    Returns a list of dicts with drug_name, dosage, date, time, etc.
+    Returns a list of dicts with drug_name, dosage, date, time, status, etc.
     """
     imo_list = frappe.db.get_all(
         "Inpatient Medication Order",
@@ -421,6 +413,8 @@ def get_completed_medications(patient, inpatient_record):
         fields=[
             "name", "drug", "drug_name", "dosage", "dosage_form",
             "date", "time", "parent",
+            "administration_status", "administered_time",
+            "administered_by", "administration_notes",
         ],
         order_by="date desc, time desc",
         limit_page_length=50,
@@ -525,14 +519,14 @@ def get_upcoming_medications(nurse, within_minutes=30):
 
         upcoming = frappe.db.get_all(
             "Inpatient Medication Order Entry",
-            filters={
-                "parent": ["in", imo_names],
-                "is_completed": 0,
-                "date": today,
-                "time": [">=", str(current_time)],
-                "time": ["<=", str(cutoff_time)],
-            },
-            fields=["drug_name", "time", "dosage"],
+            filters=[
+                ["parent", "in", imo_names],
+                ["is_completed", "=", 0],
+                ["date", "=", today],
+                ["time", ">=", str(current_time)],
+                ["time", "<=", str(cutoff_time)],
+            ],
+            fields=["drug_name", "drug", "time", "dosage", "dosage_form"],
         )
 
         for med in upcoming:
@@ -540,8 +534,9 @@ def get_upcoming_medications(nurse, within_minutes=30):
                 "patient": nr.patient,
                 "patient_name": nr.patient_name,
                 "drug_name": med.drug_name,
-                "scheduled_time": str(med.time),
                 "dosage": med.dosage,
+                "dosage_form": med.dosage_form or "",
+                "scheduled_time": str(med.time),
                 "nurse_record_name": nr.name,
             })
 
