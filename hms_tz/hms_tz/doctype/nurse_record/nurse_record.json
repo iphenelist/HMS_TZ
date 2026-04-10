@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-04-07 00:00:00",
+ "creation": "2026-04-10 17:13:53.856680",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -15,8 +15,8 @@
   "gender",
   "age",
   "column_break_kgkv",
-  "status",
   "posting_date",
+  "status",
   "posting_time",
   "section_break_hsu",
   "service_unit",
@@ -26,6 +26,12 @@
   "nurse",
   "nurse_name",
   "amended_from",
+  "section_break_r45y2",
+  "payment_type",
+  "insurance_subscription",
+  "column_break_insurance",
+  "insurance_coverage_plan",
+  "insurance_company",
   "tab_care_plans",
   "care_plans",
   "tab_nursing_notes",
@@ -87,7 +93,6 @@
    "fetch_from": "appointment.patient",
    "fieldname": "patient",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
@@ -104,7 +109,6 @@
   {
    "fieldname": "nurse",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Nurse",
    "options": "Healthcare Practitioner",
@@ -114,6 +118,7 @@
    "fetch_from": "nurse.practitioner_name",
    "fieldname": "nurse_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Nurse Name",
    "read_only": 1
   },
@@ -135,6 +140,7 @@
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Posting Date",
    "reqd": 1
   },
@@ -339,7 +345,6 @@
    "options": "Healthcare Practitioner"
   },
   {
-   "collapsible": 1,
    "fieldname": "section_break_hsu",
    "fieldtype": "Section Break"
   },
@@ -376,11 +381,58 @@
   {
    "fieldname": "section_break_fgmh",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Type",
+   "options": "Cash\nInsurance",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Insurance Subscription",
+   "mandatory_depends_on": "eval:doc.payment_type=='Insurance'",
+   "options": "Healthcare Insurance Subscription",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_insurance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Insurance Coverage Plan",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_r45y2",
+   "fieldtype": "Section Break"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-04-10 17:35:38.124259",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nurse Record",

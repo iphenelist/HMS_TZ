@@ -20,27 +20,73 @@ from healthcare.healthcare.doctype.patient_encounter.patient_encounter import (
 
 
 class NurseRecord(Document):
+    def before_insert(self):
+        if self.appointment:
+            insurance = frappe.get_cached_value(
+                "Patient Appointment",
+                self.appointment,
+                "insurance_company"
+            )
+            if insurance:
+                self.payment_type = 'Insurance'
+            else:
+                self.payment_type = 'Cash'
+
     def before_save(self):
-        self.set_inpatient_record()
-        self.validate_posting_date()
+        insurance = frappe.get_cached_value(
+            "Patient Appointment",
+            self.appointment,
+            "insurance_company"
+        )
+        if insurance:
+            self.payment_type = 'Insurance'
+        else:
+            self.payment_type = 'Cash'
+
+        self.set_missing_values()
         self.validate_no_duplicate()
         self.validate_service_unit_fields()
         self.set_status_on_save()
         self.set_previous_notes()
 
-    def set_inpatient_record(self):
-        """Auto-set inpatient_record from the patient if not already set."""
-        if self.patient and not self.inpatient_record:
-            self.inpatient_record = frappe.db.get_value(
-                "Patient",
-                self.patient,
-                "inpatient_record",
-            )
+    def before_submit(self):
+        self.status = "Completed"
 
-    def validate_posting_date(self):
+    def set_missing_values(self):
+        """Auto-set default values for missing fields."""
         if not self.posting_date:
             self.posting_date = nowdate()
             self.posting_time = nowtime()
+
+        if self.patient and not self.inpatient_record:
+            self.inpatient_record = frappe.db.get_value(
+                "Patient", self.patient, "inpatient_record"
+            )
+
+        if (
+            self.appointment
+            and self.payment_type == "Insurance"
+            and not self.insurance_subscription
+        ):
+            appt_details = frappe.db.get_value(
+                "Patient Appointment",
+                self.appointment,
+                [
+                    "insurance_subscription",
+                    "coverage_plan_name",
+                    "insurance_company",
+                ],
+                as_dict=True,
+            )
+            if appt_details:
+                self.insurance_subscription = appt_details.insurance_subscription
+                self.insurance_coverage_plan = appt_details.coverage_plan_name
+                self.insurance_company = appt_details.insurance_company
+
+        if self.payment_type == "Cash" and self.insurance_subscription:
+            self.insurance_subscription = ""
+            self.insurance_coverage_plan = ""
+            self.insurance_company = ""
 
     def validate_no_duplicate(self):
         """Prevent duplicate nurse records for the same patient + nurse + date."""
