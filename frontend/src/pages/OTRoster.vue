@@ -35,10 +35,11 @@
       <!-- Nav links -->
       <nav class="flex flex-1 flex-col gap-0.5 p-2">
         <button
-          class="flex h-8 items-center gap-2 rounded-md bg-blue-100 px-2 text-sm font-medium text-blue-700"
+          class="flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+          @click="goTo('/frontend/nurse-roster')"
         >
           <svg
-            class="h-4 w-4 shrink-0 text-blue-600"
+            class="h-4 w-4 shrink-0 text-gray-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -53,11 +54,10 @@
           <span v-if="!isSidebarCollapsed">Nurse Roster</span>
         </button>
         <button
-          class="flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-          @click="goTo('/frontend/ot-roster')"
+          class="flex h-8 items-center gap-2 rounded-md bg-blue-100 px-2 text-sm font-medium text-blue-700"
         >
           <svg
-            class="h-4 w-4 shrink-0 text-gray-500"
+            class="h-4 w-4 shrink-0 text-blue-600"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -138,17 +138,17 @@
 
     <!-- Main content -->
     <div class="flex flex-1 flex-col overflow-hidden">
-      <!-- Header (centered) -->
+      <!-- Header -->
       <div class="border-b bg-white px-6 py-4">
         <h1 class="text-center text-xl font-semibold text-gray-900">
-          Nurse Roster
+          OT Roster
         </h1>
         <p class="mt-1 text-center text-sm" style="color: #60a5fa">
-          Assign nurses to wards and rooms across dates
+          Schedule surgeries across theater rooms and dates
         </p>
       </div>
 
-      <!-- Filter Bar (centered, reordered: Company → Frequency → Start Date → End Date) -->
+      <!-- Filter Bar -->
       <div class="border-b bg-white px-6 py-4">
         <div class="flex flex-wrap items-end justify-center gap-4">
           <div class="w-52">
@@ -194,7 +194,7 @@
               class="bg-gray-50"
             />
           </div>
-          <!-- Loading indicator inline -->
+          <!-- Loading indicator -->
           <div v-if="store.isLoading" class="flex items-center pb-1">
             <LoadingIndicator class="h-5 w-5" />
           </div>
@@ -204,7 +204,7 @@
       <!-- Scrollable grid section -->
       <div class="flex-1 overflow-auto">
         <!-- Grid -->
-        <div class="p-6" v-if="store.nurses.length">
+        <div class="p-6" v-if="store.theaterRooms.length">
           <div class="overflow-x-auto rounded-lg border bg-white shadow-sm">
             <table class="w-full border-collapse">
               <thead>
@@ -212,12 +212,12 @@
                   <th
                     class="sticky left-0 z-10 min-w-[180px] border-b border-r bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600"
                   >
-                    Nurse
+                    Theater Room
                   </th>
                   <th
                     v-for="col in store.dateColumns"
                     :key="col.date"
-                    class="min-w-[120px] border-b px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider"
+                    class="min-w-[160px] border-b px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider"
                     :class="
                       col.isWeekend
                         ? 'bg-orange-50 text-orange-700'
@@ -230,34 +230,38 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="nurse in store.nurses"
-                  :key="nurse.name"
+                  v-for="room in store.theaterRooms"
+                  :key="room.name"
                   class="group hover:bg-gray-50/50"
                 >
-                  <!-- Nurse name (sticky left) -->
+                  <!-- Room name (sticky left) -->
                   <td
                     class="sticky left-0 z-10 border-b border-r bg-white px-4 py-2 group-hover:bg-gray-50"
                   >
                     <div class="text-sm font-medium text-gray-900">
-                      {{ nurse.practitioner_name }}
+                      {{ room.healthcare_service_unit_name || room.name }}
+                    </div>
+                    <div
+                      v-if="room.service_unit_type"
+                      class="text-xs text-gray-500"
+                    >
+                      {{ room.service_unit_type }}
                     </div>
                   </td>
 
                   <!-- Date cells -->
-                  <RosterCell
+                  <OTRosterCell
                     v-for="col in store.dateColumns"
-                    :key="`${nurse.name}-${col.date}`"
-                    :nurse="nurse.name"
+                    :key="`${room.name}-${col.date}`"
+                    :theater-room="room.name"
                     :date="col.date"
                     :is-weekend="col.isWeekend"
                     :is-past-date="isDatePast(col.date)"
-                    :is-on-leave="store.isNurseOnLeave(nurse.name, col.date)"
-                    :assignment="store.getAssignment(nurse.name, col.date)"
-                    :service-unit-types="store.serviceUnitTypes"
-                    :service-units="store.serviceUnits"
-                    @assign="handleAssign"
-                    @edit="handleEdit"
+                    :cell-schedules="store.getSchedules(room.name, col.date)"
+                    :company="store.company"
+                    @save="handleSave"
                     @remove="handleRemove"
+                    @postpone="handlePostpone"
                   />
                 </tr>
               </tbody>
@@ -281,43 +285,16 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="1.5"
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"
               />
             </svg>
             <h3 class="mt-4 text-sm font-medium text-gray-900">
               No roster loaded
             </h3>
             <p class="mt-1 text-sm text-gray-500">
-              Select company, start date and frequency to load the roster
+              Select company, start date and frequency to load the OT roster
               automatically.
             </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Save bar (fixed at bottom of main content) -->
-      <div
-        v-if="store.hasPendingChanges()"
-        class="border-t bg-white px-6 py-3 shadow-lg"
-      >
-        <div class="flex items-center justify-between">
-          <p class="text-sm text-gray-600">
-            <span class="font-semibold text-blue-600">{{
-              store.pendingChanges.length
-            }}</span>
-            unsaved change(s)
-          </p>
-          <div class="flex gap-3">
-            <Button variant="subtle" @click="store.pendingChanges = []">
-              Discard
-            </Button>
-            <Button
-              variant="solid"
-              :loading="store.isSaving"
-              @click="store.saveRoster()"
-            >
-              Save Changes
-            </Button>
           </div>
         </div>
       </div>
@@ -329,10 +306,10 @@
 import dayjs from "dayjs";
 import { createResource } from "frappe-ui";
 import { computed, onMounted, ref, watch } from "vue";
-import RosterCell from "@/components/roster/RosterCell.vue";
-import { useRosterStore } from "@/stores/rosterStore";
+import OTRosterCell from "@/components/roster/OTRosterCell.vue";
+import { useOTRosterStore } from "@/stores/otRosterStore";
 
-const store = useRosterStore();
+const store = useOTRosterStore();
 const isSidebarCollapsed = ref(false);
 
 // Company options
@@ -363,7 +340,6 @@ const frequencyOptions = [
   { label: "Yearly", value: "Yearly" },
 ];
 
-// v-model computed for autocomplete: converts between option object and string
 const companyModel = computed({
   get() {
     if (!store.company) return null;
@@ -378,7 +354,6 @@ const companyModel = computed({
   },
 });
 
-// Check if a date is in the past (before today)
 function isDatePast(dateStr) {
   return dayjs(dateStr).isBefore(dayjs(), "day");
 }
@@ -397,7 +372,6 @@ function goTo(url) {
   window.location.href = url;
 }
 
-// Try to get params from URL
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
   if (params.get("company")) store.company = params.get("company");
@@ -408,35 +382,15 @@ onMounted(() => {
   }
 });
 
-function handleAssign({ nurse, date, assignBasedOn, value }) {
-  store.addPendingChange({
-    nurse,
-    assignment_date: date,
-    assign_based_on: assignBasedOn,
-    service_unit_type: assignBasedOn === "Service Unit Type" ? value : "",
-    service_unit: assignBasedOn === "Service Unit" ? value : "",
-    action: "add",
-  });
+function handleSave(scheduleData) {
+  store.saveSchedule(scheduleData);
 }
 
-function handleEdit({ nurse, date, assignBasedOn, value, existingName }) {
-  store.addPendingChange({
-    nurse,
-    assignment_date: date,
-    assign_based_on: assignBasedOn,
-    service_unit_type: assignBasedOn === "Service Unit Type" ? value : "",
-    service_unit: assignBasedOn === "Service Unit" ? value : "",
-    existing_name: existingName,
-    action: "edit",
-  });
+function handleRemove(name) {
+  store.removeSchedule(name);
 }
 
-function handleRemove({ nurse, date, existingName }) {
-  store.addPendingChange({
-    nurse,
-    assignment_date: date,
-    existing_name: existingName,
-    action: "remove",
-  });
+function handlePostpone(name) {
+  store.postponeSchedule(name);
 }
 </script>

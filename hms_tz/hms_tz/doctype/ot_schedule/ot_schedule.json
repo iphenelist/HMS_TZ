@@ -4,6 +4,7 @@
  "creation": "2026-04-09 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
+ "is_submittable": 1,
  "field_order": [
   "naming_series",
   "patient",
@@ -22,14 +23,10 @@
   "column_break_time",
   "end_time",
   "section_break_team",
-  "primary_surgeon",
-  "assistant_surgeon",
-  "anesthetist",
-  "column_break_team2",
-  "scrub_nurse",
-  "circulating_nurse",
+  "surgical_team",
   "section_break_notes",
-  "notes"
+  "notes",
+  "amended_from"
  ],
  "fields": [
   {
@@ -60,7 +57,8 @@
    "fieldname": "procedure_template",
    "fieldtype": "Link",
    "label": "Procedure Template",
-   "options": "Clinical Procedure Template"
+   "options": "Clinical Procedure Template",
+   "reqd": 1
   },
   {
    "fieldname": "clinical_procedure",
@@ -104,7 +102,8 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Scheduled\nIn Progress\nCompleted\nCancelled\nPostponed",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_break_location",
@@ -115,7 +114,8 @@
    "fieldname": "theater_room",
    "fieldtype": "Link",
    "label": "Theater Room",
-   "options": "Healthcare Service Unit"
+   "options": "Healthcare Service Unit",
+   "reqd": 1
   },
   {
    "fieldname": "start_time",
@@ -143,38 +143,11 @@
    "label": "Surgical Team"
   },
   {
-   "fieldname": "primary_surgeon",
-   "fieldtype": "Link",
-   "label": "Primary Surgeon",
-   "options": "Healthcare Practitioner"
-  },
-  {
-   "fieldname": "assistant_surgeon",
-   "fieldtype": "Link",
-   "label": "Assistant Surgeon",
-   "options": "Healthcare Practitioner"
-  },
-  {
-   "fieldname": "anesthetist",
-   "fieldtype": "Link",
-   "label": "Anesthetist",
-   "options": "Healthcare Practitioner"
-  },
-  {
-   "fieldname": "column_break_team2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "scrub_nurse",
-   "fieldtype": "Link",
-   "label": "Scrub Nurse",
-   "options": "Healthcare Practitioner"
-  },
-  {
-   "fieldname": "circulating_nurse",
-   "fieldtype": "Link",
-   "label": "Circulating Nurse",
-   "options": "Healthcare Practitioner"
+   "fieldname": "surgical_team",
+   "fieldtype": "Table",
+   "label": "Surgical Team",
+   "options": "OT Schedule Team",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_notes",
@@ -185,10 +158,19 @@
    "fieldname": "notes",
    "fieldtype": "Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "OT Schedule",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-04-10 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "OT Schedule",
@@ -196,6 +178,8 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -205,9 +189,12 @@
    "report": 1,
    "role": "Nursing User",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -217,6 +204,7 @@
    "report": 1,
    "role": "Physician",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
