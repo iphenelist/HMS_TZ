@@ -10,6 +10,7 @@ frappe.ui.form.on("Nurse Record", {
   refresh: (frm) => {
     set_queries(frm);
     render_consumables_placeholder(frm);
+    render_pending_medications(frm);
     render_medication_progress(frm);
     render_completed_medications(frm);
     check_upcoming_medications(frm);
@@ -31,52 +32,6 @@ frappe.ui.form.on("Nurse Record", {
     if (frm.is_new() || frm.doc.docstatus === 2) return;
 
     show_vital_signs_dialog(frm);
-  },
-});
-
-frappe.ui.form.on("Nurse Medication Administration", {
-  status: (frm, cdt, cdn) => {
-    let row = locals[cdt][cdn];
-    if (row.status === "Administered" && row.imo_entry) {
-      if (!row.administered_time) {
-        frappe.model.set_value(
-          cdt,
-          cdn,
-          "administered_time",
-          frappe.datetime.now_time()
-        );
-      }
-      if (!row.administered_by) {
-        frappe.model.set_value(
-          cdt,
-          cdn,
-          "administered_by",
-          frappe.session.user
-        );
-      }
-
-      frappe.call({
-        method:
-          "hms_tz.hms_tz.doctype.nurse_record.nurse_record.mark_medication_administered",
-        args: {
-          imo_entry_name: row.imo_entry,
-          administered_time:
-            row.administered_time || frappe.datetime.now_time(),
-          nurse_record: frm.doc.name,
-        },
-        callback: (r) => {
-          if (r.message && r.message.status === "success") {
-            frappe.show_alert({
-              message: __("Medication marked as administered"),
-              indicator: "green",
-            });
-            // Refresh the medication progress chart
-            render_medication_progress(frm);
-            render_completed_medications(frm);
-          }
-        },
-      });
-    }
   },
 });
 
@@ -318,6 +273,217 @@ function show_vital_signs_dialog(frm) {
   d.show();
 }
 
+// ─── Pending Medications (HTML-based, from IMO Entry) ───
+
+function render_pending_medications(frm) {
+  if (!frm.fields_dict.pending_medications_html) return;
+  if (!frm.doc.patient || !frm.doc.inpatient_record) {
+    frm.fields_dict.pending_medications_html.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("Pending medications will appear for admitted patients.") +
+        "</div>"
+    );
+    return;
+  }
+
+  frappe.call({
+    method:
+      "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_pending_medications",
+    args: {
+      patient: frm.doc.patient,
+      inpatient_record: frm.doc.inpatient_record,
+    },
+    callback: (r) => {
+      if (r.message && r.message.length > 0) {
+        render_pending_meds_table(frm, r.message);
+      } else {
+        frm.fields_dict.pending_medications_html.$wrapper.html(
+          '<div class="text-muted text-center p-4">' +
+            __("No pending medications.") +
+            "</div>"
+        );
+      }
+    },
+  });
+}
+
+function render_pending_meds_table(frm, entries) {
+  let $wrapper = frm.fields_dict.pending_medications_html.$wrapper;
+  $wrapper.empty();
+
+  let html =
+    '<table class="table table-sm table-bordered">' +
+    "<thead><tr>" +
+    "<th>" +
+    __("Drug") +
+    "</th>" +
+    "<th>" +
+    __("Qty") +
+    "</th>" +
+    "<th>" +
+    __("Form") +
+    "</th>" +
+    "<th>" +
+    __("Date") +
+    "</th>" +
+    "<th>" +
+    __("Time") +
+    "</th>" +
+    "<th>" +
+    __("Status") +
+    "</th>" +
+    '<th class="text-center">' +
+    __("Action") +
+    "</th>" +
+    "</tr></thead><tbody>";
+
+  entries.forEach((e) => {
+    let held_badge =
+      e.administration_status === "Held"
+        ? ' <span class="badge badge-warning">' + __("Held") + "</span>"
+        : "";
+
+    let time_display = e.time ? e.time.substring(0, 5) : "";
+    let is_overdue = e.date < frappe.datetime.get_today();
+    let overdue_class = is_overdue
+      ? ' class="text-danger font-weight-bold"'
+      : "";
+
+    html +=
+      "<tr>" +
+      "<td>" +
+      (e.drug_name || e.drug) +
+      "</td>" +
+      "<td>" +
+      (e.dosage || "") +
+      "</td>" +
+      "<td>" +
+      (e.dosage_form || "") +
+      "</td>" +
+      "<td" +
+      overdue_class +
+      ">" +
+      (e.date || "") +
+      (is_overdue ? " ⚠️" : "") +
+      "</td>" +
+      "<td>" +
+      time_display +
+      "</td>" +
+      "<td>" +
+      (held_badge || __("Pending")) +
+      "</td>" +
+      '<td class="text-center">' +
+      '<button class="btn btn-xs btn-primary btn-update-med" ' +
+      'data-entry="' +
+      e.name +
+      '" ' +
+      'data-drug="' +
+      (e.drug_name || e.drug) +
+      '" ' +
+      'data-time="' +
+      time_display +
+      '">' +
+      __("Update") +
+      "</button>" +
+      "</td>" +
+      "</tr>";
+  });
+
+  html += "</tbody></table>";
+  $wrapper.html(html);
+
+  // Bind click handlers
+  $wrapper.find(".btn-update-med").on("click", function () {
+    let entry_name = $(this).data("entry");
+    let drug_name = $(this).data("drug");
+    let sched_time = $(this).data("time");
+    show_update_medication_dialog(frm, entry_name, drug_name, sched_time);
+  });
+}
+
+function show_update_medication_dialog(
+  frm,
+  entry_name,
+  drug_name,
+  sched_time
+) {
+  let d = new frappe.ui.Dialog({
+    title: __("Update Medication Status"),
+    fields: [
+      {
+        fieldname: "drug_info",
+        fieldtype: "HTML",
+        options:
+          '<div class="mb-3" style="padding: 8px; background: var(--bg-light-gray); border-radius: 4px;">' +
+          "<strong>" +
+          drug_name +
+          "</strong>" +
+          (sched_time
+            ? " &mdash; " + __("Scheduled") + ": " + sched_time
+            : "") +
+          "</div>",
+      },
+      {
+        fieldname: "status",
+        fieldtype: "Select",
+        label: __("Status"),
+        options: "Administered\nSkipped\nRefused\nHeld",
+        default: "Administered",
+        reqd: 1,
+      },
+      {
+        fieldname: "notes",
+        fieldtype: "Small Text",
+        label: __("Notes"),
+        description: __(
+          "Required when skipping, refusing, or holding a medication."
+        ),
+        mandatory_depends_on: 'eval:doc.status!="Administered"',
+      },
+    ],
+    primary_action_label: __("Confirm"),
+    primary_action(values) {
+      if (values.status !== "Administered" && !values.notes) {
+        frappe.msgprint(
+          __("Please provide a reason in the Notes field for {0}.", [
+            values.status,
+          ])
+        );
+        return;
+      }
+
+      frappe.call({
+        method:
+          "hms_tz.hms_tz.doctype.nurse_record.nurse_record.update_medication_status",
+        args: {
+          imo_entry_name: entry_name,
+          status: values.status,
+          notes: values.notes || "",
+          nurse_record: frm.doc.name,
+        },
+        callback: (r) => {
+          if (r.message && r.message.status === "success") {
+            let indicator =
+              values.status === "Administered" ? "green" : "orange";
+            frappe.show_alert({
+              message: __("Medication marked as {0}", [values.status]),
+              indicator: indicator,
+            });
+            d.hide();
+            render_pending_medications(frm);
+            render_medication_progress(frm);
+            render_completed_medications(frm);
+          }
+        },
+      });
+    },
+  });
+
+  d.show();
+}
+
+// ─── Medication Progress Chart ───
+
 function render_medication_progress(frm) {
   if (!frm.fields_dict.medication_progress_html) return;
   if (!frm.doc.patient || !frm.doc.inpatient_record) {
@@ -438,6 +604,8 @@ function render_med_progress_chart(frm, data) {
   $wrapper.append(summary_html);
 }
 
+// ─── Completed Medications ───
+
 function render_completed_medications(frm) {
   if (!frm.fields_dict.completed_medications_html) return;
   if (!frm.doc.patient || !frm.doc.inpatient_record) {
@@ -477,7 +645,7 @@ function render_completed_meds_table(frm, entries) {
     __("Drug") +
     "</th>" +
     "<th>" +
-    __("Dosage") +
+    __("Qty") +
     "</th>" +
     "<th>" +
     __("Form") +
@@ -488,9 +656,23 @@ function render_completed_meds_table(frm, entries) {
     "<th>" +
     __("Time") +
     "</th>" +
+    "<th>" +
+    __("Status") +
+    "</th>" +
+    "<th>" +
+    __("Notes") +
+    "</th>" +
     "</tr></thead><tbody>";
 
   entries.forEach((e) => {
+    let status = e.administration_status || __("Administered");
+    let status_color =
+      status === "Administered"
+        ? "green"
+        : status === "Held"
+        ? "orange"
+        : "red";
+
     html +=
       "<tr>" +
       "<td>" +
@@ -508,12 +690,22 @@ function render_completed_meds_table(frm, entries) {
       "<td>" +
       (e.time || "") +
       "</td>" +
+      '<td><span class="indicator-pill ' +
+      status_color +
+      '">' +
+      status +
+      "</span></td>" +
+      "<td>" +
+      (e.administration_notes || "") +
+      "</td>" +
       "</tr>";
   });
 
   html += "</tbody></table>";
   $wrapper.append(html);
 }
+
+// ─── Upcoming Medications Alert Banner ───
 
 function check_upcoming_medications(frm) {
   if (!frm.doc.nurse || frm.is_new()) return;
@@ -534,53 +726,81 @@ function check_upcoming_medications(frm) {
 }
 
 function show_medication_alert_banner(frm, medications) {
-  // Group medications by patient
-  let patients = {};
-  medications.forEach((med) => {
-    if (!patients[med.patient]) {
-      patients[med.patient] = {
-        patient_name: med.patient_name,
-        nurse_record_name: med.nurse_record_name,
-        meds: [],
-      };
-    }
-    patients[med.patient].meds.push(med);
-  });
-
-  // Build the alert message
+  // Build a detailed table of all upcoming medications across all patients
   let total_count = medications.length;
-  let patient_links = [];
 
-  Object.keys(patients).forEach((patient_id) => {
-    let p = patients[patient_id];
-    let med_count = p.meds.length;
-    let url = frappe.utils.get_form_link("Nurse Record", p.nurse_record_name);
-    patient_links.push(
-      '<a href="' +
-        url +
-        '" class="alert-link font-weight-bold">' +
-        p.patient_name +
-        "</a> (" +
-        med_count +
-        " medication" +
-        (med_count > 1 ? "s" : "") +
-        ")"
+  let table_html =
+    '<table class="table table-sm table-bordered mb-0" ' +
+    'style="background: white; font-size: 12px;">' +
+    "<thead>" +
+    '<tr style="background: #fff3cd;">' +
+    "<th>" +
+    __("Patient") +
+    "</th>" +
+    "<th>" +
+    __("Drug") +
+    "</th>" +
+    "<th>" +
+    __("Qty") +
+    "</th>" +
+    "<th>" +
+    __("Dosage Form") +
+    "</th>" +
+    "<th>" +
+    __("Scheduled Time") +
+    "</th>" +
+    "</tr>" +
+    "</thead><tbody>";
+
+  medications.forEach((med) => {
+    let url = frappe.utils.get_form_link(
+      "Nurse Record",
+      med.nurse_record_name
     );
+    let time_display = med.scheduled_time
+      ? med.scheduled_time.substring(0, 5)
+      : "";
+
+    table_html +=
+      "<tr>" +
+      '<td><a href="' +
+      url +
+      '" class="font-weight-bold">' +
+      med.patient_name +
+      "</a></td>" +
+      "<td>" +
+      (med.drug_name || "") +
+      "</td>" +
+      "<td>" +
+      (med.dosage || "") +
+      "</td>" +
+      "<td>" +
+      (med.dosage_form || "") +
+      "</td>" +
+      "<td>" +
+      time_display +
+      "</td>" +
+      "</tr>";
   });
+
+  table_html += "</tbody></table>";
 
   let alert_html =
-    '<div class="alert alert-warning alert-dismissible fade show d-flex align-items-start" ' +
-    'role="alert" style="margin-bottom: 0; border-radius: 0;">' +
+    '<div class="alert alert-warning alert-dismissible fade show" ' +
+    'role="alert" style="margin-bottom: 0; border-radius: 0; padding: 10px;">' +
+    '<div class="d-flex align-items-center mb-2">' +
     '<span class="mr-2" style="font-size: 1.2em;">⚠️</span>' +
-    "<div>" +
     "<strong>" +
     total_count +
-    " medication(s) due within the next hour</strong><br>" +
-    patient_links.join(" &bull; ") +
-    "</div>" +
+    __(" medication(s) due within the next 30 minutes") +
+    "</strong>" +
     '<button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close">' +
     '<span aria-hidden="true">&times;</span>' +
     "</button>" +
+    "</div>" +
+    '<div style="max-height: 200px; overflow-y: auto;">' +
+    table_html +
+    "</div>" +
     "</div>";
 
   // Insert above the form
@@ -593,6 +813,8 @@ function show_medication_alert_banner(frm, medications) {
     .prependTo(frm.$wrapper.find(".form-page"));
 }
 
+// ─── Consumables Placeholder ───
+
 function render_consumables_placeholder(frm) {
   if (!frm.fields_dict.consumables_html) return;
 
@@ -604,6 +826,8 @@ function render_consumables_placeholder(frm) {
       "</div>"
   );
 }
+
+// ─── Age Display ───
 
 function render_age(frm) {
   if (!frm.fields_dict.age || !frm.fields_dict.age.$wrapper) return;

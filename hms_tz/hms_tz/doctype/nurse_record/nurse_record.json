@@ -40,7 +40,7 @@
   "tab_medications",
   "medication_progress_html",
   "section_break_pending_meds",
-  "medications",
+  "pending_medications_html",
   "section_break_completed_meds",
   "completed_medications_html",
   "tab_observations",
@@ -243,10 +243,9 @@
    "label": "Pending Medications"
   },
   {
-   "fieldname": "medications",
-   "fieldtype": "Table",
-   "label": "Medications",
-   "options": "Nurse Medication Administration"
+   "fieldname": "pending_medications_html",
+   "fieldtype": "HTML",
+   "label": "Pending Medications"
   },
   {
    "collapsible": 1,
