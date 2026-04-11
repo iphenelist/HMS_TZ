@@ -6,6 +6,7 @@
  "field_order": [
   "item_code",
   "item_name",
+  "is_stock_item",
   "qty_requested",
   "column_break_qty",
   "qty_dispensed",
@@ -20,6 +21,10 @@
   "amount",
   "percent_covered",
   "column_break_billing2",
+  "payment_type",
+  "insurance_subscription",
+  "insurance_company",
+  "insurance_coverage_plan",
   "insurance_item_code",
   "is_billable",
   "invoiced",
@@ -40,6 +45,13 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stock_item",
+   "fieldtype": "Check",
+   "label": "Is Stock Item",
    "read_only": 1
   },
   {
@@ -123,6 +135,34 @@
   {
    "fieldname": "column_break_billing2",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "label": "Payment Type",
+   "options": "\nCash\nInsurance"
+  },
+  {
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "label": "Insurance Subscription",
+   "options": "Healthcare Insurance Subscription",
+   "depends_on": "eval:doc.payment_type=='Insurance'"
+  },
+  {
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "read_only": 1
+  },
+  {
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Data",
+   "label": "Insurance Coverage Plan",
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "read_only": 1
   },
   {
    "fieldname": "insurance_item_code",
