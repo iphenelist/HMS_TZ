@@ -1084,6 +1084,7 @@ def validate_patient_balance_vs_patient_costs(
     cash_limit=0,
     caller="",
     encounters=[],
+    exclude_consumable=None,
 ):
     def get_encounter_costs(encounters):
         encounter_cost = 0
@@ -1131,6 +1132,25 @@ def validate_patient_balance_vs_patient_costs(
 
         return inpatient_cost, cash_limit
 
+    def get_consumable_costs(patient, appointment, exclude_consumable=None):
+        """Sum total_amount from cash Consumable Records (draft + submitted)."""
+        filters = {
+            "patient": patient,
+            "payment_type": "Cash",
+            "docstatus": ["in", [0, 1]],
+        }
+        if appointment:
+            filters["appointment"] = appointment
+        if exclude_consumable:
+            filters["name"] = ["!=", exclude_consumable]
+
+        consumable_total = frappe.db.get_all(
+            "Consumable Record",
+            filters=filters,
+            fields=["sum(total_amount) as total"],
+        )
+        return flt(consumable_total[0].total) if consumable_total else 0
+
     cash_limit_details = frappe.get_cached_value(
         "HMS TZ Setting",
         {"company": company, "hms_tz_has_cash_limit_alert": 1},
@@ -1148,15 +1168,19 @@ def validate_patient_balance_vs_patient_costs(
     if not encounters or len(encounters) == 0:
         encounters = get_patient_encounters(patient, appointment, inpatient_record)
 
-        if not encounters or len(encounters) == 0:
-            return
-
-    total_amount_billed += get_encounter_costs(encounters)
+    if encounters and len(encounters) > 0:
+        total_amount_billed += get_encounter_costs(encounters)
 
     if inpatient_cost == 0 and cash_limit == 0:
         inpatient_cost, cash_limit = get_inpatient_costs(inpatient_record)
 
     total_amount_billed += flt(inpatient_cost)
+
+    # Include consumable record costs for cash patients
+    total_amount_billed += get_consumable_costs(patient, appointment, exclude_consumable)
+
+    if total_amount_billed <= 0:
+        return
 
     # get balance from payment entry after patient has deposit advances
     deposit_balance = get_balance_on(party_type="Customer", party=patient_name, company=company)
@@ -1164,7 +1188,10 @@ def validate_patient_balance_vs_patient_costs(
     patient_balance = (-1 * deposit_balance) + flt(cash_limit)
     cost_diff = fmt_money(total_amount_billed - patient_balance)
 
-    cash_limit_percent = 100 - ((total_amount_billed / patient_balance) * 100)
+    if flt(patient_balance) <= 0:
+        cash_limit_percent = -100
+    else:
+        cash_limit_percent = 100 - ((total_amount_billed / patient_balance) * 100)
 
     return make_cash_limit_alert(
         patient,
