@@ -327,10 +327,101 @@
 
     {
         "dt": "Clinical Procedure",
+        "fieldname": "surgical_specimen",
+        "fieldtype": "Data",
+        "label": "Surgical Specimen",
+        "insert_after": "recovery_location",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "implant",
+        "fieldtype": "Data",
+        "label": "Implant",
+        "insert_after": "surgical_specimen",
+        "doctype": "Custom Field"
+    },
+
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_cp_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "implant",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "cp_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_cp_consumables",
+        "doctype": "Custom Field"
+    },
+
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_cp_charts",
+        "fieldtype": "Tab Break",
+        "label": "Charts",
+        "insert_after": "cp_consumables_html",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_cp_vital_signs",
+        "fieldtype": "Section Break",
+        "label": "Vital Signs",
+        "insert_after": "tab_cp_charts",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "record_vital_signs",
+        "fieldtype": "Button",
+        "label": "Record Vital Signs",
+        "insert_after": "section_cp_vital_signs",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "cp_vital_signs_html",
+        "fieldtype": "HTML",
+        "label": "Vital Signs Chart & Summary",
+        "insert_after": "record_vital_signs",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_cp_anesthesia",
+        "fieldtype": "Section Break",
+        "label": "Anesthesia",
+        "insert_after": "cp_vital_signs_html",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "add_anesthesia",
+        "fieldtype": "Button",
+        "label": "Add Anesthesia",
+        "insert_after": "section_cp_anesthesia",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "cp_anesthesia_html",
+        "fieldtype": "HTML",
+        "label": "Anesthesia Records",
+        "insert_after": "add_anesthesia",
+        "doctype": "Custom Field"
+    },
+
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "tab_surgical_team",
         "fieldtype": "Tab Break",
         "label": "Surgical Team",
-        "insert_after": "recovery_location",
+        "insert_after": "cp_anesthesia_html",
         "doctype": "Custom Field"
     },
     {
@@ -340,6 +431,57 @@
         "label": "Surgical Team",
         "options": "Surgical Team Member",
         "insert_after": "tab_surgical_team",
+        "doctype": "Custom Field"
+    },
+
+    {
+        "dt": "Lab Test",
+        "fieldname": "tab_lt_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "hms_tz_user_id",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Lab Test",
+        "fieldname": "lt_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_lt_consumables",
+        "doctype": "Custom Field"
+    },
+
+    {
+        "dt": "Radiology Examination",
+        "fieldname": "tab_re_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "hms_tz_submitted_date",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Radiology Examination",
+        "fieldname": "re_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_re_consumables",
+        "doctype": "Custom Field"
+    },
+
+    {
+        "dt": "Therapy Session",
+        "fieldname": "tab_ts_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "hms_tz_ref_childname",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Therapy Session",
+        "fieldname": "ts_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_ts_consumables",
         "doctype": "Custom Field"
     }
 ]

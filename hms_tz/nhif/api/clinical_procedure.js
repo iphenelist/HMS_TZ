@@ -8,6 +8,10 @@ frappe.ui.form.on("Clinical Procedure", {
     $('[data-label="Not%20Serviced"]').parent().hide();
     frm.remove_custom_button("Start");
     frm.remove_custom_button("Complete");
+
+    render_cp_consumables_section(frm);
+    render_cp_vital_signs(frm);
+    render_cp_anesthesia_records(frm);
   },
 
   onload: function (frm) {
@@ -21,6 +25,17 @@ frappe.ui.form.on("Clinical Procedure", {
       });
     }
   },
+
+  record_vital_signs: function (frm) {
+    if (frm.is_new() || frm.doc.docstatus === 2) return;
+    show_cp_vital_signs_dialog(frm);
+  },
+
+  add_anesthesia: function (frm) {
+    if (frm.is_new() || frm.doc.docstatus === 2) return;
+    show_cp_anesthesia_dialog(frm);
+  },
+
   request_approval_no: (frm) => {
     if (
       !frm.doc.insurance_company ||
@@ -415,3 +430,552 @@ frappe.ui.form.on("Clinical Procedure", {
     });
   },
 });
+
+// ─── Consumables Section (same pattern as Preoperative Assessment) ───
+
+function render_cp_consumables_section(frm) {
+  if (!frm.fields_dict.cp_consumables_html) return;
+
+  if (frm.is_new() || !frm.doc.patient) {
+    frm.fields_dict.cp_consumables_html.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("Save the Clinical Procedure first to add consumables.") +
+        "</div>"
+    );
+    return;
+  }
+
+  const $wrapper = frm.fields_dict.cp_consumables_html.$wrapper;
+  $wrapper.empty();
+
+  // Button container
+  const $btn_container = $(
+    '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
+  ).appendTo($wrapper);
+
+  // "Create Invoice" button — only for cash patients with inpatient_record
+  if (frm.doc.prescribe !== 1 && frm.doc.inpatient_record) {
+    $('<button class="btn btn-warning btn-sm">')
+      .html('<i class="fa fa-file-text-o mr-1"></i>' + __("Create Invoice"))
+      .on("click", () => {
+        frappe.call({
+          method: "hms_tz.nhif.api.inpatient_record.create_sales_invoice",
+          args: {
+            args: JSON.stringify({
+              patient: frm.doc.patient,
+              appointment_no: frm.doc.appointment,
+              inpatient_record: frm.doc.inpatient_record,
+              company: frm.doc.company,
+            }),
+          },
+          freeze: true,
+          freeze_message: __("Creating Sales Invoice..."),
+          callback: (r) => {
+            if (r.message) {
+              frappe.set_route("Form", "Sales Invoice", r.message);
+            }
+          },
+        });
+      })
+      .appendTo($btn_container);
+  }
+
+  // "Add Consumables" button
+  $('<button class="btn btn-primary btn-sm">')
+    .html('<i class="fa fa-plus mr-1"></i>' + __("Add Consumables"))
+    .on("click", () => {
+      if (!window.hms_tz || !hms_tz.open_consumable_dialog) {
+        frappe.msgprint(
+          __("Consumable dialog not loaded. Please reload the page.")
+        );
+        return;
+      }
+      hms_tz.open_consumable_dialog({
+        patient: frm.doc.patient,
+        patient_name: frm.doc.patient_name,
+        appointment: frm.doc.appointment || "",
+        company: frm.doc.company,
+        payment_type: frm.doc.prescribe === 1 ? "Insurance" : "Cash",
+        insurance_subscription: frm.doc.insurance_subscription || "",
+        insurance_company: frm.doc.insurance_company || "",
+        insurance_coverage_plan: frm.doc.hms_tz_insurance_coverage_plan || "",
+        prescribed_by: "",
+        source_doctype: "Clinical Procedure",
+        source_docname: frm.doc.name,
+        mode_of_payment: "",
+        on_success: () => {
+          frm.reload_doc();
+        },
+      });
+    })
+    .appendTo($btn_container);
+
+  // Fetch and display existing consumable records
+  const filters = { patient: frm.doc.patient };
+  if (frm.doc.appointment) {
+    filters.appointment = frm.doc.appointment;
+  }
+
+  frappe.call({
+    method: "frappe.client.get_list",
+    args: {
+      doctype: "Consumable Record",
+      filters: filters,
+      fields: [
+        "name",
+        "posting_date",
+        "status",
+        "total_amount",
+        "payment_type",
+        "delivery_note",
+        "docstatus",
+      ],
+      order_by: "creation desc",
+      limit_page_length: 50,
+    },
+    callback: (r) => {
+      if (!r.message || r.message.length === 0) {
+        $('<div class="text-muted text-center p-3">')
+          .text(__("No consumable records yet."))
+          .appendTo($wrapper);
+        return;
+      }
+
+      const records = r.message;
+      let table_html =
+        '<div class="table-responsive"><table class="table table-bordered table-sm">';
+      table_html += "<thead><tr>";
+      table_html += '<th class="text-left">' + __("Record") + "</th>";
+      table_html += '<th class="text-left">' + __("Date") + "</th>";
+      table_html += '<th class="text-left">' + __("Payment") + "</th>";
+      table_html += '<th class="text-right">' + __("Total") + "</th>";
+      table_html += '<th class="text-center">' + __("Status") + "</th>";
+      table_html += '<th class="text-left">' + __("Delivery Note") + "</th>";
+      table_html += '<th class="text-center">' + __("Action") + "</th>";
+      table_html += "</tr></thead><tbody>";
+
+      records.forEach((rec) => {
+        const status_color = {
+          Draft: "orange",
+          Submitted: "blue",
+          "Pending Payment": "red",
+          Dispensed: "green",
+          Finalized: "darkgreen",
+          Billed: "purple",
+        };
+        const color = status_color[rec.status] || "gray";
+
+        table_html += "<tr>";
+        table_html +=
+          '<td><a href="/app/consumable-record/' +
+          rec.name +
+          '">' +
+          rec.name +
+          "</a></td>";
+        table_html += "<td>" + (rec.posting_date || "") + "</td>";
+        table_html += "<td>" + (rec.payment_type || "") + "</td>";
+        table_html +=
+          '<td class="text-right">' +
+          format_currency(rec.total_amount || 0) +
+          "</td>";
+        table_html +=
+          '<td class="text-center"><span class="indicator-pill ' +
+          color +
+          '">' +
+          (rec.status || "Draft") +
+          "</span></td>";
+        table_html +=
+          "<td>" +
+          (rec.delivery_note
+            ? '<a href="/app/delivery-note/' +
+              rec.delivery_note +
+              '">' +
+              rec.delivery_note +
+              "</a>"
+            : "-") +
+          "</td>";
+
+        // Action column — Submit button for draft records
+        if (rec.docstatus === 0) {
+          table_html +=
+            '<td class="text-center">' +
+            '<button class="btn btn-xs btn-primary btn-submit-consumable" data-name="' +
+            rec.name +
+            '">' +
+            __("Submit") +
+            "</button></td>";
+        } else {
+          table_html += '<td class="text-center">-</td>';
+        }
+
+        table_html += "</tr>";
+      });
+
+      table_html += "</tbody></table></div>";
+      const $table = $(table_html).appendTo($wrapper);
+
+      // Wire submit buttons
+      $table.find(".btn-submit-consumable").on("click", function () {
+        const consumable_name = $(this).data("name");
+        frappe.confirm(
+          __("Are you sure you want to submit Consumable Record {0}?", [
+            consumable_name,
+          ]),
+          () => {
+            frappe.call({
+              method:
+                "hms_tz.hms_tz.doctype.consumable_record.consumable_api.submit_consumable_record",
+              args: { consumable_record: consumable_name },
+              freeze: true,
+              freeze_message: __("Submitting..."),
+              callback: (r) => {
+                if (!r.exc) {
+                  frappe.show_alert({
+                    message: __("Consumable Record {0} submitted.", [
+                      consumable_name,
+                    ]),
+                    indicator: "green",
+                  });
+                  frm.reload_doc();
+                }
+              },
+            });
+          }
+        );
+      });
+    },
+  });
+}
+
+// ─── Vital Signs (same pattern as Nurse Record) ───
+
+function render_cp_vital_signs(frm) {
+  if (!frm.fields_dict.cp_vital_signs_html) return;
+  if (!frm.doc.patient) {
+    frm.fields_dict.cp_vital_signs_html.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("No vital signs recorded.") +
+        "</div>"
+    );
+    return;
+  }
+
+  frappe.call({
+    method: "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_vital_signs",
+    args: {
+      patient: frm.doc.patient,
+      appointment: frm.doc.appointment || "",
+    },
+    callback: function (r) {
+      if (r.message && r.message.length > 0) {
+        render_cp_vitals_chart_and_table(frm, r.message);
+      } else {
+        frm.fields_dict.cp_vital_signs_html.$wrapper.html(
+          '<div class="text-muted text-center p-4">' +
+            __("No vital signs recorded for this patient episode.") +
+            "</div>"
+        );
+      }
+    },
+  });
+}
+
+function render_cp_vitals_chart_and_table(frm, vitals) {
+  let $wrapper = frm.fields_dict.cp_vital_signs_html.$wrapper;
+  $wrapper.empty();
+
+  let chart_id = "cp-vitals-chart-" + frm.doc.name;
+  $wrapper.append('<div class="mb-4"><div id="' + chart_id + '"></div></div>');
+
+  let labels = vitals.map((v) => v.signs_date);
+  let temp_data = vitals.map((v) => parseFloat(v.temperature) || 0);
+  let pulse_data = vitals.map((v) => parseFloat(v.pulse) || 0);
+  let rr_data = vitals.map((v) => parseFloat(v.respiratory_rate) || 0);
+  let bp_sys_data = vitals.map((v) => parseFloat(v.bp_systolic) || 0);
+  let bp_dia_data = vitals.map((v) => parseFloat(v.bp_diastolic) || 0);
+
+  new frappe.Chart("#" + chart_id, {
+    title: __("Vital Signs Trend"),
+    data: {
+      labels: labels,
+      datasets: [
+        { name: __("Temperature (°C)"), values: temp_data },
+        { name: __("Pulse (bpm)"), values: pulse_data },
+        { name: __("Respiratory Rate"), values: rr_data },
+        { name: __("BP Systolic"), values: bp_sys_data },
+        { name: __("BP Diastolic"), values: bp_dia_data },
+      ],
+    },
+    type: "line",
+    height: 280,
+    colors: ["#ff6384", "#36a2eb", "#4bc0c0", "#ff9f40", "#9966ff"],
+    lineOptions: { regionFill: 0, hideDots: 0 },
+  });
+
+  let table_html = '<table class="table table-bordered table-sm mt-3">';
+  table_html += "<thead><tr>";
+  table_html += "<th>" + __("Date") + "</th>";
+  table_html += "<th>" + __("Time") + "</th>";
+  table_html += "<th>" + __("Temp (°C)") + "</th>";
+  table_html += "<th>" + __("Pulse") + "</th>";
+  table_html += "<th>" + __("RR") + "</th>";
+  table_html += "<th>" + __("BP") + "</th>";
+  table_html += "<th>" + __("Weight") + "</th>";
+  table_html += "<th>" + __("BMI") + "</th>";
+  table_html += "<th>" + __("Notes") + "</th>";
+  table_html += "</tr></thead><tbody>";
+
+  vitals.forEach((v) => {
+    let bp_display = v.bp || v.bp_systolic + "/" + v.bp_diastolic;
+    table_html += "<tr>";
+    table_html += "<td>" + (v.signs_date || "") + "</td>";
+    table_html += "<td>" + (v.signs_time || "") + "</td>";
+    table_html += "<td>" + (v.temperature || "") + "</td>";
+    table_html += "<td>" + (v.pulse || "") + "</td>";
+    table_html += "<td>" + (v.respiratory_rate || "") + "</td>";
+    table_html += "<td>" + bp_display + "</td>";
+    table_html += "<td>" + (v.weight || "") + "</td>";
+    table_html += "<td>" + (v.bmi || "") + "</td>";
+    table_html += "<td>" + (v.vital_signs_note || "") + "</td>";
+    table_html += "</tr>";
+  });
+
+  table_html += "</tbody></table>";
+  $wrapper.append(table_html);
+}
+
+function show_cp_vital_signs_dialog(frm) {
+  let d = new frappe.ui.Dialog({
+    title: __("Record Vital Signs"),
+    fields: [
+      {
+        fieldname: "temperature",
+        fieldtype: "Data",
+        label: __("Temperature (°C)"),
+      },
+      { fieldname: "pulse", fieldtype: "Data", label: __("Pulse (bpm)") },
+      {
+        fieldname: "respiratory_rate",
+        fieldtype: "Data",
+        label: __("Respiratory Rate"),
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "bp_systolic",
+        fieldtype: "Data",
+        label: __("BP Systolic"),
+      },
+      {
+        fieldname: "bp_diastolic",
+        fieldtype: "Data",
+        label: __("BP Diastolic"),
+      },
+      { fieldtype: "Section Break" },
+      { fieldname: "weight", fieldtype: "Float", label: __("Weight (kg)") },
+      { fieldname: "height", fieldtype: "Float", label: __("Height (cm)") },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "tongue",
+        fieldtype: "Select",
+        label: __("Tongue"),
+        options: "\nCoated\nVery Coated\nNormal\nFurry\nCuts",
+      },
+      {
+        fieldname: "abdomen",
+        fieldtype: "Select",
+        label: __("Abdomen"),
+        options: "\nNormal\nBloated\nFull\nFluid\nConstipated",
+      },
+      {
+        fieldname: "reflexes",
+        fieldtype: "Select",
+        label: __("Reflexes"),
+        options: "\nNormal\nHyper\nVery Hyper\nOne Sided",
+      },
+      { fieldtype: "Section Break" },
+      {
+        fieldname: "vital_signs_note",
+        fieldtype: "Small Text",
+        label: __("Notes"),
+      },
+    ],
+    primary_action_label: __("Save"),
+    primary_action(values) {
+      frappe.call({
+        method:
+          "hms_tz.nhif.api.clinical_procedure.create_vital_signs_from_cp",
+        args: {
+          clinical_procedure: frm.doc.name,
+          ...values,
+        },
+        callback: function (r) {
+          if (r.message) {
+            frappe.show_alert({
+              message: __("Vital Signs {0} created and submitted", [
+                r.message,
+              ]),
+              indicator: "green",
+            });
+            d.hide();
+            render_cp_vital_signs(frm);
+          }
+        },
+      });
+    },
+  });
+  d.show();
+}
+
+// ─── Anesthesia Records ───
+
+function render_cp_anesthesia_records(frm) {
+  if (!frm.fields_dict.cp_anesthesia_html) return;
+  if (frm.is_new() || !frm.doc.patient) {
+    frm.fields_dict.cp_anesthesia_html.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("No anesthesia records.") +
+        "</div>"
+    );
+    return;
+  }
+
+  frappe.call({
+    method: "hms_tz.nhif.api.clinical_procedure.get_anesthesia_records",
+    args: { clinical_procedure: frm.doc.name },
+    callback: function (r) {
+      let $wrapper = frm.fields_dict.cp_anesthesia_html.$wrapper;
+      $wrapper.empty();
+
+      if (!r.message || r.message.length === 0) {
+        $wrapper.html(
+          '<div class="text-muted text-center p-3">' +
+            __("No anesthesia records yet.") +
+            "</div>"
+        );
+        return;
+      }
+
+      let records = r.message;
+      let html =
+        '<div class="table-responsive"><table class="table table-bordered table-sm">';
+      html += "<thead><tr>";
+      html += "<th>" + __("Record") + "</th>";
+      html += "<th>" + __("Anesthetist") + "</th>";
+      html += "<th>" + __("Type") + "</th>";
+      html += "<th>" + __("ASA Grade") + "</th>";
+      html += "<th>" + __("Start") + "</th>";
+      html += "<th>" + __("End") + "</th>";
+      html += "<th>" + __("Complications") + "</th>";
+      html += "</tr></thead><tbody>";
+
+      records.forEach((rec) => {
+        html += "<tr>";
+        html +=
+          '<td><a href="/app/anesthesia-record/' +
+          rec.name +
+          '">' +
+          rec.name +
+          "</a></td>";
+        html +=
+          "<td>" + (rec.anesthetist_name || rec.anesthetist || "") + "</td>";
+        html += "<td>" + (rec.anesthesia_type || "") + "</td>";
+        html += "<td>" + (rec.asa_grade || "") + "</td>";
+        html += "<td>" + (rec.start_time || "") + "</td>";
+        html += "<td>" + (rec.end_time || "") + "</td>";
+        html += "<td>" + (rec.complications || "-") + "</td>";
+        html += "</tr>";
+      });
+
+      html += "</tbody></table></div>";
+      $wrapper.html(html);
+    },
+  });
+}
+
+function show_cp_anesthesia_dialog(frm) {
+  let d = new frappe.ui.Dialog({
+    title: __("Add Anesthesia Record"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "anesthetist",
+        fieldtype: "Link",
+        label: __("Anesthetist"),
+        options: "Healthcare Practitioner",
+      },
+      {
+        fieldname: "anesthesia_type",
+        fieldtype: "Select",
+        label: __("Anesthesia Type"),
+        options: "\nGeneral\nRegional\nLocal\nSpinal\nEpidural\nSedation",
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "airway_approach",
+        fieldtype: "Select",
+        label: __("Airway Approach"),
+        options: "\nIntubation\nLMA\nMask\nNatural",
+      },
+      {
+        fieldname: "asa_grade",
+        fieldtype: "Select",
+        label: __("ASA Grade"),
+        options: "\nASA I\nASA II\nASA III\nASA IV\nASA V\nASA VI",
+      },
+      { fieldtype: "Section Break", label: __("Timing") },
+      { fieldname: "start_time", fieldtype: "Time", label: __("Start Time") },
+      { fieldname: "end_time", fieldtype: "Time", label: __("End Time") },
+      { fieldtype: "Section Break", label: __("Vitals") },
+      {
+        fieldname: "pre_induction_vitals",
+        fieldtype: "Small Text",
+        label: __("Pre-Induction Vitals"),
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "post_induction_vitals",
+        fieldtype: "Small Text",
+        label: __("Post-Induction Vitals"),
+      },
+      { fieldtype: "Section Break", label: __("Drugs Administered") },
+      {
+        fieldname: "drugs_text",
+        fieldtype: "Small Text",
+        label: __("Drugs (Drug, Dosage, Route — one per line)"),
+        description: __(
+          "Format: Drug Name, Dosage, Route (IV/IM/Inhalation/Oral/Subcutaneous)"
+        ),
+      },
+      { fieldtype: "Section Break", label: __("Notes") },
+      {
+        fieldname: "complications",
+        fieldtype: "Small Text",
+        label: __("Complications"),
+      },
+      { fieldname: "notes", fieldtype: "Text", label: __("Notes") },
+    ],
+    primary_action_label: __("Create"),
+    primary_action(values) {
+      frappe.call({
+        method: "hms_tz.nhif.api.clinical_procedure.create_anesthesia_record",
+        args: {
+          clinical_procedure: frm.doc.name,
+          ...values,
+        },
+        freeze: true,
+        freeze_message: __("Creating Anesthesia Record..."),
+        callback: function (r) {
+          if (r.message) {
+            frappe.show_alert({
+              message: __("Anesthesia Record {0} created.", [r.message]),
+              indicator: "green",
+            });
+            d.hide();
+            render_cp_anesthesia_records(frm);
+          }
+        },
+      });
+    },
+  });
+  d.show();
+}
