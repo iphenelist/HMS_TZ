@@ -719,7 +719,7 @@ function check_upcoming_medications(frm) {
       "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_upcoming_medications",
     args: {
       nurse: frm.doc.nurse,
-      within_minutes: 60,
+      within_minutes: 420,
     },
     callback: (r) => {
       if (r.message && r.message.length > 0) {
