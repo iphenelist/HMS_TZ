@@ -123,3 +123,97 @@ def validate_swab_count(doc):
             )
         )
 
+
+@frappe.whitelist()
+def create_vital_signs_from_cp(clinical_procedure: str, **kwargs) -> str:
+    """Create a Vital Signs record from the Clinical Procedure Charts tab.
+
+    Reuses the same pattern as nurse_record.create_vital_signs.
+    """
+    cp = frappe.get_doc("Clinical Procedure", clinical_procedure)
+    vs = frappe.new_doc("Vital Signs")
+    vs.patient = cp.patient
+    vs.appointment = cp.appointment
+    vs.inpatient_record = cp.inpatient_record
+    vs.company = cp.company
+    vs.signs_date = nowdate()
+
+    vital_fields = [
+        "temperature", "pulse", "respiratory_rate",
+        "bp_systolic", "bp_diastolic",
+        "weight", "height",
+        "tongue", "abdomen", "reflexes",
+        "vital_signs_note",
+    ]
+    for field in vital_fields:
+        if kwargs.get(field):
+            vs.set(field, kwargs[field])
+
+    vs.insert(ignore_permissions=True)
+    vs.submit()
+    return vs.name
+
+
+@frappe.whitelist()
+def get_anesthesia_records(clinical_procedure: str) -> list[dict]:
+    """Fetch existing Anesthesia Records linked to a Clinical Procedure."""
+    return frappe.db.get_all(
+        "Anesthesia Record",
+        filters={"clinical_procedure": clinical_procedure},
+        fields=[
+            "name", "anesthetist", "anesthesia_type",
+            "asa_grade", "airway_approach",
+            "start_time", "end_time", "complications",
+        ],
+        order_by="creation desc",
+    )
+
+
+@frappe.whitelist()
+def create_anesthesia_record(clinical_procedure: str, **kwargs) -> str:
+    """Create an Anesthesia Record from the Clinical Procedure dialog."""
+    cp = frappe.get_doc("Clinical Procedure", clinical_procedure)
+    ar = frappe.new_doc("Anesthesia Record")
+    ar.patient = cp.patient
+    ar.clinical_procedure = clinical_procedure
+    ar.ot_schedule = cp.get("ot_schedule") or ""
+    ar.company = cp.company
+
+    simple_fields = [
+        "anesthetist", "anesthesia_type", "airway_approach", "asa_grade",
+        "start_time", "end_time",
+        "pre_induction_vitals", "post_induction_vitals",
+        "complications", "notes",
+    ]
+    for field in simple_fields:
+        if kwargs.get(field):
+            ar.set(field, kwargs[field])
+
+    # Parse drugs_text into child table rows
+    # Format: "Drug Name, Dosage, Route" — one per line
+    drugs_text = kwargs.get("drugs_text", "")
+    if drugs_text:
+        for line in drugs_text.strip().split("\n"):
+            parts = [p.strip() for p in line.split(",")]
+            if not parts or not parts[0]:
+                continue
+            row = ar.append("drugs_administered", {})
+            # Try to find Medication by name
+            drug_name = parts[0]
+            medication = frappe.db.get_value("Medication", {"drug_name": drug_name})
+            if medication:
+                row.drug = medication
+                row.drug_name = drug_name
+            else:
+                # Try exact match on name
+                if frappe.db.exists("Medication", drug_name):
+                    row.drug = drug_name
+                else:
+                    row.drug_name = drug_name
+            if len(parts) > 1:
+                row.dosage = parts[1]
+            if len(parts) > 2:
+                row.route = parts[2]
+
+    ar.insert(ignore_permissions=True)
+    return ar.name
