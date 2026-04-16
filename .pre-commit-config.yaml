@@ -4,7 +4,7 @@ fail_fast: false
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
         files: "hms_tz.*"
@@ -26,7 +26,7 @@ repos:
         stages: [manual]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
+    rev: 5.13.2
     hooks:
       - id: isort
         args: ["--profile", "black", "--line-length", "120"]

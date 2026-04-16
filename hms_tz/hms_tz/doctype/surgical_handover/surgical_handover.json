@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-04-09 00:00:00.000000",
+ "creation": "2026-04-09 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -35,7 +35,8 @@
   "clinical_notes",
   "section_break_ack",
   "acknowledgement",
-  "acknowledged_time"
+  "acknowledged_time",
+  "amended_from"
  ],
  "fields": [
   {
@@ -221,10 +222,21 @@
    "fieldtype": "Datetime",
    "label": "Acknowledged Time",
    "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Surgical Handover",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-04-15 13:34:09.013918",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Surgical Handover",
@@ -256,6 +268,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
