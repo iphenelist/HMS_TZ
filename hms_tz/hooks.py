@@ -199,6 +199,7 @@ doc_events = {
     },
     "Clinical Procedure": {
         "after_insert": "hms_tz.nhif.api.clinical_procedure.after_insert",
+        "before_save": "hms_tz.nhif.api.clinical_procedure.before_save",
         "onload": "hms_tz.nhif.api.clinical_procedure.onload",
         "before_submit": "hms_tz.nhif.api.clinical_procedure.before_submit",
         "on_submit": "hms_tz.nhif.api.clinical_procedure.on_submit",

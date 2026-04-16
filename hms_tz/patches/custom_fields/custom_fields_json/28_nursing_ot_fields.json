@@ -98,7 +98,6 @@
         "insert_after": "is_group",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "tab_intraoperative",
@@ -127,9 +126,17 @@
     },
     {
         "dt": "Clinical Procedure",
+        "fieldname": "estimated_blood_loss",
+        "fieldtype": "Float",
+        "label": "Estimated Blood Loss (ml)",
+        "insert_after": "anesthesia_type",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "column_break_intraop",
         "fieldtype": "Column Break",
-        "insert_after": "anesthesia_type",
+        "insert_after": "estimated_blood_loss",
         "doctype": "Custom Field"
     },
     {
@@ -150,41 +157,10 @@
     },
     {
         "dt": "Clinical Procedure",
-        "fieldname": "section_break_ebl",
-        "fieldtype": "Section Break",
-        "insert_after": "closure_time",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Clinical Procedure",
-        "fieldname": "estimated_blood_loss",
-        "fieldtype": "Float",
-        "label": "Estimated Blood Loss (ml)",
-        "insert_after": "section_break_ebl",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Clinical Procedure",
-        "fieldname": "column_break_ebl",
-        "fieldtype": "Column Break",
-        "insert_after": "estimated_blood_loss",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Clinical Procedure",
-        "fieldname": "intraop_notes",
-        "fieldtype": "Text",
-        "label": "Intraoperative Notes",
-        "insert_after": "column_break_ebl",
-        "doctype": "Custom Field"
-    },
-
-    {
-        "dt": "Clinical Procedure",
         "fieldname": "tab_who_checklist",
         "fieldtype": "Tab Break",
         "label": "WHO Safety Checklist",
-        "insert_after": "intraop_notes",
+        "insert_after": "procedure_notes",
         "doctype": "Custom Field"
     },
     {
@@ -227,7 +203,6 @@
         "insert_after": "column_break_who",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "section_break_swab",
@@ -283,13 +258,12 @@
         "insert_after": "instrument_count_after",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "tab_postop",
         "fieldtype": "Tab Break",
         "label": "Post-Operative",
-        "insert_after": "count_verified",
+        "insert_after": "tab_who_checklist",
         "doctype": "Custom Field"
     },
     {
@@ -324,7 +298,6 @@
         "insert_after": "postop_care_plan",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "surgical_specimen",
@@ -341,7 +314,6 @@
         "insert_after": "surgical_specimen",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "tab_cp_consumables",
@@ -358,7 +330,6 @@
         "insert_after": "tab_cp_consumables",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "tab_cp_charts",
@@ -377,18 +348,10 @@
     },
     {
         "dt": "Clinical Procedure",
-        "fieldname": "record_vital_signs",
-        "fieldtype": "Button",
-        "label": "Record Vital Signs",
-        "insert_after": "section_cp_vital_signs",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Clinical Procedure",
         "fieldname": "cp_vital_signs_html",
         "fieldtype": "HTML",
         "label": "Vital Signs Chart & Summary",
-        "insert_after": "record_vital_signs",
+        "insert_after": "section_cp_vital_signs",
         "doctype": "Custom Field"
     },
     {
@@ -401,21 +364,12 @@
     },
     {
         "dt": "Clinical Procedure",
-        "fieldname": "add_anesthesia",
-        "fieldtype": "Button",
-        "label": "Add Anesthesia",
-        "insert_after": "section_cp_anesthesia",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Clinical Procedure",
         "fieldname": "cp_anesthesia_html",
         "fieldtype": "HTML",
         "label": "Anesthesia Records",
-        "insert_after": "add_anesthesia",
+        "insert_after": "section_cp_anesthesia",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Clinical Procedure",
         "fieldname": "tab_surgical_team",
@@ -433,7 +387,6 @@
         "insert_after": "tab_surgical_team",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Lab Test",
         "fieldname": "tab_lt_consumables",
@@ -450,7 +403,6 @@
         "insert_after": "tab_lt_consumables",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Radiology Examination",
         "fieldname": "tab_re_consumables",
@@ -467,7 +419,6 @@
         "insert_after": "tab_re_consumables",
         "doctype": "Custom Field"
     },
-
     {
         "dt": "Therapy Session",
         "fieldname": "tab_ts_consumables",
