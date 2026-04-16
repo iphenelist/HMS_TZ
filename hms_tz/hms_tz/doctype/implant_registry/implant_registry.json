@@ -1,15 +1,14 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-04-09 00:00:00.000000",
+ "creation": "2026-04-09 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "patient",
   "patient_name",
   "clinical_procedure",
-  "preoperative_assessment",
+  "naming_series",
   "column_break_01",
   "company",
   "status",
@@ -25,7 +24,8 @@
   "implanted_by",
   "implant_date",
   "section_break_notes",
-  "notes"
+  "notes",
+  "amended_from"
  ],
  "fields": [
   {
@@ -36,6 +36,7 @@
    "reqd": 1
   },
   {
+   "fetch_from": "clinical_procedure.patient",
    "fieldname": "patient",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -55,14 +56,12 @@
   {
    "fieldname": "clinical_procedure",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Clinical Procedure",
-   "options": "Clinical Procedure"
-  },
-  {
-   "fieldname": "preoperative_assessment",
-   "fieldtype": "Link",
-   "label": "Preoperative Assessment",
-   "options": "Preoperative Assessment"
+   "options": "Clinical Procedure",
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_01",
@@ -152,10 +151,21 @@
    "fieldname": "notes",
    "fieldtype": "Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Implant Registry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-04-15 12:38:16.734457",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Implant Registry",
@@ -187,6 +197,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

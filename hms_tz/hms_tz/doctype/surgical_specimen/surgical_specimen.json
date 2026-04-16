@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-04-09 00:00:00.000000",
+ "creation": "2026-04-09 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -32,6 +32,7 @@
    "reqd": 1
   },
   {
+   "fetch_from": "clinical_procedure.patient",
    "fieldname": "patient",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -52,7 +53,9 @@
    "fieldname": "clinical_procedure",
    "fieldtype": "Link",
    "label": "Clinical Procedure",
-   "options": "Clinical Procedure"
+   "options": "Clinical Procedure",
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_01",
@@ -130,7 +133,7 @@
   }
  ],
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-04-15 12:37:59.281054",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Surgical Specimen",
@@ -162,6 +165,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

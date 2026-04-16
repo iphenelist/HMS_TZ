@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_time
 
 
 class AnesthesiaRecord(Document):
@@ -13,8 +14,6 @@ class AnesthesiaRecord(Document):
     def validate_timing(self):
         """Ensure end_time is after start_time if both are set."""
         if self.start_time and self.end_time:
-            from frappe.utils import get_time
-
             if get_time(self.end_time) < get_time(self.start_time):
                 frappe.throw(
                     _("End Time cannot be before Start Time")
