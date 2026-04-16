@@ -1,7 +1,16 @@
 frappe.ui.form.on("Clinical Procedure", {
   setup: function (frm) {
-    frm.set_query("practitioner", function () {
+    frm.set_query("practitioner", () => {
       return { filters: { practitioner_role: "Doctor" } };
+    });
+    frm.set_query("ot_schedule", () => {
+      return {
+        filters: {
+          patient: frm.doc.patient,
+          company: frm.doc.company,
+          procedure_template: frm.doc.procedure_template,
+        },
+      };
     });
   },
   refresh: function (frm) {
@@ -12,6 +21,7 @@ frappe.ui.form.on("Clinical Procedure", {
     render_cp_consumables_section(frm);
     render_cp_vital_signs(frm);
     render_cp_anesthesia_records(frm);
+    render_cp_implant_specimen_buttons(frm);
   },
 
   onload: function (frm) {
@@ -25,17 +35,6 @@ frappe.ui.form.on("Clinical Procedure", {
       });
     }
   },
-
-  record_vital_signs: function (frm) {
-    if (frm.is_new() || frm.doc.docstatus === 2) return;
-    show_cp_vital_signs_dialog(frm);
-  },
-
-  add_anesthesia: function (frm) {
-    if (frm.is_new() || frm.doc.docstatus === 2) return;
-    show_cp_anesthesia_dialog(frm);
-  },
-
   request_approval_no: (frm) => {
     if (
       !frm.doc.insurance_company ||
@@ -651,15 +650,35 @@ function render_cp_consumables_section(frm) {
 
 function render_cp_vital_signs(frm) {
   if (!frm.fields_dict.cp_vital_signs_html) return;
-  if (!frm.doc.patient) {
+
+  if (frm.is_new() || !frm.doc.patient) {
     frm.fields_dict.cp_vital_signs_html.$wrapper.html(
       '<div class="text-muted text-center p-4">' +
-        __("No vital signs recorded.") +
+        __("Save the Clinical Procedure first to record vital signs.") +
         "</div>"
     );
     return;
   }
 
+  const $wrapper = frm.fields_dict.cp_vital_signs_html.$wrapper;
+  $wrapper.empty();
+
+  // Button container (same pattern as consumables)
+  const $btn_container = $(
+    '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
+  ).appendTo($wrapper);
+
+  // "Record Vital Signs" button
+  if (frm.doc.docstatus !== 2) {
+    $('<button class="btn btn-primary btn-sm">')
+      .html('<i class="fa fa-heartbeat mr-1"></i>' + __("Record Vital Signs"))
+      .on("click", () => {
+        show_cp_vital_signs_dialog(frm);
+      })
+      .appendTo($btn_container);
+  }
+
+  // Fetch and display existing vital signs
   frappe.call({
     method: "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_vital_signs",
     args: {
@@ -668,22 +687,17 @@ function render_cp_vital_signs(frm) {
     },
     callback: function (r) {
       if (r.message && r.message.length > 0) {
-        render_cp_vitals_chart_and_table(frm, r.message);
+        render_cp_vitals_chart_and_table(frm, r.message, $wrapper);
       } else {
-        frm.fields_dict.cp_vital_signs_html.$wrapper.html(
-          '<div class="text-muted text-center p-4">' +
-            __("No vital signs recorded for this patient episode.") +
-            "</div>"
-        );
+        $('<div class="text-muted text-center p-3">')
+          .text(__("No vital signs recorded for this patient episode."))
+          .appendTo($wrapper);
       }
     },
   });
 }
 
-function render_cp_vitals_chart_and_table(frm, vitals) {
-  let $wrapper = frm.fields_dict.cp_vital_signs_html.$wrapper;
-  $wrapper.empty();
-
+function render_cp_vitals_chart_and_table(frm, vitals, $wrapper) {
   let chart_id = "cp-vitals-chart-" + frm.doc.name;
   $wrapper.append('<div class="mb-4"><div id="' + chart_id + '"></div></div>');
 
@@ -830,28 +844,43 @@ function show_cp_vital_signs_dialog(frm) {
 
 function render_cp_anesthesia_records(frm) {
   if (!frm.fields_dict.cp_anesthesia_html) return;
+
   if (frm.is_new() || !frm.doc.patient) {
     frm.fields_dict.cp_anesthesia_html.$wrapper.html(
       '<div class="text-muted text-center p-4">' +
-        __("No anesthesia records.") +
+        __("Save the Clinical Procedure first to add anesthesia records.") +
         "</div>"
     );
     return;
   }
 
+  const $wrapper = frm.fields_dict.cp_anesthesia_html.$wrapper;
+  $wrapper.empty();
+
+  // Button container (same pattern as consumables)
+  const $btn_container = $(
+    '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
+  ).appendTo($wrapper);
+
+  // "Add Anesthesia" button
+  if (frm.doc.docstatus !== 2) {
+    $('<button class="btn btn-primary btn-sm">')
+      .html('<i class="fa fa-medkit mr-1"></i>' + __("Add Anesthesia"))
+      .on("click", () => {
+        show_cp_anesthesia_dialog(frm);
+      })
+      .appendTo($btn_container);
+  }
+
+  // Fetch and display existing anesthesia records
   frappe.call({
     method: "hms_tz.nhif.api.clinical_procedure.get_anesthesia_records",
     args: { clinical_procedure: frm.doc.name },
     callback: function (r) {
-      let $wrapper = frm.fields_dict.cp_anesthesia_html.$wrapper;
-      $wrapper.empty();
-
       if (!r.message || r.message.length === 0) {
-        $wrapper.html(
-          '<div class="text-muted text-center p-3">' +
-            __("No anesthesia records yet.") +
-            "</div>"
-        );
+        $('<div class="text-muted text-center p-3">')
+          .text(__("No anesthesia records yet."))
+          .appendTo($wrapper);
         return;
       }
 
@@ -887,7 +916,7 @@ function render_cp_anesthesia_records(frm) {
       });
 
       html += "</tbody></table></div>";
-      $wrapper.html(html);
+      $(html).appendTo($wrapper);
     },
   });
 }
@@ -902,6 +931,16 @@ function show_cp_anesthesia_dialog(frm) {
         fieldtype: "Link",
         label: __("Anesthetist"),
         options: "Healthcare Practitioner",
+        reqd: 1,
+        get_query: function () {
+          return {
+            filters: {
+              status: "Active",
+              practitioner_role: "Doctor",
+              hms_tz_company: frm.doc.company,
+            },
+          };
+        },
       },
       {
         fieldname: "anesthesia_type",
@@ -939,12 +978,49 @@ function show_cp_anesthesia_dialog(frm) {
       },
       { fieldtype: "Section Break", label: __("Drugs Administered") },
       {
-        fieldname: "drugs_text",
-        fieldtype: "Small Text",
-        label: __("Drugs (Drug, Dosage, Route — one per line)"),
-        description: __(
-          "Format: Drug Name, Dosage, Route (IV/IM/Inhalation/Oral/Subcutaneous)"
-        ),
+        fieldname: "drugs",
+        fieldtype: "Table",
+        label: __("Drugs Administered"),
+        fields: [
+          {
+            fieldname: "drug",
+            fieldtype: "Link",
+            label: __("Drug"),
+            options: "Medication",
+            in_list_view: 1,
+            reqd: 1,
+            get_query: function () {
+              return {
+                filters: {
+                  disabled: 0,
+                },
+              };
+            },
+          },
+          {
+            fieldname: "dosage",
+            fieldtype: "Link",
+            label: __("Dosage"),
+            options: "Prescription Dosage",
+            in_list_view: 1,
+            reqd: 1,
+          },
+          {
+            fieldname: "route",
+            fieldtype: "Select",
+            label: __("Route"),
+            options: "\nIV\nIM\nInhalation\nOral\nSubcutaneous",
+            in_list_view: 1,
+            reqd: 1,
+          },
+          {
+            fieldname: "administered_time",
+            fieldtype: "Time",
+            label: __("Administered Time"),
+            in_list_view: 1,
+            reqd: 1,
+          },
+        ],
       },
       { fieldtype: "Section Break", label: __("Notes") },
       {
@@ -972,6 +1048,227 @@ function show_cp_anesthesia_dialog(frm) {
             });
             d.hide();
             render_cp_anesthesia_records(frm);
+          }
+        },
+      });
+    },
+  });
+  d.show();
+}
+
+// ─── Implant & Specimen Buttons ───
+
+function render_cp_implant_specimen_buttons(frm) {
+  if (!frm.fields_dict.impant_specimen_bts) return;
+
+  if (frm.is_new() || !frm.doc.patient) {
+    frm.fields_dict.impant_specimen_bts.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("Save the Clinical Procedure first.") +
+        "</div>"
+    );
+    return;
+  }
+
+  const $wrapper = frm.fields_dict.impant_specimen_bts.$wrapper;
+  $wrapper.empty();
+
+  if (frm.doc.docstatus === 2) return;
+
+  const $btn_container = $(
+    '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
+  ).appendTo($wrapper);
+
+  // "Add Implant" button
+  $('<button class="btn btn-primary btn-sm">')
+    .html('<i class="fa fa-cube mr-1"></i>' + __("Add Implant"))
+    .on("click", () => {
+      show_cp_implant_dialog(frm);
+    })
+    .appendTo($btn_container);
+
+  // "Add Specimen" button
+  $('<button class="btn btn-primary btn-sm">')
+    .html('<i class="fa fa-flask mr-1"></i>' + __("Add Specimen"))
+    .on("click", () => {
+      show_cp_specimen_dialog(frm);
+    })
+    .appendTo($btn_container);
+}
+
+function show_cp_implant_dialog(frm) {
+  let d = new frappe.ui.Dialog({
+    title: __("Add Implant"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "implant_type",
+        fieldtype: "Data",
+        label: __("Implant Type"),
+        reqd: 1,
+      },
+      {
+        fieldname: "manufacturer",
+        fieldtype: "Data",
+        label: __("Manufacturer"),
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "lot_number",
+        fieldtype: "Data",
+        label: __("Lot Number"),
+      },
+      {
+        fieldname: "serial_number",
+        fieldtype: "Data",
+        label: __("Serial Number"),
+      },
+      { fieldtype: "Section Break", label: __("Implant Details") },
+      {
+        fieldname: "anatomical_location",
+        fieldtype: "Data",
+        label: __("Anatomical Location"),
+      },
+      {
+        fieldname: "expiry_date",
+        fieldtype: "Date",
+        label: __("Expiry Date"),
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "implanted_by",
+        fieldtype: "Link",
+        label: __("Implanted By"),
+        options: "Healthcare Practitioner",
+        get_query: function () {
+          return {
+            filters: {
+              status: "Active",
+              practitioner_role: "Doctor",
+              hms_tz_company: frm.doc.company,
+            },
+          };
+        },
+      },
+      {
+        fieldname: "implant_date",
+        fieldtype: "Date",
+        label: __("Implant Date"),
+        default: frappe.datetime.get_today(),
+      },
+      { fieldtype: "Section Break", label: __("Status & Notes") },
+      {
+        fieldname: "status",
+        fieldtype: "Select",
+        label: __("Status"),
+        options: "Planned\nImplanted\nRemoved\nReplaced",
+        default: "Implanted",
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "notes",
+        fieldtype: "Small Text",
+        label: __("Notes"),
+      },
+    ],
+    primary_action_label: __("Create & Submit"),
+    primary_action(values) {
+      frappe.call({
+        method: "hms_tz.nhif.api.clinical_procedure.create_implant_registry",
+        args: {
+          clinical_procedure: frm.doc.name,
+          ...values,
+        },
+        freeze: true,
+        freeze_message: __("Creating Implant Registry..."),
+        callback: function (r) {
+          if (r.message) {
+            frappe.show_alert({
+              message: __("Implant Registry {0} created and submitted.", [
+                r.message,
+              ]),
+              indicator: "green",
+            });
+            d.hide();
+            frm.reload_doc();
+          }
+        },
+      });
+    },
+  });
+  d.show();
+}
+
+function show_cp_specimen_dialog(frm) {
+  let d = new frappe.ui.Dialog({
+    title: __("Add Specimen"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "specimen_type",
+        fieldtype: "Data",
+        label: __("Specimen Type"),
+        reqd: 1,
+      },
+      {
+        fieldname: "anatomical_site",
+        fieldtype: "Data",
+        label: __("Anatomical Site"),
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "collection_time",
+        fieldtype: "Datetime",
+        label: __("Collection Time"),
+        default: frappe.datetime.now_datetime(),
+      },
+      {
+        fieldname: "collected_by",
+        fieldtype: "Link",
+        label: __("Collected By"),
+        options: "Healthcare Practitioner",
+        get_query: function () {
+          return {
+            filters: {
+              status: "Active",
+              hms_tz_company: frm.doc.company,
+            },
+          };
+        },
+      },
+      { fieldtype: "Section Break", label: __("Lab & Pathology") },
+      {
+        fieldname: "status",
+        fieldtype: "Select",
+        label: __("Status"),
+        options: "Collected\nSent to Lab\nResults Received\nArchived",
+        default: "Collected",
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "pathology_notes",
+        fieldtype: "Small Text",
+        label: __("Pathology Notes"),
+      },
+    ],
+    primary_action_label: __("Create"),
+    primary_action(values) {
+      frappe.call({
+        method: "hms_tz.nhif.api.clinical_procedure.create_surgical_specimen",
+        args: {
+          clinical_procedure: frm.doc.name,
+          ...values,
+        },
+        freeze: true,
+        freeze_message: __("Creating Surgical Specimen..."),
+        callback: function (r) {
+          if (r.message) {
+            frappe.show_alert({
+              message: __("Surgical Specimen {0} created.", [r.message]),
+              indicator: "green",
+            });
+            d.hide();
+            frm.reload_doc();
           }
         },
       });

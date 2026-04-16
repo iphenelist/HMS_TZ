@@ -4,6 +4,8 @@
 
 from __future__ import unicode_literals
 
+import json
+
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
@@ -20,6 +22,11 @@ from hms_tz.nhif.utils import validate_issued_services, validate_point_of_care
 
 def after_insert(doc, method):
     create_revenue_entry(doc)
+
+
+def before_save(doc, method):
+    get_ot_schedule(doc)
+    get_preop_notes(doc)
 
 
 def onload(doc, method):
@@ -43,6 +50,8 @@ def on_submit(doc, methd):
         doc.hms_tz_ref_childname,
         lrpmt_status="Submitted",
     )
+    if doc.inpatient_record:
+        create_postoperative_recovery(doc)
 
 
 def before_submit(doc, method):
@@ -83,6 +92,67 @@ def update_procedure_prescription(doc):
             .set(hsrp.lrpmt_status, "Submitted")
             .where((hsrp.ref_docname == doc.hms_tz_ref_childname))
         ).run()
+
+
+def get_ot_schedule(doc):
+    if doc.ot_schedule:
+        return
+
+    ot_schedule = frappe.get_cached_value(
+        "OT Schedule",
+        {
+            "patient": doc.patient,
+            "company": doc.company,
+            "procedure_template": doc.procedure_template
+        },
+        "name"
+    )
+    if not ot_schedule:
+        return
+
+    doc.ot_schedule = ot_schedule
+    doc.surgical_team = []
+
+    ot_schedule_doc = frappe.get_cached_doc("OT Schedule", ot_schedule)
+    for row in ot_schedule_doc.get("surgical_team"):
+        doc.append("surgical_team", {
+            "practitioner": row.practitioner,
+            "role": row.role
+        })
+
+    frappe.db.set_value(
+        "OT Schedule",
+        doc.ot_schedule,
+        "status",
+        "Completed"
+    )
+
+
+def get_preop_notes(doc):
+    if doc.pre_operative_note:
+        return
+
+    pre_operative_note = frappe.get_cached_value(
+        "Preoperative Assessment",
+        {"clinical_procedure": doc.name},
+        "pre_operative_note"
+    )
+
+    if not pre_operative_note:
+        pre_operative_note = frappe.get_cached_value(
+            "Preoperative Assessment",
+            {
+                "patient": doc.patient,
+                "ot_schedule": doc.ot_schedule,
+                "service_name": doc.procedure_template
+            },
+            "pre_operative_note"
+        )
+
+    if not pre_operative_note:
+        return
+
+    doc.pre_operative_note = pre_operative_note
 
 
 def validate_swab_count(doc):
@@ -172,9 +242,12 @@ def get_anesthesia_records(clinical_procedure: str) -> list[dict]:
 @frappe.whitelist()
 def create_anesthesia_record(clinical_procedure: str, **kwargs) -> str:
     """Create an Anesthesia Record from the Clinical Procedure dialog."""
+
     cp = frappe.get_doc("Clinical Procedure", clinical_procedure)
     ar = frappe.new_doc("Anesthesia Record")
     ar.patient = cp.patient
+    ar.appointment = cp.appointment
+    ar.inpatient_record = cp.inpatient_record
     ar.clinical_procedure = clinical_procedure
     ar.ot_schedule = cp.get("ot_schedule") or ""
     ar.company = cp.company
@@ -191,29 +264,103 @@ def create_anesthesia_record(clinical_procedure: str, **kwargs) -> str:
 
     # Parse drugs_text into child table rows
     # Format: "Drug Name, Dosage, Route" — one per line
-    drugs_text = kwargs.get("drugs_text", "")
+    drugs_text = kwargs.get("drugs") or []
     if drugs_text:
-        for line in drugs_text.strip().split("\n"):
-            parts = [p.strip() for p in line.split(",")]
-            if not parts or not parts[0]:
-                continue
-            row = ar.append("drugs_administered", {})
-            # Try to find Medication by name
-            drug_name = parts[0]
-            medication = frappe.db.get_value("Medication", {"drug_name": drug_name})
-            if medication:
-                row.drug = medication
-                row.drug_name = drug_name
-            else:
-                # Try exact match on name
-                if frappe.db.exists("Medication", drug_name):
-                    row.drug = drug_name
-                else:
-                    row.drug_name = drug_name
-            if len(parts) > 1:
-                row.dosage = parts[1]
-            if len(parts) > 2:
-                row.route = parts[2]
+        drugs = json.loads(drugs_text)
+        for drug in drugs:
+            #  = json.loads(drg)
+            ar.append("drugs_administered", {
+                "drug": drug.get("drug"),
+                # "drug_name": drug.get("drug"),
+                "dosage": drug.get("dosage"),
+                "route": drug.get("route"),
+                "administered_time": drug.get("administered_time")
+            })
 
     ar.insert(ignore_permissions=True)
     return ar.name
+
+
+@frappe.whitelist()
+def create_implant_registry(clinical_procedure: str, **kwargs) -> str:
+    """Create an Implant Registry from the Clinical Procedure dialog and submit it."""
+    cp = frappe.get_doc("Clinical Procedure", clinical_procedure)
+    ir = frappe.new_doc("Implant Registry")
+    ir.patient = cp.patient
+    ir.clinical_procedure = clinical_procedure
+    ir.company = cp.company
+
+    simple_fields = [
+        "implant_type", "manufacturer", "lot_number", "serial_number",
+        "anatomical_location", "expiry_date", "implanted_by",
+        "implant_date", "status", "notes",
+    ]
+    for field in simple_fields:
+        if kwargs.get(field):
+            ir.set(field, kwargs[field])
+
+    ir.insert(ignore_permissions=True)
+    ir.submit()
+
+    # Link implant to the clinical procedure
+    frappe.db.set_value(
+        "Clinical Procedure", clinical_procedure, "implant", ir.name
+    )
+
+    return ir.name
+
+
+@frappe.whitelist()
+def create_surgical_specimen(clinical_procedure: str, **kwargs) -> str:
+    """Create a Surgical Specimen from the Clinical Procedure dialog."""
+    cp = frappe.get_doc("Clinical Procedure", clinical_procedure)
+    ss = frappe.new_doc("Surgical Specimen")
+    ss.patient = cp.patient
+    ss.clinical_procedure = clinical_procedure
+    ss.company = cp.company
+
+    simple_fields = [
+        "specimen_type", "anatomical_site", "collection_time",
+        "collected_by", "status", "pathology_notes",
+    ]
+    for field in simple_fields:
+        if kwargs.get(field):
+            ss.set(field, kwargs[field])
+
+    ss.insert(ignore_permissions=True)
+
+    # Link specimen to the clinical procedure
+    frappe.db.set_value(
+        "Clinical Procedure", clinical_procedure, "surgical_specimen", ss.name
+    )
+
+    return ss.name
+
+
+def create_postoperative_recovery(doc):
+    """Auto-create a Postoperative Recovery record when the Clinical Procedure
+    has an inpatient record and is submitted."""
+    # Avoid duplicates
+    if frappe.db.exists("Postoperative Recovery", {"clinical_procedure": doc.name, "docstatus": ["!=", 2]}):
+        return
+
+    pr = frappe.new_doc("Postoperative Recovery")
+    pr.patient = doc.patient
+    pr.clinical_procedure = doc.name
+    pr.company = doc.company
+    pr.ot_schedule = doc.get("ot_schedule") or ""
+    pr.posting_date = frappe.utils.nowdate()
+    pr.admission_time = frappe.utils.now_datetime()
+
+    pr.flags.ignore_permissions = True
+    pr.flags.ignore_mandatory = True
+    pr.insert()
+
+    frappe.msgprint(
+        _("Postoperative Recovery {0} created.").format(
+            frappe.utils.get_link_to_form("Postoperative Recovery", pr.name)
+        ),
+        alert=True,
+        indicator="green",
+    )
+
