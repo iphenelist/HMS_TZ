@@ -3,19 +3,7 @@
 
 frappe.ui.form.on("Preoperative Assessment", {
   setup(frm) {
-    frm.set_query("patient", () => ({
-      filters: { status: "Active" },
-    }));
-
-    frm.set_query("service_name", () => ({
-      filters: { disabled: 0 },
-    }));
-
-    frm.set_query("ot_schedule", () => {
-      const filters = {};
-      if (frm.doc.patient) filters.patient = frm.doc.patient;
-      return { filters };
-    });
+    frm.trigger("set_filters");
   },
 
   refresh(frm) {
@@ -59,6 +47,10 @@ frappe.ui.form.on("Preoperative Assessment", {
 
     // Render consumables tab
     render_consumables_section(frm);
+  },
+
+  onload: (frm) => {
+    frm.trigger("set_filters");
   },
 
   ot_schedule(frm) {
@@ -128,6 +120,41 @@ frappe.ui.form.on("Preoperative Assessment", {
       frm.set_value("insurance_coverage_plan", "");
       frm.set_value("insurance_company", "");
     }
+  },
+
+  set_filters: (frm) => {
+    frm.set_query("appointment", () => {
+      return {
+        filters: {
+          status: ["not in", ["Open", "Scheduled", "Cancelled"]],
+        },
+      };
+    });
+    frm.set_query("patient", () => {
+      return {
+        filters: { status: "Active" },
+      };
+    });
+
+    frm.set_query("service_name", () => {
+      return {
+        filters: { disabled: 0 },
+      };
+    });
+
+    frm.set_query("ot_schedule", () => {
+      const filters = {};
+      if (frm.doc.patient) filters.patient = frm.doc.patient;
+      return { filters };
+    });
+    frm.set_query("pre_operative_notes_template", () => {
+      return {
+        filters: {
+          disabled: 0,
+          terms: ["!=", ""],
+        },
+      };
+    });
   },
 });
 

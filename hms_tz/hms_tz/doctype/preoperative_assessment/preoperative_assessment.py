@@ -9,6 +9,7 @@ from frappe.model.document import Document
 class PreoperativeAssessment(Document):
     def before_save(self):
         self.set_missing_values()
+        self.fetch_patient_medical_history()
         self.validate_clearance_checks()
 
     def set_missing_values(self):
@@ -70,6 +71,37 @@ class PreoperativeAssessment(Document):
             self.insurance_subscription = ""
             self.insurance_coverage_plan = ""
             self.insurance_company = ""
+
+
+    def fetch_patient_medical_history(self):
+        """Fetch allergies, chronic medications, and surgical history from Patient."""
+
+        if not self.patient:
+            return
+
+        patient_doc = frappe.get_cached_doc("Patient", self.patient)
+
+        if not self.allergies and patient_doc.allergies:
+            self.allergies = patient_doc.allergies
+
+        if not self.surgical_history and patient_doc.surgical_history:
+            self.surgical_history = patient_doc.surgical_history
+
+        if len(self.chronic_medications) == 0:
+            for row in patient_doc.chronic_medications:
+                self.append("chronic_medications", {
+                    "drug_code": row.drug_code,
+                    "drug_name": row.drug_name,
+                    "dosage": row.dosage,
+                    "period": row.period,
+                    "dosage_form": row.dosage_form,
+                    "quantity": row.quantity,
+                    "comment": row.comment,
+                    "patient_instruction": row.patient_instruction,
+                    "usage_interval": row.usage_interval,
+                    "interval": row.interval,
+                    "interval_uom": row.interval_uom
+                })
 
     def validate_clearance_checks(self):
         """Warn if marking as Cleared without all checks complete."""
