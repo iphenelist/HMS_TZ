@@ -39,12 +39,18 @@
   "airway_assessment",
   "mallampati_score",
   "column_break_assessment",
-  "blood_type",
+  "blood_group",
   "last_oral_intake",
+  "section_break_sahn",
+  "pre_operative_notes_template",
+  "pre_operative_note",
+  "medical_history_tab",
+  "chronic_medications_section",
+  "chronic_medications",
   "section_break_history",
   "allergies",
-  "current_medications",
-  "medical_history_notes",
+  "section_break_fzsa",
+  "surgical_history",
   "tab_consumables",
   "consumables_html",
   "amended_from"
@@ -148,34 +154,18 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "blood_type",
-   "fieldtype": "Data",
-   "label": "Blood Type"
-  },
-  {
    "fieldname": "last_oral_intake",
    "fieldtype": "Datetime",
    "label": "Last Oral Intake"
   },
   {
    "fieldname": "section_break_history",
-   "fieldtype": "Section Break",
-   "label": "Medical History"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "allergies",
    "fieldtype": "Small Text",
    "label": "Allergies"
-  },
-  {
-   "fieldname": "current_medications",
-   "fieldtype": "Small Text",
-   "label": "Current Medications"
-  },
-  {
-   "fieldname": "medical_history_notes",
-   "fieldtype": "Text",
-   "label": "Medical History Notes"
   },
   {
    "depends_on": "eval: doc.appointment",
@@ -327,11 +317,61 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "medical_history_tab",
+   "fieldtype": "Tab Break",
+   "label": "Medical History"
+  },
+  {
+   "fieldname": "section_break_sahn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "pre_operative_notes_template",
+   "fieldtype": "Link",
+   "label": "Pre Operative Notes Template",
+   "options": "Healthcare Notes Template",
+   "search_index": 1
+  },
+  {
+   "fetch_from": "pre_operative_notes_template.terms",
+   "fetch_if_empty": 1,
+   "fieldname": "pre_operative_note",
+   "fieldtype": "Text Editor",
+   "label": "Pre Operative Note"
+  },
+  {
+   "fieldname": "chronic_medications_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "chronic_medications",
+   "fieldtype": "Table",
+   "label": "Chronic Medications",
+   "options": "Preop Chronic Medication"
+  },
+  {
+   "fieldname": "section_break_fzsa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "surgical_history",
+   "fieldtype": "Text",
+   "label": "Surgical History"
+  },
+  {
+   "fieldname": "blood_group",
+   "fieldtype": "Select",
+   "label": "Blood Group",
+   "options": "\nA Positive\nA Negative\nAB Positive\nAB Negative\nB Positive\nB Negative\nO Positive\nO Negative",
+   "search_index": 1,
+   "sort_options": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-11 09:03:33.145098",
+ "modified": "2026-04-15 10:30:44.852747",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Preoperative Assessment",
