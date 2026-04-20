@@ -134,8 +134,10 @@ class HMSTZSetting(Document):
 					and data["Description"].get("access_token")
 				):
 					token = data["Description"].get("access_token")
-					expired = data["Description"].get("expires_in")
-					expiry_date = add_to_date(now_datetime(), seconds=(expired - 1000))
+					issued_at = data["Description"].get("issued_at", 0)
+					expires_in = data["Description"].get("expires_in", 0)
+					ttl = max(int(expires_in) - int(issued_at), 0)
+					expiry_date = add_to_date(now_datetime(), seconds=ttl)
 
 					self.update({"jubilee_token": token, "jubilee_token_expiry": expiry_date})
 
