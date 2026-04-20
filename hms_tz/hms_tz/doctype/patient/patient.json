@@ -436,7 +436,7 @@
    "options": "Triage"
   },
   {
-    "label": "NHIF EmployerName",
+    "label": "EmployerName",
     "fieldname": "nhif_employername",
     "fieldtype": "Data",
     "read_only": 1
