@@ -202,8 +202,11 @@ def get_authorization_number(
             card_no=card_no,
             authorization_no=data.get("AuthorizationNo", ""),
         )
-        if data.get("AuthorizationNo") and "OK" not in data.get("Status"):
+        if not data.get("AuthorizationNo"):
             frappe.throw(title=data.get("Status"), msg=data["Description"])
+
+        elif data.get("AuthorizationNo") and "OK" not in data.get("Status"):
+            frappe.msgprint(title=data.get("Status"), msg=data["Description"])
 
         frappe.msgprint(_(data["Description"]), alert=True)
         return data
