@@ -350,8 +350,23 @@ var add_jubilee_actions_btn = (frm) => {
   }
 
   frm.add_custom_button(
+    __("Get Jubilee Packages"),
+    () => {
+      frappe.call({
+        method:
+          "hms_tz.jubilee.api.price_package.enqueue_get_jubilee_price_packages",
+        args: { company: frm.doc.company },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: (data) => {},
+      });
+    },
+    __("Jubilee Actions")
+  );
+
+  frm.add_custom_button(
     __("Get Jubilee Procedures"),
-    function () {
+    () => {
       frappe.call({
         method: "hms_tz.jubilee.api.api.enqueue_get_jubilee_procedures",
         args: {
