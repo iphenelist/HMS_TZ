@@ -244,11 +244,11 @@ def set_package_diff(company):
             if current_item != previous_item:
                 fields_changed = {
                     field: {
-                        "current": current_item[field],
-                        "previous": previous_item[field],
+                        "current": current_item.get(field),
+                        "previous": previous_item.get(field),
                     }
-                    for field in current_item
-                    if field in previous_item and current_item[field] != previous_item[field]
+                    for field in set(current_item) | set(previous_item)
+                    if current_item.get(field) != previous_item.get(field)
                 }
 
                 new_row = current_item.copy()
