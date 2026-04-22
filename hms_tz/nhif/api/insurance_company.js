@@ -1,9 +1,11 @@
 frappe.ui.form.on("Healthcare Insurance Company", {
   onload: function (frm) {
     add_nhif_actions_btn(frm);
+    add_jubilee_actions_btn(frm);
   },
   refresh: function (frm) {
     add_nhif_actions_btn(frm);
+    add_jubilee_actions_btn(frm);
   },
 });
 
@@ -339,5 +341,28 @@ var add_nhif_actions_btn = function (frm) {
       });
     },
     __("NHIF Actions")
+  );
+};
+
+var add_jubilee_actions_btn = (frm) => {
+  if (!frm.doc.insurance_company_name.includes("Jubilee")) {
+    return;
+  }
+
+  frm.add_custom_button(
+    __("Get Jubilee Procedures"),
+    function () {
+      frappe.call({
+        method: "hms_tz.jubilee.api.api.enqueue_get_jubilee_procedures",
+        args: {
+          company: frm.doc.company,
+          caller: "Front End",
+        },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: (data) => {},
+      });
+    },
+    __("Jubilee Actions")
   );
 };
