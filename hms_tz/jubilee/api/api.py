@@ -4,6 +4,7 @@ import frappe
 import requests
 from erpnext import get_default_company
 from frappe import _
+from frappe.utils import now_datetime
 
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
@@ -211,3 +212,133 @@ def get_authorization_number(
         frappe.msgprint(_(data["Description"]), alert=True)
         return data
 
+
+@frappe.whitelist()
+def enqueue_get_jubilee_procedures(company: str):
+
+    frappe.enqueue(
+        method="hms_tz.jubilee.api.api.get_procedure_list",
+        company=company,
+        queue='default',
+        at_front=True,
+    )
+    frappe.msgprint(_("Procedure list will be synced in the background"), alert=True)
+    return
+
+def get_procedure_list(company: str | None = None):
+    """Fetch procedure list from Jubilee API and sync to Jubilee Procedure DocType."""
+
+    if not company:
+        company = get_default_company()
+
+    if not company:
+        company = frappe.defaults.get_user_default("Company")
+
+    if not company:
+        hms_tz_records = frappe.get_list(
+            "HMS TZ Setting",
+            fields=["company"],
+            filters={"enable_jubilee_api": 1},
+            limit=1,
+        )
+        if len(hms_tz_records) > 0:
+            company = hms_tz_records[0].company
+
+    if not company:
+        frappe.throw(_("No companies found to connect to Jubilee"))
+
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", company)
+
+    if not setting_doc.enable_jubilee_api:
+        frappe.throw(
+            _(f"HMS TZ Setting for company: {company} does not have Jubilee API enabled.")
+        )
+
+    token = setting_doc.get_jubilee_token()
+    headers = {"Authorization": "Bearer " + token}
+    url = f"{setting_doc.jubilee_url}/jubileeapi/GetProcedureList"
+
+    r = requests.get(url, headers=headers, timeout=60)
+
+    data = json.loads(r.text) if r.text else {}
+
+    if r.status_code != 200 or data.get("Status") != "OK":
+        add_jubilee_log(
+            request_type="GetProcedureList",
+            request_url=url,
+            request_header=headers,
+            response_data=data,
+            status_code=r.status_code,
+            company=company,
+            ref_doctype="Jubilee Procedure",
+        )
+        frappe.throw(
+            title="Jubilee API Error",
+            msg=_(
+                f"Failed to fetch procedure list<br><br>"
+                f"Status Code: {r.status_code}<br>"
+                f"Jubilee Response: <b>{data.get('Description')}</b>"
+            ),
+        )
+
+    add_jubilee_log(
+        request_type="GetProcedureList",
+        request_url=url,
+        request_header=headers,
+        response_data=data,
+        status_code=r.status_code,
+        company=company,
+        ref_doctype="Jubilee Procedure",
+    )
+
+    procedures = data.get("Description", [])
+    if procedures:
+        _sync_procedures(procedures, company)
+
+    frappe.msgprint(
+        _(f"Successfully synced {len(procedures)} procedures from Jubilee"),
+        alert=True,
+    )
+
+    return data
+
+
+def _sync_procedures(procedures: list[dict], company: str):
+    """Delete existing Jubilee Procedure records for the company and bulk-insert fresh data."""
+
+    frappe.db.delete("Jubilee Procedure", filters={"disabled": 0})
+
+    fields = [
+        "name",
+        "procedure_code",
+        "procedure_name",
+        "creation",
+        "owner",
+        "modified",
+        "modified_by",
+    ]
+    values = []
+
+    user = frappe.session.user
+    timestamp = now_datetime()
+
+    for row in procedures:
+        values.append(
+            (
+                row.get("ProcedureCode"),
+                row.get("ProcedureCode"),
+                row.get("ProcedureName"),
+                timestamp,
+                user,
+                timestamp,
+                user,
+            )
+        )
+
+    if values:
+        frappe.db.bulk_insert(
+            "Jubilee Procedure",
+            fields=fields,
+            values=values,
+            ignore_duplicates=True,
+        )
