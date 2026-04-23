@@ -1,6 +1,7 @@
 frappe.ui.form.on("Patient Encounter", {
   setup: (frm) => {
     nhif_btns(frm);
+    jubilee_btns(frm);
   },
   on_submit: function (frm) {
     if (!frm.doc.patient_encounter_final_diagnosis) {
@@ -17,6 +18,7 @@ frappe.ui.form.on("Patient Encounter", {
   onload: function (frm) {
     control_practitioners_to_submit_others_encounters(frm);
     nhif_btns(frm);
+    jubilee_btns(frm);
     add_patient_history_btn(frm);
     add_refer_practtitioner_btn(frm);
     add_btn_final(frm);
@@ -27,7 +29,7 @@ frappe.ui.form.on("Patient Encounter", {
   },
   refresh: function (frm) {
     nhif_btns(frm);
-
+    jubilee_btns(frm);
     control_practitioners_to_submit_others_encounters(frm);
 
     frm.fields_dict["drug_prescription"].grid.get_field(
@@ -2019,6 +2021,21 @@ var nhif_btns = (frm) => {
   });
 };
 
+var jubilee_btns = (frm) => {
+  if (!frappe.user.has_role("Healthcare Practitioner")) {
+    return;
+  }
+
+  if (
+    !frm.doc.insurance_company ||
+    !frm.doc.insurance_company.includes("Jubilee")
+  ) {
+    return;
+  }
+
+  verify_services_btn(frm);
+};
+
 var login_to_nhif = (frm) => {
   if (!frm.page.fields_dict.login_to_nhif) {
     frm.page
@@ -2395,5 +2412,106 @@ var confirm_poc_btn = (frm) => {
         },
       })
       .$input.addClass("btn-sm");
+  }
+};
+
+var verify_services_btn = (frm) => {
+  if (!frm.page.fields_dict.verify_services_btn) {
+    frm.page.add_field({
+      label: "Verify Services",
+      fieldname: "verify_services_btn",
+      fieldtype: "Button",
+      click: async () => {
+        if (frm.is_dirty()) {
+          frappe.msgprint(
+            "<b>Please save the form before verifying services</b>"
+          );
+          return;
+        }
+
+        if (!frm.doc.jubilee_procedure) {
+          frm.scroll_to_field("jubilee_procedure");
+          frm.toggle_reqd("jubilee_procedure", true);
+          frappe.show_alert(
+            {
+              message: __(
+                "Please select Jubilee Procedure before verifying services"
+              ),
+              indicator: "red",
+            },
+            10
+          );
+          return;
+        }
+
+        frappe.prompt(
+          [
+            {
+              label: "Jubilee Benefit",
+              fieldname: "benefit_id",
+              fieldtype: "Link",
+              options: "Jubilee Benefit",
+              reqd: 1,
+              get_query: () => {
+                return {
+                  filters: {
+                    appointment: frm.doc.appointment,
+                  },
+                };
+              },
+            },
+            {
+              label: "Benefit Name",
+              fieldname: "benefit_name",
+              fieldtype: "Data",
+              read_only: 1,
+              fetch_from: "benefit_id.benefit_name",
+              depends_on: "benefit_id",
+            },
+            {
+              label: "Benefit Code",
+              fieldname: "benefit_code",
+              fieldtype: "Data",
+              read_only: 1,
+              fetch_from: "benefit_id.benefit_code",
+              depends_on: "benefit_id",
+            },
+          ],
+          (values) => {
+            frappe.call({
+              method: "hms_tz.jubilee.api.api.verify_jubilee_services",
+              args: {
+                source_doctype: frm.doc.doctype,
+                source_docname: frm.doc.name,
+                benefit_code: values.benefit_code,
+              },
+              async: true,
+              freeze: true,
+              freeze_message: __(
+                '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+              ),
+              callback: function (r) {
+                if (r.message && r.message !== "Error") {
+                  frappe.utils.play_sound("submit");
+                  frm.reload_doc();
+                  frappe.show_alert(
+                    {
+                      message: __("Services verified successfully"),
+                      indicator: "green",
+                    },
+                    10
+                  );
+                } else {
+                  frappe.utils.play_sound("error");
+                }
+              },
+              onerror: function (data) {
+                frappe.utils.play_sound("error");
+              },
+            });
+          }
+        );
+      },
+    });
   }
 };
