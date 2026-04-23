@@ -4,8 +4,13 @@ import frappe
 import requests
 from erpnext import get_default_company
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import now_datetime, nowdate, nowtime
 
+from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
+    get_childs_map,
+    get_item_rate,
+    get_item_refcode,
+)
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 
 
@@ -209,8 +214,88 @@ def get_authorization_number(
         elif data.get("AuthorizationNo") and "OK" not in data.get("Status"):
             frappe.msgprint(title=data.get("Status"), msg=data["Description"])
 
+        # Auto-create Jubilee Benefit records from the authorization response
+        if data.get("Benefits"):
+            patient = frappe.db.get_value(
+                "Patient Appointment", appointment_no, "patient"
+            )
+            create_jubilee_benefits(
+                card_no=card_no,
+                authorization_data=data,
+                appointment_no=appointment_no,
+                company=company,
+                patient=patient,
+            )
+
         frappe.msgprint(_(data["Description"]), alert=True)
         return data
+
+
+def create_jubilee_benefits(
+    card_no: str,
+    authorization_data: dict,
+    appointment_no: str,
+    company: str,
+    patient: str | None = None,
+):
+    """Create Jubilee Benefit records from the AuthorizeCard response.
+
+    Each benefit in the response's 'Benefits' array is saved as a separate
+    Jubilee Benefit document. Records are NOT deleted on re-authorization,
+    since different authorization numbers and appointments are expected.
+    """
+    benefits = authorization_data.get("Benefits", [])
+    if not benefits:
+        return
+
+    authorization_no = authorization_data.get("AuthorizationNo", "")
+
+    values = []
+    fields = [
+        "name",
+        "creation",
+        "owner",
+        "modified",
+        "modified_by",
+        "benefit_code",
+        "benefit_name",
+        "benefit_balance",
+        "card_no",
+        "patient",
+        "appointment",
+        "authorization_no",
+        "company",
+        "posting_date",
+        "posting_time",
+    ]
+    for benefit in benefits:
+        jb_name = frappe.generate_hash(length=10)
+        row = (
+            jb_name,
+            now_datetime(),
+            frappe.session.user,
+            now_datetime(),
+            frappe.session.user,
+            benefit.get("BenefitCode"),
+            benefit.get("BenefitName"),
+            benefit.get("BenefitBalance"),
+            card_no,
+            patient,
+            appointment_no,
+            authorization_no,
+            company,
+            nowdate(),
+            nowtime()
+        )
+        values.append(row)
+
+    if len(values) > 0:
+        frappe.db.bulk_insert(
+            "Jubilee Benefit",
+            fields=fields,
+            values=values,
+            ignore_duplicates=True
+        )
 
 
 @frappe.whitelist()
@@ -224,6 +309,7 @@ def enqueue_get_jubilee_procedures(company: str):
     )
     frappe.msgprint(_("Procedure list will be synced in the background"), alert=True)
     return
+
 
 def get_procedure_list(company: str | None = None):
     """Fetch procedure list from Jubilee API and sync to Jubilee Procedure DocType."""
@@ -342,3 +428,207 @@ def _sync_procedures(procedures: list[dict], company: str):
             values=values,
             ignore_duplicates=True,
         )
+
+
+@frappe.whitelist()
+def verify_jubilee_services(
+    source_doctype,
+    source_docname,
+    benefit_code,
+):
+    """Send a VerifyItems request to Jubilee API for items on a Patient Encounter.
+
+    Collects all eligible items from the encounter's child tables (lab tests,
+    radiology, procedures, medications, therapies), resolves each item's Jubilee
+    ref_code, and posts to /jubileeapi/VerifyItems.
+
+    Args:
+        source_doctype: The doctype of the source document.
+        source_docname: The name of the source document.
+        benefit_code: Jubilee BenefitCode selected by the practitioner from
+            the Jubilee Benefit records (e.g. '7905').
+
+    Returns:
+        dict: The parsed Jubilee API response on success, or None on error.
+    """
+    if not benefit_code:
+        frappe.throw(_("Please select a Jubilee Benefit before verifying services"))
+
+    source_doc = frappe.get_doc(source_doctype, source_docname)
+
+    services, service_map, total_amount = get_services(source_doc)
+    if not services:
+        frappe.msgprint(_("No service(s) found to verify"), indicator="orange")
+        return False
+
+    card_no, visit_date = frappe.get_cached_value(
+        "Patient Appointment",
+        source_doc.appointment,
+        ["coverage_plan_card_number", "appointment_date"],
+    )
+    if not card_no:
+        frappe.throw(_("Coverage Plan Card Number is not set on the Patient Appointment"))
+
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", source_doc.company)
+    if not setting_doc.enable_jubilee_api:
+        frappe.throw(
+            _("Please Enable Jubilee API to proceed..")
+        )
+
+    payload = {
+        "BenefitCode": benefit_code,
+        "MemberNo": card_no.strip(),
+        "ProcedureId": source_doc.jubilee_procedure,
+        "VerifyItems": json.dumps(services),
+        "Amount": str(total_amount),
+        "VisitDate": str(visit_date),
+    }
+
+    token = setting_doc.get_jubilee_token()
+    url = f"{setting_doc.jubilee_url}/jubileeapi/VerifyItems"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    r = requests.post(url, data=payload, headers=headers, timeout=120)
+
+    data = json.loads(r.text) if r.text else {}
+
+    add_jubilee_log(
+        request_type="VerifyItems",
+        request_url=url,
+        request_header=headers,
+        request_body=payload,
+        response_data=data,
+        status_code=r.status_code,
+        company=source_doc.company,
+        ref_doctype=source_doctype,
+        ref_docname=source_docname,
+        card_no=card_no,
+    )
+
+    if r.status_code != 200 or data.get("Status") == "ERROR":
+        description = data.get("Description", r.text or "Unknown error")
+
+        source_doc.add_comment(
+            comment_type="Comment",
+            text=(
+                f"Jubilee VerifyItems request failed<br><br>"
+                f"Status Code: {r.status_code}<br>"
+                f"Jubilee Response: <b>{description}</b>"
+            ),
+        )
+
+        frappe.msgprint(
+            title="Jubilee Verification Error",
+            msg=(
+                f"Item verification failed<br><br>"
+                f"Status Code: {r.status_code}<br>"
+                f"Jubilee Response: <b>{description}</b>"
+            ),
+        )
+
+        return "Error"
+
+    verified_items = data.get("VerifiedItems", [])
+    verified_map = {str(v.get("ItemId")): v for v in verified_items}
+
+    status = data.get("Status", "")
+
+    for (child_doctype, child_name, item_name), ref_code in service_map.items():
+        if str(ref_code) not in verified_map:
+            continue
+
+        frappe.db.set_value(
+            child_doctype,
+            child_name,
+            {
+                "preapproval_status": status,
+            },
+            update_modified=False,
+        )
+
+    source_doc.add_comment(
+        comment_type="Comment",
+        text=(
+            f"Jubilee VerifyItems successful<br>"
+            f"Description: <b>{data.get('Description')}</b><br>"
+            f"Items Verified: <b>{len(verified_items)}</b>"
+        ),
+    )
+    return True
+
+
+def get_services(doc, preapproval_no=None):
+    """Collect items from source child tables for Jubilee VerifyItems.
+
+    Iterates through all child tables (lab tests, radiology, procedures,
+    medications, therapies), skips cancelled/prescribed/restricted rows,
+    and builds the VerifyItems JSON array and a mapping of
+    (child_doctype, child_name, item_name) -> ref_code for post-response updates.
+
+    Args:
+        doc: The source document object.
+        preapproval_no: The preapproval number to filter by.
+
+    Returns:
+        tuple: (services list, service_map dict)
+    """
+    services = []
+    service_map = {}
+    total_amount = 0
+
+    for child in get_childs_map():
+        if not doc.get(child.get("table")):
+            continue
+
+        for row in doc.get(child.get("table")):
+            if not row.get(child.get("item")):
+                continue
+
+            if preapproval_no and row.preapproval_no == preapproval_no:
+                services.append(row.get(child.get("item")))
+
+                continue
+
+            if (
+                row.get("prescribe")
+                or row.get("is_not_available_inhouse")
+                or row.get("is_cancelled")
+                or row.get("is_restricted")
+                or row.get("preapproval_no")
+                or row.get("preapproval_status") == "Accepted"
+            ):
+                continue
+
+            ref_code = get_item_refcode(
+                child.get("doctype"),
+                row.get(child.get("item")),
+                doc.company,
+                doc.insurance_company
+            )
+
+            item_code = frappe.get_cached_value(child.get("doctype"), row.get(child.get("item")), "item")
+            if not item_code:
+                frappe.throw(
+                    _(f"Item code for {row.get(child.get('item'))} set in row {row.idx} was not found.<br>Please set the item code in {child.get('doctype')}.")
+                )
+
+            item_rate = get_item_rate(
+                item_code,
+                doc.company,
+                doc.insurance_subscription,
+                doc.insurance_company,
+            )
+
+            services.append(
+                {
+                    "ItemId": str(ref_code),
+                    "ItemQuantity": row.get("quantity") or 1,
+                    "ItemPrice": item_rate,
+                }
+            )
+
+            total_amount += item_rate * (row.get("quantity") or 1)
+
+            service_map[row.get("doctype"), row.get("name"), row.get(child.get("item"))] = ref_code
+
+    return services, service_map, total_amount
