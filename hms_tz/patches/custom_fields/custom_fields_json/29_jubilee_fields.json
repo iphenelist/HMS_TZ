@@ -1,0 +1,13 @@
+[
+    {
+        "dt": "Patient Encounter",
+        "fieldname": "jubilee_procedure",
+        "fieldtype": "Link",
+        "label": "Jubilee Procedure",
+        "options": "Jubilee Procedure",
+        "insert_after": "main_diagnosis_code",
+        "bold": 1,
+        "depends_on": "eval: doc.insurance_company && doc.insurance_company.includes('Jubilee')",
+        "doctype": "Custom Field"
+    }
+]
