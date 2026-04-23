@@ -332,32 +332,38 @@ def process_jubilee_coverages(company, coverage_plan=None):
 
     jubilee_customer = frappe.get_cached_value("HMS TZ Setting", company, "jubilee_customer_name")
     service_map = get_insurance_items(jubilee_customer)
-    services = service_map.values()
+    price_packages = get_price_packages(company)
 
     for plan in coverage_plan_list:
         has_data = False
-        for svc in services:
-            hsic_name = frappe.generate_hash(length=10)
 
-            row = (
-                hsic_name,
-                now_datetime(),
-                frappe.session.user,
-                now_datetime(),
-                frappe.session.user,
-                svc.get("service_type"),
-                svc.get("service_name"),
-                1,
-                plan.get("name"),
-                company,
-                1,
-                nowdate(),
-                "2099-12-31",
-            )
-            hsic_data.append(row)
+        for package in price_packages:
+            if not service_map.get(package.get("itemcode")):
+                continue
 
-            if not has_data and row:
-                has_data = True
+            services = service_map.get(package.get("itemcode"))
+            for svc in services:
+                hsic_name = frappe.generate_hash(length=10)
+
+                row = (
+                    hsic_name,
+                    now_datetime(),
+                    frappe.session.user,
+                    now_datetime(),
+                    frappe.session.user,
+                    svc.get("service_type"),
+                    svc.get("service_name"),
+                    1,
+                    plan.get("name"),
+                    company,
+                    1,
+                    nowdate(),
+                    "2099-12-31",
+                )
+                hsic_data.append(row)
+
+                if not has_data and row:
+                    has_data = True
 
         if has_data:
             plans_for_deletion.append(plan.name)
@@ -371,7 +377,6 @@ def process_jubilee_coverages(company, coverage_plan=None):
         values=hsic_data,
         ignore_duplicates=True,
     )
-    frappe.db.commit()
     return True
 
 
@@ -383,3 +388,23 @@ def _parse_response_data(data: str) -> dict:
         return json.loads(data)
     except json.JSONDecodeError:
         return ast.literal_eval(data)
+
+
+def get_price_packages(company):
+    jpp = DocType("Jubilee Price Package")
+    price_packages = (
+        frappe.qb.from_(jpp)
+        .select(
+            jpp.itemcode,
+            jpp.itemprice,
+            jpp.itemname,
+            jpp.cleanname,
+            jpp.strength,
+            jpp.dosage
+        )
+        .where(
+            (jpp.company == company)
+        )
+    ).run(as_dict=True)
+
+    return price_packages
