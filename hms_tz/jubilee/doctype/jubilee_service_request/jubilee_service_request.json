@@ -1,0 +1,456 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2025-04-27 10:00:00",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "patient_encounter",
+  "appointment",
+  "inpatient_record",
+  "column_break_main",
+  "patient",
+  "patient_name",
+  "patient_type_code",
+  "column_break_xdpg",
+  "company",
+  "posting_date",
+  "posting_time",
+  "sec_procedure",
+  "jubilee_procedure",
+  "procedure_name",
+  "practitioner_no",
+  "column_break_service",
+  "jubilee_benefit",
+  "benefit_code",
+  "benefit_name",
+  "column_break_blqc",
+  "total_amount",
+  "benefit_balance",
+  "section_response",
+  "submission_id",
+  "preauth_status",
+  "column_break_response",
+  "preauth_description",
+  "column_break_tpgb",
+  "naming_series",
+  "amended_from",
+  "patient_details_tab",
+  "section_patient_details",
+  "first_name",
+  "last_name",
+  "gender",
+  "column_break_patient",
+  "date_of_birth",
+  "card_no",
+  "authorization_no",
+  "column_break_szub",
+  "telephone_no",
+  "attendance_date",
+  "admitted_date",
+  "discharge_date",
+  "section_break_eajs",
+  "claim_month",
+  "claim_year",
+  "column_break_ofmb",
+  "bill_no",
+  "provider_id",
+  "diseases_tab",
+  "section_diseases",
+  "diseases",
+  "items_tab",
+  "section_items",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "JSR-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "patient_encounter",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient Encounter",
+   "options": "Patient Encounter",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient_encounter.appointment",
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Patient Appointment",
+   "options": "Patient Appointment",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient_encounter.patient",
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient_encounter.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "patient_encounter.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time"
+  },
+  {
+   "default": "OP",
+   "fieldname": "patient_type_code",
+   "fieldtype": "Select",
+   "label": "Patient Type Code",
+   "options": "OP\nIN"
+  },
+  {
+   "fieldname": "section_patient_details",
+   "fieldtype": "Section Break",
+   "label": "Patient Details"
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "label": "First Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Data",
+   "label": "Gender",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_patient",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "telephone_no",
+   "fieldtype": "Data",
+   "label": "Telephone No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "card_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Card No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "authorization_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Authorization No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attendance_date",
+   "fieldtype": "Datetime",
+   "label": "Attendance Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "jubilee_procedure",
+   "fieldtype": "Link",
+   "label": "Jubilee Procedure",
+   "options": "Jubilee Procedure"
+  },
+  {
+   "fetch_from": "jubilee_benefit.benefit_code",
+   "fetch_if_empty": 1,
+   "fieldname": "benefit_code",
+   "fieldtype": "Data",
+   "label": "Benefit Code",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "jubilee_benefit.benefit_name",
+   "fetch_if_empty": 1,
+   "fieldname": "benefit_name",
+   "fieldtype": "Data",
+   "label": "Benefit Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_service",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "practitioner_no",
+   "fieldtype": "Data",
+   "label": "Practitioner No (MCT Code)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_id",
+   "fieldtype": "Data",
+   "label": "Provider ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_diseases",
+   "fieldtype": "Section Break",
+   "label": "Diseases"
+  },
+  {
+   "fieldname": "diseases",
+   "fieldtype": "Table",
+   "label": "Diseases",
+   "options": "Jubilee Service Request Disease"
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Jubilee Service Request Item"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_response",
+   "fieldtype": "Section Break",
+   "label": "Pre-Authorization Response"
+  },
+  {
+   "fieldname": "submission_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Submission ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "preauth_status",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Pre-Auth Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_response",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "preauth_description",
+   "fieldtype": "Small Text",
+   "label": "Pre-Auth Description",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Jubilee Service Request",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xdpg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_blqc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_tpgb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "patient_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Patient Details"
+  },
+  {
+   "fieldname": "items_tab",
+   "fieldtype": "Tab Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "diseases_tab",
+   "fieldtype": "Tab Break",
+   "label": "Diseases"
+  },
+  {
+   "fetch_from": "jubilee_benefit.benefit_balance",
+   "fetch_if_empty": 1,
+   "fieldname": "benefit_balance",
+   "fieldtype": "Data",
+   "label": "Benefit Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_szub",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "claim_year",
+   "fieldtype": "Int",
+   "label": "Claim Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "claim_month",
+   "fieldtype": "Int",
+   "label": "Claim Month",
+   "read_only": 1
+  },
+  {
+   "fieldname": "admitted_date",
+   "fieldtype": "Datetime",
+   "label": "Admitted Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "discharge_date",
+   "fieldtype": "Datetime",
+   "label": "Discharge Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inpatient_record",
+   "fieldtype": "Link",
+   "label": "Inpatient Record",
+   "options": "Inpatient Record",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.docstatus == 0;",
+   "fieldname": "jubilee_benefit",
+   "fieldtype": "Link",
+   "label": "Jubilee Benefit",
+   "options": "Jubilee Benefit"
+  },
+  {
+   "fetch_from": "jubilee_procedure.procedure_name",
+   "fieldname": "procedure_name",
+   "fieldtype": "Data",
+   "label": "Procedure Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sec_procedure",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_eajs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ofmb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "label": "Bill No",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-27 15:31:04.360510",
+ "modified_by": "Administrator",
+ "module": "Jubilee",
+ "name": "Jubilee Service Request",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient_name",
+ "track_changes": 1
+}
