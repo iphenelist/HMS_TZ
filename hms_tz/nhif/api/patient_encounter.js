@@ -2491,7 +2491,7 @@ var verify_services_btn = (frm) => {
                 '<i class="fa fa-spinner fa-spin fa-4x"></i>'
               ),
               callback: function (r) {
-                if (r.message && r.message !== "Error") {
+                if (r.message === true) {
                   frappe.utils.play_sound("submit");
                   frm.reload_doc();
                   frappe.show_alert(
@@ -2501,6 +2501,12 @@ var verify_services_btn = (frm) => {
                     },
                     10
                   );
+                } else if (
+                  r.message &&
+                  r.message.action === "PreAuthRequired"
+                ) {
+                  frappe.utils.play_sound("error");
+                  show_preauth_dialog(frm, r.message);
                 } else {
                   frappe.utils.play_sound("error");
                 }
@@ -2515,3 +2521,111 @@ var verify_services_btn = (frm) => {
     });
   }
 };
+
+function show_preauth_dialog(frm, data) {
+  const d = new frappe.ui.Dialog({
+    title: __("Jubilee: Pre-Authorization Required"),
+    indicator: "orange",
+    fields: [
+      {
+        fieldtype: "HTML",
+        fieldname: "message_html",
+        options: `
+          <div style="border-left: 4px solid #ffc107; background-color: #fff3cd;
+                      padding: 15px; border-radius: 10px;
+                      box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 10px 0;">
+            <p style="font-size: 16px; font-weight: bold;">⚠️ ${data.description}</p>
+            <p style="font-size: 14px;">
+              The total amount of the services exceeds the patient's daily balance.
+            </p>
+            <p style="font-size: 14px;">
+              Click <b>"Request Pre-Authorization"</b> to send a pre-authorization
+              request to Jubilee. The screen will freeze until a response is received.
+            </p>
+          </div>
+        `,
+      },
+    ],
+    primary_action_label: __("Request Pre-Authorization"),
+    primary_action: () => {
+      d.hide();
+      frappe.call({
+        method:
+          "hms_tz.jubilee.doctype.jubilee_service_request.jubilee_service_request.create_preauthorization_doc",
+        args: {
+          source_doctype: data.source_doctype,
+          source_docname: data.source_docname,
+          benefit_code: data.benefit_code,
+        },
+        freeze: true,
+        freeze_message: __(
+          '<div style="text-align:center;">' +
+            '<i class="fa fa-spinner fa-spin fa-4x"></i>' +
+            "<p style='margin-top:15px; font-size:16px;'>Sending Pre-Authorization to Jubilee…</p>" +
+            "</div>"
+        ),
+        callback: (r) => {
+          const result = r.message || {};
+          console.log(result);
+
+          if (result.status === "OK") {
+            frappe.utils.play_sound("submit");
+            frappe.msgprint({
+              title: __("Pre-Authorization Successful"),
+              indicator: "green",
+              message: `
+                <div style="border-left: 4px solid #28a745; background-color: #d4edda;
+                            padding: 15px; border-radius: 10px;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 10px 0;">
+                  <p style="font-size: 16px; font-weight: bold;">✅ Pre-Authorization Approved</p>
+                  <p style="font-size: 14px;">Submission ID: <b>${
+                    result.submission_id || "N/A"
+                  }</b></p>
+                  <p style="font-size: 14px;">${result.description || ""}</p>
+                </div>
+              `,
+            });
+          } else {
+            frappe.utils.play_sound("error");
+            frappe.msgprint({
+              title: __("Pre-Authorization Failed"),
+              indicator: "red",
+              message: `
+                <div style="border-left: 4px solid #dc3545; background-color: #f8d7da;
+                            padding: 15px; border-radius: 10px;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 10px 0;">
+                  <p style="font-size: 16px; font-weight: bold;">❌ Pre-Authorization Failed</p>
+                  <p style="font-size: 14px;">Status: <b>${
+                    result.status || "ERROR"
+                  }</b></p>
+                  <p style="font-size: 14px;">Response: <b>${
+                    result.description || "Unknown error"
+                  }</b></p>
+                  <p style="font-size: 14px;">Service Request: <b>${
+                    result.service_request || ""
+                  }</b></p>
+                </div>
+              `,
+            });
+          }
+
+          frm.reload_doc();
+        },
+        onerror: function () {
+          frappe.utils.play_sound("error");
+          frappe.msgprint({
+            title: __("Pre-Authorization Error"),
+            indicator: "red",
+            message: __(
+              "An unexpected error occurred while sending the pre-authorization request. Please check the error log."
+            ),
+          });
+        },
+      });
+    },
+    secondary_action_label: __("Cancel"),
+    secondary_action: () => d.hide(),
+  });
+
+  d.show();
+}
