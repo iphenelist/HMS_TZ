@@ -74,13 +74,13 @@ class TherapyType(Document):
 
         exercises = frappe.db.sql(
             """
-				SELECT DISTINCT
-					b.parent, e.name, e.difficulty_level
-				FROM
-				 	`tabExercise Type` e, `tabBody Part Link` b
-				WHERE
-					b.body_part IN %(body_parts)s AND b.parent=e.name
-			""",
+                SELECT DISTINCT
+                    b.parent, e.name, e.difficulty_level
+                FROM
+                     `tabExercise Type` e, `tabBody Part Link` b
+                WHERE
+                    b.body_part IN %(body_parts)s AND b.parent=e.name
+            """,
             {"body_parts": body_parts},
             as_dict=1,
         )

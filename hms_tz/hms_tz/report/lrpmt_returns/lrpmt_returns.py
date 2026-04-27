@@ -81,51 +81,51 @@ def get_data(filters):
     conditions_item_return, conditions_medication_return = set_conditions(filters)
     return frappe.db.sql(
         f"""
-		SELECT
-			CAST(lr.modified AS DATE) AS modified,
-			ir.encounter_no,
-			ir.reference_docname,
-			ir.reference_doctype,
-			ir.item_name as item_name,
-			pa.practitioner_name,
-			ir.quantity as quantity_prescribed,
-			0 as quantity_to_return,
-			ir.reason,
-			null as drug_condition
-		FROM
-			`tabLRPMT Returns` lr
-		INNER JOIN
-			`tabItem Return` ir ON lr.name = ir.parent
-		INNER JOIN
-			`tabPatient Encounter` pa ON pa.name = ir.encounter_no
-		WHERE
-			lr.docstatus = 1
-			AND {conditions_item_return}
+        SELECT
+            CAST(lr.modified AS DATE) AS modified,
+            ir.encounter_no,
+            ir.reference_docname,
+            ir.reference_doctype,
+            ir.item_name as item_name,
+            pa.practitioner_name,
+            ir.quantity as quantity_prescribed,
+            0 as quantity_to_return,
+            ir.reason,
+            null as drug_condition
+        FROM
+            `tabLRPMT Returns` lr
+        INNER JOIN
+            `tabItem Return` ir ON lr.name = ir.parent
+        INNER JOIN
+            `tabPatient Encounter` pa ON pa.name = ir.encounter_no
+        WHERE
+            lr.docstatus = 1
+            AND {conditions_item_return}
 
-		UNION
+        UNION
 
-		SELECT
-			CAST(lr.modified AS DATE) AS modified,
-			mr.encounter_no,
-			mr.delivery_note_no as reference_docname,
+        SELECT
+            CAST(lr.modified AS DATE) AS modified,
+            mr.encounter_no,
+            mr.delivery_note_no as reference_docname,
             'Delivery Note' as reference_doctype,
-			mr.drug_name as item_name,
-			pa.practitioner_name,
-			mr.quantity_prescribed,
-			mr.quantity_to_return,
-			mr.reason,
-			mr.drug_condition
+            mr.drug_name as item_name,
+            pa.practitioner_name,
+            mr.quantity_prescribed,
+            mr.quantity_to_return,
+            mr.reason,
+            mr.drug_condition
 
-		FROM
-			`tabLRPMT Returns` lr
-		INNER JOIN
-			`tabMedication Return` mr ON lr.name = mr.parent
-		INNER JOIN
-			`tabPatient Encounter` pa ON pa.name = mr.encounter_no
-		WHERE
-			lr.docstatus = 1
-			AND {conditions_medication_return}
-		""",
+        FROM
+            `tabLRPMT Returns` lr
+        INNER JOIN
+            `tabMedication Return` mr ON lr.name = mr.parent
+        INNER JOIN
+            `tabPatient Encounter` pa ON pa.name = mr.encounter_no
+        WHERE
+            lr.docstatus = 1
+            AND {conditions_medication_return}
+        """,
         filters,
         as_dict=True,
     )
