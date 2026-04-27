@@ -4,7 +4,7 @@ import frappe
 import requests
 from erpnext import get_default_company
 from frappe import _
-from frappe.utils import now_datetime, nowdate, nowtime
+from frappe.utils import date_diff, get_fullname, now_datetime, nowdate, nowtime
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     get_childs_map,
@@ -517,6 +517,15 @@ def verify_jubilee_services(
             ),
         )
 
+        if "Pre-Authorization" in description or "Pre-Auth" in description:
+            return {
+                "action": "PreAuthRequired",
+                "description": description,
+                "source_doctype": source_doctype,
+                "source_docname": source_docname,
+                "benefit_code": benefit_code,
+            }
+
         frappe.msgprint(
             title="Jubilee Verification Error",
             msg=(
@@ -595,7 +604,7 @@ def get_services(doc, preapproval_no=None):
                 or row.get("is_cancelled")
                 or row.get("is_restricted")
                 or row.get("preapproval_no")
-                or row.get("preapproval_status") == "Accepted"
+                or row.get("preapproval_status") == "OK"
             ):
                 continue
 
@@ -632,3 +641,154 @@ def get_services(doc, preapproval_no=None):
             service_map[row.get("doctype"), row.get("name"), row.get(child.get("item"))] = ref_code
 
     return services, service_map, total_amount
+
+
+def send_preauthorization(service_request_name):
+    """Build and send the SendPreauthorization payload to the Jubilee API.
+
+    Args:
+        service_request_name: Name of the Jubilee Service Request document.
+
+    Returns:
+        dict: Result with status, submission_id, and description.
+    """
+    jsr = frappe.get_doc("Jubilee Service Request", service_request_name)
+
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", jsr.company)
+    if not setting_doc.enable_jubilee_api:
+        frappe.throw(_("Jubilee API is not enabled for this company"))
+
+    #Payload
+    entities = frappe._dict()
+    entities.ClaimYear = jsr.claim_year
+    entities.ClaimMonth = jsr.claim_month
+    entities.CardNo = (jsr.card_no or "").strip()
+    entities.FirstName = jsr.first_name or ""
+    entities.LastName = jsr.last_name or ""
+    entities.Gender = jsr.gender or ""
+    entities.DateOfBirth = str(jsr.date_of_birth) if jsr.date_of_birth else ""
+    entities.Age = str(date_diff(nowdate(), jsr.date_of_birth) // 365) if jsr.date_of_birth else "0"
+    entities.TelephoneNo = jsr.telephone_no or ""
+    entities.PatientFileNo = jsr.patient or ""
+    entities.AuthorizationNo = jsr.authorization_no or ""
+    entities.AttendanceDate = str(jsr.attendance_date) if jsr.attendance_date else ""
+    entities.PatientTypeCode = jsr.patient_type_code or "OP"
+    entities.DateAdmitted = str(jsr.admitted_date) if jsr.admitted_date else ""
+    entities.DateDischarged = str(jsr.discharge_date) if jsr.discharge_date else ""
+    entities.PractitionerNo = jsr.practitioner_no or ""
+    entities.ProviderID = jsr.provider_id or ""
+    entities.CreatedBy = get_fullname(frappe.session.user)
+    entities.DateCreated = str(jsr.posting_date) if jsr.posting_date else str(nowdate())
+    entities.LastModifiedBy = get_fullname(frappe.session.user)
+    entities.LastModified = str(nowdate())
+    entities.AmountClaimed = jsr.total_amount or 0
+    entities.jubileeProcedure = jsr.jubilee_procedure
+    entities.jubileeBenefits = jsr.benefit_code or ""
+    entities.BillNo = jsr.bill_no
+
+    # Build FolioDiseases
+    entities.FolioDiseases = []
+    for disease in jsr.diseases:
+        entities.FolioDiseases.append({
+            "DiseaseCode": disease.disease_code or "",
+            "Status": disease.status or "Provisional",
+            "Remarks": disease.description or "",
+            "CreatedBy": disease.created_by or get_fullname(frappe.session.user),
+            "DateCreated": str(disease.date_created) if disease.date_created else str(nowdate()),
+            "LastModifiedBy": get_fullname(frappe.session.user),
+            "LastModified": str(nowdate()),
+        })
+
+    # Build FolioItems
+    entities.FolioItems = []
+    for item in jsr.items:
+        entities.FolioItems.append({
+            "ItemCode": item.item_code or "",
+            "OtherDetails": item.item_name or "",
+            "ItemQuantity": item.item_quantity or 1,
+            "UnitPrice": item.unit_price or 0,
+            "AmountClaimed": item.amount_claimed or 0,
+            "CreatedBy": item.created_by or get_fullname(frappe.session.user),
+            "DateCreated": str(item.date_created) if item.date_created else str(nowdate()),
+            "LastModifiedBy": get_fullname(frappe.session.user),
+            "LastModified": str(nowdate()),
+        })
+
+    payload = json.dumps({"entities": [entities]})
+
+    token = setting_doc.get_jubilee_token()
+    url = f"{setting_doc.jubilee_url}/jubileeapi/SendPreauthorization"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    result = {"status": "ERROR", "submission_id": "", "description": ""}
+    r = None
+
+    try:
+        r = requests.post(url, headers=headers, data=payload, timeout=300)
+        data = json.loads(r.text) if r.text else {}
+
+        add_jubilee_log(
+            request_type="SendPreauthorization",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=data,
+            status_code=r.status_code,
+            company=jsr.company,
+            ref_doctype="Jubilee Service Request",
+            ref_docname=jsr.name,
+            card_no=jsr.card_no,
+        )
+
+        status = data.get("Status") or data.get("status") or ""
+        description = data.get("Description") or data.get("description") or ""
+        submission_id = str(data.get("SubmissionID") or data.get("submissionId") or "")
+
+        frappe.db.set_value(
+            "Jubilee Service Request",
+            jsr.name,
+            {
+                "preauth_status": status,
+                "preauth_description": description,
+                "submission_id": submission_id,
+            },
+        )
+
+        result.update({
+            "status": status,
+            "submission_id": submission_id,
+            "description": description,
+            "service_request": jsr.name,
+        })
+
+    except Exception:
+        error_text = r.text if r and r.text else "NO RESPONSE — Timeout?"
+        error_status = r.status_code if r else "NO STATUS CODE"
+
+        add_jubilee_log(
+            request_type="SendPreauthorization",
+            request_url=url,
+            request_header=headers,
+            request_body=payload,
+            response_data=error_text,
+            status_code=error_status,
+            company=jsr.company,
+            ref_doctype="Jubilee Service Request",
+            ref_docname=jsr.name,
+            card_no=jsr.card_no,
+        )
+
+        frappe.db.set_value(
+            "Jubilee Service Request",
+            jsr.name,
+            {
+                "preauth_status": "ERROR",
+                "preauth_description": str(error_text),
+            },
+        )
+        result["description"] = str(error_text)
+
+    return result
