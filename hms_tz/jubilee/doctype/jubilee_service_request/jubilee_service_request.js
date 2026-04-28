@@ -23,5 +23,57 @@ frappe.ui.form.on("Jubilee Service Request", {
         )
       );
     }
+
+    frm.trigger("get_preauth_status");
+  },
+
+  get_preauth_status: (frm) => {
+    if (
+      frm.doc.submission_id &&
+      frm.doc.docstatus == 1 &&
+      (!frm.doc.preauth_status || frm.doc.preauth_status != "ERROR")
+    ) {
+      frm.add_custom_button(__("Get Pre-Auth Status"), () => {
+        frappe.call({
+          method: "hms_tz.jubilee.api.api.get_preauthorization_status",
+          args: {
+            service_request_name: frm.doc.name,
+          },
+          freeze: true,
+          freeze_message: __("Checking Pre-Auth Status..."),
+          callback: function (r) {
+            if (r.message) {
+              let data = r.message;
+
+              if (data.status != "ERROR") {
+                frappe.utils.play_sound("success");
+                frappe.show_alert({
+                  message: __(`${data.description}`),
+                });
+
+                frm.reload_doc();
+              } else {
+                frappe.utils.play_sound("error");
+                frappe.msgprint({
+                  title: __("Pre-Authorization Error"),
+                  indicator: "red",
+                  message: __(`${data.description}`),
+                });
+              }
+            }
+          },
+          onerror: function () {
+            frappe.utils.play_sound("error");
+            frappe.msgprint({
+              title: __("Pre-Authorization Error"),
+              indicator: "red",
+              message: __(
+                "An unexpected error occurred while fetching the pre-authorization status."
+              ),
+            });
+          },
+        });
+      });
+    }
   },
 });

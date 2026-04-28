@@ -792,3 +792,103 @@ def send_preauthorization(service_request_name):
         result["description"] = str(error_text)
 
     return result
+
+
+@frappe.whitelist()
+def get_preauthorization_status(service_request_name):
+    """Fetch the status of a previously submitted pre-authorization request from Jubilee.
+
+    Calls GET /jubileeapi/getPreauthorizationStatus?submissionID=<id>
+
+    Args:
+        service_request_name: Name of the Jubilee Service Request document.
+            Its submission_id field is used as the submissionID query parameter.
+
+    Returns:
+        dict: {
+            "status": "OK" | "ERROR",
+            "description": <dict with full details on OK, or error string on ERROR>,
+            "service_request": <jsr.name>,
+        }
+    """
+    jsr = frappe.get_doc("Jubilee Service Request", service_request_name)
+
+    if not jsr.submission_id:
+        frappe.throw(
+            _(
+                "Cannot check status: this Service Request has no Submission ID. "
+                "Please send the pre-authorization first."
+            )
+        )
+
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", jsr.company)
+    if not setting_doc.enable_jubilee_api:
+        frappe.throw(_("Jubilee API is not enabled for this company"))
+
+    token = setting_doc.get_jubilee_token()
+    url = f"{setting_doc.jubilee_url}/jubileeapi/getPreauthorizationStatus"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    params = {"submissionID": jsr.submission_id}
+
+    result = {"status": "ERROR", "description": "", "service_request": jsr.name}
+    r = None
+
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=60)
+        data = json.loads(r.text) if r.text else {}
+
+        add_jubilee_log(
+            request_type="getPreauthorizationStatus",
+            request_url=url,
+            request_header=headers,
+            request_body=str(params),
+            response_data=data,
+            status_code=r.status_code,
+            company=jsr.company,
+            ref_doctype="Jubilee Service Request",
+            ref_docname=jsr.name,
+            card_no=jsr.card_no,
+        )
+
+        status = data.get("Status") or data.get("status") or "ERROR"
+        description = data.get("Description") or data.get("description") or ""
+
+        if status == "ERROR":
+            frappe.throw(_(description))
+        else:
+            preauth_status = description.get("PreauthorizationStatus") or ""
+            preauth_description = description.get("details") or ""
+            frappe.db.set_value(
+                "Jubilee Service Request",
+                jsr.name,
+                {
+                    "preauth_status": preauth_status,
+                    "preauth_description": preauth_description,
+                },
+            )
+
+        result.update({"status": status, "description": preauth_description or preauth_status })
+
+    except Exception:
+        error_text = r.text if r and r.text else "NO RESPONSE — Timeout or connection error"
+        error_status = r.status_code if r else "NO STATUS CODE"
+
+        add_jubilee_log(
+            request_type="getPreauthorizationStatus",
+            request_url=url,
+            request_header=headers,
+            request_body=str(params),
+            response_data=error_text,
+            status_code=error_status,
+            company=jsr.company,
+            ref_doctype="Jubilee Service Request",
+            ref_docname=jsr.name,
+            card_no=jsr.card_no,
+        )
+
+        result["description"] = str(error_text)
+
+    return result
