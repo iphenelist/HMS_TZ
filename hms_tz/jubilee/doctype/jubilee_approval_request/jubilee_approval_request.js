@@ -3,7 +3,6 @@
 
 frappe.ui.form.on("Jubilee Approval Request", {
   refresh: function (frm) {
-    // Show status indicator on the dashboard
     if (frm.doc.preauth_status === "OK") {
       frm.dashboard.set_headline(
         __(
@@ -29,9 +28,9 @@ frappe.ui.form.on("Jubilee Approval Request", {
 
   get_preauth_status: (frm) => {
     if (
-      frm.doc.submission_id &&
-      frm.doc.docstatus == 1 &&
-      (!frm.doc.preauth_status || frm.doc.preauth_status != "ERROR")
+      !frm.doc.submission_id &&
+      frm.doc.preauth_status &&
+      frm.doc.preauth_status != "ERROR"
     ) {
       frm.add_custom_button(__("Get Pre-Auth Status"), () => {
         frappe.call({
