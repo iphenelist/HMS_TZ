@@ -36,7 +36,7 @@ frappe.ui.form.on("Jubilee Approval Request", {
         frappe.call({
           method: "hms_tz.jubilee.api.api.get_preauthorization_status",
           args: {
-            service_request_name: frm.doc.name,
+            approval_request_name: frm.doc.name,
           },
           freeze: true,
           freeze_message: __("Checking Pre-Auth Status..."),

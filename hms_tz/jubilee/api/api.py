@@ -643,16 +643,16 @@ def get_services(doc, preapproval_no=None):
     return services, service_map, total_amount
 
 
-def send_preauthorization(service_request_name):
+def send_preauthorization(approval_request_name):
     """Build and send the SendPreauthorization payload to the Jubilee API.
 
     Args:
-        service_request_name: Name of the Jubilee Approval Request document.
+        approval_request_name: Name of the Jubilee Approval Request document.
 
     Returns:
         dict: Result with status, submission_id, and description.
     """
-    jar_doc = frappe.get_doc("Jubilee Approval Request", service_request_name)
+    jar_doc = frappe.get_doc("Jubilee Approval Request", approval_request_name)
 
     setting_doc = frappe.get_cached_doc("HMS TZ Setting", jar_doc.company)
     if not setting_doc.enable_jubilee_api:
@@ -739,6 +739,11 @@ def send_preauthorization(service_request_name):
     return result
 
 
+def update_preauth_request(approval_request_name):
+
+    pass
+
+
 def get_preauth_payload(jar_doc):
     """Get the preauth payload from the Jubilee Approval Request."""
     entities = frappe._dict()
@@ -818,15 +823,14 @@ def get_preauth_payload(jar_doc):
     return entities
 
 
-
 @frappe.whitelist()
-def get_preauthorization_status(service_request_name):
+def get_preauthorization_status(approval_request_name):
     """Fetch the status of a previously submitted pre-authorization request from Jubilee.
 
     Calls GET /jubileeapi/getPreauthorizationStatus?submissionID=<id>
 
     Args:
-        service_request_name: Name of the Jubilee Approval Request document.
+        approval_request_name: Name of the Jubilee Approval Request document.
             Its submission_id field is used as the submissionID query parameter.
 
     Returns:
@@ -836,7 +840,7 @@ def get_preauthorization_status(service_request_name):
             "service_request": <jar_doc.name>,
         }
     """
-    frappe.get_doc("Jubilee Approval Request", service_request_name)
+    jar_doc = frappe.get_doc("Jubilee Approval Request", approval_request_name)
 
     if not jar_doc.submission_id:
         frappe.throw(
