@@ -652,68 +652,13 @@ def send_preauthorization(service_request_name):
     Returns:
         dict: Result with status, submission_id, and description.
     """
-    jsr = frappe.get_doc("Jubilee Approval Request", service_request_name)
+    jar_doc = frappe.get_doc("Jubilee Approval Request", service_request_name)
 
-    setting_doc = frappe.get_cached_doc("HMS TZ Setting", jsr.company)
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", jar_doc.company)
     if not setting_doc.enable_jubilee_api:
         frappe.throw(_("Jubilee API is not enabled for this company"))
 
-    #Payload
-    entities = frappe._dict()
-    entities.ClaimYear = jsr.claim_year
-    entities.ClaimMonth = jsr.claim_month
-    entities.CardNo = (jsr.card_no or "").strip()
-    entities.FirstName = jsr.first_name or ""
-    entities.LastName = jsr.last_name or ""
-    entities.Gender = jsr.gender or ""
-    entities.DateOfBirth = str(jsr.date_of_birth) if jsr.date_of_birth else ""
-    entities.Age = str(date_diff(nowdate(), jsr.date_of_birth) // 365) if jsr.date_of_birth else "0"
-    entities.TelephoneNo = jsr.telephone_no or ""
-    entities.PatientFileNo = jsr.patient or ""
-    entities.AuthorizationNo = jsr.authorization_no or ""
-    entities.AttendanceDate = str(jsr.attendance_date) if jsr.attendance_date else ""
-    entities.PatientTypeCode = jsr.patient_type_code or "OP"
-    entities.DateAdmitted = str(jsr.admitted_date) if jsr.admitted_date else ""
-    entities.DateDischarged = str(jsr.discharge_date) if jsr.discharge_date else ""
-    entities.PractitionerNo = jsr.practitioner_no or ""
-    entities.ProviderID = jsr.provider_id or ""
-    entities.CreatedBy = get_fullname(frappe.session.user)
-    entities.DateCreated = str(jsr.posting_date) if jsr.posting_date else str(nowdate())
-    entities.LastModifiedBy = get_fullname(frappe.session.user)
-    entities.LastModified = str(nowdate())
-    entities.AmountClaimed = jsr.total_amount or 0
-    entities.jubileeProcedure = jsr.jubilee_procedure
-    entities.jubileeBenefits = jsr.benefit_code or ""
-    entities.BillNo = jsr.bill_no
-
-    # Build FolioDiseases
-    entities.FolioDiseases = []
-    for disease in jsr.diseases:
-        entities.FolioDiseases.append({
-            "DiseaseCode": disease.disease_code or "",
-            "Status": disease.status or "Provisional",
-            "Remarks": disease.description or "",
-            "CreatedBy": disease.created_by or get_fullname(frappe.session.user),
-            "DateCreated": str(disease.date_created) if disease.date_created else str(nowdate()),
-            "LastModifiedBy": get_fullname(frappe.session.user),
-            "LastModified": str(nowdate()),
-        })
-
-    # Build FolioItems
-    entities.FolioItems = []
-    for item in jsr.items:
-        entities.FolioItems.append({
-            "ItemCode": item.item_code or "",
-            "OtherDetails": item.item_name or "",
-            "ItemQuantity": item.item_quantity or 1,
-            "UnitPrice": item.unit_price or 0,
-            "AmountClaimed": item.amount_claimed or 0,
-            "CreatedBy": item.created_by or get_fullname(frappe.session.user),
-            "DateCreated": str(item.date_created) if item.date_created else str(nowdate()),
-            "LastModifiedBy": get_fullname(frappe.session.user),
-            "LastModified": str(nowdate()),
-        })
-
+    entities = get_preauth_payload(jar_doc)
     payload = json.dumps({"entities": [entities]})
 
     token = setting_doc.get_jubilee_token()
@@ -737,10 +682,10 @@ def send_preauthorization(service_request_name):
             request_body=payload,
             response_data=data,
             status_code=r.status_code,
-            company=jsr.company,
+            company=jar_doc.company,
             ref_doctype="Jubilee Approval Request",
-            ref_docname=jsr.name,
-            card_no=jsr.card_no,
+            ref_docname=jar_doc.name,
+            card_no=jar_doc.card_no,
         )
 
         status = data.get("Status") or data.get("status") or ""
@@ -749,7 +694,7 @@ def send_preauthorization(service_request_name):
 
         frappe.db.set_value(
             "Jubilee Approval Request",
-            jsr.name,
+            jar_doc.name,
             {
                 "preauth_status": status,
                 "preauth_description": description,
@@ -761,7 +706,7 @@ def send_preauthorization(service_request_name):
             "status": status,
             "submission_id": submission_id,
             "description": description,
-            "service_request": jsr.name,
+            "service_request": jar_doc.name,
         })
 
     except Exception:
@@ -775,15 +720,15 @@ def send_preauthorization(service_request_name):
             request_body=payload,
             response_data=error_text,
             status_code=error_status,
-            company=jsr.company,
+            company=jar_doc.company,
             ref_doctype="Jubilee Approval Request",
-            ref_docname=jsr.name,
-            card_no=jsr.card_no,
+            ref_docname=jar_doc.name,
+            card_no=jar_doc.card_no,
         )
 
         frappe.db.set_value(
             "Jubilee Approval Request",
-            jsr.name,
+            jar_doc.name,
             {
                 "preauth_status": "ERROR",
                 "preauth_description": str(error_text),
@@ -792,6 +737,86 @@ def send_preauthorization(service_request_name):
         result["description"] = str(error_text)
 
     return result
+
+
+def get_preauth_payload(jar_doc):
+    """Get the preauth payload from the Jubilee Approval Request."""
+    entities = frappe._dict()
+
+    entities.ClaimYear = jar_doc.claim_year
+    entities.ClaimMonth = jar_doc.claim_month
+    entities.CardNo = (jar_doc.card_no or "").strip()
+    entities.FirstName = jar_doc.first_name or ""
+    entities.LastName = jar_doc.last_name or ""
+    entities.Gender = jar_doc.gender or ""
+    entities.DateOfBirth = str(jar_doc.date_of_birth) if jar_doc.date_of_birth else ""
+    entities.Age = str(date_diff(nowdate(), jar_doc.date_of_birth) // 365) if jar_doc.date_of_birth else "0"
+    entities.TelephoneNo = jar_doc.telephone_no or ""
+    entities.PatientFileNo = jar_doc.patient or ""
+    entities.AuthorizationNo = jar_doc.authorization_no or ""
+    entities.AttendanceDate = str(jar_doc.attendance_date) if jar_doc.attendance_date else ""
+    entities.PatientTypeCode = jar_doc.patient_type_code or "OP"
+    entities.DateAdmitted = str(jar_doc.admitted_date) if jar_doc.admitted_date else ""
+    entities.DateDischarged = str(jar_doc.discharge_date) if jar_doc.discharge_date else ""
+    entities.PractitionerNo = jar_doc.practitioner_no or ""
+    entities.ProviderID = jar_doc.provider_id or ""
+    entities.CreatedBy = get_fullname(frappe.session.user)
+    entities.DateCreated = str(jar_doc.posting_date) if jar_doc.posting_date else str(nowdate())
+    entities.LastModifiedBy = get_fullname(frappe.session.user)
+    entities.LastModified = str(nowdate())
+    entities.AmountClaimed = jar_doc.total_amount or 0
+    entities.jubileeProcedure = jar_doc.jubilee_procedure
+    entities.jubileeBenefits = jar_doc.benefit_code or ""
+    entities.BillNo = jar_doc.bill_no
+
+    # Get Practitioner Qualification ID
+    if jar_doc.practitioner:
+        qualification = frappe.get_cached_value(
+            "Healthcare Practitioner", jar_doc.practitioner, "nhif_physician_qualification"
+        ) or ""
+
+        if not qualification:
+            frappe.throw(_(f"Practitioner {jar_doc.practitioner} has no Physician Qualification, Set it on Healthcare Practitioner master."))
+
+        if qualification:
+            qualification_id = frappe.get_cached_value(
+                "NHIF Physician Qualification",
+                qualification,
+                "physicianqualificationid"
+            ) or ""
+
+            entities.QualificationID = qualification_id
+
+    # Build FolioDiseases
+    entities.FolioDiseases = []
+    for disease in jar_doc.diseases:
+        entities.FolioDiseases.append({
+            "DiseaseCode": disease.disease_code or "",
+            "Status": disease.status or "Provisional",
+            "Remarks": disease.description or "",
+            "CreatedBy": disease.created_by or get_fullname(frappe.session.user),
+            "DateCreated": str(disease.date_created) if disease.date_created else str(nowdate()),
+            "LastModifiedBy": get_fullname(frappe.session.user),
+            "LastModified": str(nowdate()),
+        })
+
+    # Build FolioItems
+    entities.FolioItems = []
+    for item in jar_doc.items:
+        entities.FolioItems.append({
+            "ItemCode": item.item_code or "",
+            "OtherDetails": item.item_name or "",
+            "ItemQuantity": item.item_quantity or 1,
+            "UnitPrice": item.unit_price or 0,
+            "AmountClaimed": item.amount_claimed or 0,
+            "CreatedBy": item.created_by or get_fullname(frappe.session.user),
+            "DateCreated": str(item.date_created) if item.date_created else str(nowdate()),
+            "LastModifiedBy": get_fullname(frappe.session.user),
+            "LastModified": str(nowdate()),
+        })
+
+    return entities
+
 
 
 @frappe.whitelist()
@@ -808,12 +833,12 @@ def get_preauthorization_status(service_request_name):
         dict: {
             "status": "OK" | "ERROR",
             "description": <dict with full details on OK, or error string on ERROR>,
-            "service_request": <jsr.name>,
+            "service_request": <jar_doc.name>,
         }
     """
-    jsr = frappe.get_doc("Jubilee Approval Request", service_request_name)
+    frappe.get_doc("Jubilee Approval Request", service_request_name)
 
-    if not jsr.submission_id:
+    if not jar_doc.submission_id:
         frappe.throw(
             _(
                 "Cannot check status: this Service Request has no Submission ID. "
@@ -821,7 +846,7 @@ def get_preauthorization_status(service_request_name):
             )
         )
 
-    setting_doc = frappe.get_cached_doc("HMS TZ Setting", jsr.company)
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", jar_doc.company)
     if not setting_doc.enable_jubilee_api:
         frappe.throw(_("Jubilee API is not enabled for this company"))
 
@@ -831,9 +856,9 @@ def get_preauthorization_status(service_request_name):
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    params = {"submissionID": jsr.submission_id}
+    params = {"submissionID": jar_doc.submission_id}
 
-    result = {"status": "ERROR", "description": "", "service_request": jsr.name}
+    result = {"status": "ERROR", "description": "", "service_request": jar_doc.name}
     r = None
 
     try:
@@ -847,10 +872,10 @@ def get_preauthorization_status(service_request_name):
             request_body=str(params),
             response_data=data,
             status_code=r.status_code,
-            company=jsr.company,
+            company=jar_doc.company,
             ref_doctype="Jubilee Approval Request",
-            ref_docname=jsr.name,
-            card_no=jsr.card_no,
+            ref_docname=jar_doc.name,
+            card_no=jar_doc.card_no,
         )
 
         status = data.get("Status") or data.get("status") or "ERROR"
@@ -863,7 +888,7 @@ def get_preauthorization_status(service_request_name):
             preauth_description = description.get("details") or ""
             frappe.db.set_value(
                 "Jubilee Approval Request",
-                jsr.name,
+                jar_doc.name,
                 {
                     "preauth_status": preauth_status,
                     "preauth_description": preauth_description,
@@ -883,10 +908,10 @@ def get_preauthorization_status(service_request_name):
             request_body=str(params),
             response_data=error_text,
             status_code=error_status,
-            company=jsr.company,
+            company=jar_doc.company,
             ref_doctype="Jubilee Approval Request",
-            ref_docname=jsr.name,
-            card_no=jsr.card_no,
+            ref_docname=jar_doc.name,
+            card_no=jar_doc.card_no,
         )
 
         result["description"] = str(error_text)

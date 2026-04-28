@@ -5,6 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "details_tab",
   "appointment",
   "patient",
   "patient_name",
@@ -367,11 +368,16 @@
    "options": "\nA Positive\nA Negative\nAB Positive\nAB Negative\nB Positive\nB Negative\nO Positive\nO Negative",
    "search_index": 1,
    "sort_options": 1
+  },
+  {
+   "fieldname": "details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Details"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-15 10:30:44.852747",
+ "modified": "2026-04-17 16:31:02.293007",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Preoperative Assessment",
