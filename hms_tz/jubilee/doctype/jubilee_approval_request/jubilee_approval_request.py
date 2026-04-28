@@ -65,10 +65,10 @@ class JubileeApprovalRequest(Document):
         self.claim_month = posting.month
         self.bill_no = "".join(self.name.split("-")[1:])
 
-        mct_code = frappe.db.get_value(
-            "Healthcare Practitioner", encounter_list[0].practitioner, "tz_mct_code"
-        )
-        self.practitioner_no = mct_code or ""
+        self.practitioner = encounter_list[0].practitioner
+        self.practitioner_no = frappe.db.get_value(
+            "Healthcare Practitioner", self.practitioner, "tz_mct_code"
+        ) or ""
         self.jubilee_procedure = encounter_list[0].get("jubilee_procedure") or ""
 
         self.set_diseases(encounter_list)
@@ -76,9 +76,11 @@ class JubileeApprovalRequest(Document):
         self.set_inpatient_values()
 
     def get_encounters(self):
+        """Get all encounters for the appointment excluding ipd encounters."""
+
         encounter_list = frappe.get_all(
             "Patient Encounter",
-            {"appointment": self.appointment},
+            {"appointment": self.appointment, "inpatient_record": ""},
             ["name", "practitioner", "jubilee_procedure"],
             order_by="creation",
         )
