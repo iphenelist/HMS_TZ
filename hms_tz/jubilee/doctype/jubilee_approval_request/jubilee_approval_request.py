@@ -27,17 +27,19 @@ class JubileeApprovalRequest(Document):
 
     def set_missing_values(self):
         """Pull patient demographics, diseases, and items from the linked encounter."""
-        if not self.patient_encounter:
-            frappe.throw(_("Patient Encounter is required"))
+        if not self.appointment:
+            frappe.throw(_("Appointment is required"))
 
-        encounter = frappe.get_doc("Patient Encounter", self.patient_encounter)
+        encounter_list = self.get_encounters()
+        if not encounter_list:
+            frappe.throw(_(f"No encounters found for appointment: {self.appointment}"))
 
-        self.appointment = encounter.appointment
-        self.patient = encounter.patient
-        self.patient_name = encounter.patient_name
-        self.company = encounter.company
+        appointment_doc = frappe.get_doc("Patient Appointment", self.appointment)
+        self.patient = appointment_doc.patient
+        self.patient_name = appointment_doc.patient_name
+        self.company = appointment_doc.company
 
-        patient_doc = frappe.get_cached_doc("Patient", encounter.patient)
+        patient_doc = frappe.get_cached_doc("Patient", appointment_doc.patient)
         self.first_name = patient_doc.first_name
         self.last_name = patient_doc.last_name or ""
         self.gender = patient_doc.sex
@@ -45,19 +47,9 @@ class JubileeApprovalRequest(Document):
         self.telephone_no = patient_doc.mobile or ""
         self.inpatient_record = patient_doc.inpatient_record
 
-        if encounter.appointment:
-            appt = frappe.get_cached_doc("Patient Appointment", encounter.appointment)
-            self.card_no = appt.coverage_plan_card_number or ""
-            self.authorization_no = appt.authorization_number or ""
-            self.attendance_date = f"{appt.appointment_date} {appt.appointment_time or '00:00:00'}"
-
-        if encounter.practitioner:
-            mct_code = frappe.db.get_value(
-                "Healthcare Practitioner", encounter.practitioner, "tz_mct_code"
-            )
-            self.practitioner_no = mct_code or ""
-
-        self.jubilee_procedure = encounter.get("jubilee_procedure") or ""
+        self.card_no = appointment_doc.coverage_plan_card_number or ""
+        self.authorization_no = appointment_doc.authorization_number or ""
+        self.attendance_date = f"{appointment_doc.appointment_date} {appointment_doc.appointment_time or '00:00:00'}"
 
         self.provider_id = frappe.get_cached_value(
             "HMS TZ Setting", self.company, "jubilee_provider_id"
@@ -71,17 +63,33 @@ class JubileeApprovalRequest(Document):
         posting = getdate(self.posting_date)
         self.claim_year = posting.year
         self.claim_month = posting.month
-
         self.bill_no = "".join(self.name.split("-")[1:])
 
-        self.set_diseases()
-        self.set_items(encounter)
-        self.set_inpatient_dates()
+        mct_code = frappe.db.get_value(
+            "Healthcare Practitioner", encounter_list[0].practitioner, "tz_mct_code"
+        )
+        self.practitioner_no = mct_code or ""
+        self.jubilee_procedure = encounter_list[0].get("jubilee_procedure") or ""
 
-    def set_diseases(self):
+        self.set_diseases(encounter_list)
+        self.set_items(encounter_list)
+        self.set_inpatient_values()
+
+    def get_encounters(self):
+        encounter_list = frappe.get_all(
+            "Patient Encounter",
+            {"appointment": self.appointment},
+            ["name", "practitioner", "jubilee_procedure"],
+            order_by="creation",
+        )
+
+        return encounter_list
+
+    def set_diseases(self, encounters):
         """Populate disease child table from encounter's preliminary and final diagnoses."""
 
         self.diseases = []
+        encounter_names = [row.name for row in encounters]
 
         diagnosis_list = (
             frappe.qb.from_(ct)
@@ -100,7 +108,7 @@ class JubileeApprovalRequest(Document):
             )
             .where(
                 (ct.parenttype == "Patient Encounter")
-                & (ct.parent == self.patient_encounter)
+                & (ct.parent.isin(encounter_names))
             )
             .groupby(ct.code_value, ct.parentfield)
             .orderby(ct.parentfield, order=frappe.qb.desc)
@@ -108,14 +116,12 @@ class JubileeApprovalRequest(Document):
 
         for row in diagnosis_list:
             new_row = self.append("diseases", {})
+            new_row.medical_code = row.code_value
+
             if row.parentfield == "patient_encounter_preliminary_diagnosis":
                 new_row.status = "Provisional"
             elif row.parentfield == "patient_encounter_final_diagnosis":
                 new_row.status = "Final"
-
-            new_row.patient_encounter = row.parent
-            new_row.codification_table = row.name
-            new_row.medical_code = row.code_value
 
             # Convert ICD code format (CDC to NHIF style)
             if row.code and len(row.code) > 3 and "." not in row.code:
@@ -129,71 +135,83 @@ class JubileeApprovalRequest(Document):
             new_row.created_by = row.practitioner
             new_row.date_created = row.modified
 
-    def set_items(self, encounter_doc):
+    def set_items(self, encounters):
         """Populate item child table from encounter's service items."""
 
         self.items = []
 
         total_amount = 0
-        for child in get_childs_map():
-            if not encounter_doc.get(child.get("table")):
-                continue
-
-            for row in encounter_doc.get(child.get("table")):
-                if not row.get(child.get("item")):
+        for encounter in encounters:
+            encounter_doc = frappe.get_doc("Patient Encounter", encounter.name)
+            for child in get_childs_map():
+                if not encounter_doc.get(child.get("table")):
                     continue
 
-                # Skip cancelled/prescribed/restricted items
-                if (
-                    row.get("prescribe")
-                    or row.get("is_not_available_inhouse")
-                    or row.get("is_cancelled")
-                    or row.get("is_restricted")
-                ):
-                    continue
+                for row in encounter_doc.get(child.get("table")):
+                    if not row.get(child.get("item")):
+                        continue
 
-                ref_code = get_item_refcode(
-                    child.get("doctype"),
-                    row.get(child.get("item")),
-                    encounter_doc.company,
-                    encounter_doc.insurance_company,
-                )
+                    # Skip cancelled/prescribed/restricted items
+                    if (
+                        row.get("prescribe")
+                        or row.get("is_not_available_inhouse")
+                        or row.get("is_cancelled")
+                    ):
+                        continue
 
-                item_code = frappe.get_cached_value(
-                    child.get("doctype"),
-                    row.get(child.get("item")),
-                    "item",
-                )
-                if not item_code:
-                    continue
+                    ref_code = get_item_refcode(
+                        child.get("doctype"),
+                        row.get(child.get("item")),
+                        encounter_doc.company,
+                        encounter_doc.insurance_company,
+                    )
 
-                item_rate = get_item_rate(
-                    item_code,
-                    encounter_doc.company,
-                    encounter_doc.insurance_subscription,
-                    encounter_doc.insurance_company,
-                )
+                    item_code = frappe.get_cached_value(
+                        child.get("doctype"),
+                        row.get(child.get("item")),
+                        "item",
+                    )
+                    if not item_code:
+                        continue
 
-                quantity = row.get("quantity") or 1
-                amount = item_rate * quantity
+                    item_rate = get_item_rate(
+                        item_code,
+                        encounter_doc.company,
+                        encounter_doc.insurance_subscription,
+                        encounter_doc.insurance_company,
+                    )
 
-                new_row = self.append("items", {})
-                new_row.item_name = row.get(child.get("item"))
-                new_row.item_code = str(ref_code) if ref_code else ""
-                new_row.item_quantity = quantity
-                new_row.unit_price = item_rate
-                new_row.amount_claimed = amount
-                new_row.ref_doctype = row.get("doctype")
-                new_row.ref_docname = row.get("name")
-                new_row.patient_encounter = encounter_doc.name
-                new_row.created_by = get_fullname(frappe.session.user)
-                new_row.date_created = nowdate()
+                    quantity = row.get("quantity") or 1
+                    amount = item_rate * quantity
 
-                total_amount += amount
+                    new_row = self.append("items", {})
+                    new_row.item_name = row.get(child.get("item"))
+                    new_row.item_code = str(ref_code) if ref_code else ""
+                    new_row.item_quantity = quantity
+                    new_row.unit_price = item_rate
+                    new_row.amount_claimed = amount
+                    new_row.ref_doctype = row.get("doctype")
+                    new_row.ref_docname = row.get("name")
+                    new_row.patient_encounter = encounter_doc.name
+                    new_row.created_by = get_fullname(frappe.session.user)
+                    new_row.date_created = nowdate()
+
+                    if (
+                        row.get("preapproval_no") or
+                        (
+                            row.get("preapproval_status") and
+                            str(row.get("preapproval_status")).lower() not in ["error", "rejected"]
+                        )
+                    ):
+                        new_row.status = "Approved"
+                    else:
+                        new_row.status = "Pending"
+
+                    total_amount += amount
 
         self.total_amount = total_amount
 
-    def set_inpatient_dates(self):
+    def set_inpatient_values(self):
         """Set admitted/discharged dates from the encounter's inpatient record."""
 
         if not self.inpatient_record:
@@ -287,7 +305,7 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
 
     existing_jar = frappe.db.get_value(
         "Jubilee Approval Request",
-        {"patient_encounter": source_docname},
+        {"appointment": source_doc.appointment},
         "name"
     )
 
@@ -300,7 +318,7 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
         jar_doc.save(ignore_permissions=True)
     else:
         jar_doc = frappe.new_doc("Jubilee Approval Request")
-        jar_doc.patient_encounter = source_docname
+        jar_doc.appointment = source_doc.appointment
         jar_doc.benefit_code = benefit_code
         jar_doc.benefit_name = benefit_name
         jar_doc.benefit_balance = benefit_balance
