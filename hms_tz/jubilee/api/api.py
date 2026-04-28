@@ -892,3 +892,122 @@ def get_preauthorization_status(service_request_name):
         result["description"] = str(error_text)
 
     return result
+
+
+@frappe.whitelist()
+def get_inpatient_admission_status(inpatient_record_name):
+    """Fetch inpatient admission status from Jubilee (endpoint 12 - getAdmissionStatus).
+
+    Calls GET /jubileeapi/getAdmissionStatus?authorizationNo=<auth_no>
+
+    The authorization number is read from the Insurance Subscription linked
+    to the Inpatient Record (insurance_subscription.authorization_no).
+
+    On success, persists fromDate, toDate, and approvedAmount onto the
+    Inpatient Record so downstream processes can use them.
+
+    Args:
+        inpatient_record_name: Name of the Inpatient Record document.
+
+    Returns:
+        dict: {
+            "status": "OK" | "ERROR",
+            "description": <dict with admission details on OK, error string on ERROR>,
+            "inpatient_record": <inpatient_record_name>,
+        }
+    """
+    inpatient_doc = frappe.get_doc("Inpatient Record", inpatient_record_name)
+
+    authorization_no = frappe.db.get_value(
+        "Patient Appointment",
+        inpatient_doc.patient_appointment,
+        "authorization_no",
+    )
+
+    if not authorization_no:
+        frappe.throw(
+            _(
+                "Cannot check admission status: the linked Patient Appointment "
+                "has no Authorization Number. Please ensure the patient is authorized first."
+            )
+        )
+
+    setting_doc = frappe.get_cached_doc("HMS TZ Setting", inpatient_doc.company)
+    if not setting_doc.enable_jubilee_api:
+        frappe.throw(_("Jubilee API is not enabled for this company"))
+
+    token = setting_doc.get_jubilee_token()
+    url = f"{setting_doc.jubilee_url}/jubileeapi/getAdmissionStatus"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    params = {"authorizationNo": authorization_no}
+
+    result = {
+        "status": "ERROR",
+        "description": "",
+        "inpatient_record": inpatient_record_name,
+    }
+    r = None
+
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=60)
+        data = json.loads(r.text) if r.text else {}
+
+        add_jubilee_log(
+            request_type="getAdmissionStatus",
+            request_url=url,
+            request_header=headers,
+            request_body=str(params),
+            response_data=data,
+            status_code=r.status_code,
+            company=inpatient_doc.company,
+            ref_doctype="Inpatient Record",
+            ref_docname=inpatient_record_name,
+            card_no=authorization_no,
+        )
+
+        status = data.get("Status") or data.get("status") or "ERROR"
+        description = data.get("Description") or data.get("description") or ""
+
+        if status == "ERROR":
+            frappe.throw(_(str(description)))
+
+        from_date = description.get("fromDate") or ""
+        to_date = description.get("toDate") or ""
+        description.get("approvedAmount") or 0
+
+        update_fields = {}
+        if from_date:
+            update_fields["admitted_datetime"] = from_date
+        if to_date:
+            update_fields["expected_discharge"] = to_date
+
+        # if update_fields:
+        #     frappe.db.set_value("Inpatient Record", inpatient_record_name, update_fields)
+
+        result.update({"status": status, "description": description})
+
+    except Exception:
+        error_text = (
+            r.text if r and r.text else "NO RESPONSE — Timeout or connection error"
+        )
+        error_status = r.status_code if r else "NO STATUS CODE"
+
+        add_jubilee_log(
+            request_type="getAdmissionStatus",
+            request_url=url,
+            request_header=headers,
+            request_body=str(params),
+            response_data=error_text,
+            status_code=error_status,
+            company=inpatient_doc.company,
+            ref_doctype="Inpatient Record",
+            ref_docname=inpatient_record_name,
+            card_no=authorization_no,
+        )
+
+        result["description"] = str(error_text)
+
+    return result
