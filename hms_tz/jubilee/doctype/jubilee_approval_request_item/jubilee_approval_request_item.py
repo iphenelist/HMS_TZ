@@ -4,5 +4,5 @@
 from frappe.model.document import Document
 
 
-class JubileeServiceRequestItem(Document):
+class JubileeApprovalRequestItem(Document):
 	pass

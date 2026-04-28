@@ -2551,7 +2551,7 @@ function show_preauth_dialog(frm, data) {
       d.hide();
       frappe.call({
         method:
-          "hms_tz.jubilee.doctype.jubilee_service_request.jubilee_service_request.create_preauthorization_doc",
+          "hms_tz.jubilee.doctype.jubilee_approval_request.jubilee_approval_request.create_preauthorization_doc",
         args: {
           source_doctype: data.source_doctype,
           source_docname: data.source_docname,
