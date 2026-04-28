@@ -255,20 +255,19 @@ class JubileeServiceRequest(Document):
 
 @frappe.whitelist()
 def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
-    """Create a Jubilee Service Request record and submit it.
-
-    Called automatically from the verify dialog's primary_action button.
-    The doctor stays on the encounter page throughout.
-    On submit, the before_submit hook sends the pre-authorization to Jubilee.
-
-    Args:
-        args: dict with source_doctype, source_docname, benefit_code.
-    """
+    """Create or reuse a Jubilee Service Request record and submit it."""
 
     if not source_docname:
         frappe.throw(_("Source document name is required"))
 
     source_doc = frappe.get_doc(source_doctype, source_docname)
+
+    existing_jsr = frappe.db.get_value(
+        "Jubilee Service Request",
+        {"patient_encounter": source_docname},
+        ["name", "docstatus"],
+        as_dict=True,
+    )
 
     benefit_name = ""
     benefit_balance = 0
@@ -277,18 +276,32 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
             "Jubilee Benefit",
             {"appointment": source_doc.appointment, "benefit_code": benefit_code},
             ["benefit_name", "benefit_balance"],
-        )
+        ) or ("", 0)
 
-    jsr = frappe.get_doc({
-        "doctype": "Jubilee Service Request",
-        "patient_encounter": source_docname,
-        "benefit_code": benefit_code,
-        "benefit_name": benefit_name,
-        "benefit_balance": benefit_balance,
-    })
-    jsr.insert(ignore_permissions=True)
+    if existing_jsr:
+        jsr = frappe.get_doc("Jubilee Service Request", existing_jsr.name)
+
+        if existing_jsr.docstatus == 1:
+            return {
+                "status": jsr.preauth_status or "ERROR",
+                "submission_id": jsr.submission_id or "",
+                "description": jsr.preauth_description or "",
+                "service_request": jsr.name,
+            }
+
+        jsr.benefit_code = benefit_code
+        jsr.benefit_name = benefit_name
+        jsr.benefit_balance = benefit_balance
+        jsr.save(ignore_permissions=True)
+    else:
+        jsr = frappe.new_doc("Jubilee Service Request")
+        jsr.patient_encounter = source_docname
+        jsr.benefit_code = benefit_code
+        jsr.benefit_name = benefit_name
+        jsr.benefit_balance = benefit_balance
+        jsr.save(ignore_permissions=True)
+
     jsr.submit()
-    jsr.reload()
 
     source_doc.add_comment(
         comment_type="Comment",
@@ -306,5 +319,3 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
         "description": jsr.preauth_description or "",
         "service_request": jsr.name,
     }
-
-
