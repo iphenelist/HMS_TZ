@@ -289,7 +289,9 @@ let admit_patient_dialog = (frm) => {
       },
     ],
     primary_action_label:
-      frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")
+      frm.doc.insurance_company &&
+      (frm.doc.insurance_company.includes("NHIF") ||
+        frm.doc.insurance_company.includes("Jubilee"))
         ? __("Next")
         : __("Admit"),
     primary_action: async () => {
@@ -318,6 +320,29 @@ let admit_patient_dialog = (frm) => {
                 service_unit,
                 check_in,
                 biometric_method
+              );
+            } else {
+              admit_patient(frm, service_unit, check_in, admission_type);
+              dialog.hide();
+            }
+          }
+        );
+      } else if (
+        frm.doc.insurance_company &&
+        frm.doc.insurance_company.includes("Jubilee")
+      ) {
+        frappe.db.get_value(
+          "HMS TZ Setting",
+          frm.doc.company,
+          "enable_jubilee_api",
+          (r) => {
+            if (r.enable_jubilee_api) {
+              jubilee_admit_patient(
+                frm,
+                dialog,
+                admission_type,
+                service_unit,
+                check_in
               );
             } else {
               admit_patient(frm, service_unit, check_in, admission_type);
@@ -426,6 +451,49 @@ let nhif_admit_patient = async (
           result.poc_reference_no
         );
       }
+    },
+  });
+};
+
+let jubilee_admit_patient = (
+  frm,
+  dialog,
+  admission_type,
+  service_unit,
+  check_in
+) => {
+  dialog.hide();
+
+  frappe.call({
+    method: "hms_tz.jubilee.api.api.get_inpatient_admission_status",
+    args: {
+      inpatient_record_name: frm.doc.name,
+    },
+    freeze: true,
+    freeze_message: __("Checking Jubilee Admission Status..."),
+    callback: (r) => {
+      if (r.message && r.message.status === "OK") {
+        let data = r.message.description || {};
+        frappe.show_alert({
+          message: __(
+            `Jubilee Admission Confirmed — Approval No: ${
+              data.approvalNumber || ""
+            }, Approved: TZS ${data.approvedAmount || "N/A"}`
+          ),
+          indicator: "green",
+        });
+        admit_patient(frm, service_unit, check_in, admission_type);
+      }
+    },
+    onerror: () => {
+      frappe.utils.play_sound("error");
+      frappe.msgprint({
+        title: __("Jubilee Admission Error"),
+        indicator: "red",
+        message: __(
+          "An unexpected error occurred while fetching the Jubilee admission status."
+        ),
+      });
     },
   });
 };
