@@ -19,7 +19,7 @@ ct = DocType("Codification Table")
 pe = DocType("Patient Encounter")
 
 
-class JubileeServiceRequest(Document):
+class JubileeApprovalRequest(Document):
     def before_save(self):
         """Auto-populate fields from Patient Encounter for manual creation (Path B)."""
 
@@ -255,7 +255,7 @@ class JubileeServiceRequest(Document):
 
 @frappe.whitelist()
 def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
-    """Create or reuse a Jubilee Service Request record and submit it."""
+    """Create or reuse a Jubilee Approval Request record and submit it."""
 
     if not source_docname:
         frappe.throw(_("Source document name is required"))
@@ -263,7 +263,7 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
     source_doc = frappe.get_doc(source_doctype, source_docname)
 
     existing_jsr = frappe.db.get_value(
-        "Jubilee Service Request",
+        "Jubilee Approval Request",
         {"patient_encounter": source_docname},
         ["name", "docstatus"],
         as_dict=True,
@@ -279,7 +279,7 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
         ) or ("", 0)
 
     if existing_jsr:
-        jsr = frappe.get_doc("Jubilee Service Request", existing_jsr.name)
+        jsr = frappe.get_doc("Jubilee Approval Request", existing_jsr.name)
 
         if existing_jsr.docstatus == 1:
             return {
@@ -294,7 +294,7 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
         jsr.benefit_balance = benefit_balance
         jsr.save(ignore_permissions=True)
     else:
-        jsr = frappe.new_doc("Jubilee Service Request")
+        jsr = frappe.new_doc("Jubilee Approval Request")
         jsr.patient_encounter = source_docname
         jsr.benefit_code = benefit_code
         jsr.benefit_name = benefit_name
@@ -307,7 +307,7 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
         comment_type="Comment",
         text=(
             f"Jubilee Pre-Authorization request sent<br>"
-            f"Service Request: <b>{jsr.name}</b><br>"
+            f"Approval Request: <b>{jsr.name}</b><br>"
             f"Status: <b>{jsr.preauth_status or 'N/A'}</b><br>"
             f"Submission ID: <b>{jsr.submission_id or 'N/A'}</b>"
         ),

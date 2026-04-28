@@ -69,7 +69,7 @@
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Series",
-   "options": "JSR-.YYYY.-.####",
+   "options": "JAR-.YYYY.-.####",
    "reqd": 1
   },
   {
@@ -250,7 +250,7 @@
    "fieldname": "diseases",
    "fieldtype": "Table",
    "label": "Diseases",
-   "options": "Jubilee Service Request Disease"
+   "options": "Jubilee Approval Request Disease"
   },
   {
    "fieldname": "section_items",
@@ -261,7 +261,7 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
-   "options": "Jubilee Service Request Item"
+   "options": "Jubilee Approval Request Item"
   },
   {
    "collapsible": 1,
@@ -298,7 +298,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Jubilee Service Request",
+   "options": "Jubilee Approval Request",
    "print_hide": 1,
    "read_only": 1
   },
@@ -410,7 +410,7 @@
  "modified": "2026-04-27 15:31:04.360510",
  "modified_by": "Administrator",
  "module": "Jubilee",
- "name": "Jubilee Service Request",
+ "name": "Jubilee Approval Request",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [

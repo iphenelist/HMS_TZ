@@ -647,12 +647,12 @@ def send_preauthorization(service_request_name):
     """Build and send the SendPreauthorization payload to the Jubilee API.
 
     Args:
-        service_request_name: Name of the Jubilee Service Request document.
+        service_request_name: Name of the Jubilee Approval Request document.
 
     Returns:
         dict: Result with status, submission_id, and description.
     """
-    jsr = frappe.get_doc("Jubilee Service Request", service_request_name)
+    jsr = frappe.get_doc("Jubilee Approval Request", service_request_name)
 
     setting_doc = frappe.get_cached_doc("HMS TZ Setting", jsr.company)
     if not setting_doc.enable_jubilee_api:
@@ -738,7 +738,7 @@ def send_preauthorization(service_request_name):
             response_data=data,
             status_code=r.status_code,
             company=jsr.company,
-            ref_doctype="Jubilee Service Request",
+            ref_doctype="Jubilee Approval Request",
             ref_docname=jsr.name,
             card_no=jsr.card_no,
         )
@@ -748,7 +748,7 @@ def send_preauthorization(service_request_name):
         submission_id = str(data.get("SubmissionID") or data.get("submissionId") or "")
 
         frappe.db.set_value(
-            "Jubilee Service Request",
+            "Jubilee Approval Request",
             jsr.name,
             {
                 "preauth_status": status,
@@ -776,13 +776,13 @@ def send_preauthorization(service_request_name):
             response_data=error_text,
             status_code=error_status,
             company=jsr.company,
-            ref_doctype="Jubilee Service Request",
+            ref_doctype="Jubilee Approval Request",
             ref_docname=jsr.name,
             card_no=jsr.card_no,
         )
 
         frappe.db.set_value(
-            "Jubilee Service Request",
+            "Jubilee Approval Request",
             jsr.name,
             {
                 "preauth_status": "ERROR",
@@ -801,7 +801,7 @@ def get_preauthorization_status(service_request_name):
     Calls GET /jubileeapi/getPreauthorizationStatus?submissionID=<id>
 
     Args:
-        service_request_name: Name of the Jubilee Service Request document.
+        service_request_name: Name of the Jubilee Approval Request document.
             Its submission_id field is used as the submissionID query parameter.
 
     Returns:
@@ -811,7 +811,7 @@ def get_preauthorization_status(service_request_name):
             "service_request": <jsr.name>,
         }
     """
-    jsr = frappe.get_doc("Jubilee Service Request", service_request_name)
+    jsr = frappe.get_doc("Jubilee Approval Request", service_request_name)
 
     if not jsr.submission_id:
         frappe.throw(
@@ -848,7 +848,7 @@ def get_preauthorization_status(service_request_name):
             response_data=data,
             status_code=r.status_code,
             company=jsr.company,
-            ref_doctype="Jubilee Service Request",
+            ref_doctype="Jubilee Approval Request",
             ref_docname=jsr.name,
             card_no=jsr.card_no,
         )
@@ -862,7 +862,7 @@ def get_preauthorization_status(service_request_name):
             preauth_status = description.get("PreauthorizationStatus") or ""
             preauth_description = description.get("details") or ""
             frappe.db.set_value(
-                "Jubilee Service Request",
+                "Jubilee Approval Request",
                 jsr.name,
                 {
                     "preauth_status": preauth_status,
@@ -884,7 +884,7 @@ def get_preauthorization_status(service_request_name):
             response_data=error_text,
             status_code=error_status,
             company=jsr.company,
-            ref_doctype="Jubilee Service Request",
+            ref_doctype="Jubilee Approval Request",
             ref_docname=jsr.name,
             card_no=jsr.card_no,
         )

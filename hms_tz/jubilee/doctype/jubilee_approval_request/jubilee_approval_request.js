@@ -1,7 +1,7 @@
 // Copyright (c) 2025, Aakvatech and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Jubilee Service Request", {
+frappe.ui.form.on("Jubilee Approval Request", {
   refresh: function (frm) {
     // Show status indicator on the dashboard
     if (frm.doc.preauth_status === "OK") {
