@@ -643,7 +643,7 @@ def get_services(doc, preapproval_no=None):
     return services, service_map, total_amount
 
 
-def send_preauthorization(approval_request_name):
+def send_preauthorization(approval_request_name, request_type="SendPreauthorization", submission_id=None):
     """Build and send the SendPreauthorization payload to the Jubilee API.
 
     Args:
@@ -662,7 +662,16 @@ def send_preauthorization(approval_request_name):
     payload = json.dumps({"entities": [entities]})
 
     token = setting_doc.get_jubilee_token()
-    url = f"{setting_doc.jubilee_url}/jubileeapi/SendPreauthorization"
+
+    url = ""
+    request_type = ""
+    if jar_doc.submission_id:
+        request_type = "UpdatePreauthorization"
+        url = f"{setting_doc.jubilee_url}/jubileeapi/UpdatePreauthorization"
+    else:
+        request_type = "SendPreauthorization"
+        url = f"{setting_doc.jubilee_url}/jubileeapi/SendPreauthorization"
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -672,11 +681,11 @@ def send_preauthorization(approval_request_name):
     r = None
 
     try:
-        r = requests.post(url, headers=headers, data=payload, timeout=300)
+        r = requests.post(url, headers=headers, data=payload, timeout=120)
         data = json.loads(r.text) if r.text else {}
 
         add_jubilee_log(
-            request_type="SendPreauthorization",
+            request_type=request_type,
             request_url=url,
             request_header=headers,
             request_body=payload,
@@ -714,7 +723,7 @@ def send_preauthorization(approval_request_name):
         error_status = r.status_code if r else "NO STATUS CODE"
 
         add_jubilee_log(
-            request_type="SendPreauthorization",
+            request_type=request_type,
             request_url=url,
             request_header=headers,
             request_body=payload,
@@ -737,11 +746,6 @@ def send_preauthorization(approval_request_name):
         result["description"] = str(error_text)
 
     return result
-
-
-def update_preauth_request(approval_request_name):
-
-    pass
 
 
 def get_preauth_payload(jar_doc):
