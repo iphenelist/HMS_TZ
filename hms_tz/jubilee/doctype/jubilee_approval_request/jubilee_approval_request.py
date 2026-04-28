@@ -25,13 +25,6 @@ class JubileeApprovalRequest(Document):
 
         self.set_missing_values()
 
-    def before_submit(self):
-        """Send the pre-authorization request to Jubilee API on submit."""
-        result = send_preauthorization(self.name)
-        self.preauth_status = result.get("status") or ""
-        self.preauth_description = result.get("description") or ""
-        self.submission_id = result.get("submission_id") or ""
-
     def set_missing_values(self):
         """Pull patient demographics, diseases, and items from the linked encounter."""
         if not self.patient_encounter:
@@ -252,6 +245,27 @@ class JubileeApprovalRequest(Document):
 
         self.total_amount = total
 
+    @frappe.whitelist()
+    def send_to_jubilee(self):
+        """Send the pre-authorization request to Jubilee API on submit."""
+        result = send_preauthorization(self.name)
+        self.preauth_status = result.get("status") or ""
+        self.preauth_description = result.get("description") or ""
+        self.submission_id = result.get("submission_id") or ""
+
+        self.db_update()
+
+        self.add_comment(
+            comment_type="Comment",
+            text=f"""Jubilee Pre-Authorization request sent<br/>Status: {self.preauth_status}<br/>\
+                Description: {self.preauth_description}<br/>Submission ID: {self.submission_id}""",
+        )
+
+        return {
+            "status": self.preauth_status,
+            "description": self.preauth_description,
+            "submission_id": self.submission_id,
+        }
 
 @frappe.whitelist()
 def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
@@ -262,13 +276,6 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
 
     source_doc = frappe.get_doc(source_doctype, source_docname)
 
-    existing_jsr = frappe.db.get_value(
-        "Jubilee Approval Request",
-        {"patient_encounter": source_docname},
-        ["name", "docstatus"],
-        as_dict=True,
-    )
-
     benefit_name = ""
     benefit_balance = 0
     if benefit_code:
@@ -278,44 +285,42 @@ def create_preauthorization_doc(source_doctype, source_docname, benefit_code):
             ["benefit_name", "benefit_balance"],
         ) or ("", 0)
 
-    if existing_jsr:
-        jsr = frappe.get_doc("Jubilee Approval Request", existing_jsr.name)
+    existing_jar = frappe.db.get_value(
+        "Jubilee Approval Request",
+        {"patient_encounter": source_docname},
+        "name"
+    )
 
-        if existing_jsr.docstatus == 1:
-            return {
-                "status": jsr.preauth_status or "ERROR",
-                "submission_id": jsr.submission_id or "",
-                "description": jsr.preauth_description or "",
-                "service_request": jsr.name,
-            }
-
-        jsr.benefit_code = benefit_code
-        jsr.benefit_name = benefit_name
-        jsr.benefit_balance = benefit_balance
-        jsr.save(ignore_permissions=True)
+    jar_doc = None
+    if existing_jar:
+        jar_doc = frappe.get_doc("Jubilee Approval Request", existing_jar)
+        jar_doc.benefit_code = benefit_code
+        jar_doc.benefit_name = benefit_name
+        jar_doc.benefit_balance = benefit_balance
+        jar_doc.save(ignore_permissions=True)
     else:
-        jsr = frappe.new_doc("Jubilee Approval Request")
-        jsr.patient_encounter = source_docname
-        jsr.benefit_code = benefit_code
-        jsr.benefit_name = benefit_name
-        jsr.benefit_balance = benefit_balance
-        jsr.save(ignore_permissions=True)
+        jar_doc = frappe.new_doc("Jubilee Approval Request")
+        jar_doc.patient_encounter = source_docname
+        jar_doc.benefit_code = benefit_code
+        jar_doc.benefit_name = benefit_name
+        jar_doc.benefit_balance = benefit_balance
+        jar_doc.save(ignore_permissions=True)
 
-    jsr.submit()
+    result = jar_doc.send_to_jubilee()
 
     source_doc.add_comment(
         comment_type="Comment",
         text=(
             f"Jubilee Pre-Authorization request sent<br>"
-            f"Approval Request: <b>{jsr.name}</b><br>"
-            f"Status: <b>{jsr.preauth_status or 'N/A'}</b><br>"
-            f"Submission ID: <b>{jsr.submission_id or 'N/A'}</b>"
+            f"Approval Request: <b>{jar_doc.name}</b><br>"
+            f"Status: <b>{result.get('status') or 'N/A'}</b><br>"
+            f"Submission ID: <b>{result.get('submission_id') or 'N/A'}</b>"
         ),
     )
 
     return {
-        "status": jsr.preauth_status or "ERROR",
-        "submission_id": jsr.submission_id or "",
-        "description": jsr.preauth_description or "",
-        "service_request": jsr.name,
+        "status": result.get('status') or "ERROR",
+        "submission_id": result.get('submission_id') or "",
+        "description": result.get('description') or "",
+        "service_request": jar_doc.name,
     }
