@@ -268,6 +268,7 @@ class JubileeApprovalRequest(Document):
     @frappe.whitelist()
     def send_to_jubilee(self):
         """Send the pre-authorization request to Jubilee API on submit."""
+
         result = send_preauthorization(self.name)
         self.preauth_status = result.get("status") or ""
         self.preauth_description = result.get("description") or ""
