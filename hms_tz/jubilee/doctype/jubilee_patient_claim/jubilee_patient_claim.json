@@ -57,6 +57,12 @@
   "delayreason",
   "attending_practitioner_section",
   "practitioners",
+  "submission_details_section",
+  "bypass_sending_to_jubilee",
+  "bypassed_by",
+  "submission_id",
+  "column_break_hqac",
+  "bypass_reason",
   "item_details_tab",
   "section_break_28",
   "jubilee_patient_claim_disease",
@@ -515,12 +521,47 @@
    "fieldtype": "Table",
    "label": "Practitioner(s)",
    "options": "Jubilee Patient Claim Practitioner"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "submission_details_section",
+   "fieldtype": "Section Break",
+   "label": "Submission Details"
+  },
+  {
+   "default": "0",
+   "fieldname": "bypass_sending_to_jubilee",
+   "fieldtype": "Check",
+   "label": "Bypass Sending to Jubilee"
+  },
+  {
+   "fieldname": "bypassed_by",
+   "fieldtype": "Data",
+   "label": "Bypassed By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submission_id",
+   "fieldtype": "Data",
+   "label": "Submission ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hqac",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.bypass_sending_to_jubilee",
+   "fieldname": "bypass_reason",
+   "fieldtype": "Small Text",
+   "label": "Bypass Reason",
+   "mandatory_depends_on": "eval: doc.bypass_sending_to_jubilee"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-29 12:29:53.205875",
+ "modified": "2026-04-29 15:16:37.513704",
  "modified_by": "Administrator",
  "module": "Jubilee",
  "name": "Jubilee Patient Claim",
