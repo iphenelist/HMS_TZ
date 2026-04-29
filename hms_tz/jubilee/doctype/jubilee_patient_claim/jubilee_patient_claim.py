@@ -28,6 +28,7 @@ from frappe.utils import (
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 
+from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
 
@@ -56,40 +57,7 @@ class JubileePatientClaim(Document):
         self.validate_multiple_appointments_per_authorization_no("before_insert")
 
     def after_insert(self):
-        folio_counter = frappe.db.get_all(
-            "Insurance Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-                "insurance_provider": "Jubilee"
-            },
-            fields=["name", "folio_no"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "Insurance Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "insurance_provider": "Jubilee",
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_no = cint(folio_counter[0].folio_no) + 1
-            frappe.set_value("Insurance Folio Counter", folio_counter[0].name, {
-                    "folio_no": folio_no,
-                    "posting_date": now_datetime()
-                }
-            )
-        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
+        self.set_folio_count()
 
         items = []
         for row in self.jubilee_patient_claim_item:
@@ -934,40 +902,8 @@ class JubileePatientClaim(Document):
         if cint(self.folio_no) != 0:
             return
 
-        folio_counter = frappe.db.get_all(
-            "Insurance Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-            },
-            fields=["name"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "Insurance Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_doc = frappe.get_doc("Insurance Folio Counter", folio_counter[0].name)
-            folio_no = cint(folio_doc.folio_no) + 1
-
-            folio_doc.folio_no += 1
-            folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
-
-        self.folio_no = folio_no
-        self.db_set("folio_no", folio_no)
+        self.folio_no = get_or_create_folio_counter(self, "NHIF")
+        self.db_set("folio_no", self.folio_no)
 
     @frappe.whitelist()
     def send_jubilee_claim(self):
@@ -1225,7 +1161,6 @@ class JubileePatientClaim(Document):
             else:
                 return unique_items
 
-        # claim_doc = frappe.get_doc("Jubilee Patient Claim", self.name)
         self.allow_changes = 1
         self.jubilee_patient_claim_item = reconcile_items(
             self.jubilee_patient_claim_item

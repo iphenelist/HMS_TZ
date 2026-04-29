@@ -18,7 +18,6 @@ from frappe.utils import (
     get_time,
     get_url_to_form,
     getdate,
-    now_datetime,
     nowdate,
     nowtime,
     time_diff_in_seconds,
@@ -26,6 +25,7 @@ from frappe.utils import (
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 
+from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
 from hms_tz.nhif.api.patient_encounter import finalized_encounter
 from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
@@ -844,40 +844,8 @@ class NHIFPatientClaim(Document):
         if cint(self.folio_no) != 0:
             return
 
-        folio_counter = frappe.db.get_all(
-            "NHIF Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-            },
-            fields=["name"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "NHIF Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_doc = frappe.get_doc("NHIF Folio Counter", folio_counter[0].name)
-            folio_no = cint(folio_doc.folio_no) + 1
-
-            folio_doc.folio_no += 1
-            folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
-
-        self.folio_no = folio_no
-        self.db_set("folio_no", folio_no)
+        self.folio_no = get_or_create_folio_counter(self, "NHIF")
+        self.db_set("folio_no", self.folio_no)
 
     def validate_reqd_fields(self):
         if not self.main_diagnosis_code:
