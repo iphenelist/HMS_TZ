@@ -200,6 +200,7 @@ class JubileePatientClaim(Document):
         self.set_patient_claim_item(encounter_list)
         self.claim_year = int(self.attendance_date.strftime("%Y"))
         self.claim_month = int(self.attendance_date.strftime("%m"))
+        self.patient_type_code = "OUT"
 
         if not self.date_of_birth:
             self.date_of_birth = frappe.get_cached_value("Patient", self.patient, "dob")
@@ -977,7 +978,6 @@ class JubileePatientClaim(Document):
         entities = frappe._dict()
         entities.FolioID = self.folio_id
         entities.ClaimYear = self.claim_year
-        entities.ClaimYear = self.claim_year
         entities.ClaimMonth = self.claim_month
         entities.FolioNo = self.folio_no
         entities.SerialNo = self.serial_no
@@ -987,7 +987,7 @@ class JubileePatientClaim(Document):
         entities.LastName = self.last_name
         entities.Gender = self.gender
         entities.DateOfBirth = str(self.date_of_birth)
-        entities.Age = f"{(date_diff(nowdate(), self.date_of_birth)) // 365}"
+        entities.Age = self.patient_age
         entities.TelephoneNo = self.telephone_no
         entities.PatientFileNo = self.patient
         entities.AuthorizationNo = self.authorization_no
@@ -1002,19 +1002,15 @@ class JubileePatientClaim(Document):
             )
         entities.PractitionerNo = ", ".join([d.mct_code for d in self.practitioners if d.mct_code]),
         # entities.PractitionerName = self.practitioner_name
-        entities.ProviderID = (
-            frappe.get_cached_value(
-                "HMS TZ Setting",
-                self.company,
-                "jubilee_provider_id",
-            )
-        )
+        entities.ProviderID = self.provider_id
         entities.ClinicalNotes = self.clinical_notes
         entities.AmountClaimed = self.total_amount
         entities.DelayReason = self.delayreason
         entities.LateSubmissionReason = self.delayreason
-        entities.LateAuthorizationReason = ""
-        entities.EmergencyAuthorizationReason = get_emergency_reason(
+        entities.LateAuthorizationReason = get_appointment_remarks(
+            self.patient_appointment
+        )
+        entities.EmergencyAuthorizationReason = get_appointment_remarks(
             self.patient_appointment
         )
         entities.CreatedBy = self.item_crt_by
@@ -1221,7 +1217,7 @@ def get_missing_patient_signature(doc):
         doc.patient_signature = signature
 
 
-def get_emergency_reason(appointment):
+def get_appointment_remarks(appointment):
     remarks = frappe.db.get_value(
         "Patient Appointment",
         {"name": appointment},
