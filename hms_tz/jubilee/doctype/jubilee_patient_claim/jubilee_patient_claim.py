@@ -82,12 +82,18 @@ class JubileePatientClaim(Document):
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
+            opd_encounters = [row.encounter for row in encounter_list if not row.inpatient_record]
+            inpatient_ids = [row.inpatient_record for row in encounter_list if row.inpatient_record]
             finalized_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
-            if len(finalized_encounter) == 0:
+
+            if len(finalized_encounter) == 0 and len(inpatient_ids) == 0:
+                # Do not auto finalize the encounter if patient is inpatient because JPC will always be created during patient admission
+                # because Jubilee API involves only the services provided before the admission
+
                 last_encounter = encounter_list[-1].encounter
                 finalized_encounter(last_encounter)
 
-            self.set_claim_values()
+            self.set_claim_values(opd_encounters)
 
         self.calculate_totals()
 
@@ -189,9 +195,11 @@ class JubileePatientClaim(Document):
             ["appointment_date", "appointment_time"],
         )
         self.set_practitioner_values(encounter_list)
-        self.set_inpatient_values(encounter_list)
         self.set_patient_claim_disease(encounter_list)
         self.set_patient_claim_item(encounter_list)
+
+        # Do not set inpatient values because JPC will always be created during or before patient admission
+        # self.set_inpatient_values(encounter_list)
 
     def set_practitioner_values(self, encounter_list):
         self.practitioners = []
@@ -388,7 +396,6 @@ class JubileePatientClaim(Document):
                     service_request_doc = frappe.get_doc("Healthcare Service Request", d.get("service_request"))
                     for row in service_request_doc.get("payments"):
                         self.add_LRPMT_claim_item(row, d)
-
 
     def add_LRPMT_claim_item(self, hsr_row, d):
         if hsr_row.is_cancelled:
