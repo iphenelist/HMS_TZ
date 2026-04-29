@@ -27,7 +27,7 @@ from frappe.utils import (
     unique,
 )
 from frappe.utils.pdf import get_pdf
-from PyPDF2 import PdfFileWriter
+from pypdf import PdfWriter
 
 from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
@@ -131,7 +131,7 @@ class JubileePatientClaim(Document):
         if not self.patient_signature:
             get_missing_patient_signature(self)
 
-        self.validate_submit_date()
+        # self.validate_submit_date()
 
         if self.bypass_sending_to_jubilee == 0:
             self.send_jubilee_claim()
@@ -923,12 +923,23 @@ class JubileePatientClaim(Document):
                     f"Jubilee Server responded with HTTP status code: {r.status_code}<br><br>{str(r.text) if r.text else str(r)}"
                 )
             else:
-                data = json.loads(r.text)
-                if data.get("status") == "ERROR":
-                    frappe.throw(str(data.get("description")))
+                # Jubilee server sometimes prepends PHP debug HTML warnings
+                # before the JSON body. Extract only the JSON part.
+                raw = r.text or ""
+                json_start = raw.find('{"')
+                if json_start == -1:
+                    frappe.throw(
+                        f"Jubilee returned an unreadable response:<br><br>{raw}"
+                    )
+
+                data = json.loads(raw[json_start:])
+                if data.get("status") == "ERROR" or data.get("Status") == "ERROR":
+                    frappe.throw(
+                        data.get("description") or data.get("Description") or str(data)
+                    )
 
                 else:
-                    frappe.msgprint(str(data.get("description")))
+                    frappe.msgprint(str(data.get("description") or data.get("Description") or ""))
                     if data:
                         add_jubilee_log(
                             request_type="SubmitClaim",
@@ -1242,8 +1253,13 @@ def generate_pdf(doc):
             return to_base64(pdf)
 
     data_list = []
-    for i in doc.patient_encounters:
-        data_list.append(i.name)
+    encounter_list = doc.get_patient_encounters()
+
+    for i in encounter_list:
+        if not i.encounter or i.inpatient_record:
+            continue
+
+        data_list.append(i.encounter)
 
     doctype = dict({"Patient Encounter": data_list})
     print_format = ""
@@ -1279,7 +1295,7 @@ def generate_pdf(doc):
 
 
 def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
-    output = PdfFileWriter()
+    output = PdfWriter()
     if isinstance(doctype, dict):
         for doctype_name in doctype:
             for doc_name in doctype[doctype_name]:
@@ -1293,7 +1309,12 @@ def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
                         no_letterhead=no_letterhead,
                     )
                 except Exception:
-                    frappe.log_error(frappe.get_traceback())
+                    frappe.log_error(
+                        title="Jubilee Claim's PDF Error",
+                        message=frappe.get_traceback(),
+                        reference_doctype=doctype_name,
+                        reference_docname=doc_name,
+                    )
 
     return read_multi_pdf(output)
 
