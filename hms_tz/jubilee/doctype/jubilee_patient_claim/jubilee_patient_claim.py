@@ -324,6 +324,8 @@ class JubileePatientClaim(Document):
         self.clinical_notes = ""
         self.jubilee_patient_claim_item = []
 
+        self.add_appointment_claim_item()
+
         if not self.inpatient_record:
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
@@ -385,7 +387,6 @@ class JubileePatientClaim(Document):
                     for row in service_request_doc.get("payments"):
                         self.add_LRPMT_claim_item(row, d)
 
-        self.add_appointment_claim_item()
 
     def add_LRPMT_claim_item(self, hsr_row, d):
         if hsr_row.is_cancelled:
@@ -477,22 +478,6 @@ class JubileePatientClaim(Document):
         else:
             patient_appointment_list = json.loads(self.hms_tz_claim_appointment_list)
 
-        sorted_claim_items = sorted(
-            self.jubilee_patient_claim_item,
-            key=lambda k: (
-                k.get("ref_doctype"),
-                k.get("item_code"),
-                k.get("date_created"),
-            ),
-        )
-        idx = len(patient_appointment_list) + 1
-        for row in sorted_claim_items:
-            row.idx = idx
-            idx += 1
-
-        self.jubilee_patient_claim_item = sorted_claim_items
-
-        appointment_idx = 1
         for appointment_no in patient_appointment_list:
             appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_no)
 
@@ -512,8 +497,6 @@ class JubileePatientClaim(Document):
                 new_row.ref_docname = appointment_doc.name
                 new_row.date_created = appointment_doc.modified
                 new_row.item_crt_by = get_fullname(appointment_doc.modified_by)
-                new_row.idx = appointment_idx
-                appointment_idx += 1
 
     def set_clinical_notes(self, encounter):
         if not self.clinical_notes:
