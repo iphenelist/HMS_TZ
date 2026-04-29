@@ -12,6 +12,7 @@ from frappe import _
 from frappe.utils import flt, getdate, nowdate
 from frappe.utils.background_jobs import enqueue
 
+from hms_tz.jubilee.api.api import create_jubilee_subscription
 from hms_tz.nhif.api.healthcare_utils import remove_special_characters
 from hms_tz.nhif.nhif_api.verification import get_card_details_by_card_no, get_card_details_by_national_id
 
@@ -171,7 +172,7 @@ def check_card_number(card_no, is_new=None, patient=None, caller=None):
         return False
 
 
-def create_subscription(doc):
+def create_nhif_subscription(doc):
     plan = frappe.db.get_list(
         "Healthcare Insurance Coverage Plan",
         filters={"nhif_scheme_id": doc.scheme_id, "is_active": 1},
@@ -215,10 +216,12 @@ def after_insert(doc, method):
     if doc.card_no:
         doc.insurance_card_detail = (doc.card_no or "") + ", "
 
-    if not doc.scheme_id:
-        return
+    if doc.scheme_id:
+        create_nhif_subscription(doc)
 
-    create_subscription(doc)
+    if doc.insurance_provider == "Jubilee":
+        card_no = doc.card_no or doc.national_id
+        create_jubilee_subscription(doc, card_no, "Jubilee")
 
 
 @frappe.whitelist()

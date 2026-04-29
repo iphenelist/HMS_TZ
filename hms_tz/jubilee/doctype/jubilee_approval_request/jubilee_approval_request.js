@@ -23,15 +23,57 @@ frappe.ui.form.on("Jubilee Approval Request", {
       );
     }
 
+    frm.trigger("send_to_jubilee");
     frm.trigger("get_preauth_status");
   },
 
+  send_to_jubilee: (frm) => {
+    if (!frm.is_new()) {
+      ``;
+      frm.add_custom_button("Send to Jubilee", () => {
+        frappe.call({
+          method: "send_to_jubilee",
+          doc: frm.doc,
+          freeze: true,
+          freeze_message: __("Sending to Jubilee..."),
+          callback: function (r) {
+            if (r.message) {
+              let data = r.message;
+
+              if (data.status != "ERROR") {
+                frappe.utils.play_sound("success");
+                frappe.show_alert({
+                  message: __(`${data.description}`),
+                });
+
+                frm.reload_doc();
+              } else {
+                frappe.utils.play_sound("error");
+                frappe.msgprint({
+                  title: __("Pre-Authorization Error"),
+                  indicator: "red",
+                  message: __(`${data.description}`),
+                });
+              }
+            }
+          },
+          onerror: function () {
+            frappe.utils.play_sound("error");
+            frappe.msgprint({
+              title: __("Pre-Authorization Error"),
+              indicator: "red",
+              message: __(
+                "An unexpected error occurred while sending the pre-authorization to Jubilee."
+              ),
+            });
+          },
+        });
+      });
+    }
+  },
+
   get_preauth_status: (frm) => {
-    if (
-      !frm.doc.submission_id &&
-      frm.doc.preauth_status &&
-      frm.doc.preauth_status != "ERROR"
-    ) {
+    if (frm.doc.preauth_status && frm.doc.preauth_status != "ERROR") {
       frm.add_custom_button(__("Get Pre-Auth Status"), () => {
         frappe.call({
           method: "hms_tz.jubilee.api.api.get_preauthorization_status",

@@ -129,6 +129,7 @@ def create_jubilee_subscription(patient_id, card_no, insurance_provider):
         )
         return
 
+    frappe.flags.auto_his = True
     sub_doc = frappe.new_doc("Healthcare Insurance Subscription")
     sub_doc.patient = patient_id
     sub_doc.insurance_company = plan[0].insurance_company
