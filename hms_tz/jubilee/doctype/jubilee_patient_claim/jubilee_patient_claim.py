@@ -342,6 +342,8 @@ class JubileePatientClaim(Document):
                     self.add_LRPMT_claim_item(row, d)
 
         else:
+            # With Jubilee, Inpatient Items are posted manually to Jubilee CMS Portal
+            return
             dates = []
             occupancy_list = []
             record_doc = frappe.get_doc("Inpatient Record", self.inpatient_record)
