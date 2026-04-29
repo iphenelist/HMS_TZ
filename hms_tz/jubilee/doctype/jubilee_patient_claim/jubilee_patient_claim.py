@@ -5,6 +5,7 @@ import calendar
 import json
 import os
 import uuid
+from datetime import datetime
 
 import frappe
 import requests
@@ -82,7 +83,7 @@ class JubileePatientClaim(Document):
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
-            opd_encounters = [row.encounter for row in encounter_list if not row.inpatient_record]
+            opd_encounters = [row for row in encounter_list if not row.inpatient_record]
             inpatient_ids = [row.inpatient_record for row in encounter_list if row.inpatient_record]
             finalized_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
 
@@ -180,12 +181,12 @@ class JubileePatientClaim(Document):
         return patient_encounters
 
     def set_claim_values(self, encounter_list):
-        self.facility_code = frappe.get_cached_value(
+        self.provider_id = frappe.get_cached_value(
             "HMS TZ Setting",
             self.company,
-            "facility_code",
+            "jubilee_provider_id",
         )
-
+        self.folio_id = uuid.uuid1()
         self.posting_date = nowdate()
         self.serial_no = cint(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
@@ -197,6 +198,18 @@ class JubileePatientClaim(Document):
         self.set_practitioner_values(encounter_list)
         self.set_patient_claim_disease(encounter_list)
         self.set_patient_claim_item(encounter_list)
+        self.claim_year = int(self.attendance_date.strftime("%Y"))
+        self.claim_month = int(self.attendance_date.strftime("%m"))
+
+        if not self.date_of_birth:
+            self.date_of_birth = frappe.get_cached_value("Patient", self.patient, "dob")
+
+            if not self.date_of_birth:
+                frappe.throw(_(f"Date of Birth is not set for Patient: {self.patient}"))
+
+        dob_datetime = datetime.combine(self.date_of_birth, datetime.min.time())
+        age_delta = datetime.now() - dob_datetime
+        self.patient_age = age_delta.days // 365
 
         # Do not set inpatient values because JPC will always be created during or before patient admission
         # self.set_inpatient_values(encounter_list)
@@ -209,7 +222,7 @@ class JubileePatientClaim(Document):
         practitioner_details = frappe.db.get_all(
             "Healthcare Practitioner",
             {"name": ["in", practitioners]},
-            ["name", "tz_mct_code"],
+            ["name", "tz_mct_code", "nhif_physician_qualification"],
         )
 
         for practitioner in practitioner_details:
@@ -221,6 +234,7 @@ class JubileePatientClaim(Document):
                 {
                     "practitioner": practitioner.name,
                     "mct_code": practitioner.tz_mct_code,
+                    "qualification": practitioner.nhif_physician_qualification
                 }
             )
 
@@ -311,8 +325,6 @@ class JubileePatientClaim(Document):
                 new_row.status = "Provisional"
             elif row.parentfield == "patient_encounter_final_diagnosis":
                 new_row.status = "Final"
-            new_row.patient_encounter = row.parent
-            new_row.codification_table = row.name
             new_row.medical_code = row.code_value
 
             # Convert the ICD code of CDC to NHIF
@@ -963,7 +975,7 @@ class JubileePatientClaim(Document):
         folio_data = frappe._dict()
         folio_data.entities = []
         entities = frappe._dict()
-        entities.FolioID = str(uuid.uuid1())
+        entities.FolioID = self.folio_id
         entities.ClaimYear = self.claim_year
         entities.ClaimYear = self.claim_year
         entities.ClaimMonth = self.claim_month
