@@ -2,7 +2,7 @@
  "actions": [],
  "allow_copy": 1,
  "allow_import": 1,
- "autoname": "naming_series:",
+ "autoname": "JPC-.#########",
  "creation": "2024-07-26 13:43:31.553011",
  "default_view": "List",
  "doctype": "DocType",
@@ -79,21 +79,12 @@
   "original_section_break",
   "original_jubilee_patient_claim_item",
   "section_break_uccm",
-  "naming_series",
   "column_break_xxvn",
   "amended_from",
   "column_break_vadd",
   "hms_tz_claim_appointment_list"
  ],
  "fields": [
-  {
-   "default": "JPC-.#########",
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Naming Series",
-   "options": "JPC-.#########",
-   "reqd": 1
-  },
   {
    "fieldname": "patient_appointment",
    "fieldtype": "Link",
@@ -561,11 +552,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-29 15:16:37.513704",
+ "modified": "2026-04-29 16:17:50.360534",
  "modified_by": "Administrator",
  "module": "Jubilee",
  "name": "Jubilee Patient Claim",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
