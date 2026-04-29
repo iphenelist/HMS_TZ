@@ -466,7 +466,7 @@ class NHIFPatientClaim(Document):
 
         new_row = self.append("nhif_patient_claim_item", {})
         new_row.item_name = occupancy.service_unit
-        new_row.item_code = get_item_refcode(item)
+        new_row.item_code = get_nhif_refcode(item, self.company)
         new_row.item_quantity = 1
         new_row.unit_price = occupancy.amount
         new_row.amount_claimed = occupancy.amount
@@ -481,7 +481,7 @@ class NHIFPatientClaim(Document):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
             new_row = self.append("nhif_patient_claim_item", {})
             new_row.item_name = consultancy.consultation_item
-            new_row.item_code = get_item_refcode(consultancy.consultation_item)
+            new_row.item_code = get_nhif_refcode(consultancy.consultation_item, self.company)
             new_row.item_quantity = 1
             new_row.unit_price = consultancy.rate
             new_row.amount_claimed = consultancy.rate
@@ -525,7 +525,7 @@ class NHIFPatientClaim(Document):
             if not self.inpatient_record and not appointment_doc.follow_up:
                 new_row = self.append("nhif_patient_claim_item", {})
                 new_row.item_name = appointment_doc.billing_item
-                new_row.item_code = get_item_refcode(appointment_doc.billing_item)
+                new_row.item_code = get_nhif_refcode(appointment_doc.billing_item, self.company)
                 new_row.item_quantity = 1
                 new_row.unit_price = appointment_doc.paid_amount
                 new_row.amount_claimed = appointment_doc.paid_amount
@@ -939,10 +939,12 @@ def validate_hold_card_status(
         frappe.throw(msg)
 
 
-def get_item_refcode(item_code):
+def get_nhif_refcode(item_code, company):
+    nhif_cust_name = frappe.get_cached_value("HMS TZ Setting", company, "nhif_customer_name")
+
     code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item_code, "customer_name": "NHIF"},
+        filters={"parent": item_code, "customer_name": nhif_cust_name},
         fields=["ref_code"],
     )
     if len(code_list) == 0:
