@@ -30,7 +30,7 @@ from PyPDF2 import PdfFileWriter
 
 from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
-from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
+from hms_tz.nhif.api.healthcare_utils import to_base64
 
 pa = DocType("Patient Appointment")
 pe = DocType("Patient Encounter")
@@ -383,14 +383,6 @@ class JubileePatientClaim(Document):
                     service_requests.append(d.get("service_request"))
                     service_request_doc = frappe.get_doc("Healthcare Service Request", d.get("service_request"))
                     for row in service_request_doc.get("payments"):
-                        if (
-                            not occupancy.is_service_chargeable and
-                            "dialysis" not in row.service_name.lower() and
-                            "ct scan" not in row.service_name.lower() and
-                            "mri" not in row.service_name.lower()
-                        ):
-                            continue
-
                         self.add_LRPMT_claim_item(row, d)
 
         self.add_appointment_claim_item()
@@ -414,11 +406,11 @@ class JubileePatientClaim(Document):
         new_row.date_created = hsr_row.creation
         new_row.patient_encounter = d.encounter
         new_row.item_crt_by = d.practitioner
-        new_row.approval_ref_no = get_approval_number_from_LRPMT(
-            hsr_row.lrpmt_doctype,
-            hsr_row.lrpmt_docname,
-            hsr_row.dn_detail
-        )
+        # new_row.approval_ref_no = get_approval_number_from_LRPMT(
+        #     hsr_row.lrpmt_doctype,
+        #     hsr_row.lrpmt_docname,
+        #     hsr_row.dn_detail
+        # )
 
     def add_occupancy_claim_item(self, occupancy, admission_encounter):
         service_unit_type = frappe.get_cached_value(
@@ -452,7 +444,7 @@ class JubileePatientClaim(Document):
 
         new_row = self.append("jubilee_patient_claim_item", {})
         new_row.item_name = occupancy.service_unit
-        new_row.item_code = get_item_refcode(item)
+        new_row.item_code = get_jubilee_refcode(item, self.company)
         new_row.item_quantity = 1
         new_row.unit_price = occupancy.amount
         new_row.amount_claimed = occupancy.amount
@@ -467,7 +459,7 @@ class JubileePatientClaim(Document):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
             new_row = self.append("jubilee_patient_claim_item", {})
             new_row.item_name = consultancy.consultation_item
-            new_row.item_code = get_item_refcode(consultancy.consultation_item)
+            new_row.item_code = get_jubilee_refcode(consultancy.consultation_item, self.company)
             new_row.item_quantity = 1
             new_row.unit_price = consultancy.rate
             new_row.amount_claimed = consultancy.rate
@@ -511,7 +503,7 @@ class JubileePatientClaim(Document):
             if not appointment_doc.follow_up:
                 new_row = self.append("jubilee_patient_claim_item", {})
                 new_row.item_name = appointment_doc.billing_item
-                new_row.item_code = get_item_refcode(appointment_doc.billing_item)
+                new_row.item_code = get_jubilee_refcode(appointment_doc.billing_item, self.company)
                 new_row.item_quantity = 1
                 new_row.unit_price = appointment_doc.paid_amount
                 new_row.amount_claimed = appointment_doc.paid_amount
@@ -1173,20 +1165,20 @@ class JubileePatientClaim(Document):
         return True
 
 
-def get_item_refcode(item_code):
+def get_jubilee_refcode(item_code, company):
+    jubilee_cust_name = frappe.get_cached_value("HMS TZ Setting", company, "jubilee_customer_name")
+
     code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item_code, "customer_name": ["like", "%Jubilee%"]},
+        filters={"parent": item_code, "customer_name": jubilee_cust_name},
         fields=["ref_code"],
     )
     if len(code_list) == 0:
         frappe.throw(_(f"Item: {item_code} has not Jubilee Code Reference"))
-        # return None
 
     ref_code = code_list[0].ref_code
     if not ref_code:
         frappe.throw(_(f"Item: {item_code} has not Jubilee Code Reference"))
-        # return None
 
     return ref_code
 
