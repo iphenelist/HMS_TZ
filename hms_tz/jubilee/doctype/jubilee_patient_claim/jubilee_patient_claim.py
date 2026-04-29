@@ -32,6 +32,7 @@ from pypdf import PdfWriter
 from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
 from hms_tz.nhif.api.healthcare_utils import to_base64
+from hms_tz.nhif.api.patient_encounter import finalized_encounter
 
 pa = DocType("Patient Appointment")
 pe = DocType("Patient Encounter")
@@ -79,15 +80,16 @@ class JubileePatientClaim(Document):
             frappe.set_value(
                 self.doctype, self.name, "original_jubilee_patient_claim_item", items
             )
+            self.reload()
 
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
             opd_encounters = [row for row in encounter_list if not row.inpatient_record]
             inpatient_ids = [row.inpatient_record for row in encounter_list if row.inpatient_record]
-            finalized_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
+            final_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
 
-            if len(finalized_encounter) == 0 and len(inpatient_ids) == 0:
+            if len(final_encounter) == 0 and len(inpatient_ids) == 0:
                 # Do not auto finalize the encounter if patient is inpatient because JPC will always be created during patient admission
                 # because Jubilee API involves only the services provided before the admission
 
@@ -1194,26 +1196,18 @@ def get_jubilee_refcode(item_code, company):
     return ref_code
 
 
-def get_LRPMT_status(encounter_no, row, child):
-    status = None
-    if child["doctype"] == "Therapy Type" or row.get(child["ref_docname"]):
-        status = "Submitted"
-
-    elif child["doctype"] == "Lab Test Template" and not row.get(child["ref_docname"]):
-        lab_workflow_state = frappe.get_value(
+def get_LRPMT_status(row):
+    status = row.lrpmt_status
+    if status == "Draft" and row.lrpmt_doctype == "Lab Test":
+        lab_workflow_state = frappe.get_cached_value(
             "Lab Test",
-            {
-                "ref_docname": encounter_no,
-                "ref_doctype": "Patient Encounter",
-                "hms_tz_ref_childname": row.name,
-            },
+            row.lrpmt_docname,
             "workflow_state",
         )
         if lab_workflow_state and lab_workflow_state != "Lab Test Requested":
             status = "Submitted"
-        else:
-            status = "Draft"
-    else:
+
+    if not status:
         status = "Draft"
 
     return status
