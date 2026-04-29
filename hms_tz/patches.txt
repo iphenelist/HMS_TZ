@@ -1,4 +1,5 @@
 [pre_model_sync]
+hms_tz.patches.rename_nhif_folio_counter_to_insurance_folio_counter
 
 [post_model_sync]
 hms_tz.patches.custom_fields.hms_tz_custom_fields

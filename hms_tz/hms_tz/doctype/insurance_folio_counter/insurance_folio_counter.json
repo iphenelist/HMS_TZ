@@ -1,33 +1,45 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "NHIF-FC-.#####",
+ "autoname": "hash",
  "creation": "2022-11-28 09:02:31.862037",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "insurance_provider",
   "company",
-  "claim_year",
   "folio_no",
   "column_break_4",
-  "posting_date",
-  "claim_month"
+  "claim_month",
+  "claim_year",
+  "posting_date"
  ],
  "fields": [
   {
+   "fieldname": "insurance_provider",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Insurance Provider",
+   "options": "NHIF\nJubilee\nStrategies\nAssembly",
+   "reqd": 1
+  },
+  {
    "fieldname": "company",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Company"
   },
   {
    "fieldname": "claim_year",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Claim Year"
   },
   {
    "fieldname": "folio_no",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Folio No"
   },
   {
@@ -42,15 +54,17 @@
   {
    "fieldname": "claim_month",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Claim Month"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-28 10:29:01.447147",
+ "modified": "2026-04-29 07:51:39.294349",
  "modified_by": "Administrator",
- "module": "NHIF",
- "name": "NHIF Folio Counter",
+ "module": "Hms Tz",
+ "name": "Insurance Folio Counter",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -66,7 +80,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
