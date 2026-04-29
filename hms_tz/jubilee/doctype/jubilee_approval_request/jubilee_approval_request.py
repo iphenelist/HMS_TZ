@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
-from frappe.utils import get_datetime, get_fullname, get_time, getdate, nowdate, nowtime
+from frappe.utils import get_datetime, get_fullname, get_link_to_form, get_time, getdate, nowdate, nowtime
 
 from hms_tz.hms_tz.doctype.healthcare_service_request.healthcare_service_request import (
     get_childs_map,
@@ -20,6 +20,26 @@ pe = DocType("Patient Encounter")
 
 
 class JubileeApprovalRequest(Document):
+    def before_insert(self):
+        """Prevent duplicate Jubilee Approval Request for the same appointment."""
+
+        if not self.appointment:
+            frappe.throw(_("Appointment is required"))
+
+        existing = frappe.db.get_value(
+            "Jubilee Approval Request",
+            {"appointment": self.appointment},
+            "name",
+        )
+        if existing:
+            link = get_link_to_form("Jubilee Approval Request", existing)
+            frappe.throw(
+                _(
+                    f"A Jubilee Approval Request: <b>{link}</b> "
+                    f"already exists for this appointment: <b>{self.appointment}</b>"
+                )
+            )
+
     def before_save(self):
         """Auto-populate fields from Patient Encounter for manual creation (Path B)."""
 
