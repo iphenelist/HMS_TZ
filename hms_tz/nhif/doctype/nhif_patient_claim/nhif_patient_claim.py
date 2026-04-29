@@ -215,7 +215,7 @@ class NHIFPatientClaim(Document):
         practitioner_details = frappe.db.get_all(
             "Healthcare Practitioner",
             {"name": ["in", practitioners]},
-            ["name", "tz_mct_code"],
+            ["name", "tz_mct_code", "nhif_physician_qualification"],
         )
 
         for practitioner in practitioner_details:
@@ -227,6 +227,7 @@ class NHIFPatientClaim(Document):
                 {
                     "practitioner": practitioner.name,
                     "mct_code": practitioner.tz_mct_code,
+                    "qualification": practitioner.nhif_physician_qualification
                 }
             )
 
