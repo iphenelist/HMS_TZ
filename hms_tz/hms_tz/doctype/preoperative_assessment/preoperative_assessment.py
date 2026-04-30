@@ -14,6 +14,10 @@ class PreoperativeAssessment(Document):
         self.fetch_patient_medical_history()
         self.validate_clearance_checks()
 
+    def before_submit(self):
+        if not self.practitioner:
+            frappe.throw(_("Practitioner is required"))
+
     def on_submit(self):
         create_medical_record(self)
 

@@ -14,6 +14,7 @@
   "service_name",
   "clinical_procedure",
   "inpatient_record",
+  "practitioner",
   "column_break_aazg",
   "company",
   "status",
@@ -27,6 +28,7 @@
   "column_break_checks",
   "iv_access_secured",
   "pre_op_labs_reviewed",
+  "consent",
   "section_break_payment",
   "payment_type",
   "insurance_subscription",
@@ -373,11 +375,24 @@
    "fieldname": "details_tab",
    "fieldtype": "Tab Break",
    "label": "Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "bold": 1,
+   "fieldname": "consent",
+   "fieldtype": "Attach",
+   "label": "Consent"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-17 16:31:02.293007",
+ "modified": "2026-04-30 16:11:13.453731",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Preoperative Assessment",
