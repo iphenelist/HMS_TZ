@@ -6,6 +6,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import random_string
 
+from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
+
 
 class ImplantRegistry(Document):
     def before_insert(self):
@@ -13,6 +15,15 @@ class ImplantRegistry(Document):
 
     def before_save(self):
         self.validate_expiry()
+
+    def on_submit(self):
+        create_medical_record(self)
+
+    def on_cancel(self):
+        delete_medical_record(self)
+
+    def on_update_after_submit(self):
+        update_medical_record(self)
 
     def generate_barcode(self):
         """Auto-generate a unique barcode for the implant."""
