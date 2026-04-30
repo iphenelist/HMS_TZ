@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-04-09 00:00:00.000000",
+ "creation": "2026-04-09 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -17,9 +17,11 @@
   "status",
   "section_break_payment",
   "payment_type",
-  "mode_of_payment",
+  "insurance_subscription",
   "column_break_payment2",
   "has_pending_payment",
+  "insurance_company",
+  "insurance_coverage_plan",
   "section_break_refs",
   "inpatient_record",
   "prescribed_by",
@@ -29,11 +31,6 @@
   "source_doctype",
   "source_docname",
   "delivery_note",
-  "section_break_insurance",
-  "insurance_subscription",
-  "insurance_company",
-  "column_break_insurance2",
-  "insurance_coverage_plan",
   "section_break_items",
   "items",
   "section_break_totals",
@@ -125,13 +122,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "mode_of_payment",
-   "fieldtype": "Link",
-   "label": "Mode of Payment",
-   "options": "Mode of Payment",
-   "depends_on": "eval:doc.payment_type=='Cash'"
-  },
-  {
    "fieldname": "column_break_payment2",
    "fieldtype": "Column Break"
   },
@@ -139,9 +129,9 @@
    "default": "0",
    "fieldname": "has_pending_payment",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Has Pending Payment",
-   "read_only": 1,
-   "hidden": 1
+   "read_only": 1
   },
   {
    "collapsible": 1,
@@ -199,18 +189,14 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
-   "fieldname": "section_break_insurance",
-   "fieldtype": "Section Break",
-   "label": "Insurance Details"
-  },
-  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
    "fieldname": "insurance_subscription",
    "fieldtype": "Link",
    "label": "Insurance Subscription",
    "options": "Healthcare Insurance Subscription"
   },
   {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
    "fetch_from": "insurance_subscription.insurance_company",
    "fieldname": "insurance_company",
    "fieldtype": "Link",
@@ -219,10 +205,7 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_insurance2",
-   "fieldtype": "Column Break"
-  },
-  {
+   "depends_on": "eval: doc.payment_type == 'Insurance'",
    "fieldname": "insurance_coverage_plan",
    "fieldtype": "Link",
    "label": "Insurance Coverage Plan",
@@ -262,7 +245,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-04-30 19:08:47.684745",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Consumable Record",
@@ -297,6 +280,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

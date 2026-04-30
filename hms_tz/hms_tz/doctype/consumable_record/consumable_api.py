@@ -13,11 +13,7 @@ from erpnext.accounts.utils import get_balance_on
 from frappe import _
 from frappe.utils import flt, nowdate, nowtime
 
-from hms_tz.nhif.api.healthcare_utils import (
-    get_discount_percent,
-    get_item_rate,
-    get_mop_amount,
-)
+from hms_tz.nhif.api.healthcare_utils import get_discount_percent, get_item_rate, get_mop_amount
 
 
 @frappe.whitelist()
@@ -28,7 +24,6 @@ def get_consumable_item_details(
     insurance_subscription=None,
     insurance_company=None,
     patient=None,
-    mode_of_payment=None,
 ):
     """
     Get item details including rate based on payment type.
@@ -89,7 +84,7 @@ def get_consumable_item_details(
         try:
             rate = get_mop_amount(
                 item_code,
-                mop=mode_of_payment,
+                mop="",
                 company=company,
                 patient=patient,
             )
@@ -245,7 +240,7 @@ def create_consumable_record(args):
     Args:
         args: JSON string with:
             - patient, company, appointment, encounter
-            - payment_type, mode_of_payment
+            - payment_type
             - insurance_subscription, insurance_company, insurance_coverage_plan
             - prescribed_by
             - source_doctype, source_docname
@@ -268,7 +263,6 @@ def create_consumable_record(args):
     doc.posting_date = nowdate()
     doc.posting_time = nowtime()
     doc.payment_type = args.payment_type
-    doc.mode_of_payment = args.get("mode_of_payment")
     doc.prescribed_by = args.get("prescribed_by")
     doc.source_doctype = args.get("source_doctype")
     doc.source_docname = args.get("source_docname")
