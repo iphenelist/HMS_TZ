@@ -203,6 +203,7 @@ doc_events = {
         "onload": "hms_tz.nhif.api.clinical_procedure.onload",
         "before_submit": "hms_tz.nhif.api.clinical_procedure.before_submit",
         "on_submit": "hms_tz.nhif.api.clinical_procedure.on_submit",
+        "on_update_after_submit": "hms_tz.nhif.api.clinical_procedure.on_update_after_submit",
     },
     "Delivery Note": {
         "validate": "hms_tz.nhif.api.delivery_note.validate",
