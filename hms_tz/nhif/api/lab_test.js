@@ -568,7 +568,7 @@ function render_lt_consumables_section(frm) {
         patient_name: frm.doc.patient_name,
         appointment: frm.doc.appointment || "",
         company: frm.doc.company,
-        payment_type: frm.doc.prescribe === 0 ? "Insurance" : "Cash",
+        payment_type: frm.doc.insurance_company ? "Insurance" : "Cash",
         insurance_subscription: frm.doc.insurance_subscription || "",
         insurance_company: frm.doc.insurance_company || "",
         insurance_coverage_plan: frm.doc.hms_tz_insurance_coverage_plan || "",
