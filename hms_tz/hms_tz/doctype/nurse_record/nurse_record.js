@@ -829,33 +829,6 @@ function render_consumables_placeholder(frm) {
       '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
     ).appendTo($wrapper);
 
-    // "Create Invoice" button — only for cash patients
-    if (frm.doc.payment_type !== "Insurance" && frm.doc.inpatient_record) {
-      $('<button class="btn btn-warning btn-sm">')
-        .html('<i class="fa fa-file-text-o mr-1"></i>' + __("Create Invoice"))
-        .on("click", () => {
-          frappe.call({
-            method: "hms_tz.nhif.api.inpatient_record.create_sales_invoice",
-            args: {
-              args: JSON.stringify({
-                patient: frm.doc.patient,
-                appointment_no: frm.doc.appointment,
-                inpatient_record: frm.doc.inpatient_record,
-                company: frm.doc.company,
-              }),
-            },
-            freeze: true,
-            freeze_message: __("Creating Sales Invoice..."),
-            callback: (r) => {
-              if (r.message) {
-                frappe.set_route("Form", "Sales Invoice", r.message);
-              }
-            },
-          });
-        })
-        .appendTo($btn_container);
-    }
-
     // "Add Consumables" button
     $('<button class="btn btn-primary btn-sm">')
       .html('<i class="fa fa-plus mr-1"></i>' + __("Add Consumables"))
@@ -878,7 +851,6 @@ function render_consumables_placeholder(frm) {
           prescribed_by: frm.doc.nurse || "",
           source_doctype: "",
           source_docname: "",
-          mode_of_payment: "",
           on_success: () => {
             frm.reload_doc();
           },

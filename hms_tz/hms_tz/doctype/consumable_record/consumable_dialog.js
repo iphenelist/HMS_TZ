@@ -13,7 +13,6 @@
  *     prescribed_by: frm.doc.practitioner || frm.doc.nurse,
  *     source_doctype: frm.doc.doctype,
  *     source_docname: frm.doc.name,
- *     mode_of_payment: frm.doc.mode_of_payment,
  *     on_success: () => frm.reload_doc(),
  *   });
  */
@@ -114,14 +113,6 @@ hms_tz.open_consumable_dialog = function (opts) {
         default: opts.insurance_company || "",
         read_only: 1,
         depends_on: "eval:doc.payment_type=='Insurance'",
-      },
-      {
-        fieldname: "mode_of_payment",
-        fieldtype: "Link",
-        label: __("Mode of Payment"),
-        options: "Mode of Payment",
-        default: opts.mode_of_payment || "",
-        depends_on: "eval:doc.payment_type=='Cash'",
       },
       {
         fieldname: "default_warehouse",
@@ -440,7 +431,6 @@ function _fetch_item_details(dialog, grid, row, cdn, opts) {
       insurance_subscription: dialog.get_value("insurance_subscription") || "",
       insurance_company: dialog.get_value("insurance_company") || "",
       patient: dialog.get_value("patient"),
-      mode_of_payment: dialog.get_value("mode_of_payment") || "",
     },
     async: true,
     callback: (r) => {
@@ -653,7 +643,6 @@ function _handle_create(dialog, values, opts) {
         appointment: opts.appointment || "",
         encounter: opts.encounter || "",
         payment_type: payment_type,
-        mode_of_payment: dialog.get_value("mode_of_payment") || "",
         insurance_subscription:
           dialog.get_value("insurance_subscription") || "",
         insurance_company: dialog.get_value("insurance_company") || "",
