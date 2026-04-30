@@ -115,7 +115,13 @@ class HealthcareReferral(Document):
                 if self.insurance_company and row.prescribe == 1:
                     continue
 
-                ref_code = get_item_refcode(child["doctype"], row.get(child["item"]))
+                ref_code = get_item_refcode(
+                    child["doctype"],
+                    row.get(child["item"]),
+                    self.company,
+                    self.insurance_company,
+                )
+
                 service = {
                     "service_type": child["doctype"],
                     "service_name": row.get(child["item"]),
