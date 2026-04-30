@@ -178,33 +178,6 @@ function render_consumables_section(frm) {
     '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
   ).appendTo($wrapper);
 
-  // "Create Invoice" button — only for cash patients with inpatient_record
-  if (frm.doc.payment_type !== "Insurance" && frm.doc.inpatient_record) {
-    $('<button class="btn btn-warning btn-sm">')
-      .html('<i class="fa fa-file-text-o mr-1"></i>' + __("Create Invoice"))
-      .on("click", () => {
-        frappe.call({
-          method: "hms_tz.nhif.api.inpatient_record.create_sales_invoice",
-          args: {
-            args: JSON.stringify({
-              patient: frm.doc.patient,
-              appointment_no: frm.doc.appointment,
-              inpatient_record: frm.doc.inpatient_record,
-              company: frm.doc.company,
-            }),
-          },
-          freeze: true,
-          freeze_message: __("Creating Sales Invoice..."),
-          callback: (r) => {
-            if (r.message) {
-              frappe.set_route("Form", "Sales Invoice", r.message);
-            }
-          },
-        });
-      })
-      .appendTo($btn_container);
-  }
-
   // "Add Consumables" button
   $('<button class="btn btn-primary btn-sm">')
     .html('<i class="fa fa-plus mr-1"></i>' + __("Add Consumables"))
@@ -224,10 +197,10 @@ function render_consumables_section(frm) {
         insurance_subscription: frm.doc.insurance_subscription || "",
         insurance_company: frm.doc.insurance_company || "",
         insurance_coverage_plan: frm.doc.insurance_coverage_plan || "",
-        prescribed_by: "",
-        source_doctype: "Preoperative Assessment",
-        source_docname: frm.doc.name,
-        mode_of_payment: "",
+        prescribed_by: frm.doc.practitioner,
+        source_doctype: "Clinical Procedure",
+        source_docname: frm.doc.clinical_procedure,
+        service_name: frm.doc.service_name || "",
         on_success: () => {
           frm.reload_doc();
         },

@@ -452,33 +452,6 @@ function render_cp_consumables_section(frm) {
     '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
   ).appendTo($wrapper);
 
-  // "Create Invoice" button — only for cash patients with inpatient_record
-  if (frm.doc.prescribe !== 1 && frm.doc.inpatient_record) {
-    $('<button class="btn btn-warning btn-sm">')
-      .html('<i class="fa fa-file-text-o mr-1"></i>' + __("Create Invoice"))
-      .on("click", () => {
-        frappe.call({
-          method: "hms_tz.nhif.api.inpatient_record.create_sales_invoice",
-          args: {
-            args: JSON.stringify({
-              patient: frm.doc.patient,
-              appointment_no: frm.doc.appointment,
-              inpatient_record: frm.doc.inpatient_record,
-              company: frm.doc.company,
-            }),
-          },
-          freeze: true,
-          freeze_message: __("Creating Sales Invoice..."),
-          callback: (r) => {
-            if (r.message) {
-              frappe.set_route("Form", "Sales Invoice", r.message);
-            }
-          },
-        });
-      })
-      .appendTo($btn_container);
-  }
-
   // "Add Consumables" button
   $('<button class="btn btn-primary btn-sm">')
     .html('<i class="fa fa-plus mr-1"></i>' + __("Add Consumables"))
@@ -494,14 +467,14 @@ function render_cp_consumables_section(frm) {
         patient_name: frm.doc.patient_name,
         appointment: frm.doc.appointment || "",
         company: frm.doc.company,
-        payment_type: frm.doc.prescribe === 1 ? "Insurance" : "Cash",
+        payment_type: frm.doc.insurance_company ? "Insurance" : "Cash",
         insurance_subscription: frm.doc.insurance_subscription || "",
         insurance_company: frm.doc.insurance_company || "",
         insurance_coverage_plan: frm.doc.hms_tz_insurance_coverage_plan || "",
         prescribed_by: "",
         source_doctype: "Clinical Procedure",
         source_docname: frm.doc.name,
-        mode_of_payment: "",
+        service_name: frm.doc.procedure_template || "",
         on_success: () => {
           frm.reload_doc();
         },
