@@ -63,6 +63,9 @@ def set_subject_field(doc):
     subject = ""
     patient_history_fields = get_patient_history_fields(doc)
 
+    if not patient_history_fields:
+        return subject
+
     for entry in patient_history_fields:
         fieldname = entry.get("fieldname")
         if entry.get("fieldtype") == "Table" and doc.get(fieldname):
@@ -102,6 +105,7 @@ def get_patient_history_fields(doc):
     dt = get_patient_history_config_dt(doc.doctype)
     if doc.doctype == "Delivery Note":
         dt = "Patient History Custom Document Type"
+
     patient_history_fields = frappe.get_cached_value(dt, {"document_type": doc.doctype}, "selected_fields")
 
     if patient_history_fields:
@@ -109,7 +113,10 @@ def get_patient_history_fields(doc):
 
 
 def get_patient_history_config_dt(doctype):
-    return "Patient History Custom Document Type"
+    if frappe.db.exists("Patient History Custom Document Type", {"document_type": doctype}):
+        return "Patient History Custom Document Type"
+
+    return "Patient History Standard Document Type"
 
 
 def get_formatted_value_for_table_field(items, df):
