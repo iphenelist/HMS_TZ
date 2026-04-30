@@ -545,14 +545,20 @@ def get_authorized_items(
     else:
         item = frappe.get_cached_value(service_type, service_name, "item")
 
-    ref_code = get_item_refcode(service_type, service_name)
-
     insurance_coverage_plan = doc.get("hms_tz_insurance_coverage_plan") or doc.get("coverage_plan_name")
     insurance_subscription = doc.get("insurance_subscription")
+    insurance_company = doc.get("insurance_company") or ""
     if not insurance_subscription:
-        insurance_subscription = frappe.get_cached_value("Patient Appointment", appointment, "insurance_subscription")
+        insurance_subscription, insurance_company = frappe.get_cached_value("Patient Appointment", appointment, ["insurance_subscription", "insurance_company"])
 
-    item_rate = get_item_rate(item, doc.company, insurance_subscription, doc.get("insurance_company"))
+    item_rate = get_item_rate(item, doc.company, insurance_subscription, insurance_company)
+
+    ref_code = get_item_refcode(
+        service_type,
+        service_name,
+        doc.company,
+        insurance_company
+    )
 
     service_type_id = get_service_type_id(ref_code)
 
@@ -624,7 +630,13 @@ def get_update_approval_payload(
     if not service_name and reference_name and reference_doctype:
         service_name = frappe.get_cached_value(reference_doctype, reference_name, "drug_code")
 
-    ref_code = get_item_refcode(service_type, service_name)
+    ref_code = get_item_refcode(
+        service_type,
+        service_name,
+        doc.company,
+        doc.get("insurance_company") or ""
+    )
+
     service_type_id = get_service_type_id(ref_code)
 
     scheme_id = frappe.get_cached_value(
@@ -739,6 +751,7 @@ def get_appointment_details(appointment):
             "years_of_insurance",
             "coverage_plan_card_number",
             "national_id",
+            "insurance_company"
         ],
         as_dict=True,
     )
@@ -767,9 +780,14 @@ def verify_approval_number(
         frappe.msgprint("NHIF API is disabled")
         return False
 
-    ref_code = get_item_refcode(service_type, service_name)
     appointment_info = get_appointment_details(appointment)
 
+    ref_code = get_item_refcode(
+        service_type,
+        service_name,
+        company,
+        appointment_info.get("insurance_company") or ""
+    )
     card_no = appointment_info.coverage_plan_card_number or appointment_info.national_id
 
     url = f"{settings_doc.nhifservice_url}/api/Approvals/GetReferenceNoStatus?cardNo={card_no}&referenceNo={approval_number}&itemCode={ref_code}"
