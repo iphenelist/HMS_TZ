@@ -318,15 +318,29 @@ def create_implant_registry(clinical_procedure: str, **kwargs) -> str:
 @frappe.whitelist()
 def create_surgical_specimen(clinical_procedure: str, **kwargs) -> str:
     """Create a Surgical Specimen from the Clinical Procedure dialog."""
+
     cp = frappe.get_doc("Clinical Procedure", clinical_procedure)
     ss = frappe.new_doc("Surgical Specimen")
     ss.patient = cp.patient
     ss.clinical_procedure = clinical_procedure
     ss.company = cp.company
+    ss.patient_age = cp.patient_age
+    ss.patient_sex = cp.patient_sex
 
     simple_fields = [
-        "specimen_type", "anatomical_site", "collection_time",
-        "collected_by", "status", "pathology_notes",
+        "specimen_name",
+        "biopsy_type",
+        "fixative_used",
+        "time_placed_in_fixative",
+        "side",
+        "no_of_containers",
+        "special_request",
+        "practitioner",
+        "site_collected",
+        "collection_date",
+        "collection_time",
+        "provisional_diagnosis",
+        "relevant_findings",
     ]
     for field in simple_fields:
         if kwargs.get(field):
@@ -334,7 +348,6 @@ def create_surgical_specimen(clinical_procedure: str, **kwargs) -> str:
 
     ss.insert(ignore_permissions=True)
 
-    # Link specimen to the clinical procedure
     frappe.db.set_value(
         "Clinical Procedure", clinical_procedure, "surgical_specimen", ss.name
     )

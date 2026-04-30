@@ -8,19 +8,41 @@
   "naming_series",
   "patient",
   "patient_name",
-  "clinical_procedure",
   "column_break_01",
   "company",
-  "status",
+  "posting_date",
+  "clinical_procedure",
+  "column_break_czkv",
   "barcode",
+  "status",
   "section_break_details",
-  "specimen_type",
-  "anatomical_site",
+  "specimen_name",
+  "biopsy_type",
+  "site_collected",
+  "side",
   "column_break_details",
+  "collection_date",
   "collection_time",
-  "collected_by",
+  "fixative_used",
+  "time_placed_in_fixative",
+  "column_break_cqgp",
+  "practitioner",
+  "no_of_containers",
+  "special_request",
+  "section_break_jghz",
+  "provisional_diagnosis",
+  "column_break_czge",
+  "relevant_findings",
   "section_break_lab",
   "lab_test",
+  "received_by",
+  "column_break_vtxo",
+  "date_recieved",
+  "time_recieved",
+  "condition",
+  "column_break_elco",
+  "reason_for_rejection",
+  "section_break_azuq",
   "pathology_notes"
  ],
  "fields": [
@@ -89,31 +111,13 @@
    "label": "Specimen Details"
   },
   {
-   "fieldname": "specimen_type",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Specimen Type",
-   "reqd": 1
-  },
-  {
-   "fieldname": "anatomical_site",
-   "fieldtype": "Data",
-   "label": "Anatomical Site"
-  },
-  {
    "fieldname": "column_break_details",
    "fieldtype": "Column Break"
   },
   {
    "fieldname": "collection_time",
-   "fieldtype": "Datetime",
+   "fieldtype": "Time",
    "label": "Collection Time"
-  },
-  {
-   "fieldname": "collected_by",
-   "fieldtype": "Link",
-   "label": "Collected By",
-   "options": "Healthcare Practitioner"
   },
   {
    "fieldname": "section_break_lab",
@@ -130,10 +134,138 @@
    "fieldname": "pathology_notes",
    "fieldtype": "Text",
    "label": "Pathology Notes"
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "column_break_czkv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "specimen_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Specimen Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "biopsy_type",
+   "fieldtype": "Select",
+   "label": "Biopsy Type",
+   "options": "\nIncision\nExcision\nResection\nOther"
+  },
+  {
+   "fieldname": "fixative_used",
+   "fieldtype": "Select",
+   "label": "Fixative Used",
+   "options": "\nFormalin\nOther"
+  },
+  {
+   "fieldname": "time_placed_in_fixative",
+   "fieldtype": "Time",
+   "label": "Time Placed in Fixative"
+  },
+  {
+   "fieldname": "side",
+   "fieldtype": "Select",
+   "label": "Side",
+   "options": "\nRight\nLeft\nNA"
+  },
+  {
+   "fieldname": "column_break_cqgp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_containers",
+   "fieldtype": "Int",
+   "label": "No. of Containers"
+  },
+  {
+   "fieldname": "special_request",
+   "fieldtype": "Select",
+   "label": "Special Request (if any)",
+   "options": "\nUrgent\nFrozen Section\nIHC\nSpecial Stain\nOther"
+  },
+  {
+   "fieldname": "site_collected",
+   "fieldtype": "Data",
+   "label": "Site Collected"
+  },
+  {
+   "fieldname": "collection_date",
+   "fieldtype": "Date",
+   "label": "Collection Date"
+  },
+  {
+   "fieldname": "section_break_jghz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "provisional_diagnosis",
+   "fieldtype": "Small Text",
+   "label": "Provisional Diagnosis"
+  },
+  {
+   "fieldname": "column_break_czge",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "relevant_findings",
+   "fieldtype": "Small Text",
+   "label": "Revelevant History/Findings"
+  },
+  {
+   "fieldname": "received_by",
+   "fieldtype": "Link",
+   "label": "Received By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_vtxo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_recieved",
+   "fieldtype": "Date",
+   "label": "Date Recieved"
+  },
+  {
+   "fieldname": "time_recieved",
+   "fieldtype": "Time",
+   "label": "Time Recieved"
+  },
+  {
+   "fieldname": "condition",
+   "fieldtype": "Select",
+   "label": "Condition",
+   "options": "\nAccepted\nRejected"
+  },
+  {
+   "fieldname": "column_break_elco",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reason_for_rejection",
+   "fieldtype": "Small Text",
+   "label": "Reason for Rejection (if Any)"
+  },
+  {
+   "fieldname": "section_break_azuq",
+   "fieldtype": "Section Break"
   }
  ],
  "links": [],
- "modified": "2026-04-15 12:37:59.281054",
+ "modified": "2026-04-30 18:42:31.192699",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Surgical Specimen",
