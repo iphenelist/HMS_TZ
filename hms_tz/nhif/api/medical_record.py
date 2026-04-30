@@ -149,6 +149,10 @@ def set_practitioner(doc):
             "practitioner",
             "healthcare_practitioner",
             "referring_practitioner",
+            "nurse",           # Nurse Record
+            "anesthetist",     # Anesthesia Record
+            "recovery_nurse",  # Postoperative Recovery
+            "implanted_by",    # Implant Registry
         ]:
             if meta.get_field(field):
                 practitioner = frappe.get_cached_value(doc.reference_doctype, doc.reference_name, field)
