@@ -5,12 +5,23 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
+
 
 class PreoperativeAssessment(Document):
     def before_save(self):
         self.set_missing_values()
         self.fetch_patient_medical_history()
         self.validate_clearance_checks()
+
+    def on_submit(self):
+        create_medical_record(self)
+
+    def on_cancel(self):
+        delete_medical_record(self)
+
+    def on_update_after_submit(self):
+        update_medical_record(self)
 
     def set_missing_values(self):
         """Auto-set fields from OT Schedule → Clinical Procedure → Appointment chain."""
@@ -71,7 +82,6 @@ class PreoperativeAssessment(Document):
             self.insurance_subscription = ""
             self.insurance_coverage_plan = ""
             self.insurance_company = ""
-
 
     def fetch_patient_medical_history(self):
         """Fetch allergies, chronic medications, and surgical history from Patient."""
