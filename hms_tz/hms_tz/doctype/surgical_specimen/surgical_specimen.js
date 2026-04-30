@@ -37,18 +37,20 @@ frappe.ui.form.on("Surgical Specimen", {
       }
 
       // Create Lab Test from specimen
-      if (frm.doc.status === "Collected" && !frm.doc.lab_test) {
-        frm.add_custom_button(
-          __("Lab Test"),
-          () => {
-            frappe.new_doc("Lab Test", {
-              patient: frm.doc.patient,
-              company: frm.doc.company,
-            });
-          },
-          __("Create")
-        );
-      }
+      // if (frm.doc.status === "Collected" && !frm.doc.lab_test) {
+      //   frm.add_custom_button(
+      //     __("Lab Test"),
+      //     () => {
+      //       frappe.new_doc("Lab Test", {
+      //         patient: frm.doc.patient,
+      //         company: frm.doc.company,
+      //         practitioner: frm.doc.practitioner,
+      //         referring_practitioner: frm.doc.practitioner
+      //       });
+      //     },
+      //     __("Create")
+      //   );
+      // }
     }
   },
 });
