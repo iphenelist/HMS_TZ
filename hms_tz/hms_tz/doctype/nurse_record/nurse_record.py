@@ -6,17 +6,10 @@ from datetime import timedelta as td
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import (
-    cint,
-    now_datetime,
-    nowdate,
-    nowtime,
-    time_diff_in_seconds,
-    to_timedelta,
-)
-from healthcare.healthcare.doctype.patient_encounter.patient_encounter import (
-    get_prescription_dates,
-)
+from frappe.utils import cint, now_datetime, nowdate, nowtime, time_diff_in_seconds, to_timedelta
+from healthcare.healthcare.doctype.patient_encounter.patient_encounter import get_prescription_dates
+
+from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
 
 
 class NurseRecord(Document):
@@ -51,6 +44,15 @@ class NurseRecord(Document):
 
     def before_submit(self):
         self.status = "Completed"
+
+    def on_submit(self):
+        create_medical_record(self)
+
+    def on_cancel(self):
+        delete_medical_record(self)
+
+    def on_update_after_submit(self):
+        update_medical_record(self)
 
     def set_missing_values(self):
         """Auto-set default values for missing fields."""
