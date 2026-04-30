@@ -163,7 +163,7 @@ hms_tz.open_consumable_dialog = function (opts) {
         fieldname: "service_name",
         fieldtype: "Data",
         label: __("Service Name"),
-        // read_only: 1,
+        default: opts.service_name || "",
       },
       {
         fieldtype: "Section Break",
