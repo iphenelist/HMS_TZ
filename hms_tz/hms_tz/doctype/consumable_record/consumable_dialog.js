@@ -186,10 +186,8 @@ hms_tz.open_consumable_dialog = function (opts) {
     },
   });
 
-  // ─── Bind events ───
   _bind_item_events(dialog, opts);
 
-  // Fetch patient name if not provided
   if (opts.patient && !opts.patient_name) {
     frappe.db.get_value("Patient", opts.patient, "patient_name", (r) => {
       if (r && r.patient_name) {
@@ -364,69 +362,103 @@ function _bind_item_events(dialog, opts) {
     const data_row = grid.df.data[row_idx - 1];
     if (!data_row) return;
 
-    // Set payment_type based on parent
     data_row.payment_type = is_insurance ? "Insurance" : "Cash";
 
-    // Set default warehouse from the top-level field
     const default_wh = dialog.get_value("default_warehouse");
     if (default_wh) {
       data_row.warehouse = default_wh;
     }
 
-    // Set percent_covered default
     data_row.percent_covered = 100;
 
-    // Set insurance fields for insurance patients
     if (is_insurance) {
       data_row.insurance_subscription = opts.insurance_subscription || "";
       data_row.insurance_company = opts.insurance_company || "";
       data_row.insurance_coverage_plan = opts.insurance_coverage_plan || "";
     }
-
-    // No refresh needed — Frappe calls grid.refresh() after on_add_row
   };
 
-  // Listen for field changes in the child table via the grid wrapper.
-  // Frappe's dialog grid does NOT call df.on_change for individual field changes,
-  // so we use the 'change' DOM event on the grid wrapper instead.
-  $(grid.wrapper).on("change", "input, select", function () {
-    // Debounce to let Frappe finish writing the value
-    setTimeout(() => {
-      _handle_grid_change(dialog, grid, opts, _prev_item_codes);
-    }, 100);
-  });
-}
+  // Set df.change callbacks on grid docfields.
+  // Frappe's grid_row.make_control() (grid_row.js) checks df.change and
+  // uses it as the control's change handler. This is called reliably for ALL
+  // field types including Link fields (via awesomplete selection), unlike
+  // DOM 'change' events which don't fire for programmatic value changes.
+  const item_code_df = grid.docfields.find(
+    (df) => df.fieldname === "item_code"
+  );
+  if (item_code_df) {
+    item_code_df.change = function () {
+      // 'this' is the control instance, this.doc is the row doc
+      const field = this;
+      const row = field.doc;
+      if (!row) return;
+      const cdn = row.name;
+      const current_value = row.item_code || "";
+      const prev_value = _prev_item_codes[cdn] || "";
 
-function _handle_grid_change(dialog, grid, opts, _prev_item_codes) {
-  // Iterate through all rows and check for item_code changes
-  grid.grid_rows.forEach((grid_row) => {
-    const row = grid_row.doc;
-    const cdn = row.name;
+      if (current_value && current_value !== prev_value) {
+        _prev_item_codes[cdn] = current_value;
+        _fetch_item_details(dialog, grid, row, cdn, opts);
+      }
+    };
+  }
 
-    // Detect item_code change by comparing with tracked previous value
-    const prev_item = _prev_item_codes[cdn] || "";
-    if (row.item_code && row.item_code !== prev_item) {
-      _prev_item_codes[cdn] = row.item_code;
-      _fetch_item_details(dialog, grid, row, cdn, opts);
-      return;
-    }
+  // Handle qty_requested changes — recalculate amount
+  const qty_df = grid.docfields.find((df) => df.fieldname === "qty_requested");
+  if (qty_df) {
+    qty_df.change = function () {
+      const field = this;
+      const row = field.doc;
+      if (!row) return;
 
-    // Qty or rate changed — recalculate
-    const qty = flt(row.qty_requested) || 1;
-    const rate = flt(row.rate);
-    const new_amount = qty * rate;
-    if (row.amount !== new_amount) {
-      row.amount = new_amount;
-      grid_row.refresh();
+      const qty = flt(row.qty_requested) || 1;
+      const rate = flt(row.rate);
+      row.amount = qty * rate;
+
+      const grid_row = _get_grid_row(grid, row.name);
+      if (grid_row) grid_row.refresh();
       _recalculate_total(dialog);
-    }
+    };
+  }
 
-    // Payment type changed to Cash — set percent_covered
-    if (row.payment_type === "Cash" && row.percent_covered !== 100) {
-      row.percent_covered = 100;
-      grid_row.refresh();
-    }
-  });
+  // Handle payment_type changes
+  const payment_type_df = grid.docfields.find(
+    (df) => df.fieldname === "payment_type"
+  );
+  if (payment_type_df) {
+    payment_type_df.change = function () {
+      const field = this;
+      const row = field.doc;
+      if (!row) return;
+
+      if (row.payment_type === "Cash" && row.percent_covered !== 100) {
+        row.percent_covered = 100;
+      }
+
+      if (row.item_code) {
+        const cdn = row.name;
+        _fetch_item_details(dialog, grid, row, cdn, opts);
+      }
+
+      const grid_row = _get_grid_row(grid, row.name);
+      if (grid_row) grid_row.refresh();
+    };
+  }
+
+  // Handle is_billable changes
+  const is_billable_df = grid.docfields.find(
+    (df) => df.fieldname === "is_billable"
+  );
+  if (is_billable_df) {
+    is_billable_df.change = function () {
+      const field = this;
+      const row = field.doc;
+      if (!row) return;
+
+      const grid_row = _get_grid_row(grid, row.name);
+      if (grid_row) grid_row.refresh();
+    };
+  }
 }
 
 function _fetch_item_details(dialog, grid, row, cdn, opts) {
@@ -457,7 +489,6 @@ function _fetch_item_details(dialog, grid, row, cdn, opts) {
         current_row.rate = flt(d.rate);
         current_row.price_list = d.price_list || "";
 
-        // Set default warehouse if not already set on the row
         if (!current_row.warehouse) {
           const default_wh = dialog.get_value("default_warehouse");
           if (default_wh) {
@@ -465,14 +496,12 @@ function _fetch_item_details(dialog, grid, row, cdn, opts) {
           }
         }
 
-        // Calculate amount
         const qty = flt(current_row.qty_requested) || 1;
         current_row.amount = qty * flt(current_row.rate);
 
         _refresh_row(grid, cdn);
         _recalculate_total(dialog);
 
-        // For NHIF insurance — fetch coverage percent
         if (
           payment_type === "Insurance" &&
           opts.insurance_coverage_plan &&
@@ -565,7 +594,6 @@ function _handle_create(dialog, values, opts) {
     return;
   }
 
-  // Validate each row
   for (const item of items) {
     if (!item.item_code) {
       frappe.msgprint(__("Row {0}: Item Code is required.", [item.idx]));
