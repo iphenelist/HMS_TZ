@@ -157,8 +157,8 @@ class ConsumableRecord(Document):
                 dn_item.qty = flt(row.qty_requested)
                 dn_item.rate = flt(row.rate)
                 dn_item.price_list_rate = flt(row.rate)
-                # dn_item.reference_doctype = self.source_doctype
-                # dn_item.reference_name = self.source_docname
+                dn_item.reference_doctype = row.doctype
+                dn_item.reference_name = row.name
                 if self.prescribed_by:
                     dn_item.healthcare_practitioner = self.prescribed_by
 
@@ -196,8 +196,6 @@ class ConsumableRecord(Document):
                     _(f"Delivery Note {dn_doc.name} created successfully (Draft).")
                 )
 
-
-
     @frappe.whitelist()
     def update_status(self, status: str):
         self.db_set("status", status)
@@ -207,13 +205,13 @@ class ConsumableRecord(Document):
         for item in self.items:
             if flt(item.qty_returned) > flt(item.qty_dispensed):
                 frappe.throw(
-                    _("Row {0}: Qty Returned ({1}) cannot exceed Qty Dispensed ({2})").format(
-                        item.idx, item.qty_returned, item.qty_dispensed
+                    _(
+                        f"Row {item.idx}: Qty Returned ({item.qty_returned}) cannot exceed Qty Dispensed ({item.qty_dispensed})"
                     )
                 )
             if flt(item.qty_used) > flt(item.qty_dispensed):
                 frappe.throw(
-                    _("Row {0}: Qty Used ({1}) cannot exceed Qty Dispensed ({2})").format(
-                        item.idx, item.qty_used, item.qty_dispensed
+                    _(
+                        f"Row {item.idx}: Qty Used ({item.qty_used}) cannot exceed Qty Dispensed ({item.qty_dispensed})"
                     )
                 )
