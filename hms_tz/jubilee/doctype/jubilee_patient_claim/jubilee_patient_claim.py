@@ -5,6 +5,7 @@ import calendar
 import json
 import os
 import uuid
+from datetime import datetime
 
 import frappe
 import requests
@@ -26,10 +27,12 @@ from frappe.utils import (
     unique,
 )
 from frappe.utils.pdf import get_pdf
-from PyPDF2 import PdfFileWriter
+from pypdf import PdfWriter
 
+from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.jubilee.doctype.jubilee_response_log.jubilee_response_log import add_jubilee_log
-from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
+from hms_tz.nhif.api.healthcare_utils import to_base64
+from hms_tz.nhif.api.patient_encounter import finalized_encounter
 
 pa = DocType("Patient Appointment")
 pe = DocType("Patient Encounter")
@@ -56,40 +59,7 @@ class JubileePatientClaim(Document):
         self.validate_multiple_appointments_per_authorization_no("before_insert")
 
     def after_insert(self):
-        folio_counter = frappe.db.get_all(
-            "Insurance Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-                "insurance_provider": "Jubilee"
-            },
-            fields=["name", "folio_no"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "Insurance Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "insurance_provider": "Jubilee",
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_no = cint(folio_counter[0].folio_no) + 1
-            frappe.set_value("Insurance Folio Counter", folio_counter[0].name, {
-                    "folio_no": folio_no,
-                    "posting_date": now_datetime()
-                }
-            )
-        frappe.set_value(self.doctype, self.name, "folio_no", folio_no)
+        self.set_folio_count()
 
         items = []
         for row in self.jubilee_patient_claim_item:
@@ -110,16 +80,23 @@ class JubileePatientClaim(Document):
             frappe.set_value(
                 self.doctype, self.name, "original_jubilee_patient_claim_item", items
             )
+            self.reload()
 
     def before_save(self):
         if not self.allow_changes:
             encounter_list = self.get_patient_encounters()
-            finalized_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
-            if len(finalized_encounter) == 0:
+            opd_encounters = [row for row in encounter_list if not row.inpatient_record]
+            inpatient_ids = [row.inpatient_record for row in encounter_list if row.inpatient_record]
+            final_encounter = [row.encounter for row in encounter_list if row.encounter_type == "Final"]
+
+            if len(final_encounter) == 0 and len(inpatient_ids) == 0:
+                # Do not auto finalize the encounter if patient is inpatient because JPC will always be created during patient admission
+                # because Jubilee API involves only the services provided before the admission
+
                 last_encounter = encounter_list[-1].encounter
                 finalized_encounter(last_encounter)
 
-            self.set_claim_values()
+            self.set_claim_values(opd_encounters)
 
         self.calculate_totals()
 
@@ -156,7 +133,7 @@ class JubileePatientClaim(Document):
         if not self.patient_signature:
             get_missing_patient_signature(self)
 
-        self.validate_submit_date()
+        # self.validate_submit_date()
 
         if self.bypass_sending_to_jubilee == 0:
             self.send_jubilee_claim()
@@ -206,12 +183,12 @@ class JubileePatientClaim(Document):
         return patient_encounters
 
     def set_claim_values(self, encounter_list):
-        self.facility_code = frappe.get_cached_value(
+        self.provider_id = frappe.get_cached_value(
             "HMS TZ Setting",
             self.company,
-            "facility_code",
+            "jubilee_provider_id",
         )
-
+        self.folio_id = uuid.uuid1()
         self.posting_date = nowdate()
         self.serial_no = cint(self.name[-9:])
         self.item_crt_by = get_fullname(frappe.session.user)
@@ -221,9 +198,24 @@ class JubileePatientClaim(Document):
             ["appointment_date", "appointment_time"],
         )
         self.set_practitioner_values(encounter_list)
-        self.set_inpatient_values(encounter_list)
         self.set_patient_claim_disease(encounter_list)
         self.set_patient_claim_item(encounter_list)
+        self.claim_year = int(self.attendance_date.strftime("%Y"))
+        self.claim_month = int(self.attendance_date.strftime("%m"))
+        self.patient_type_code = "OUT"
+
+        if not self.date_of_birth:
+            self.date_of_birth = frappe.get_cached_value("Patient", self.patient, "dob")
+
+            if not self.date_of_birth:
+                frappe.throw(_(f"Date of Birth is not set for Patient: {self.patient}"))
+
+        dob_datetime = datetime.combine(self.date_of_birth, datetime.min.time())
+        age_delta = datetime.now() - dob_datetime
+        self.patient_age = age_delta.days // 365
+
+        # Do not set inpatient values because JPC will always be created during or before patient admission
+        # self.set_inpatient_values(encounter_list)
 
     def set_practitioner_values(self, encounter_list):
         self.practitioners = []
@@ -233,7 +225,7 @@ class JubileePatientClaim(Document):
         practitioner_details = frappe.db.get_all(
             "Healthcare Practitioner",
             {"name": ["in", practitioners]},
-            ["name", "tz_mct_code"],
+            ["name", "tz_mct_code", "nhif_physician_qualification"],
         )
 
         for practitioner in practitioner_details:
@@ -245,6 +237,7 @@ class JubileePatientClaim(Document):
                 {
                     "practitioner": practitioner.name,
                     "mct_code": practitioner.tz_mct_code,
+                    "qualification": practitioner.nhif_physician_qualification
                 }
             )
 
@@ -335,8 +328,6 @@ class JubileePatientClaim(Document):
                 new_row.status = "Provisional"
             elif row.parentfield == "patient_encounter_final_diagnosis":
                 new_row.status = "Final"
-            new_row.patient_encounter = row.parent
-            new_row.codification_table = row.name
             new_row.medical_code = row.code_value
 
             # Convert the ICD code of CDC to NHIF
@@ -356,6 +347,8 @@ class JubileePatientClaim(Document):
         self.clinical_notes = ""
         self.jubilee_patient_claim_item = []
 
+        self.add_appointment_claim_item()
+
         if not self.inpatient_record:
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
@@ -372,6 +365,8 @@ class JubileePatientClaim(Document):
                     self.add_LRPMT_claim_item(row, d)
 
         else:
+            # With Jubilee, Inpatient Items are posted manually to Jubilee CMS Portal
+            return
             dates = []
             occupancy_list = []
             record_doc = frappe.get_doc("Inpatient Record", self.inpatient_record)
@@ -415,17 +410,7 @@ class JubileePatientClaim(Document):
                     service_requests.append(d.get("service_request"))
                     service_request_doc = frappe.get_doc("Healthcare Service Request", d.get("service_request"))
                     for row in service_request_doc.get("payments"):
-                        if (
-                            not occupancy.is_service_chargeable and
-                            "dialysis" not in row.service_name.lower() and
-                            "ct scan" not in row.service_name.lower() and
-                            "mri" not in row.service_name.lower()
-                        ):
-                            continue
-
                         self.add_LRPMT_claim_item(row, d)
-
-        self.add_appointment_claim_item()
 
     def add_LRPMT_claim_item(self, hsr_row, d):
         if hsr_row.is_cancelled:
@@ -446,11 +431,11 @@ class JubileePatientClaim(Document):
         new_row.date_created = hsr_row.creation
         new_row.patient_encounter = d.encounter
         new_row.item_crt_by = d.practitioner
-        new_row.approval_ref_no = get_approval_number_from_LRPMT(
-            hsr_row.lrpmt_doctype,
-            hsr_row.lrpmt_docname,
-            hsr_row.dn_detail
-        )
+        # new_row.approval_ref_no = get_approval_number_from_LRPMT(
+        #     hsr_row.lrpmt_doctype,
+        #     hsr_row.lrpmt_docname,
+        #     hsr_row.dn_detail
+        # )
 
     def add_occupancy_claim_item(self, occupancy, admission_encounter):
         service_unit_type = frappe.get_cached_value(
@@ -484,7 +469,7 @@ class JubileePatientClaim(Document):
 
         new_row = self.append("jubilee_patient_claim_item", {})
         new_row.item_name = occupancy.service_unit
-        new_row.item_code = get_item_refcode(item)
+        new_row.item_code = get_jubilee_refcode(item, self.company)
         new_row.item_quantity = 1
         new_row.unit_price = occupancy.amount
         new_row.amount_claimed = occupancy.amount
@@ -499,7 +484,7 @@ class JubileePatientClaim(Document):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
             new_row = self.append("jubilee_patient_claim_item", {})
             new_row.item_name = consultancy.consultation_item
-            new_row.item_code = get_item_refcode(consultancy.consultation_item)
+            new_row.item_code = get_jubilee_refcode(consultancy.consultation_item, self.company)
             new_row.item_quantity = 1
             new_row.unit_price = consultancy.rate
             new_row.amount_claimed = consultancy.rate
@@ -517,22 +502,6 @@ class JubileePatientClaim(Document):
         else:
             patient_appointment_list = json.loads(self.hms_tz_claim_appointment_list)
 
-        sorted_claim_items = sorted(
-            self.jubilee_patient_claim_item,
-            key=lambda k: (
-                k.get("ref_doctype"),
-                k.get("item_code"),
-                k.get("date_created"),
-            ),
-        )
-        idx = len(patient_appointment_list) + 1
-        for row in sorted_claim_items:
-            row.idx = idx
-            idx += 1
-
-        self.jubilee_patient_claim_item = sorted_claim_items
-
-        appointment_idx = 1
         for appointment_no in patient_appointment_list:
             appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_no)
 
@@ -543,7 +512,7 @@ class JubileePatientClaim(Document):
             if not appointment_doc.follow_up:
                 new_row = self.append("jubilee_patient_claim_item", {})
                 new_row.item_name = appointment_doc.billing_item
-                new_row.item_code = get_item_refcode(appointment_doc.billing_item)
+                new_row.item_code = get_jubilee_refcode(appointment_doc.billing_item, self.company)
                 new_row.item_quantity = 1
                 new_row.unit_price = appointment_doc.paid_amount
                 new_row.amount_claimed = appointment_doc.paid_amount
@@ -552,8 +521,6 @@ class JubileePatientClaim(Document):
                 new_row.ref_docname = appointment_doc.name
                 new_row.date_created = appointment_doc.modified
                 new_row.item_crt_by = get_fullname(appointment_doc.modified_by)
-                new_row.idx = appointment_idx
-                appointment_idx += 1
 
     def set_clinical_notes(self, encounter):
         if not self.clinical_notes:
@@ -934,40 +901,8 @@ class JubileePatientClaim(Document):
         if cint(self.folio_no) != 0:
             return
 
-        folio_counter = frappe.db.get_all(
-            "Insurance Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-            },
-            fields=["name"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "Insurance Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_doc = frappe.get_doc("Insurance Folio Counter", folio_counter[0].name)
-            folio_no = cint(folio_doc.folio_no) + 1
-
-            folio_doc.folio_no += 1
-            folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
-
-        self.folio_no = folio_no
-        self.db_set("folio_no", folio_no)
+        self.folio_no = get_or_create_folio_counter(self, "NHIF")
+        self.db_set("folio_no", self.folio_no)
 
     @frappe.whitelist()
     def send_jubilee_claim(self):
@@ -990,12 +925,23 @@ class JubileePatientClaim(Document):
                     f"Jubilee Server responded with HTTP status code: {r.status_code}<br><br>{str(r.text) if r.text else str(r)}"
                 )
             else:
-                data = json.loads(r.text)
-                if data.get("status") == "ERROR":
-                    frappe.throw(str(data.get("description")))
+                # Jubilee server sometimes prepends PHP debug HTML warnings
+                # before the JSON body. Extract only the JSON part.
+                raw = r.text or ""
+                json_start = raw.find('{"')
+                if json_start == -1:
+                    frappe.throw(
+                        f"Jubilee returned an unreadable response:<br><br>{raw}"
+                    )
+
+                data = json.loads(raw[json_start:])
+                if data.get("status") == "ERROR" or data.get("Status") == "ERROR":
+                    frappe.throw(
+                        data.get("description") or data.get("Description") or str(data)
+                    )
 
                 else:
-                    frappe.msgprint(str(data.get("description")))
+                    frappe.msgprint(str(data.get("description") or data.get("Description") or ""))
                     if data:
                         add_jubilee_log(
                             request_type="SubmitClaim",
@@ -1043,8 +989,7 @@ class JubileePatientClaim(Document):
         folio_data = frappe._dict()
         folio_data.entities = []
         entities = frappe._dict()
-        entities.FolioID = str(uuid.uuid1())
-        entities.ClaimYear = self.claim_year
+        entities.FolioID = self.folio_id
         entities.ClaimYear = self.claim_year
         entities.ClaimMonth = self.claim_month
         entities.FolioNo = self.folio_no
@@ -1055,7 +1000,7 @@ class JubileePatientClaim(Document):
         entities.LastName = self.last_name
         entities.Gender = self.gender
         entities.DateOfBirth = str(self.date_of_birth)
-        entities.Age = f"{(date_diff(nowdate(), self.date_of_birth)) // 365}"
+        entities.Age = self.patient_age
         entities.TelephoneNo = self.telephone_no
         entities.PatientFileNo = self.patient
         entities.AuthorizationNo = self.authorization_no
@@ -1070,19 +1015,15 @@ class JubileePatientClaim(Document):
             )
         entities.PractitionerNo = ", ".join([d.mct_code for d in self.practitioners if d.mct_code]),
         # entities.PractitionerName = self.practitioner_name
-        entities.ProviderID = (
-            frappe.get_cached_value(
-                "HMS TZ Setting",
-                self.company,
-                "jubilee_provider_id",
-            )
-        )
+        entities.ProviderID = self.provider_id
         entities.ClinicalNotes = self.clinical_notes
         entities.AmountClaimed = self.total_amount
         entities.DelayReason = self.delayreason
         entities.LateSubmissionReason = self.delayreason
-        entities.LateAuthorizationReason = ""
-        entities.EmergencyAuthorizationReason = get_emergency_reason(
+        entities.LateAuthorizationReason = get_appointment_remarks(
+            self.patient_appointment
+        )
+        entities.EmergencyAuthorizationReason = get_appointment_remarks(
             self.patient_appointment
         )
         entities.CreatedBy = self.item_crt_by
@@ -1225,7 +1166,6 @@ class JubileePatientClaim(Document):
             else:
                 return unique_items
 
-        # claim_doc = frappe.get_doc("Jubilee Patient Claim", self.name)
         self.allow_changes = 1
         self.jubilee_patient_claim_item = reconcile_items(
             self.jubilee_patient_claim_item
@@ -1238,44 +1178,36 @@ class JubileePatientClaim(Document):
         return True
 
 
-def get_item_refcode(item_code):
+def get_jubilee_refcode(item_code, company):
+    jubilee_cust_name = frappe.get_cached_value("HMS TZ Setting", company, "jubilee_customer_name")
+
     code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item_code, "customer_name": ["like", "%Jubilee%"]},
+        filters={"parent": item_code, "customer_name": jubilee_cust_name},
         fields=["ref_code"],
     )
     if len(code_list) == 0:
         frappe.throw(_(f"Item: {item_code} has not Jubilee Code Reference"))
-        # return None
 
     ref_code = code_list[0].ref_code
     if not ref_code:
         frappe.throw(_(f"Item: {item_code} has not Jubilee Code Reference"))
-        # return None
 
     return ref_code
 
 
-def get_LRPMT_status(encounter_no, row, child):
-    status = None
-    if child["doctype"] == "Therapy Type" or row.get(child["ref_docname"]):
-        status = "Submitted"
-
-    elif child["doctype"] == "Lab Test Template" and not row.get(child["ref_docname"]):
-        lab_workflow_state = frappe.get_value(
+def get_LRPMT_status(row):
+    status = row.lrpmt_status
+    if status == "Draft" and row.lrpmt_doctype == "Lab Test":
+        lab_workflow_state = frappe.get_cached_value(
             "Lab Test",
-            {
-                "ref_docname": encounter_no,
-                "ref_doctype": "Patient Encounter",
-                "hms_tz_ref_childname": row.name,
-            },
+            row.lrpmt_docname,
             "workflow_state",
         )
         if lab_workflow_state and lab_workflow_state != "Lab Test Requested":
             status = "Submitted"
-        else:
-            status = "Draft"
-    else:
+
+    if not status:
         status = "Draft"
 
     return status
@@ -1290,7 +1222,7 @@ def get_missing_patient_signature(doc):
         doc.patient_signature = signature
 
 
-def get_emergency_reason(appointment):
+def get_appointment_remarks(appointment):
     remarks = frappe.db.get_value(
         "Patient Appointment",
         {"name": appointment},
@@ -1315,8 +1247,13 @@ def generate_pdf(doc):
             return to_base64(pdf)
 
     data_list = []
-    for i in doc.patient_encounters:
-        data_list.append(i.name)
+    encounter_list = doc.get_patient_encounters()
+
+    for i in encounter_list:
+        if not i.encounter or i.inpatient_record:
+            continue
+
+        data_list.append(i.encounter)
 
     doctype = dict({"Patient Encounter": data_list})
     print_format = ""
@@ -1352,7 +1289,7 @@ def generate_pdf(doc):
 
 
 def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
-    output = PdfFileWriter()
+    output = PdfWriter()
     if isinstance(doctype, dict):
         for doctype_name in doctype:
             for doc_name in doctype[doctype_name]:
@@ -1366,7 +1303,12 @@ def download_multi_pdf(doctype, name, print_format=None, no_letterhead=0):
                         no_letterhead=no_letterhead,
                     )
                 except Exception:
-                    frappe.log_error(frappe.get_traceback())
+                    frappe.log_error(
+                        title="Jubilee Claim's PDF Error",
+                        message=frappe.get_traceback(),
+                        reference_doctype=doctype_name,
+                        reference_docname=doc_name,
+                    )
 
     return read_multi_pdf(output)
 

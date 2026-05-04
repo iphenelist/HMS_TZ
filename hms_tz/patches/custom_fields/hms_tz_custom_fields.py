@@ -68,7 +68,7 @@ def execute():
         "Delivery Note Item": [
             dict(
                 fieldname="approval_number",
-                label="Service Reference Number",
+                label="Approval Number",
                 fieldtype="Data",
                 insert_after="is_restricted",
             ),
@@ -1160,7 +1160,7 @@ def execute():
         "Lab Test": [
             {
                 "fieldtype": "Data",
-                "label": "Service Reference Number",
+                "label": "Approval Number",
                 "fieldname": "approval_number",
                 "insert_after": "is_restricted",
                 "depends_on": "eval: doc.is_restricted",
@@ -2485,7 +2485,7 @@ def execute():
         "Radiology Examination": [
             {
                 "fieldtype": "Data",
-                "label": "Service Reference Number",
+                "label": "Approval Number",
                 "fieldname": "approval_number",
                 "insert_after": "is_restricted",
                 "depends_on": "eval: doc.is_restricted",

@@ -1,9 +1,11 @@
 frappe.ui.form.on("Healthcare Insurance Company", {
   onload: function (frm) {
     add_nhif_actions_btn(frm);
+    add_jubilee_actions_btn(frm);
   },
   refresh: function (frm) {
     add_nhif_actions_btn(frm);
+    add_jubilee_actions_btn(frm);
   },
 });
 
@@ -339,5 +341,57 @@ var add_nhif_actions_btn = function (frm) {
       });
     },
     __("NHIF Actions")
+  );
+};
+
+var add_jubilee_actions_btn = (frm) => {
+  if (!frm.doc.insurance_company_name.includes("Jubilee")) {
+    return;
+  }
+
+  frm.add_custom_button(
+    __("Get Jubilee Packages"),
+    () => {
+      frappe.call({
+        method:
+          "hms_tz.jubilee.api.price_package.enqueue_get_jubilee_price_packages",
+        args: { company: frm.doc.company },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: (data) => {},
+      });
+    },
+    __("Jubilee Actions")
+  );
+
+  frm.add_custom_button(
+    __("Process Jubilee Records"),
+    () => {
+      frappe.call({
+        method: "hms_tz.jubilee.api.price_package.process_jubilee_records",
+        args: { company: frm.doc.company },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: (data) => {},
+      });
+    },
+    __("Jubilee Actions")
+  );
+
+  frm.add_custom_button(
+    __("Get Jubilee Procedures"),
+    () => {
+      frappe.call({
+        method: "hms_tz.jubilee.api.api.enqueue_get_jubilee_procedures",
+        args: {
+          company: frm.doc.company,
+          caller: "Front End",
+        },
+        freeze: true,
+        freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+        callback: (data) => {},
+      });
+    },
+    __("Jubilee Actions")
   );
 };

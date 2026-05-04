@@ -84,7 +84,7 @@ def execute():
             },
             {
                 "fieldname": "approval_number",
-                "label": "Service Reference Number",
+                "label": "Approval Number",
                 "fieldtype": "Data",
                 "insert_after": "notes",
             },

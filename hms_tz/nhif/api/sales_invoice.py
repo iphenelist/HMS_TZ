@@ -98,6 +98,7 @@ def create_healthcare_docs(doc, method):
 
     therapy_items = []
     service_request_ids = []
+    consumable_item_ids = []
     if doc.get("items"):
         for item in doc.items:
             if not item.reference_dt or not item.reference_dn:
@@ -141,8 +142,12 @@ def create_healthcare_docs(doc, method):
             elif item.reference_dt and item.reference_dt in [
                 "Inpatient Occupancy",
                 "Inpatient Consultancy",
+                "Consumable Item",
             ]:
                 update_invoice_reference_in_lrpmt_childs(child, item)
+
+                if item.reference_dt == "Consumable Item":
+                    consumable_item_ids.append(item.reference_dn)
 
         create_therapy_plan(invoice_therapy_dict=therapy_items)
 
@@ -161,6 +166,22 @@ def create_healthcare_docs(doc, method):
                 for row in healthcare_service_parents:
                     hsr_doc = frappe.get_cached_doc("Healthcare Service Request", row.service_request_no)
                     hsr_doc.create_healthcare_service_docs()
+
+        if len(consumable_item_ids) > 0:
+            ci = DocType("Consumable Item")
+            consumable_item_parents = (
+                frappe.qb.from_(ci)
+                .select(
+                    ci.parent.as_("consumable_record_no"),
+                )
+                .distinct()
+                .where(ci.name.isin(consumable_item_ids))
+            ).run(as_dict=True)
+
+            if len(consumable_item_parents) > 0:
+                for row in consumable_item_parents:
+                    cons_doc = frappe.get_doc("Consumable Record", row.consumable_record_no)
+                    cons_doc.try_create_delivery_note()
 
     if method == "From Front End":
         frappe.db.commit()

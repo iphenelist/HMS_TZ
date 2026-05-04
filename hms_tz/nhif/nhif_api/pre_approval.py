@@ -294,7 +294,12 @@ def get_services(doc, preapproval_no=None):
             ):
                 continue
 
-            ref_code = get_item_refcode(child.get("doctype"), row.get(child.get("item")))
+            ref_code = get_item_refcode(
+                child.get("doctype"),
+                row.get(child.get("item")),
+                doc.company,
+                doc.insurance_company
+            )
             services.append(
                 {
                     "itemCode": ref_code,

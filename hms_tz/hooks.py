@@ -199,16 +199,21 @@ doc_events = {
     },
     "Clinical Procedure": {
         "after_insert": "hms_tz.nhif.api.clinical_procedure.after_insert",
+        "before_save": "hms_tz.nhif.api.clinical_procedure.before_save",
         "onload": "hms_tz.nhif.api.clinical_procedure.onload",
         "before_submit": "hms_tz.nhif.api.clinical_procedure.before_submit",
         "on_submit": "hms_tz.nhif.api.clinical_procedure.on_submit",
+        "on_update_after_submit": "hms_tz.nhif.api.clinical_procedure.on_update_after_submit",
     },
     "Delivery Note": {
         "validate": "hms_tz.nhif.api.delivery_note.validate",
         "onload": "hms_tz.nhif.api.delivery_note.onload",
         "after_insert": "hms_tz.nhif.api.delivery_note.after_insert",
         "before_submit": "hms_tz.nhif.api.delivery_note.before_submit",
-        "on_submit": "hms_tz.nhif.api.delivery_note.on_submit",
+        "on_submit": [
+            "hms_tz.nhif.api.delivery_note.on_submit",
+            "hms_tz.hms_tz.doctype.nurse_record.nurse_record.create_imo_from_delivery_note",
+        ],
         "on_cancel": "hms_tz.nhif.api.delivery_note.on_cancel",
     },
     "Inpatient Record": {
@@ -251,6 +256,10 @@ scheduler_events = {
     "hourly": ["hms_tz.nhif.api.healthcare_utils.set_uninvoiced_so_closed"],
     "daily": ["hms_tz.nhif.api.inpatient_record.daily_update_inpatient_occupancies"],
     "cron": {
+        # Routine for every 4 hours: auto-create Nurse Records for admitted patients
+        "0 */4 * * *": [
+            "hms_tz.hms_tz.doctype.nurse_record.nurse_record.create_nurse_records_for_admitted_patients"
+        ],
         # Routine for every day 00:01 am at night
         "1 0 * * *": ["hms_tz.nhif.api.healthcare_utils.auto_submit_nhif_patient_claim"],
         # Routine for every day 01:30am at night
@@ -279,6 +288,7 @@ scheduler_events = {
             "hms_tz.nhif.nhif_api.admission.get_room_types",
             "hms_tz.nhif.nhif_api.facility.get_facilities",
             "hms_tz.nhif.nhif_api.approval.get_approval_services",
+            "hms_tz.jubilee.api.api.get_procedure_list",
         ],
     },
     # 	"hourly": [

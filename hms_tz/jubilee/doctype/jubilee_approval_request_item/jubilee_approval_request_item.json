@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-28 15:17:48.486877",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "ref_doctype",
+  "item_name",
+  "item_code",
+  "item_quantity",
+  "unit_price",
+  "amount_claimed",
+  "column_break_item",
+  "status",
+  "ref_docname",
+  "patient_encounter",
+  "created_by",
+  "date_created"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "default": "1",
+   "fieldname": "item_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty"
+  },
+  {
+   "columns": 1,
+   "fieldname": "unit_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Unit Price",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount_claimed",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount Claimed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_item",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Ref DocType",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "ref_docname",
+   "fieldtype": "Data",
+   "label": "Ref Docname",
+   "read_only": 1
+  },
+  {
+   "fieldname": "patient_encounter",
+   "fieldtype": "Link",
+   "label": "Patient Encounter",
+   "options": "Patient Encounter",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Created By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date_created",
+   "fieldtype": "Date",
+   "label": "Date Created"
+  },
+  {
+   "columns": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nApproved\nRejected\nPending",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-28 17:27:14.901488",
+ "modified_by": "Administrator",
+ "module": "Jubilee",
+ "name": "Jubilee Approval Request Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

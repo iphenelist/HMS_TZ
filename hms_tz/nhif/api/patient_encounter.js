@@ -1,6 +1,7 @@
 frappe.ui.form.on("Patient Encounter", {
   setup: (frm) => {
     nhif_btns(frm);
+    jubilee_btns(frm);
   },
   on_submit: function (frm) {
     if (!frm.doc.patient_encounter_final_diagnosis) {
@@ -17,6 +18,7 @@ frappe.ui.form.on("Patient Encounter", {
   onload: function (frm) {
     control_practitioners_to_submit_others_encounters(frm);
     nhif_btns(frm);
+    jubilee_btns(frm);
     add_patient_history_btn(frm);
     add_refer_practtitioner_btn(frm);
     add_btn_final(frm);
@@ -27,7 +29,7 @@ frappe.ui.form.on("Patient Encounter", {
   },
   refresh: function (frm) {
     nhif_btns(frm);
-
+    jubilee_btns(frm);
     control_practitioners_to_submit_others_encounters(frm);
 
     frm.fields_dict["drug_prescription"].grid.get_field(
@@ -2019,6 +2021,21 @@ var nhif_btns = (frm) => {
   });
 };
 
+var jubilee_btns = (frm) => {
+  if (!frappe.user.has_role("Healthcare Practitioner")) {
+    return;
+  }
+
+  if (
+    !frm.doc.insurance_company ||
+    !frm.doc.insurance_company.includes("Jubilee")
+  ) {
+    return;
+  }
+
+  verify_services_btn(frm);
+};
+
 var login_to_nhif = (frm) => {
   if (!frm.page.fields_dict.login_to_nhif) {
     frm.page
@@ -2397,3 +2414,218 @@ var confirm_poc_btn = (frm) => {
       .$input.addClass("btn-sm");
   }
 };
+
+var verify_services_btn = (frm) => {
+  if (!frm.page.fields_dict.verify_services_btn) {
+    frm.page.add_field({
+      label: "Verify Services",
+      fieldname: "verify_services_btn",
+      fieldtype: "Button",
+      click: async () => {
+        if (frm.is_dirty()) {
+          frappe.msgprint(
+            "<b>Please save the form before verifying services</b>"
+          );
+          return;
+        }
+
+        if (!frm.doc.jubilee_procedure) {
+          frm.scroll_to_field("jubilee_procedure");
+          frm.toggle_reqd("jubilee_procedure", true);
+          frappe.show_alert(
+            {
+              message: __(
+                "Please select Jubilee Procedure before verifying services"
+              ),
+              indicator: "red",
+            },
+            10
+          );
+          return;
+        }
+
+        frappe.prompt(
+          [
+            {
+              label: "Jubilee Benefit",
+              fieldname: "benefit_id",
+              fieldtype: "Link",
+              options: "Jubilee Benefit",
+              reqd: 1,
+              get_query: () => {
+                return {
+                  filters: {
+                    appointment: frm.doc.appointment,
+                  },
+                };
+              },
+            },
+            {
+              label: "Benefit Name",
+              fieldname: "benefit_name",
+              fieldtype: "Data",
+              read_only: 1,
+              fetch_from: "benefit_id.benefit_name",
+              depends_on: "benefit_id",
+            },
+            {
+              label: "Benefit Code",
+              fieldname: "benefit_code",
+              fieldtype: "Data",
+              read_only: 1,
+              fetch_from: "benefit_id.benefit_code",
+              depends_on: "benefit_id",
+            },
+          ],
+          (values) => {
+            frappe.call({
+              method: "hms_tz.jubilee.api.api.verify_jubilee_services",
+              args: {
+                source_doctype: frm.doc.doctype,
+                source_docname: frm.doc.name,
+                benefit_code: values.benefit_code,
+              },
+              async: true,
+              freeze: true,
+              freeze_message: __(
+                '<i class="fa fa-spinner fa-spin fa-4x"></i>'
+              ),
+              callback: function (r) {
+                if (r.message === true) {
+                  frappe.utils.play_sound("submit");
+                  frm.reload_doc();
+                  frappe.show_alert(
+                    {
+                      message: __("Services verified successfully"),
+                      indicator: "green",
+                    },
+                    10
+                  );
+                } else if (
+                  r.message &&
+                  r.message.action === "PreAuthRequired"
+                ) {
+                  frappe.utils.play_sound("error");
+                  show_preauth_dialog(frm, r.message);
+                } else {
+                  frappe.utils.play_sound("error");
+                }
+              },
+              onerror: function (data) {
+                frappe.utils.play_sound("error");
+              },
+            });
+          }
+        );
+      },
+    });
+  }
+};
+
+function show_preauth_dialog(frm, data) {
+  const d = new frappe.ui.Dialog({
+    title: __("Jubilee: Pre-Authorization Required"),
+    indicator: "orange",
+    fields: [
+      {
+        fieldtype: "HTML",
+        fieldname: "message_html",
+        options: `
+          <div style="border-left: 4px solid #ffc107; background-color: #fff3cd;
+                      padding: 15px; border-radius: 10px;
+                      box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 10px 0;">
+            <p style="font-size: 16px; font-weight: bold;">⚠️ ${data.description}</p>
+            <p style="font-size: 14px;">
+              The total amount of the services exceeds the patient's daily balance.
+            </p>
+            <p style="font-size: 14px;">
+              Click <b>"Request Pre-Authorization"</b> to send a pre-authorization
+              request to Jubilee. The screen will freeze until a response is received.
+            </p>
+          </div>
+        `,
+      },
+    ],
+    primary_action_label: __("Request Pre-Authorization"),
+    primary_action: () => {
+      d.hide();
+      frappe.call({
+        method:
+          "hms_tz.jubilee.doctype.jubilee_approval_request.jubilee_approval_request.create_preauthorization_doc",
+        args: {
+          source_doctype: data.source_doctype,
+          source_docname: data.source_docname,
+          benefit_code: data.benefit_code,
+        },
+        freeze: true,
+        freeze_message: __(
+          '<div style="text-align:center;">' +
+            '<i class="fa fa-spinner fa-spin fa-4x"></i>' +
+            "<p style='margin-top:15px; font-size:16px;'>Sending Pre-Authorization to Jubilee…</p>" +
+            "</div>"
+        ),
+        callback: (r) => {
+          const result = r.message || {};
+          console.log(result);
+
+          if (result.status === "OK") {
+            frappe.utils.play_sound("submit");
+            frappe.msgprint({
+              title: __("Pre-Authorization Successful"),
+              indicator: "green",
+              message: `
+                <div style="border-left: 4px solid #28a745; background-color: #d4edda;
+                            padding: 15px; border-radius: 10px;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 10px 0;">
+                  <p style="font-size: 16px; font-weight: bold;">✅ Pre-Authorization Approved</p>
+                  <p style="font-size: 14px;">Submission ID: <b>${
+                    result.submission_id || "N/A"
+                  }</b></p>
+                  <p style="font-size: 14px;">${result.description || ""}</p>
+                </div>
+              `,
+            });
+          } else {
+            frappe.utils.play_sound("error");
+            frappe.msgprint({
+              title: __("Pre-Authorization Failed"),
+              indicator: "red",
+              message: `
+                <div style="border-left: 4px solid #dc3545; background-color: #f8d7da;
+                            padding: 15px; border-radius: 10px;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 10px 0;">
+                  <p style="font-size: 16px; font-weight: bold;">❌ Pre-Authorization Failed</p>
+                  <p style="font-size: 14px;">Status: <b>${
+                    result.status || "ERROR"
+                  }</b></p>
+                  <p style="font-size: 14px;">Response: <b>${
+                    result.description || "Unknown error"
+                  }</b></p>
+                  <p style="font-size: 14px;">Service Request: <b>${
+                    result.service_request || ""
+                  }</b></p>
+                </div>
+              `,
+            });
+          }
+
+          frm.reload_doc();
+        },
+        onerror: function () {
+          frappe.utils.play_sound("error");
+          frappe.msgprint({
+            title: __("Pre-Authorization Error"),
+            indicator: "red",
+            message: __(
+              "An unexpected error occurred while sending the pre-authorization request. Please check the error log."
+            ),
+          });
+        },
+      });
+    },
+    secondary_action_label: __("Cancel"),
+    secondary_action: () => d.hide(),
+  });
+
+  d.show();
+}

@@ -409,7 +409,12 @@ def create_service_request(doc_obj=None, data=None):
     for d in services:
         hsr.append("services", d)
 
-        ref_code = get_item_refcode(d.get("service_type"), d.get("service_name"))
+        ref_code = get_item_refcode(
+            d.get("service_type"),
+            d.get("service_name"),
+            doc.company,
+            doc.insurance_company
+        )
         new_row = {
             "item_code": ref_code,
             "rate": d.get("rate"),
@@ -523,17 +528,31 @@ def set_service_amounts(row, company, insurance_company, insurance_subscription)
     return row
 
 
-def get_item_refcode(service_type, service_name):
+def get_item_refcode(
+    service_type,
+    service_name,
+    company,
+    insurance_company,
+    insurance_customer_name=None
+):
     ref_code = ""
-    item = frappe.get_cached_value(service_type, service_name, "item")
+    if not insurance_customer_name and company:
+        if "NHIF" in insurance_company:
+            insurance_customer_name = frappe.get_cached_value(
+                "HMS TZ Setting", company, "nhif_customer_name"
+            )
+        elif "Jubilee" in insurance_company:
+            insurance_customer_name = frappe.get_cached_value(
+                "HMS TZ Setting", company, "jubilee_customer_name"
+            )
 
+    item = frappe.get_cached_value(service_type, service_name, "item")
     code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item, "customer_name": "NHIF"},
+        filters={"parent": item, "customer_name": insurance_customer_name},
         fields=["ref_code"],
     )
     if len(code_list) == 0:
-        # frappe.throw(_(f"Item {item} has not NHIF Code Reference"))
         return ref_code
 
     ref_code = code_list[0].ref_code

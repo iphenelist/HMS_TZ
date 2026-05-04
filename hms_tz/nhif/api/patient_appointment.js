@@ -338,32 +338,11 @@ frappe.ui.form.on("Patient Appointment", {
       frappe.msgprint("Appointment is already cancelled");
       return;
     }
-    if (!frm.doc.insurance_company.includes("NHIF")) {
-      frappe.show_alert(
-        {
-          message: __("This feature is not applicable for non NHIF insurance"),
-          indicator: "orange",
-        },
-        5
-      );
-      return;
-    }
+
     if (!frm.doc.insurance_subscription) {
       frappe.msgprint(
         "Select Insurance Subscription to get authorization number"
       );
-      return;
-    }
-    if (!frm.doc.biometric_method) {
-      frappe.msgprint("Please select a Biometric Method");
-      return;
-    } else if (frm.doc.biometric_method == "NONE" && !frm.doc.remarks) {
-      frappe.msgprint({
-        title: __("Remarks Missing"),
-        message: __(
-          "Please provide remarks for the selected Biometric Method"
-        ),
-      });
       return;
     }
 
@@ -371,9 +350,37 @@ frappe.ui.form.on("Patient Appointment", {
       frm.save();
     }
 
-    frm.trigger("authorize_patient");
+    if (frm.doc.insurance_company.includes("NHIF")) {
+      if (!frm.doc.biometric_method) {
+        frappe.msgprint("Please select a Biometric Method");
+        return;
+      } else if (frm.doc.biometric_method == "NONE" && !frm.doc.remarks) {
+        frappe.msgprint({
+          title: __("Remarks Missing"),
+          message: __(
+            "Please provide remarks for the selected Biometric Method"
+          ),
+        });
+        return;
+      }
+
+      frm.trigger("authorize_nhif_patient");
+    } else if (frm.doc.insurance_company.includes("Jubilee")) {
+      frm.trigger("authorize_jubilee_patient");
+    } else {
+      frappe.show_alert(
+        {
+          message: __(
+            "This feature is applicable for NHIF and Jubilee insurance only"
+          ),
+          indicator: "orange",
+        },
+        10
+      );
+      return;
+    }
   },
-  authorize_patient: async (frm) => {
+  authorize_nhif_patient: async (frm) => {
     try {
       let biometricData;
 
@@ -481,6 +488,45 @@ frappe.ui.form.on("Patient Appointment", {
         );
       }
     }
+  },
+  authorize_jubilee_patient: async (frm) => {
+    frappe.call({
+      method: "hms_tz.jubilee.api.api.get_authorization_number",
+      args: {
+        company: frm.doc.company,
+        card_no: frm.doc.coverage_plan_card_number || "",
+        appointment_no: frm.doc.name,
+        insurance_subscription: frm.doc.insurance_subscription,
+        insurance_provider: "Jubilee",
+      },
+      async: true,
+      freeze: true,
+      freeze_message: __('<i class="fa fa-spinner fa-spin fa-4x"></i>'),
+      callback: (data) => {
+        if (data.message && data.message !== "Error") {
+          frappe.utils.play_sound("submit");
+          const result = data.message;
+          if (result.AuthorizationNo) {
+            frm.set_value("authorization_number", result.AuthorizationNo);
+            frm.save().then(() => {
+              frm.reload_doc();
+            });
+            frappe.show_alert(
+              {
+                message: __("Authorization Number is updated"),
+                indicator: "green",
+              },
+              5
+            );
+          }
+        } else {
+          frappe.utils.play_sound("error");
+        }
+      },
+      onerror: function () {
+        frappe.utils.play_sound("error");
+      },
+    });
   },
   get_patient_details_from_nhif: (frm) => {
     if (!frm.doc.insurance_company.includes("NHIF")) {
@@ -760,6 +806,7 @@ const check_and_set_availability = (frm) => {
               filters: {
                 status: "Active",
                 hms_tz_company: frm.doc.company,
+                practitioner_role: "Doctor",
               },
             };
           },

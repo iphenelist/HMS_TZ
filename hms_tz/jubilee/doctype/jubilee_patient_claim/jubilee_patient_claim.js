@@ -109,4 +109,13 @@ frappe.ui.form.on("Jubilee Patient Claim", {
       frm.set_value("reviewed_by", "");
     }
   },
+
+  bypass_sending_to_jubilee: (frm) => {
+    if (frm.doc.bypass_sending_to_jubilee == 1) {
+      frm.set_value("bypassed_by", frappe.user.full_name());
+    } else {
+      frm.set_value("bypassed_by", "");
+      frm.set_value("bypass_reason", "");
+    }
+  },
 });

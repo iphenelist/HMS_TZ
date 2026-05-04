@@ -95,17 +95,26 @@ frappe.ui.form.on("Therapy Session", {
       );
     }
 
+    frm.set_query("practitioner", function () {
+      return {
+        filters: {
+          practitioner_role: "Doctor",
+        },
+      };
+    });
     frm.set_query("referring_practitioner", function () {
       if (frm.doc.source == "External Referral") {
         return {
           filters: {
             healthcare_practitioner_type: "External",
+            practitioner_role: "Doctor",
           },
         };
       } else {
         return {
           filters: {
             healthcare_practitioner_type: "Internal",
+            practitioner_role: "Doctor",
           },
         };
       }

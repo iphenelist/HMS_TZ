@@ -126,7 +126,7 @@ class Patient(Document):
         if frappe.get_cached_value("Patient", name):
             count = frappe.db.sql(
                 f"""select ifnull(MAX(CAST(SUBSTRING_INDEX(name, ' ', -1) AS UNSIGNED)), 0) from tabPatient
-				 where name like %s""",
+                 where name like %s""",
                 f"%{name} - %",
                 as_list=1,
             )[0][0]
@@ -229,7 +229,7 @@ def get_patient_detail(patient):
         frappe.throw(_("Patient not found"))
     vital_sign = frappe.db.sql(
         """select * from `tabVital Signs` where patient=%s
-		order by signs_date desc limit 1""",
+        order by signs_date desc limit 1""",
         (patient),
         as_dict=1,
     )
@@ -290,14 +290,14 @@ def get_timeline_data(doctype, name):
     return dict(
         frappe.db.sql(
             """
-		SELECT
-			unix_timestamp(communication_date), count(*)
-		FROM
-			`tabPatient Medical Record`
-		WHERE
-			patient=%s
-			and `communication_date` > date_sub(curdate(), interval 1 year)
-		GROUP BY communication_date""",
+        SELECT
+            unix_timestamp(communication_date), count(*)
+        FROM
+            `tabPatient Medical Record`
+        WHERE
+            patient=%s
+            and `communication_date` > date_sub(curdate(), interval 1 year)
+        GROUP BY communication_date""",
             name,
         )
     )

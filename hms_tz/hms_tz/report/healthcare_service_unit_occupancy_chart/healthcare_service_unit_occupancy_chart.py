@@ -58,11 +58,11 @@ def get_service_unit_details(filters):
 
     return frappe.db.sql(
         f"""
-		SELECT service_unit as bed, date_format(DATE(check_in), '%%Y-%%m-%%d') as date, COUNT(*) as count
-		FROM `tabInpatient Occupancy` io
-		WHERE {conditions}
-		GROUP BY service_unit, DATE(check_in)
-		""",
+        SELECT service_unit as bed, date_format(DATE(check_in), '%%Y-%%m-%%d') as date, COUNT(*) as count
+        FROM `tabInpatient Occupancy` io
+        WHERE {conditions}
+        GROUP BY service_unit, DATE(check_in)
+        """,
         filters,
         as_dict=1,
     )

@@ -2,6 +2,11 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Practitioner Availability", {
+  setup: function (frm) {
+    frm.set_query("practitioner", function () {
+      return { filters: { practitioner_role: "Doctor" } };
+    });
+  },
   refresh: function (frm) {
     set_event_type_properties_to_event(frm);
     frm.set_query("service_unit", function () {

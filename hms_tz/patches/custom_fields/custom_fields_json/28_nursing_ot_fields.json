@@ -1,0 +1,493 @@
+[
+    {
+        "dt": "Healthcare Practitioner",
+        "fieldname": "practitioner_role",
+        "fieldtype": "Select",
+        "label": "Practitioner Role",
+        "options": "Doctor\nNurse\nOther",
+        "insert_after": "healthcare_practitioner_type",
+        "reqd": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "ref_doctype",
+        "fieldtype": "Data",
+        "label": "Reference DocType",
+        "insert_after": "instructions",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "ref_docname",
+        "fieldtype": "Data",
+        "label": "Reference Name",
+        "insert_after": "ref_doctype",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administration_status",
+        "fieldtype": "Select",
+        "label": "Administration Status",
+        "options": "\nAdministered\nSkipped\nRefused\nHeld",
+        "insert_after": "ref_docname",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administered_time",
+        "fieldtype": "Datetime",
+        "label": "Administered Time",
+        "insert_after": "administration_status",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administered_by",
+        "fieldtype": "Link",
+        "label": "Administered By",
+        "options": "User",
+        "insert_after": "administered_time",
+        "read_only": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "administration_notes",
+        "fieldtype": "Small Text",
+        "label": "Notes",
+        "insert_after": "administered_by",
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Healthcare Service Unit",
+        "fieldname": "disabled",
+        "fieldtype": "Check",
+        "label": "Disabled",
+        "insert_after": "is_group",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_38",
+        "fieldtype": "Section Break",
+        "insert_after": "insurance_company",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "pre_operative_note",
+        "fieldtype": "Text Editor",
+        "label": "Pre Operative Note",
+        "insert_after": "pre_operative_notes_template",
+        "hidden": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_intraoperative",
+        "fieldtype": "Tab Break",
+        "label": "Intraoperative Record",
+        "insert_after": "service_request",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "ot_schedule",
+        "fieldtype": "Link",
+        "label": "OT Schedule",
+        "options": "OT Schedule",
+        "insert_after": "tab_intraoperative",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "anesthesia_type",
+        "fieldtype": "Select",
+        "label": "Anesthesia Type",
+        "options": "\nGeneral\nRegional\nLocal\nSpinal\nEpidural\nSedation",
+        "insert_after": "ot_schedule",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "column_break_intraop",
+        "fieldtype": "Column Break",
+        "insert_after": "anesthesia_type",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "incision_time",
+        "fieldtype": "Time",
+        "label": "Incision Time",
+        "insert_after": "column_break_intraop",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "closure_time",
+        "fieldtype": "Time",
+        "label": "Closure Time",
+        "insert_after": "incision_time",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "estimated_blood_loss",
+        "fieldtype": "Float",
+        "label": "Estimated Blood Loss (ml)",
+        "insert_after": "section_break_ebl",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_who_checklist",
+        "fieldtype": "Tab Break",
+        "label": "WHO Safety Checklist",
+        "insert_after": "intraop_notes",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_who",
+        "fieldtype": "Section Break",
+        "insert_after": "tab_who_checklist",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "who_sign_in",
+        "fieldtype": "Check",
+        "label": "Sign In Completed",
+        "insert_after": "section_break_who",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "who_time_out",
+        "fieldtype": "Check",
+        "label": "Time Out Completed",
+        "insert_after": "who_sign_in",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "who_sign_out",
+        "fieldtype": "Check",
+        "label": "Sign Out Completed",
+        "insert_after": "who_time_out",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "column_break_who",
+        "fieldtype": "Column Break",
+        "insert_after": "who_sign_out",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "checklist_verified_by",
+        "fieldtype": "Link",
+        "label": "Checklist Verified By",
+        "options": "Healthcare Practitioner",
+        "insert_after": "column_break_who",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_swab",
+        "fieldtype": "Section Break",
+        "label": "Swab & Instrument Count",
+        "insert_after": "checklist_verified_by",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "swab_count_before",
+        "fieldtype": "Int",
+        "label": "Swab Count Before",
+        "insert_after": "section_break_swab",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "swab_count_after",
+        "fieldtype": "Int",
+        "label": "Swab Count After",
+        "insert_after": "swab_count_before",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "column_break_swab",
+        "fieldtype": "Column Break",
+        "insert_after": "swab_count_after",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "instrument_count_before",
+        "fieldtype": "Int",
+        "label": "Instrument Count Before",
+        "insert_after": "column_break_swab",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "instrument_count_after",
+        "fieldtype": "Int",
+        "label": "Instrument Count After",
+        "insert_after": "instrument_count_before",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "count_verified",
+        "fieldtype": "Check",
+        "label": "Count Verified (All Accounted For)",
+        "insert_after": "instrument_count_after",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_postop",
+        "fieldtype": "Tab Break",
+        "label": "Post-Operative",
+        "insert_after": "procedure_notes",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "postop_actions",
+        "fieldtype": "Section Break",
+        "insert_after": "tab_postop",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "implant_specimen_bts",
+        "fieldtype": "HTML",
+        "insert_after": "postop_actions",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "postop_instructions",
+        "fieldtype": "Text",
+        "label": "Post-Op Instructions",
+        "insert_after": "implant_specimen_bts",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "column_break_postop",
+        "fieldtype": "Column Break",
+        "insert_after": "postop_instructions",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "postop_care_plan",
+        "fieldtype": "Text",
+        "label": "Post-Op Care Plan",
+        "insert_after": "column_break_postop",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "recovery_location",
+        "fieldtype": "Link",
+        "label": "Recovery Location",
+        "options": "Healthcare Service Unit",
+        "insert_after": "postop_care_plan",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "surgical_specimen",
+        "fieldtype": "Data",
+        "label": "Surgical Specimen",
+        "insert_after": "recovery_location",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_postop",
+        "fieldtype": "Section Break",
+        "insert_after": "surgical_specimen",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "implant",
+        "fieldtype": "Data",
+        "label": "Implant",
+        "insert_after": "surgical_specimen",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_cp_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "implant",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "cp_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_cp_consumables",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "vital_signs",
+        "fieldtype": "Tab Break",
+        "label": "Vital Signs",
+        "insert_after": "recovery_location",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_cp_charts",
+        "fieldtype": "Tab Break",
+        "label": "Charts",
+        "insert_after": "cp_consumables_html",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_cp_vital_signs",
+        "fieldtype": "Section Break",
+        "label": "Vital Signs",
+        "insert_after": "tab_cp_charts",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "record_vital_signs",
+        "fieldtype": "Button",
+        "label": "Record Vital Signs",
+        "insert_after": "section_cp_vital_signs",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "cp_vital_signs_html",
+        "fieldtype": "HTML",
+        "label": "Vital Signs Chart & Summary",
+        "insert_after": "record_vital_signs",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "anesthesia",
+        "fieldtype": "Tab Break",
+        "label": "Anesthesia",
+        "insert_after": "cp_vital_signs_html",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_cp_anesthesia",
+        "fieldtype": "Section Break",
+        "label": "Anesthesia",
+        "insert_after": "anesthesia",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "cp_anesthesia_html",
+        "fieldtype": "HTML",
+        "label": "Anesthesia Records",
+        "insert_after": "add_anesthesia",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "tab_surgical_team",
+        "fieldtype": "Tab Break",
+        "label": "Surgical Team",
+        "insert_after": "recovery_location",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_surg_team",
+        "fieldtype": "Section Break",
+        "insert_after": "tab_surgical_team",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "surgical_team",
+        "fieldtype": "Table",
+        "label": "Surgical Team",
+        "options": "Surgical Team Member",
+        "insert_after": "section_break_surg_team",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Lab Test",
+        "fieldname": "tab_lt_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "hms_tz_user_id",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Lab Test",
+        "fieldname": "lt_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_lt_consumables",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Radiology Examination",
+        "fieldname": "tab_re_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "hms_tz_submitted_date",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Radiology Examination",
+        "fieldname": "re_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_re_consumables",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Therapy Session",
+        "fieldname": "tab_ts_consumables",
+        "fieldtype": "Tab Break",
+        "label": "Consumables",
+        "insert_after": "hms_tz_ref_childname",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Therapy Session",
+        "fieldname": "ts_consumables_html",
+        "fieldtype": "HTML",
+        "label": "Consumable Records",
+        "insert_after": "tab_ts_consumables",
+        "doctype": "Custom Field"
+    }
+]

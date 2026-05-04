@@ -87,6 +87,7 @@ def get_healthcare_services_to_invoice(
             fields=["name", "inpatient_record", "appointment"],
         )
 
+    appointment = None
     inpatient_record = None
     childs_map = get_childs_map()
 
@@ -96,6 +97,9 @@ def get_healthcare_services_to_invoice(
             inpatient_record = i.inpatient_record
 
         encounter_doc = frappe.get_cached_doc("Patient Encounter", i.name)
+
+        if not appointment and encounter_doc.appointment:
+            appointment = encounter_doc.appointment
 
         for key, value in childs_map.items():
             table = encounter_doc.get(value.get("table"))
@@ -135,7 +139,6 @@ def get_healthcare_services_to_invoice(
                 services_to_invoice.append(new_row)
 
     # Get services from Healthcare Service Request using Appointment No
-    appointment = encounter_dict[0].appointment
     hsr = DocType("Healthcare Service Request")
     hsrp = DocType("Healthcare Service Request Payment")
     hsr_services = (
@@ -213,6 +216,41 @@ def get_healthcare_services_to_invoice(
             new_row["service_request"] = ""
 
             services_to_invoice.append(new_row)
+
+    # Get services from Consumable Records (cash items pending payment)
+    cr = DocType("Consumable Record")
+    ci = DocType("Consumable Item")
+
+    consumable_items = (
+        frappe.qb.from_(cr)
+        .inner_join(ci)
+        .on(cr.name == ci.parent)
+        .select(
+            ci.item_code,
+            ci.qty_requested,
+            ci.rate,
+            ci.name.as_("consumable_item_name"),
+            cr.name.as_("consumable_record"),
+        )
+        .where(
+            (cr.docstatus == 1)
+            & (ci.payment_type == "Cash")
+            & (ci.invoiced == 0)
+            & (ci.is_billable == 1)
+            & (cr.appointment == appointment)
+        )
+    ).run(as_dict=True)
+
+    for row in consumable_items:
+        new_row = {}
+        new_row["reference_type"] = "Consumable Item"
+        new_row["reference_name"] = row.consumable_item_name
+        new_row["service"] = row.item_code
+        new_row["rate"] = row.rate
+        new_row["qty"] = row.qty_requested
+        new_row["service_request"] = ""
+
+        services_to_invoice.append(new_row)
 
     return services_to_invoice
 
@@ -793,7 +831,6 @@ def get_restricted_LRPT(doc):
 # Sales Invoice Dialog Box for Healthcare Services
 @frappe.whitelist()
 def set_healthcare_services(doc, checked_values):
-    import json
 
     doc = frappe.get_cached_doc(json.loads(doc))
     checked_values = json.loads(checked_values)
@@ -829,6 +866,7 @@ def set_healthcare_services(doc, checked_values):
         if checked_item["dt"] not in [
             "Inpatient Occupancy",
             "Inpatient Consultancy",
+            "Consumable Item",
         ]:
             parent_encounter = frappe.get_cached_value(
                 checked_item["dt"],
@@ -859,7 +897,26 @@ def set_healthcare_services(doc, checked_values):
                 comapny_option = get_template_company_option(service_item, company)
                 item_line.healthcare_service_unit = comapny_option.service_unit
 
-        if item_line.healthcare_service_unit:
+        if checked_item["dt"] == "Consumable Item":
+            consumable_detials = frappe.get_cached_value(
+                "Consumable Item",
+                checked_item["dn"],
+                ["parent", "warehouse"],
+                as_dict=True
+            )
+
+            if consumable_detials:
+                item_line.warehouse = consumable_detials.get("warehouse")
+                consumable_record = consumable_detials.get("parent")
+
+                if consumable_record:
+                    item_line.healthcare_practitioner = frappe.get_cached_value(
+                        "Consumable Record",
+                        consumable_record,
+                        "prescribed_by",
+                    )
+
+        if item_line.healthcare_service_unit and not item_line.warehouse:
             item_line.warehouse = get_warehouse_from_service_unit(item_line.healthcare_service_unit)
 
     doc.set_missing_values(for_validate=True)

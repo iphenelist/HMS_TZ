@@ -1,3 +1,4 @@
+import ast
 import json
 from time import sleep
 
@@ -52,6 +53,14 @@ def process_jubilee_records(company):
     )
     frappe.msgprint("Processing Jubilee Coverages via backaground job", alert=True)
 
+    enqueue(
+        method=process_jubilee_coverages,
+        queue="default",
+        timeout=3600,
+        is_async=True,
+        company=company,
+    )
+    frappe.msgprint("Processing Jubilee Coverages via backaground job", alert=True)
 
 def get_price_package(company):
     if not company:
@@ -129,10 +138,15 @@ def create_price_package(packages, company, log_name):
         "dosage",
         "itemprice",
         "itemname",
-        "cleanname"
+        "cleanname",
+        "creation",
+        "owner",
+        "modified",
+        "modified_by"
     ]
 
     data = []
+    user = frappe.session.user
     timestamp = now_datetime()
     for row in packages:
         jpp_name = make_autoname(key="hash")
@@ -150,6 +164,10 @@ def create_price_package(packages, company, log_name):
                 row.get("ItemPrice"),
                 row.get("ItemName"),
                 row.get("CleanName"),
+                timestamp,
+                user,
+                timestamp,
+                user
             )
         )
 
@@ -183,8 +201,8 @@ def set_package_diff(company):
     changed_price_packages = []
     deleted_price_packages = []
 
-    current_rec = json.loads(logs[0]["response_data"])
-    previous_rec = json.loads(logs[1]["response_data"])
+    current_rec = _parse_response_data(logs[0]["response_data"])
+    previous_rec = _parse_response_data(logs[1]["response_data"])
 
     current_package = current_rec.get("Description")
     previous_package = previous_rec.get("Description")
@@ -201,11 +219,11 @@ def set_package_diff(company):
             if current_item != previous_item:
                 fields_changed = {
                     field: {
-                        "current": current_item[field],
-                        "previous": previous_item[field],
+                        "current": current_item.get(field),
+                        "previous": previous_item.get(field),
                     }
-                    for field in current_item
-                    if field in previous_item and current_item[field] != previous_item[field]
+                    for field in set(current_item) | set(previous_item)
+                    if current_item.get(field) != previous_item.get(field)
                 }
 
                 new_row = current_item.copy()
@@ -246,17 +264,16 @@ def add_price_packages_records(doc, rec, type, service_map):
         services = service_map.get(e.get("ItemCode"))
         for svc in services:
             price_row = doc.append("price_package", {})
-            price_row.type = type
+            price_row.change_type = type
             price_row.service_type = svc.get("service_type")
             price_row.service_name = svc.get("service_name")
 
             price_row.itemcode = e.get("ItemCode")
-            # price_row.olditemcode = e.get("OldItemCode")
             price_row.itemname = e.get("ItemName")
+            price_row.cleanname = e.get("CleanName")
             price_row.strength = e.get("Strength")
             price_row.dosage = e.get("Dosage")
-            price_row.unitprice = e.get("UnitPrice")
-            # price_row.record = json.dumps(e)
+            price_row.itemprice = e.get("ItemPrice")
             price_row.fields_changed = json.dumps(e.get("fields_changed"))
             price_row.previous_item = json.dumps(e.get("previous_item"))
 
@@ -281,7 +298,6 @@ def process_jubilee_prices(company, item=None):
             handle_insurance_prices(itp, item, price_list_name, default_currency)
 
         frappe.db.commit()
-
 
 
 def process_jubilee_coverages(company, coverage_plan=None):
@@ -324,32 +340,38 @@ def process_jubilee_coverages(company, coverage_plan=None):
 
     jubilee_customer = frappe.get_cached_value("HMS TZ Setting", company, "jubilee_customer_name")
     service_map = get_insurance_items(jubilee_customer)
-    services = service_map.values()
+    price_packages = get_price_packages(company)
 
     for plan in coverage_plan_list:
         has_data = False
-        for svc in services:
-            hsic_name = frappe.generate_hash(length=10)
 
-            row = (
-                hsic_name,
-                now_datetime(),
-                frappe.session.user,
-                now_datetime(),
-                frappe.session.user,
-                svc.get("service_type"),
-                svc.get("service_name"),
-                1,
-                plan.get("name"),
-                company,
-                1,
-                nowdate(),
-                "2099-12-31",
-            )
-            hsic_data.append(row)
+        for package in price_packages:
+            if not service_map.get(package.get("itemcode")):
+                continue
 
-            if not has_data and row:
-                has_data = True
+            services = service_map.get(package.get("itemcode"))
+            for svc in services:
+                hsic_name = frappe.generate_hash(length=10)
+
+                row = (
+                    hsic_name,
+                    now_datetime(),
+                    frappe.session.user,
+                    now_datetime(),
+                    frappe.session.user,
+                    svc.get("service_type"),
+                    svc.get("service_name"),
+                    1,
+                    plan.get("name"),
+                    company,
+                    1,
+                    nowdate(),
+                    "2099-12-31",
+                )
+                hsic_data.append(row)
+
+                if not has_data and row:
+                    has_data = True
 
         if has_data:
             plans_for_deletion.append(plan.name)
@@ -363,5 +385,34 @@ def process_jubilee_coverages(company, coverage_plan=None):
         values=hsic_data,
         ignore_duplicates=True,
     )
-    frappe.db.commit()
     return True
+
+
+def _parse_response_data(data: str) -> dict:
+    """Parse response_data stored as either valid JSON or Python str() repr."""
+    if not data:
+        return {}
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        return ast.literal_eval(data)
+
+
+def get_price_packages(company):
+    jpp = DocType("Jubilee Price Package")
+    price_packages = (
+        frappe.qb.from_(jpp)
+        .select(
+            jpp.itemcode,
+            jpp.itemprice,
+            jpp.itemname,
+            jpp.cleanname,
+            jpp.strength,
+            jpp.dosage
+        )
+        .where(
+            (jpp.company == company)
+        )
+    ).run(as_dict=True)
+
+    return price_packages

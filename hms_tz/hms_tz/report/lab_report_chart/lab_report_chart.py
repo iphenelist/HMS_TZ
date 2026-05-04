@@ -62,30 +62,30 @@ def get_lab_results(filters):
 
     return frappe.db.sql(
         f"""
-		select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, n.result_value as result_value
-		from `tabLab Test` lb inner join `tabNormal Test Result` n on lb.name = n.parent
-		where lb.docstatus = 1
+        select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, n.result_value as result_value
+        from `tabLab Test` lb inner join `tabNormal Test Result` n on lb.name = n.parent
+        where lb.docstatus = 1
         and lb.lab_test_name not in (select lbt.lab_test_name from `tabLab Test Template` lbt where lbt.lab_test_template_type="Grouped")
-		and lb.status = "Completed" {conditions}
-		union
-		select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, d.result_value as result_value
-		from `tabLab Test` lb inner join `tabDescriptive Test Result` d on lb.name = d.parent
-		where lb.docstatus = 1
+        and lb.status = "Completed" {conditions}
+        union
+        select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, d.result_value as result_value
+        from `tabLab Test` lb inner join `tabDescriptive Test Result` d on lb.name = d.parent
+        where lb.docstatus = 1
         and lb.lab_test_name not in (select lbt.lab_test_name from `tabLab Test Template` lbt where lbt.lab_test_template_type="Grouped")
-		and lb.status = "Completed" {conditions}
-		union
-		select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, org.colony_population as result_value
-		from `tabLab Test` lb inner join `tabOrganism Test Result` org on lb.name = org.parent
-		where lb.docstatus = 1
+        and lb.status = "Completed" {conditions}
+        union
+        select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, org.colony_population as result_value
+        from `tabLab Test` lb inner join `tabOrganism Test Result` org on lb.name = org.parent
+        where lb.docstatus = 1
         and lb.lab_test_name not in (select lbt.lab_test_name from `tabLab Test Template` lbt where lbt.lab_test_template_type="Grouped")
-		and lb.status = "Completed" {conditions}
-		union
-		select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, ss.antibiotic_sensitivity as result_value
-		from `tabLab Test` lb inner join `tabSensitivity Test Result` ss on lb.name = ss.parent
-		where lb.docstatus = 1
+        and lb.status = "Completed" {conditions}
+        union
+        select lb.lab_test_name as lab_test_name,  date_format(lb.result_date, '%%Y-%%m-%%d') as result_date, ss.antibiotic_sensitivity as result_value
+        from `tabLab Test` lb inner join `tabSensitivity Test Result` ss on lb.name = ss.parent
+        where lb.docstatus = 1
         and lb.lab_test_name not in (select lbt.lab_test_name from `tabLab Test Template` lbt where lbt.lab_test_template_type="Grouped")
-		and lb.status = "Completed" {conditions}
-		""",
+        and lb.status = "Completed" {conditions}
+        """,
         filters,
         as_dict=1,
     )

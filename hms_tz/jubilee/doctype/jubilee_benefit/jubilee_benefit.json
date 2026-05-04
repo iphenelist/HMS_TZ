@@ -1,0 +1,143 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-04-23 16:25:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "benefit_code",
+  "benefit_name",
+  "benefit_balance",
+  "column_break_mzq1",
+  "appointment",
+  "patient",
+  "card_no",
+  "authorization_no",
+  "column_break_worf",
+  "company",
+  "posting_date",
+  "posting_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "benefit_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Benefit Code",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "benefit_name",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Benefit Name",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "benefit_balance",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Benefit Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_mzq1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "card_no",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Card No",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "authorization_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Authorization No",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_worf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Appointment",
+   "options": "Patient Appointment",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-23 16:46:44.598631",
+ "modified_by": "Administrator",
+ "module": "Jubilee",
+ "name": "Jubilee Benefit",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "benefit_name,card_no,authorization_no",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "benefit_name",
+ "track_changes": 1
+}

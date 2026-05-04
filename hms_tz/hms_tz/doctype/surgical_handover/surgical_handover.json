@@ -1,0 +1,276 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-09 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "patient",
+  "patient_name",
+  "clinical_procedure",
+  "column_break_01",
+  "company",
+  "type",
+  "handover_time",
+  "section_break_locations",
+  "from_location",
+  "handed_over_by",
+  "column_break_locations",
+  "to_location",
+  "received_by",
+  "tab_checklist",
+  "patient_identity_verified",
+  "consent_verified",
+  "surgical_site_marked",
+  "allergies_documented",
+  "iv_lines_checked",
+  "column_break_checklist",
+  "vitals_stable",
+  "medications_documented",
+  "blood_products_available",
+  "specimens_handed_over",
+  "drain_tubes_documented",
+  "tab_notes",
+  "clinical_notes",
+  "section_break_ack",
+  "acknowledgement",
+  "acknowledged_time",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SH-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clinical_procedure",
+   "fieldtype": "Link",
+   "label": "Clinical Procedure",
+   "options": "Clinical Procedure"
+  },
+  {
+   "fieldname": "column_break_01",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Handover Type",
+   "options": "Ward to Theater\nTheater to Ward",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "handover_time",
+   "fieldtype": "Datetime",
+   "label": "Handover Time"
+  },
+  {
+   "fieldname": "section_break_locations",
+   "fieldtype": "Section Break",
+   "label": "Transfer Details"
+  },
+  {
+   "fieldname": "from_location",
+   "fieldtype": "Link",
+   "label": "From Location",
+   "options": "Healthcare Service Unit"
+  },
+  {
+   "fieldname": "handed_over_by",
+   "fieldtype": "Link",
+   "label": "Handed Over By",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "column_break_locations",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_location",
+   "fieldtype": "Link",
+   "label": "To Location",
+   "options": "Healthcare Service Unit"
+  },
+  {
+   "fieldname": "received_by",
+   "fieldtype": "Link",
+   "label": "Received By",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "tab_checklist",
+   "fieldtype": "Tab Break",
+   "label": "Handover Checklist"
+  },
+  {
+   "default": "0",
+   "fieldname": "patient_identity_verified",
+   "fieldtype": "Check",
+   "label": "Patient Identity Verified"
+  },
+  {
+   "default": "0",
+   "fieldname": "consent_verified",
+   "fieldtype": "Check",
+   "label": "Consent Verified"
+  },
+  {
+   "default": "0",
+   "fieldname": "surgical_site_marked",
+   "fieldtype": "Check",
+   "label": "Surgical Site Marked"
+  },
+  {
+   "default": "0",
+   "fieldname": "allergies_documented",
+   "fieldtype": "Check",
+   "label": "Allergies Documented"
+  },
+  {
+   "default": "0",
+   "fieldname": "iv_lines_checked",
+   "fieldtype": "Check",
+   "label": "IV Lines Checked"
+  },
+  {
+   "fieldname": "column_break_checklist",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "vitals_stable",
+   "fieldtype": "Check",
+   "label": "Vitals Stable"
+  },
+  {
+   "default": "0",
+   "fieldname": "medications_documented",
+   "fieldtype": "Check",
+   "label": "Medications Documented"
+  },
+  {
+   "default": "0",
+   "fieldname": "blood_products_available",
+   "fieldtype": "Check",
+   "label": "Blood Products Available"
+  },
+  {
+   "default": "0",
+   "fieldname": "specimens_handed_over",
+   "fieldtype": "Check",
+   "label": "Specimens Handed Over"
+  },
+  {
+   "default": "0",
+   "fieldname": "drain_tubes_documented",
+   "fieldtype": "Check",
+   "label": "Drain Tubes Documented"
+  },
+  {
+   "fieldname": "tab_notes",
+   "fieldtype": "Tab Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "clinical_notes",
+   "fieldtype": "Text",
+   "label": "Clinical Notes"
+  },
+  {
+   "fieldname": "section_break_ack",
+   "fieldtype": "Section Break",
+   "label": "Acknowledgement"
+  },
+  {
+   "default": "0",
+   "fieldname": "acknowledgement",
+   "fieldtype": "Check",
+   "label": "Acknowledged by Receiving Practitioner"
+  },
+  {
+   "fieldname": "acknowledged_time",
+   "fieldtype": "Datetime",
+   "label": "Acknowledged Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Surgical Handover",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-15 13:34:09.013918",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Surgical Handover",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
