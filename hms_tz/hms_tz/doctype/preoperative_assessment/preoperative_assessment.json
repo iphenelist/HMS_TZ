@@ -50,6 +50,8 @@
   "medical_history_tab",
   "chronic_medications_section",
   "chronic_medications",
+  "column_break_zbhv",
+  "comments",
   "section_break_history",
   "allergies",
   "section_break_fzsa",
@@ -388,11 +390,21 @@
    "fieldname": "consent",
    "fieldtype": "Attach",
    "label": "Consent"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "column_break_zbhv",
+   "fieldtype": "Column Break"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-30 16:11:13.453731",
+ "modified": "2026-05-04 23:04:50.431945",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Preoperative Assessment",
