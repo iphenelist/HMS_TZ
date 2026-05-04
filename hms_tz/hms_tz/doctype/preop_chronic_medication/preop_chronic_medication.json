@@ -25,7 +25,7 @@
  ],
  "fields": [
   {
-   "columns": 2,
+   "columns": 3,
    "fieldname": "drug_code",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -61,7 +61,7 @@
    "options": "Prescription Duration"
   },
   {
-   "columns": 1,
+   "columns": 2,
    "fetch_from": "drug_code.default_dosage_form",
    "fieldname": "dosage_form",
    "fieldtype": "Link",
@@ -75,11 +75,9 @@
    "fieldtype": "Column Break"
   },
   {
-   "columns": 2,
    "fieldname": "comment",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "in_list_view": 1,
    "label": "Comment"
   },
   {
@@ -133,7 +131,7 @@
  "grid_page_length": 50,
  "istable": 1,
  "links": [],
- "modified": "2026-04-14 12:54:19.909887",
+ "modified": "2026-05-04 23:08:13.478255",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Preop Chronic Medication",
