@@ -1032,10 +1032,10 @@ function show_cp_anesthesia_dialog(frm) {
 // ─── Implant & Specimen Buttons ───
 
 function render_cp_implant_specimen_buttons(frm) {
-  if (!frm.fields_dict.impant_specimen_bts) return;
+  if (!frm.fields_dict.implant_specimen_bts) return;
 
   if (frm.is_new() || !frm.doc.patient) {
-    frm.fields_dict.impant_specimen_bts.$wrapper.html(
+    frm.fields_dict.implant_specimen_bts.$wrapper.html(
       '<div class="text-muted text-center p-4">' +
         __("Save the Clinical Procedure first.") +
         "</div>"
@@ -1043,7 +1043,7 @@ function render_cp_implant_specimen_buttons(frm) {
     return;
   }
 
-  const $wrapper = frm.fields_dict.impant_specimen_bts.$wrapper;
+  const $wrapper = frm.fields_dict.implant_specimen_bts.$wrapper;
   $wrapper.empty();
 
   if (frm.doc.docstatus === 2) return;

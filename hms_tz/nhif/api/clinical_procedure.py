@@ -54,6 +54,14 @@ def on_submit(doc, methd):
     if doc.inpatient_record:
         create_postoperative_recovery(doc)
 
+    if doc.ot_schedule:
+        frappe.db.set_value(
+            "OT Schedule",
+            doc.ot_schedule,
+            "status",
+            "Completed"
+        )
+
 
 def on_update_after_submit(doc, method=None):
     update_medical_record(doc)
@@ -124,13 +132,6 @@ def get_ot_schedule(doc):
             "practitioner": row.practitioner,
             "role": row.role
         })
-
-    frappe.db.set_value(
-        "OT Schedule",
-        doc.ot_schedule,
-        "status",
-        "Completed"
-    )
 
 
 def get_preop_notes(doc):
