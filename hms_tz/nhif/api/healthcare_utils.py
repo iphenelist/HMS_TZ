@@ -87,6 +87,7 @@ def get_healthcare_services_to_invoice(
             fields=["name", "inpatient_record", "appointment"],
         )
 
+    appointment = None
     inpatient_record = None
     childs_map = get_childs_map()
 
@@ -96,6 +97,9 @@ def get_healthcare_services_to_invoice(
             inpatient_record = i.inpatient_record
 
         encounter_doc = frappe.get_cached_doc("Patient Encounter", i.name)
+
+        if not appointment and encounter_doc.appointment:
+            appointment = encounter_doc.appointment
 
         for key, value in childs_map.items():
             table = encounter_doc.get(value.get("table"))
@@ -135,7 +139,6 @@ def get_healthcare_services_to_invoice(
                 services_to_invoice.append(new_row)
 
     # Get services from Healthcare Service Request using Appointment No
-    appointment = encounter_dict[0].appointment
     hsr = DocType("Healthcare Service Request")
     hsrp = DocType("Healthcare Service Request Payment")
     hsr_services = (

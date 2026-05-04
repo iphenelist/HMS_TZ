@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2026-04-09 00:00:00.000000",
+ "creation": "2026-04-09 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -28,7 +28,7 @@
   "insurance_item_code",
   "is_billable",
   "invoiced",
-  "sales_invoice"
+  "sales_invoice_number"
  ],
  "fields": [
   {
@@ -143,25 +143,25 @@
    "options": "\nCash\nInsurance"
   },
   {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
    "fieldname": "insurance_subscription",
    "fieldtype": "Link",
    "label": "Insurance Subscription",
-   "options": "Healthcare Insurance Subscription",
-   "depends_on": "eval:doc.payment_type=='Insurance'"
+   "options": "Healthcare Insurance Subscription"
   },
   {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
    "fieldname": "insurance_company",
    "fieldtype": "Link",
    "label": "Insurance Company",
    "options": "Healthcare Insurance Company",
-   "depends_on": "eval:doc.payment_type=='Insurance'",
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
    "fieldname": "insurance_coverage_plan",
    "fieldtype": "Data",
    "label": "Insurance Coverage Plan",
-   "depends_on": "eval:doc.payment_type=='Insurance'",
    "read_only": 1
   },
   {
@@ -183,7 +183,7 @@
    "read_only": 1
   },
   {
-   "fieldname": "sales_invoice",
+   "fieldname": "sales_invoice_number",
    "fieldtype": "Link",
    "label": "Sales Invoice",
    "options": "Sales Invoice",
@@ -192,12 +192,14 @@
  ],
  "istable": 1,
  "links": [],
- "modified": "2026-04-09 00:00:00.000000",
+ "modified": "2026-05-04 18:19:18.311238",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Consumable Item",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }
