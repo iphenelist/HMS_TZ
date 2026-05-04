@@ -83,7 +83,7 @@ def get_fields():
             {
                 "fieldname": "approval_number",
                 "fieldtype": "Data",
-                "label": "Service Reference Number",
+                "label": "Approval Number",
                 "insert_after": "is_restricted",
                 "depends_on": "eval: doc.is_restricted == 1",
                 "mandatory_depends_on": "eval: doc.is_restricted == 1",
