@@ -10,26 +10,6 @@
         "doctype": "Custom Field"
     },
     {
-        "dt": "Healthcare Practitioner",
-        "fieldname": "nursing_specialization",
-        "fieldtype": "Select",
-        "label": "Nursing Specialization",
-        "options": "\nGeneral Nursing\nCritical Care (ICU)\nSurgical/Theater\nMidwifery\nPediatric\nEmergency",
-        "depends_on": "eval:doc.practitioner_role==\"Nurse\"",
-        "insert_after": "practitioner_role",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Healthcare Practitioner",
-        "fieldname": "nursing_role",
-        "fieldtype": "Select",
-        "label": "Nursing Role",
-        "options": "\nStaff Nurse\nCharge Nurse\nNurse Manager",
-        "depends_on": "eval:doc.practitioner_role==\"Nurse\"",
-        "insert_after": "nursing_specialization",
-        "doctype": "Custom Field"
-    },
-    {
         "dt": "Inpatient Medication Order Entry",
         "fieldname": "ref_doctype",
         "fieldtype": "Data",
@@ -100,6 +80,22 @@
     },
     {
         "dt": "Clinical Procedure",
+        "fieldname": "section_break_38",
+        "fieldtype": "Section Break",
+        "insert_after": "insurance_company",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "pre_operative_note",
+        "fieldtype": "Text Editor",
+        "label": "Pre Operative Note",
+        "insert_after": "pre_operative_notes_template",
+        "hidden": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "tab_intraoperative",
         "fieldtype": "Tab Break",
         "label": "Intraoperative Record",
@@ -126,17 +122,9 @@
     },
     {
         "dt": "Clinical Procedure",
-        "fieldname": "estimated_blood_loss",
-        "fieldtype": "Float",
-        "label": "Estimated Blood Loss (ml)",
-        "insert_after": "anesthesia_type",
-        "doctype": "Custom Field"
-    },
-    {
-        "dt": "Clinical Procedure",
         "fieldname": "column_break_intraop",
         "fieldtype": "Column Break",
-        "insert_after": "estimated_blood_loss",
+        "insert_after": "anesthesia_type",
         "doctype": "Custom Field"
     },
     {
@@ -157,10 +145,25 @@
     },
     {
         "dt": "Clinical Procedure",
+        "fieldname": "estimated_blood_loss",
+        "fieldtype": "Float",
+        "label": "Estimated Blood Loss (ml)",
+        "insert_after": "section_break_ebl",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "tab_who_checklist",
         "fieldtype": "Tab Break",
         "label": "WHO Safety Checklist",
-        "insert_after": "procedure_notes",
+        "insert_after": "intraop_notes",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_who",
+        "fieldtype": "Section Break",
+        "insert_after": "tab_who_checklist",
         "doctype": "Custom Field"
     },
     {
@@ -168,7 +171,7 @@
         "fieldname": "who_sign_in",
         "fieldtype": "Check",
         "label": "Sign In Completed",
-        "insert_after": "tab_who_checklist",
+        "insert_after": "section_break_who",
         "doctype": "Custom Field"
     },
     {
@@ -263,7 +266,21 @@
         "fieldname": "tab_postop",
         "fieldtype": "Tab Break",
         "label": "Post-Operative",
-        "insert_after": "tab_who_checklist",
+        "insert_after": "procedure_notes",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "postop_actions",
+        "fieldtype": "Section Break",
+        "insert_after": "tab_postop",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "implant_specimen_bts",
+        "fieldtype": "HTML",
+        "insert_after": "postop_actions",
         "doctype": "Custom Field"
     },
     {
@@ -271,7 +288,7 @@
         "fieldname": "postop_instructions",
         "fieldtype": "Text",
         "label": "Post-Op Instructions",
-        "insert_after": "tab_postop",
+        "insert_after": "implant_specimen_bts",
         "doctype": "Custom Field"
     },
     {
@@ -308,6 +325,13 @@
     },
     {
         "dt": "Clinical Procedure",
+        "fieldname": "section_break_postop",
+        "fieldtype": "Section Break",
+        "insert_after": "surgical_specimen",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "implant",
         "fieldtype": "Data",
         "label": "Implant",
@@ -332,6 +356,14 @@
     },
     {
         "dt": "Clinical Procedure",
+        "fieldname": "vital_signs",
+        "fieldtype": "Tab Break",
+        "label": "Vital Signs",
+        "insert_after": "recovery_location",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "tab_cp_charts",
         "fieldtype": "Tab Break",
         "label": "Charts",
@@ -348,10 +380,26 @@
     },
     {
         "dt": "Clinical Procedure",
+        "fieldname": "record_vital_signs",
+        "fieldtype": "Button",
+        "label": "Record Vital Signs",
+        "insert_after": "section_cp_vital_signs",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
         "fieldname": "cp_vital_signs_html",
         "fieldtype": "HTML",
         "label": "Vital Signs Chart & Summary",
-        "insert_after": "section_cp_vital_signs",
+        "insert_after": "record_vital_signs",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "anesthesia",
+        "fieldtype": "Tab Break",
+        "label": "Anesthesia",
+        "insert_after": "cp_vital_signs_html",
         "doctype": "Custom Field"
     },
     {
@@ -359,7 +407,7 @@
         "fieldname": "section_cp_anesthesia",
         "fieldtype": "Section Break",
         "label": "Anesthesia",
-        "insert_after": "cp_vital_signs_html",
+        "insert_after": "anesthesia",
         "doctype": "Custom Field"
     },
     {
@@ -367,7 +415,7 @@
         "fieldname": "cp_anesthesia_html",
         "fieldtype": "HTML",
         "label": "Anesthesia Records",
-        "insert_after": "section_cp_anesthesia",
+        "insert_after": "add_anesthesia",
         "doctype": "Custom Field"
     },
     {
@@ -375,7 +423,14 @@
         "fieldname": "tab_surgical_team",
         "fieldtype": "Tab Break",
         "label": "Surgical Team",
-        "insert_after": "cp_anesthesia_html",
+        "insert_after": "recovery_location",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Clinical Procedure",
+        "fieldname": "section_break_surg_team",
+        "fieldtype": "Section Break",
+        "insert_after": "tab_surgical_team",
         "doctype": "Custom Field"
     },
     {
@@ -384,7 +439,7 @@
         "fieldtype": "Table",
         "label": "Surgical Team",
         "options": "Surgical Team Member",
-        "insert_after": "tab_surgical_team",
+        "insert_after": "section_break_surg_team",
         "doctype": "Custom Field"
     },
     {
