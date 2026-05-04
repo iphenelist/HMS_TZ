@@ -1,4 +1,5 @@
 [pre_model_sync]
+hms_tz.patches.rename_nhif_folio_counter_to_insurance_folio_counter
 
 [post_model_sync]
 hms_tz.patches.custom_fields.hms_tz_custom_fields
@@ -52,3 +53,4 @@ hms_tz.patches.custom_fields.sessions_cancelled_custom_field_on_therapy_plan_det
 hms_tz.patches.property_setter.status_options_for_therapy_plan
 hms_tz.patches.custom_fields.add_practitioner_on_patient_medical_history
 hms_tz.patches.custom_fields.add_fasttrack_and_follow_up_consultation_fields
+hms_tz.patches.add_nursing_ot_to_patient_history

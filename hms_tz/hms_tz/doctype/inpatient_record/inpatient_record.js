@@ -82,17 +82,26 @@ frappe.ui.form.on("Inpatient Record", {
       frm.set_df_property("btn_transfer", "hidden", 0);
     }
 
+    frm.set_query("primary_practitioner", function () {
+      return {
+        filters: {
+          practitioner_role: "Doctor",
+        },
+      };
+    });
     frm.set_query("referring_practitioner", function () {
       if (frm.doc.source == "External Referral") {
         return {
           filters: {
             healthcare_practitioner_type: "External",
+            practitioner_role: "Doctor",
           },
         };
       } else {
         return {
           filters: {
             healthcare_practitioner_type: "Internal",
+            practitioner_role: "Doctor",
           },
         };
       }
@@ -292,33 +301,68 @@ let admit_patient_dialog = (frm) => {
         return;
       }
 
-      if (
-        frm.doc.insurance_company &&
-        frm.doc.insurance_company.includes("NHIF")
-      ) {
-        frappe.db.get_value(
-          "HMS TZ Setting",
-          frm.doc.company,
-          "enable_nhif_api",
-          async (r) => {
-            if (r.enable_nhif_api) {
-              await nhif_admit_patient(
-                frm,
-                dialog,
-                admission_type,
-                service_unit,
-                check_in,
-                biometric_method
-              );
-            } else {
-              admit_patient(frm, service_unit, check_in, admission_type);
-              dialog.hide();
-            }
+      dialog.disable_primary_action();
+
+      try {
+        if (
+          frm.doc.insurance_company &&
+          frm.doc.insurance_company.includes("NHIF")
+        ) {
+          const r = await new Promise((resolve, reject) => {
+            frappe.db.get_value(
+              "HMS TZ Setting",
+              frm.doc.company,
+              "enable_nhif_api",
+              (r) => resolve(r),
+              () => reject(new Error("Failed to fetch HMS TZ Setting"))
+            );
+          });
+
+          if (r.enable_nhif_api) {
+            await nhif_admit_patient(
+              frm,
+              dialog,
+              admission_type,
+              service_unit,
+              check_in,
+              biometric_method
+            );
+          } else {
+            await admit_patient(frm, service_unit, check_in, admission_type);
+            dialog.hide();
           }
-        );
-      } else {
-        admit_patient(frm, service_unit, check_in, admission_type);
-        dialog.hide();
+        }
+        // else if (
+        //   frm.doc.insurance_company &&
+        //   frm.doc.insurance_company.includes("Jubilee")
+        // ) {
+        //   frappe.db.get_value(
+        //     "HMS TZ Setting",
+        //     frm.doc.company,
+        //     "enable_jubilee_api",
+        //     (r) => {
+        //       if (r.enable_jubilee_api) {
+        //         jubilee_admit_patient(
+        //           frm,
+        //           dialog,
+        //           admission_type,
+        //           service_unit,
+        //           check_in
+        //         );
+        //       } else {
+        //         admit_patient(frm, service_unit, check_in, admission_type);
+        //         dialog.hide();
+        //       }
+        //     }
+        //   );
+        // }
+        else {
+          await admit_patient(frm, service_unit, check_in, admission_type);
+          dialog.hide();
+        }
+      } catch (e) {
+        dialog.enable_primary_action();
+        console.error("Admission error:", e);
       }
     },
   });
@@ -359,12 +403,14 @@ let nhif_admit_patient = async (
     biometricData = await new FacialRecognition({ label: "Admit" });
     if (!biometricData) {
       frappe.msgprint(__("Face capture failed. Please try again."));
+      dialog.enable_primary_action();
       return;
     }
   } else if (biometric_method === "FINGERPRINT") {
     biometricData = await new Fingerprint({ label: "Admit" });
     if (!biometricData) {
       frappe.msgprint(__("Fingerprint capture failed. Please try again."));
+      dialog.enable_primary_action();
       return;
     }
   } else {
@@ -382,6 +428,7 @@ let nhif_admit_patient = async (
     });
 
     if (!confirmed) {
+      dialog.enable_primary_action();
       return;
     }
 
@@ -390,7 +437,7 @@ let nhif_admit_patient = async (
 
   dialog.hide();
 
-  frappe.call({
+  const r = await frappe.call({
     method: "hms_tz.nhif.nhif_api.admission.admit_patient",
     args: {
       admission_type: admission_type,
@@ -404,19 +451,72 @@ let nhif_admit_patient = async (
     },
     freeze: true,
     freeze_message: __("Sending Data to NHIF"),
-    callback: (r) => {
-      if (r.message) {
-        let result = r.message;
+  });
 
-        admit_patient(
-          frm,
-          service_unit,
-          check_in,
-          result.admission_no,
-          admission_type,
-          result.poc_reference_no
-        );
+  if (r && r.message) {
+    let result = r.message;
+
+    if (!result.admission_no) {
+      frappe.msgprint({
+        title: __("NHIF Admission Incomplete"),
+        message: __(
+          "NHIF did not return an Admission Number. Please try again."
+        ),
+        indicator: "red",
+      });
+      return;
+    }
+
+    await admit_patient(
+      frm,
+      service_unit,
+      check_in,
+      result.admission_no,
+      admission_type,
+      result.poc_reference_no
+    );
+  }
+};
+
+let jubilee_admit_patient = (
+  frm,
+  dialog,
+  admission_type,
+  service_unit,
+  check_in
+) => {
+  dialog.hide();
+
+  frappe.call({
+    method: "hms_tz.jubilee.api.api.get_inpatient_admission_status",
+    args: {
+      inpatient_record_name: frm.doc.name,
+    },
+    freeze: true,
+    freeze_message: __("Checking Jubilee Admission Status..."),
+    callback: (r) => {
+      if (r.message && r.message.status === "OK") {
+        let data = r.message.description || {};
+        frappe.show_alert({
+          message: __(
+            `Jubilee Admission Confirmed — Approval No: ${
+              data.approvalNumber || ""
+            }, Approved: TZS ${data.approvedAmount || "N/A"}`
+          ),
+          indicator: "green",
+        });
+        admit_patient(frm, service_unit, check_in, admission_type);
       }
+    },
+    onerror: () => {
+      frappe.utils.play_sound("error");
+      frappe.msgprint({
+        title: __("Jubilee Admission Error"),
+        indicator: "red",
+        message: __(
+          "An unexpected error occurred while fetching the Jubilee admission status."
+        ),
+      });
     },
   });
 };
@@ -429,7 +529,7 @@ let admit_patient = (
   admission_type = null,
   poc_reference_no = null
 ) => {
-  frm
+  return frm
     .call("admit", {
       service_unit: service_unit,
       check_in: check_in,

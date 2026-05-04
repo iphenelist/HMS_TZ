@@ -2,84 +2,89 @@
  "actions": [],
  "allow_copy": 1,
  "allow_import": 1,
- "autoname": "naming_series:",
+ "autoname": "JPC-.#########",
  "creation": "2024-07-26 13:43:31.553011",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "patient_appointment",
+  "column_break_gdgs",
+  "company",
+  "column_break_wzuj",
+  "posting_date",
+  "section_break_hufq",
   "patient",
   "patient_name",
   "first_name",
   "last_name",
-  "allow_changes",
   "column_break_vgxlm",
+  "gender",
+  "date_of_birth",
+  "patient_age",
+  "telephone_no",
+  "column_break_knvu",
   "coverage_plan_name",
   "cardno",
   "authorization_no",
   "inpatient_record",
-  "gender",
-  "date_of_birth",
-  "total_amount",
+  "allow_changes",
   "column_break_10",
-  "telephone_no",
-  "company",
-  "posting_date",
+  "total_amount",
   "patient_signature",
   "section_break_auto_send",
   "is_ready_for_auto_submission",
   "column_break_review_by",
   "reviewed_by",
   "section_break_8",
-  "facility_code",
-  "claim_year",
-  "claim_month",
+  "folio_id",
   "folio_no",
   "serial_no",
-  "item_crt_by",
-  "column_break_tqszx",
-  "practitioner_name",
-  "practitioner_no",
-  "date_discharge",
-  "discharge_time",
+  "provider_id",
   "date_admitted",
   "admitted_time",
+  "column_break_tqszx",
+  "claim_month",
+  "claim_year",
   "patient_type_code",
+  "item_crt_by",
+  "date_discharge",
+  "discharge_time",
   "column_break_18",
   "attendance_date",
   "attendance_time",
   "delayreason",
-  "patient_file_section",
-  "patient_file",
-  "claim_file_section",
-  "claim_file",
-  "section_break_40",
-  "notes_sb",
-  "clinical_notes",
+  "attending_practitioner_section",
+  "practitioners",
+  "submission_details_section",
+  "bypass_sending_to_jubilee",
+  "bypassed_by",
+  "submission_id",
+  "column_break_hqac",
+  "bypass_reason",
+  "item_details_tab",
   "section_break_28",
   "jubilee_patient_claim_disease",
   "section_break_30",
   "jubilee_patient_claim_item",
+  "clinical_notes_tab",
+  "notes_sb",
+  "clinical_notes",
+  "patient_file_section",
+  "patient_file",
+  "claim_file_section",
+  "claim_file",
+  "original_items_tab",
   "original_section_break",
   "original_jubilee_patient_claim_item",
-  "hms_tz_claim_appointment_list",
-  "amended_from"
+  "section_break_uccm",
+  "column_break_xxvn",
+  "amended_from",
+  "column_break_vadd",
+  "hms_tz_claim_appointment_list"
  ],
  "fields": [
-  {
-   "default": "NPC-.#########",
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Naming Series",
-   "options": "NPC-.#########",
-   "print_hide": 1,
-   "report_hide": 1,
-   "reqd": 1
-  },
   {
    "fieldname": "patient_appointment",
    "fieldtype": "Link",
@@ -192,7 +197,7 @@
    "in_standard_filter": 1,
    "label": "Authorization No",
    "no_copy": 1,
-   "permlevel": 1,
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -200,7 +205,8 @@
    "fieldname": "coverage_plan_name",
    "fieldtype": "Data",
    "label": "Coverage Plan Name",
-   "no_copy": 1
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "total_amount",
@@ -245,12 +251,6 @@
    "label": "Folio Info"
   },
   {
-   "fieldname": "facility_code",
-   "fieldtype": "Data",
-   "label": "Facility Code",
-   "read_only": 1
-  },
-  {
    "fieldname": "claim_year",
    "fieldtype": "Int",
    "label": "Claim Year",
@@ -285,25 +285,8 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "practitioner_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Practitioner Name",
-   "read_only": 1
-  },
-  {
-   "fieldname": "practitioner_no",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Practitioner No",
-   "read_only": 1
-  },
-  {
    "fieldname": "date_discharge",
    "fieldtype": "Date",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date Discharge",
    "read_only": 1
@@ -311,13 +294,13 @@
   {
    "fieldname": "discharge_time",
    "fieldtype": "Time",
+   "hidden": 1,
    "label": "Discharge Time",
    "read_only": 1
   },
   {
    "fieldname": "date_admitted",
    "fieldtype": "Date",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date Admitted",
    "read_only": 1
@@ -325,6 +308,7 @@
   {
    "fieldname": "admitted_time",
    "fieldtype": "Time",
+   "hidden": 1,
    "label": "Admitted Time",
    "read_only": 1
   },
@@ -391,11 +375,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "section_break_40",
-   "fieldtype": "Section Break"
-  },
-  {
-   "collapsible": 1,
    "fieldname": "notes_sb",
    "fieldtype": "Section Break",
    "label": "Clinical Notes"
@@ -458,16 +437,126 @@
   {
    "fieldname": "column_break_vgxlm",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_gdgs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_wzuj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_hufq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "patient_age",
+   "fieldtype": "Int",
+   "label": "Patient Age",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_knvu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "folio_id",
+   "fieldtype": "Data",
+   "label": "Folio ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_id",
+   "fieldtype": "Data",
+   "label": "Provider ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_items_tab",
+   "fieldtype": "Tab Break",
+   "label": "Original Items"
+  },
+  {
+   "bold": 1,
+   "fieldname": "item_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "clinical_notes_tab",
+   "fieldtype": "Tab Break",
+   "label": "Clinical Notes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_uccm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_xxvn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_vadd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "attending_practitioner_section",
+   "fieldtype": "Section Break",
+   "label": "Attending Practitioner"
+  },
+  {
+   "fieldname": "practitioners",
+   "fieldtype": "Table",
+   "label": "Practitioner(s)",
+   "options": "Jubilee Patient Claim Practitioner"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "submission_details_section",
+   "fieldtype": "Section Break",
+   "label": "Submission Details"
+  },
+  {
+   "default": "0",
+   "fieldname": "bypass_sending_to_jubilee",
+   "fieldtype": "Check",
+   "label": "Bypass Sending to Jubilee"
+  },
+  {
+   "fieldname": "bypassed_by",
+   "fieldtype": "Data",
+   "label": "Bypassed By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submission_id",
+   "fieldtype": "Data",
+   "label": "Submission ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hqac",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.bypass_sending_to_jubilee",
+   "fieldname": "bypass_reason",
+   "fieldtype": "Small Text",
+   "label": "Bypass Reason",
+   "mandatory_depends_on": "eval: doc.bypass_sending_to_jubilee"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-26 14:06:47.705131",
+ "modified": "2026-04-29 16:17:50.360534",
  "modified_by": "Administrator",
  "module": "Jubilee",
  "name": "Jubilee Patient Claim",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -498,6 +587,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

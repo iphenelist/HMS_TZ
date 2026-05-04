@@ -75,7 +75,7 @@
   {
    "fieldname": "nhif_employername",
    "fieldtype": "Data",
-   "label": "NHIF EmployerName"
+   "label": "EmployerName"
   },
   {
    "fieldname": "amended_from",

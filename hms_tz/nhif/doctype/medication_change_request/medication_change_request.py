@@ -1227,7 +1227,12 @@ def add_or_update_service(
                 "insurance_company": hsr_doc.insurance_company,
                 "insurance_subscription": hsr_doc.insurance_subscription,
                 "payor_plan": hsr_doc.insurance_coverage_plan,
-                "item_code": get_item_refcode("Medication", drug_code),
+                "item_code": get_item_refcode(
+                    "Medication",
+                    drug_code,
+                    hsr_doc.company,
+                    hsr_doc.insurance_company,
+                ),
             })
 
             new_service.percent_covered = hsr_doc.get_percent_covered(item_obj=new_service)
@@ -1348,7 +1353,12 @@ def create_service_payments(
 ):
     """Create payment entries for a new service"""
 
-    ref_code = get_item_refcode("Medication", service_row.get("service_name"))
+    ref_code = get_item_refcode(
+        "Medication",
+        service_row.get("service_name"),
+        hsr_doc.company,
+        hsr_doc.insurance_company,
+    )
 
     # Get percent_covered from service_row or default to 100
     percent_covered = service_row.get("percent_covered") or 100

@@ -1,0 +1,444 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-09 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "details_tab",
+  "appointment",
+  "patient",
+  "patient_name",
+  "ot_schedule",
+  "column_break_01",
+  "service_name",
+  "clinical_procedure",
+  "inpatient_record",
+  "practitioner",
+  "column_break_aazg",
+  "company",
+  "status",
+  "posting_date",
+  "posting_time",
+  "section_break_checks",
+  "fasting_status_verified",
+  "blood_crossmatch_available",
+  "consent_signed",
+  "site_marking_verified",
+  "column_break_checks",
+  "iv_access_secured",
+  "pre_op_labs_reviewed",
+  "consent",
+  "section_break_payment",
+  "payment_type",
+  "insurance_subscription",
+  "column_break_payment",
+  "insurance_coverage_plan",
+  "naming_series",
+  "column_break_payment2",
+  "insurance_company",
+  "tab_assessment",
+  "asa_grade",
+  "airway_assessment",
+  "mallampati_score",
+  "column_break_assessment",
+  "blood_group",
+  "last_oral_intake",
+  "section_break_sahn",
+  "pre_operative_notes_template",
+  "pre_operative_note",
+  "medical_history_tab",
+  "chronic_medications_section",
+  "chronic_medications",
+  "column_break_zbhv",
+  "comments",
+  "section_break_history",
+  "allergies",
+  "section_break_fzsa",
+  "surgical_history",
+  "tab_consumables",
+  "consumables_html",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PREOP-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.appointment",
+   "fetch_from": "appointment.patient",
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ot_schedule",
+   "fieldtype": "Link",
+   "label": "OT Schedule",
+   "options": "OT Schedule",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_01",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "appointment.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nCompleted\nCleared for Surgery\nNot Cleared",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clinical_procedure",
+   "fieldtype": "Link",
+   "label": "Clinical Procedure",
+   "options": "Clinical Procedure",
+   "search_index": 1
+  },
+  {
+   "fieldname": "service_name",
+   "fieldtype": "Link",
+   "label": "Service Name",
+   "options": "Clinical Procedure Template"
+  },
+  {
+   "fieldname": "tab_assessment",
+   "fieldtype": "Tab Break",
+   "label": "Assessment"
+  },
+  {
+   "fieldname": "asa_grade",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "ASA Grade",
+   "options": "\nASA I\nASA II\nASA III\nASA IV\nASA V\nASA VI"
+  },
+  {
+   "default": "Normal",
+   "fieldname": "airway_assessment",
+   "fieldtype": "Select",
+   "label": "Airway Assessment",
+   "options": "Normal\nDifficult\nUnknown"
+  },
+  {
+   "fieldname": "mallampati_score",
+   "fieldtype": "Select",
+   "label": "Mallampati Score",
+   "options": "\nClass I\nClass II\nClass III\nClass IV"
+  },
+  {
+   "fieldname": "column_break_assessment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_oral_intake",
+   "fieldtype": "Datetime",
+   "label": "Last Oral Intake"
+  },
+  {
+   "fieldname": "section_break_history",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "allergies",
+   "fieldtype": "Small Text",
+   "label": "Allergies"
+  },
+  {
+   "depends_on": "eval: doc.appointment",
+   "fieldname": "section_break_checks",
+   "fieldtype": "Section Break",
+   "label": "Pre-Op Checks"
+  },
+  {
+   "default": "0",
+   "fieldname": "fasting_status_verified",
+   "fieldtype": "Check",
+   "label": "Fasting Status Verified"
+  },
+  {
+   "default": "0",
+   "fieldname": "blood_crossmatch_available",
+   "fieldtype": "Check",
+   "label": "Blood Crossmatch Available"
+  },
+  {
+   "default": "0",
+   "fieldname": "consent_signed",
+   "fieldtype": "Check",
+   "label": "Consent Signed"
+  },
+  {
+   "default": "0",
+   "fieldname": "site_marking_verified",
+   "fieldtype": "Check",
+   "label": "Site Marking Verified"
+  },
+  {
+   "fieldname": "column_break_checks",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "iv_access_secured",
+   "fieldtype": "Check",
+   "label": "IV Access Secured"
+  },
+  {
+   "default": "0",
+   "fieldname": "pre_op_labs_reviewed",
+   "fieldtype": "Check",
+   "label": "Pre-Op Labs Reviewed"
+  },
+  {
+   "depends_on": "eval: doc.appointment",
+   "fieldname": "section_break_payment",
+   "fieldtype": "Section Break",
+   "label": "Payment & Insurance"
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Appointment",
+   "options": "Patient Appointment",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Type",
+   "options": "\nCash\nInsurance",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_payment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Insurance Subscription",
+   "options": "Healthcare Insurance Subscription",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Insurance Coverage Plan",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_payment2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "inpatient_record",
+   "fieldtype": "Link",
+   "label": "Inpatient Record",
+   "options": "Inpatient Record",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "tab_consumables",
+   "fieldtype": "Tab Break",
+   "label": "Consumables/Equipment"
+  },
+  {
+   "fieldname": "consumables_html",
+   "fieldtype": "HTML",
+   "label": "Consumables"
+  },
+  {
+   "fieldname": "column_break_aazg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "search_index": 1
+  },
+  {
+   "default": "now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "search_index": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Preoperative Assessment",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "medical_history_tab",
+   "fieldtype": "Tab Break",
+   "label": "Medical History"
+  },
+  {
+   "fieldname": "section_break_sahn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "pre_operative_notes_template",
+   "fieldtype": "Link",
+   "label": "Pre Operative Notes Template",
+   "options": "Healthcare Notes Template",
+   "search_index": 1
+  },
+  {
+   "fetch_from": "pre_operative_notes_template.terms",
+   "fetch_if_empty": 1,
+   "fieldname": "pre_operative_note",
+   "fieldtype": "Text Editor",
+   "label": "Pre Operative Note"
+  },
+  {
+   "fieldname": "chronic_medications_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "chronic_medications",
+   "fieldtype": "Table",
+   "label": "Chronic Medications",
+   "options": "Preop Chronic Medication"
+  },
+  {
+   "fieldname": "section_break_fzsa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "surgical_history",
+   "fieldtype": "Text",
+   "label": "Surgical History"
+  },
+  {
+   "fieldname": "blood_group",
+   "fieldtype": "Select",
+   "label": "Blood Group",
+   "options": "\nA Positive\nA Negative\nAB Positive\nAB Negative\nB Positive\nB Negative\nO Positive\nO Negative",
+   "search_index": 1,
+   "sort_options": 1
+  },
+  {
+   "fieldname": "details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "bold": 1,
+   "fieldname": "consent",
+   "fieldtype": "Attach",
+   "label": "Consent"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "column_break_zbhv",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-05-04 23:04:50.431945",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Preoperative Assessment",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -33,6 +33,7 @@ frappe.ui.form.on("Lab Test", {
   },
   refresh: (frm) => {
     $('[data-label="Not%20Serviced"]').parent().hide();
+    render_lt_consumables_section(frm);
   },
   onload: (frm) => {
     $('[data-label="Not%20Serviced"]').parent().hide();
@@ -531,3 +532,185 @@ var calculate_age = function (dob) {
   var years = age.getFullYear() - 1970;
   return years;
 };
+
+// ─── Consumables Section (same pattern as Preoperative Assessment) ───
+
+function render_lt_consumables_section(frm) {
+  if (!frm.fields_dict.lt_consumables_html) return;
+
+  if (frm.is_new() || !frm.doc.patient) {
+    frm.fields_dict.lt_consumables_html.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("Save the Lab Test first to add consumables.") +
+        "</div>"
+    );
+    return;
+  }
+
+  const $wrapper = frm.fields_dict.lt_consumables_html.$wrapper;
+  $wrapper.empty();
+
+  const $btn_container = $(
+    '<div class="d-flex justify-content-end mb-3" style="gap: 8px;"></div>'
+  ).appendTo($wrapper);
+
+  $('<button class="btn btn-primary btn-sm">')
+    .html('<i class="fa fa-plus mr-1"></i>' + __("Add Consumables"))
+    .on("click", () => {
+      if (!window.hms_tz || !hms_tz.open_consumable_dialog) {
+        frappe.msgprint(
+          __("Consumable dialog not loaded. Please reload the page.")
+        );
+        return;
+      }
+      hms_tz.open_consumable_dialog({
+        patient: frm.doc.patient,
+        patient_name: frm.doc.patient_name,
+        appointment: frm.doc.appointment || "",
+        company: frm.doc.company,
+        payment_type: frm.doc.insurance_company ? "Insurance" : "Cash",
+        insurance_subscription: frm.doc.insurance_subscription || "",
+        insurance_company: frm.doc.insurance_company || "",
+        insurance_coverage_plan: frm.doc.hms_tz_insurance_coverage_plan || "",
+        prescribed_by: "",
+        source_doctype: "Lab Test",
+        source_docname: frm.doc.name,
+        service_name: frm.doc.template || "",
+        on_success: () => {
+          frm.reload_doc();
+        },
+      });
+    })
+    .appendTo($btn_container);
+
+  const filters = { patient: frm.doc.patient };
+  if (frm.doc.appointment) {
+    filters.appointment = frm.doc.appointment;
+  }
+
+  frappe.call({
+    method: "frappe.client.get_list",
+    args: {
+      doctype: "Consumable Record",
+      filters: filters,
+      fields: [
+        "name",
+        "posting_date",
+        "status",
+        "total_amount",
+        "payment_type",
+        "delivery_note",
+        "docstatus",
+      ],
+      order_by: "creation desc",
+      limit_page_length: 50,
+    },
+    callback: (r) => {
+      if (!r.message || r.message.length === 0) {
+        $('<div class="text-muted text-center p-3">')
+          .text(__("No consumable records yet."))
+          .appendTo($wrapper);
+        return;
+      }
+
+      const records = r.message;
+      let table_html =
+        '<div class="table-responsive"><table class="table table-bordered table-sm">';
+      table_html += "<thead><tr>";
+      table_html += '<th class="text-left">' + __("Record") + "</th>";
+      table_html += '<th class="text-left">' + __("Date") + "</th>";
+      table_html += '<th class="text-left">' + __("Payment") + "</th>";
+      table_html += '<th class="text-right">' + __("Total") + "</th>";
+      table_html += '<th class="text-center">' + __("Status") + "</th>";
+      table_html += '<th class="text-left">' + __("Delivery Note") + "</th>";
+      table_html += '<th class="text-center">' + __("Action") + "</th>";
+      table_html += "</tr></thead><tbody>";
+
+      records.forEach((rec) => {
+        const status_color = {
+          Draft: "orange",
+          Submitted: "blue",
+          "Pending Payment": "red",
+          Dispensed: "green",
+          Finalized: "darkgreen",
+          Billed: "purple",
+        };
+        const color = status_color[rec.status] || "gray";
+
+        table_html += "<tr>";
+        table_html +=
+          '<td><a href="/app/consumable-record/' +
+          rec.name +
+          '">' +
+          rec.name +
+          "</a></td>";
+        table_html += "<td>" + (rec.posting_date || "") + "</td>";
+        table_html += "<td>" + (rec.payment_type || "") + "</td>";
+        table_html +=
+          '<td class="text-right">' +
+          format_currency(rec.total_amount || 0) +
+          "</td>";
+        table_html +=
+          '<td class="text-center"><span class="indicator-pill ' +
+          color +
+          '">' +
+          (rec.status || "Draft") +
+          "</span></td>";
+        table_html +=
+          "<td>" +
+          (rec.delivery_note
+            ? '<a href="/app/delivery-note/' +
+              rec.delivery_note +
+              '">' +
+              rec.delivery_note +
+              "</a>"
+            : "-") +
+          "</td>";
+
+        if (rec.docstatus === 0) {
+          table_html +=
+            '<td class="text-center"><button class="btn btn-xs btn-primary btn-submit-consumable" data-name="' +
+            rec.name +
+            '">' +
+            __("Submit") +
+            "</button></td>";
+        } else {
+          table_html += '<td class="text-center">-</td>';
+        }
+        table_html += "</tr>";
+      });
+
+      table_html += "</tbody></table></div>";
+      const $table = $(table_html).appendTo($wrapper);
+
+      $table.find(".btn-submit-consumable").on("click", function () {
+        const consumable_name = $(this).data("name");
+        frappe.confirm(
+          __("Are you sure you want to submit Consumable Record {0}?", [
+            consumable_name,
+          ]),
+          () => {
+            frappe.call({
+              method:
+                "hms_tz.hms_tz.doctype.consumable_record.consumable_api.submit_consumable_record",
+              args: { consumable_record: consumable_name },
+              freeze: true,
+              freeze_message: __("Submitting..."),
+              callback: (r) => {
+                if (!r.exc) {
+                  frappe.show_alert({
+                    message: __("Consumable Record {0} submitted.", [
+                      consumable_name,
+                    ]),
+                    indicator: "green",
+                  });
+                  frm.reload_doc();
+                }
+              },
+            });
+          }
+        );
+      });
+    },
+  });
+}

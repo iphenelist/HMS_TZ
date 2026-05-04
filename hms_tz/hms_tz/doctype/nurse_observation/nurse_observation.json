@@ -1,0 +1,84 @@
+{
+ "actions": [],
+ "creation": "2026-04-07 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "observation_datetime",
+  "observation_type",
+  "severity",
+  "column_break_01",
+  "recorded_by",
+  "section_break_observation",
+  "observation",
+  "section_break_action",
+  "action_taken"
+ ],
+ "fields": [
+  {
+   "default": "Now",
+   "fieldname": "observation_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Date & Time",
+   "reqd": 1
+  },
+  {
+   "default": "Clinical",
+   "fieldname": "observation_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Observation Type",
+   "options": "Clinical\nBehavioral\nEnvironmental\nOther"
+  },
+  {
+   "default": "Normal",
+   "fieldname": "severity",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Severity",
+   "options": "Normal\nAbnormal\nCritical"
+  },
+  {
+   "fieldname": "column_break_01",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "__user",
+   "fieldname": "recorded_by",
+   "fieldtype": "Link",
+   "label": "Recorded By",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_break_observation",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "observation",
+   "fieldtype": "Text Editor",
+   "in_list_view": 1,
+   "label": "Observation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_action",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "action_taken",
+   "fieldtype": "Small Text",
+   "label": "Action Taken"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Nurse Observation",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -24,7 +24,7 @@ class NHIFCustomExcludedServices(Document):
             frappe.throw(
                 _(
                     f"refcode is not found on Item Customer Detail of Item doctype for item: {frappe.bold(self.item)}\
-				    please set it to proceed"
+                    please set it to proceed"
                 )
             )
 

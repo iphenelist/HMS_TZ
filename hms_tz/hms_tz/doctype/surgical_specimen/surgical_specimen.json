@@ -1,0 +1,305 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-09 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "patient",
+  "patient_name",
+  "column_break_01",
+  "company",
+  "posting_date",
+  "clinical_procedure",
+  "column_break_czkv",
+  "barcode",
+  "status",
+  "section_break_details",
+  "specimen_name",
+  "biopsy_type",
+  "site_collected",
+  "side",
+  "column_break_details",
+  "collection_date",
+  "collection_time",
+  "fixative_used",
+  "time_placed_in_fixative",
+  "column_break_cqgp",
+  "practitioner",
+  "no_of_containers",
+  "special_request",
+  "section_break_jghz",
+  "provisional_diagnosis",
+  "column_break_czge",
+  "relevant_findings",
+  "section_break_lab",
+  "lab_test",
+  "received_by",
+  "column_break_vtxo",
+  "date_recieved",
+  "time_recieved",
+  "condition",
+  "column_break_elco",
+  "reason_for_rejection",
+  "section_break_azuq",
+  "pathology_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SPEC-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "clinical_procedure.patient",
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clinical_procedure",
+   "fieldtype": "Link",
+   "label": "Clinical Procedure",
+   "options": "Clinical Procedure",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_01",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "Collected",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Collected\nSent to Lab\nResults Received\nArchived"
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Barcode",
+   "label": "Barcode",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break",
+   "label": "Specimen Details"
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "collection_time",
+   "fieldtype": "Time",
+   "label": "Collection Time"
+  },
+  {
+   "fieldname": "section_break_lab",
+   "fieldtype": "Section Break",
+   "label": "Lab & Pathology"
+  },
+  {
+   "fieldname": "lab_test",
+   "fieldtype": "Link",
+   "label": "Lab Test",
+   "options": "Lab Test"
+  },
+  {
+   "fieldname": "pathology_notes",
+   "fieldtype": "Text",
+   "label": "Pathology Notes"
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "column_break_czkv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "specimen_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Specimen Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "biopsy_type",
+   "fieldtype": "Select",
+   "label": "Biopsy Type",
+   "options": "\nIncision\nExcision\nResection\nOther"
+  },
+  {
+   "fieldname": "fixative_used",
+   "fieldtype": "Select",
+   "label": "Fixative Used",
+   "options": "\nFormalin\nOther"
+  },
+  {
+   "fieldname": "time_placed_in_fixative",
+   "fieldtype": "Time",
+   "label": "Time Placed in Fixative"
+  },
+  {
+   "fieldname": "side",
+   "fieldtype": "Select",
+   "label": "Side",
+   "options": "\nRight\nLeft\nNA"
+  },
+  {
+   "fieldname": "column_break_cqgp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_containers",
+   "fieldtype": "Int",
+   "label": "No. of Containers"
+  },
+  {
+   "fieldname": "special_request",
+   "fieldtype": "Select",
+   "label": "Special Request (if any)",
+   "options": "\nUrgent\nFrozen Section\nIHC\nSpecial Stain\nOther"
+  },
+  {
+   "fieldname": "site_collected",
+   "fieldtype": "Data",
+   "label": "Site Collected"
+  },
+  {
+   "fieldname": "collection_date",
+   "fieldtype": "Date",
+   "label": "Collection Date"
+  },
+  {
+   "fieldname": "section_break_jghz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "provisional_diagnosis",
+   "fieldtype": "Small Text",
+   "label": "Provisional Diagnosis"
+  },
+  {
+   "fieldname": "column_break_czge",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "relevant_findings",
+   "fieldtype": "Small Text",
+   "label": "Revelevant History/Findings"
+  },
+  {
+   "fieldname": "received_by",
+   "fieldtype": "Link",
+   "label": "Received By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_vtxo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_recieved",
+   "fieldtype": "Date",
+   "label": "Date Recieved"
+  },
+  {
+   "fieldname": "time_recieved",
+   "fieldtype": "Time",
+   "label": "Time Recieved"
+  },
+  {
+   "fieldname": "condition",
+   "fieldtype": "Select",
+   "label": "Condition",
+   "options": "\nAccepted\nRejected"
+  },
+  {
+   "fieldname": "column_break_elco",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reason_for_rejection",
+   "fieldtype": "Small Text",
+   "label": "Reason for Rejection (if Any)"
+  },
+  {
+   "fieldname": "section_break_azuq",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-30 18:42:31.192699",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Surgical Specimen",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

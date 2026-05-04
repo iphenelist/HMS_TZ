@@ -18,7 +18,6 @@ from frappe.utils import (
     get_time,
     get_url_to_form,
     getdate,
-    now_datetime,
     nowdate,
     nowtime,
     time_diff_in_seconds,
@@ -26,6 +25,7 @@ from frappe.utils import (
 from frappe.utils.pdf import get_pdf
 from PyPDF2 import PdfFileWriter
 
+from hms_tz.hms_tz.doctype.insurance_folio_counter.insurance_folio_counter import get_or_create_folio_counter
 from hms_tz.nhif.api.healthcare_utils import get_approval_number_from_LRPMT, to_base64
 from hms_tz.nhif.api.patient_encounter import finalized_encounter
 from hms_tz.nhif.doctype.nhif_tracking_claim_change.nhif_tracking_claim_change import track_changes_of_claim_items
@@ -215,7 +215,7 @@ class NHIFPatientClaim(Document):
         practitioner_details = frappe.db.get_all(
             "Healthcare Practitioner",
             {"name": ["in", practitioners]},
-            ["name", "tz_mct_code"],
+            ["name", "tz_mct_code", "nhif_physician_qualification"],
         )
 
         for practitioner in practitioner_details:
@@ -227,6 +227,7 @@ class NHIFPatientClaim(Document):
                 {
                     "practitioner": practitioner.name,
                     "mct_code": practitioner.tz_mct_code,
+                    "qualification": practitioner.nhif_physician_qualification
                 }
             )
 
@@ -338,6 +339,8 @@ class NHIFPatientClaim(Document):
         self.clinical_notes = ""
         self.nhif_patient_claim_item = []
 
+        self.add_appointment_claim_item()
+
         if not self.inpatient_record:
             for d in encounter_list:
                 self.set_clinical_notes(d.encounter)
@@ -407,8 +410,6 @@ class NHIFPatientClaim(Document):
 
                         self.add_LRPMT_claim_item(row, d)
 
-        self.add_appointment_claim_item()
-
     def add_LRPMT_claim_item(self, hsr_row, d):
         if hsr_row.is_cancelled:
             return
@@ -466,7 +467,7 @@ class NHIFPatientClaim(Document):
 
         new_row = self.append("nhif_patient_claim_item", {})
         new_row.item_name = occupancy.service_unit
-        new_row.item_code = get_item_refcode(item)
+        new_row.item_code = get_nhif_refcode(item, self.company)
         new_row.item_quantity = 1
         new_row.unit_price = occupancy.amount
         new_row.amount_claimed = occupancy.amount
@@ -481,7 +482,7 @@ class NHIFPatientClaim(Document):
         if consultancy.is_confirmed and str(consultancy.date) == checkin_date and consultancy.rate:
             new_row = self.append("nhif_patient_claim_item", {})
             new_row.item_name = consultancy.consultation_item
-            new_row.item_code = get_item_refcode(consultancy.consultation_item)
+            new_row.item_code = get_nhif_refcode(consultancy.consultation_item, self.company)
             new_row.item_quantity = 1
             new_row.unit_price = consultancy.rate
             new_row.amount_claimed = consultancy.rate
@@ -499,22 +500,6 @@ class NHIFPatientClaim(Document):
         else:
             patient_appointment_list = json.loads(self.hms_tz_claim_appointment_list)
 
-        sorted_claim_items = sorted(
-            self.nhif_patient_claim_item,
-            key=lambda k: (
-                k.get("ref_doctype"),
-                k.get("item_code"),
-                k.get("date_created"),
-            ),
-        )
-        idx = len(patient_appointment_list) + 1
-        for row in sorted_claim_items:
-            row.idx = idx
-            idx += 1
-
-        self.nhif_patient_claim_item = sorted_claim_items
-
-        appointment_idx = 1
         for appointment_no in patient_appointment_list:
             appointment_doc = frappe.get_cached_doc("Patient Appointment", appointment_no)
 
@@ -525,7 +510,7 @@ class NHIFPatientClaim(Document):
             if not self.inpatient_record and not appointment_doc.follow_up:
                 new_row = self.append("nhif_patient_claim_item", {})
                 new_row.item_name = appointment_doc.billing_item
-                new_row.item_code = get_item_refcode(appointment_doc.billing_item)
+                new_row.item_code = get_nhif_refcode(appointment_doc.billing_item, self.company)
                 new_row.item_quantity = 1
                 new_row.unit_price = appointment_doc.paid_amount
                 new_row.amount_claimed = appointment_doc.paid_amount
@@ -534,8 +519,6 @@ class NHIFPatientClaim(Document):
                 new_row.ref_docname = appointment_doc.name
                 new_row.date_created = appointment_doc.modified
                 new_row.item_crt_by = get_fullname(appointment_doc.modified_by)
-                new_row.idx = appointment_idx
-                appointment_idx += 1
 
     def set_clinical_notes(self, encounter):
         if not self.clinical_notes:
@@ -844,40 +827,8 @@ class NHIFPatientClaim(Document):
         if cint(self.folio_no) != 0:
             return
 
-        folio_counter = frappe.db.get_all(
-            "NHIF Folio Counter",
-            filters={
-                "company": self.company,
-                "claim_year": self.claim_year,
-                "claim_month": self.claim_month,
-            },
-            fields=["name"],
-            page_length=1,
-        )
-
-        folio_no = 1
-        if len(folio_counter) == 0:
-            new_folio_doc = frappe.get_doc(
-                {
-                    "doctype": "NHIF Folio Counter",
-                    "company": self.company,
-                    "claim_year": self.claim_year,
-                    "claim_month": self.claim_month,
-                    "posting_date": now_datetime(),
-                    "folio_no": folio_no,
-                }
-            ).insert(ignore_permissions=True)
-            new_folio_doc.reload()
-        else:
-            folio_doc = frappe.get_doc("NHIF Folio Counter", folio_counter[0].name)
-            folio_no = cint(folio_doc.folio_no) + 1
-
-            folio_doc.folio_no += 1
-            folio_doc.posting_date = now_datetime()
-            folio_doc.save(ignore_permissions=True)
-
-        self.folio_no = folio_no
-        self.db_set("folio_no", folio_no)
+        self.folio_no = get_or_create_folio_counter(self, "NHIF")
+        self.db_set("folio_no", self.folio_no)
 
     def validate_reqd_fields(self):
         if not self.main_diagnosis_code:
@@ -971,10 +922,12 @@ def validate_hold_card_status(
         frappe.throw(msg)
 
 
-def get_item_refcode(item_code):
+def get_nhif_refcode(item_code, company):
+    nhif_cust_name = frappe.get_cached_value("HMS TZ Setting", company, "nhif_customer_name")
+
     code_list = frappe.db.get_all(
         "Item Customer Detail",
-        filters={"parent": item_code, "customer_name": "NHIF"},
+        filters={"parent": item_code, "customer_name": nhif_cust_name},
         fields=["ref_code"],
     )
     if len(code_list) == 0:

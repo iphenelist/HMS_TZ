@@ -1,10 +1,10 @@
-exclude: "node_modules|.git"
-default_stages: [commit, push, manual]
+exclude: "node_modules|.git|hms_tz/public/frontend"
+default_stages: [commit, manual]
 fail_fast: false
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
         files: "hms_tz.*"

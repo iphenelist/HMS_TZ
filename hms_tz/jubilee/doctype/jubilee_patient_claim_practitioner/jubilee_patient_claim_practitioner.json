@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-29 12:18:05.684923",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "practitioner",
+  "mct_code",
+  "qualification"
+ ],
+ "fields": [
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "mct_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "MCT Code",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "practitioner.nhif_physician_qualification",
+   "fieldname": "qualification",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Qualification"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-29 12:38:31.766492",
+ "modified_by": "Administrator",
+ "module": "Jubilee",
+ "name": "Jubilee Patient Claim Practitioner",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

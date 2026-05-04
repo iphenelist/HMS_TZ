@@ -1,0 +1,33 @@
+---
+engines:
+  # Python linting
+  prospector:
+    enabled: true
+  pylint:
+    enabled: false
+
+  # JavaScript/Vue linting
+  eslint:
+    enabled: true
+  biome:
+    enabled: true
+
+  # Security
+  trivy:
+    enabled: true
+
+  # Style
+  stylelint:
+    enabled: true
+
+exclude_paths:
+  - "node_modules/**"
+  - "**/node_modules/**"
+  - "frontend/node_modules/**"
+  - "**/dist/**"
+  - "hms_tz/public/frontend/**"
+  - "hms_tz/public/dist/**"
+  - "cypress/**"
+  - "**/*.min.js"
+  - "yarn.lock"
+  - "package-lock.json"

@@ -1,0 +1,217 @@
+{
+ "actions": [],
+ "creation": "2026-04-09 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "warehouse",
+  "qty_requested",
+  "column_break_qty",
+  "qty_dispensed",
+  "qty_used",
+  "qty_returned",
+  "column_break_pricing",
+  "item_name",
+  "uom",
+  "price_list",
+  "section_break_billing",
+  "rate",
+  "amount",
+  "percent_covered",
+  "column_break_billing2",
+  "payment_type",
+  "insurance_subscription",
+  "insurance_company",
+  "insurance_coverage_plan",
+  "insurance_item_code",
+  "sales_invoice_number",
+  "column_break_ankg",
+  "is_billable",
+  "invoiced",
+  "is_stock_item"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stock_item",
+   "fieldtype": "Check",
+   "label": "Is Stock Item",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "default": "1",
+   "fieldname": "qty_requested",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_qty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "qty_dispensed",
+   "fieldtype": "Float",
+   "label": "Qty Dispensed"
+  },
+  {
+   "default": "0",
+   "fieldname": "qty_used",
+   "fieldtype": "Float",
+   "label": "Qty Used"
+  },
+  {
+   "default": "0",
+   "fieldname": "qty_returned",
+   "fieldtype": "Float",
+   "label": "Qty Returned"
+  },
+  {
+   "fieldname": "column_break_pricing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "item_code.stock_uom",
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "price_list",
+   "fieldtype": "Link",
+   "label": "Price List",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "section_break_billing",
+   "fieldtype": "Section Break",
+   "label": "Billing"
+  },
+  {
+   "columns": 1,
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "percent_covered",
+   "fieldtype": "Float",
+   "label": "%Covered"
+  },
+  {
+   "fieldname": "column_break_billing2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "label": "Payment Type",
+   "options": "\nCash\nInsurance"
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_subscription",
+   "fieldtype": "Link",
+   "label": "Insurance Subscription",
+   "options": "Healthcare Insurance Subscription"
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_company",
+   "fieldtype": "Link",
+   "label": "Insurance Company",
+   "options": "Healthcare Insurance Company",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.payment_type=='Insurance'",
+   "fieldname": "insurance_coverage_plan",
+   "fieldtype": "Data",
+   "label": "Insurance Coverage Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "insurance_item_code",
+   "fieldtype": "Data",
+   "label": "Insurance Item Code"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "is_billable",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Billable"
+  },
+  {
+   "default": "0",
+   "fieldname": "invoiced",
+   "fieldtype": "Check",
+   "label": "Invoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_invoice_number",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ankg",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-04 23:27:08.239035",
+ "modified_by": "Administrator",
+ "module": "Hms Tz",
+ "name": "Consumable Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
