@@ -11,7 +11,7 @@ from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical
 class PreoperativeAssessment(Document):
     def before_save(self):
         self.set_missing_values()
-        self.fetch_patient_medical_history()
+        # self.fetch_patient_medical_history()
         self.validate_clearance_checks()
 
     def before_submit(self):
