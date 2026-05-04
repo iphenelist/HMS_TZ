@@ -289,9 +289,7 @@ let admit_patient_dialog = (frm) => {
       },
     ],
     primary_action_label:
-      frm.doc.insurance_company &&
-      (frm.doc.insurance_company.includes("NHIF") ||
-        frm.doc.insurance_company.includes("Jubilee"))
+      frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")
         ? __("Next")
         : __("Admit"),
     primary_action: async () => {
@@ -327,30 +325,32 @@ let admit_patient_dialog = (frm) => {
             }
           }
         );
-      } else if (
-        frm.doc.insurance_company &&
-        frm.doc.insurance_company.includes("Jubilee")
-      ) {
-        frappe.db.get_value(
-          "HMS TZ Setting",
-          frm.doc.company,
-          "enable_jubilee_api",
-          (r) => {
-            if (r.enable_jubilee_api) {
-              jubilee_admit_patient(
-                frm,
-                dialog,
-                admission_type,
-                service_unit,
-                check_in
-              );
-            } else {
-              admit_patient(frm, service_unit, check_in, admission_type);
-              dialog.hide();
-            }
-          }
-        );
-      } else {
+      }
+      // else if (
+      //   frm.doc.insurance_company &&
+      //   frm.doc.insurance_company.includes("Jubilee")
+      // ) {
+      //   frappe.db.get_value(
+      //     "HMS TZ Setting",
+      //     frm.doc.company,
+      //     "enable_jubilee_api",
+      //     (r) => {
+      //       if (r.enable_jubilee_api) {
+      //         jubilee_admit_patient(
+      //           frm,
+      //           dialog,
+      //           admission_type,
+      //           service_unit,
+      //           check_in
+      //         );
+      //       } else {
+      //         admit_patient(frm, service_unit, check_in, admission_type);
+      //         dialog.hide();
+      //       }
+      //     }
+      //   );
+      // }
+      else {
         admit_patient(frm, service_unit, check_in, admission_type);
         dialog.hide();
       }
