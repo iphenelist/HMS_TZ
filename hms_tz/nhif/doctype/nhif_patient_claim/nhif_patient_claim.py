@@ -834,6 +834,10 @@ class NHIFPatientClaim(Document):
         if not self.main_diagnosis_code:
             frappe.throw(_("Main Diagnosis Code is required"))
 
+    def validate_reqd_fields(self):
+        if not self.main_diagnosis_code:
+            frappe.throw(_("Main Diagnosis Code is required"))
+
 def get_missing_patient_signature(self):
     if self.patient:
         patient_doc = frappe.get_cached_doc("Patient", self.patient)
