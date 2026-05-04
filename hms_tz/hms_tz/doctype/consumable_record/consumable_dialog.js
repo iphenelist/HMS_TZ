@@ -121,8 +121,8 @@ hms_tz.open_consumable_dialog = function (opts) {
         options: "Warehouse",
         get_query: () => ({
           filters: {
-            company: opts.company,
             is_group: 0,
+            company: opts.company,
             warehouse_name: ["like", "%Pharmacy%"],
           },
         }),
@@ -176,7 +176,7 @@ hms_tz.open_consumable_dialog = function (opts) {
         cannot_add_rows: false,
         in_place_edit: true,
         data: [],
-        fields: _get_item_table_fields(is_insurance),
+        fields: _get_item_table_fields(is_insurance, opts.company),
       },
     ],
 
@@ -202,7 +202,7 @@ hms_tz.open_consumable_dialog = function (opts) {
   return dialog;
 };
 
-function _get_item_table_fields(is_insurance) {
+function _get_item_table_fields(is_insurance, company) {
   const fields = [
     {
       fieldname: "item_code",
@@ -211,7 +211,7 @@ function _get_item_table_fields(is_insurance) {
       options: "Item",
       in_list_view: 1,
       reqd: 1,
-      columns: 3,
+      columns: 2,
       get_query: () => ({
         filters: { is_stock_item: 1, disabled: 0 },
       }),
@@ -224,6 +224,15 @@ function _get_item_table_fields(is_insurance) {
       in_list_view: 1,
       reqd: 1,
       columns: 2,
+      get_query: () => {
+        return {
+          filters: {
+            is_group: 0,
+            company: company,
+            warehouse_name: ["like", "%Pharmacy%"],
+          },
+        };
+      },
     },
     {
       fieldname: "uom",
@@ -259,10 +268,11 @@ function _get_item_table_fields(is_insurance) {
     {
       fieldname: "percent_covered",
       fieldtype: "Percent",
-      label: __("% Covered"),
+      label: __("%Covered"),
       in_list_view: 1,
       default: 100,
       read_only: !is_insurance,
+      hidden: !is_insurance,
       columns: 1,
     },
     {
@@ -277,7 +287,9 @@ function _get_item_table_fields(is_insurance) {
       fieldname: "is_billable",
       fieldtype: "Check",
       label: __("Billable"),
+      in_list_view: 1,
       default: 1,
+      columns: 1,
     },
     {
       fieldname: "item_name",
