@@ -21,16 +21,7 @@ def get_ot_roster_data(company: str, start_date: str, end_date: str) -> dict:
         frappe.throw(_("Company, Start Date, and End Date are required."))
 
     # Get theater rooms (Healthcare Service Units that are not groups)
-    theater_rooms = frappe.db.get_all(
-        "Healthcare Service Unit",
-        filters={
-            "company": company,
-            "is_group": 0,
-            "disabled": 0,
-        },
-        fields=["name", "healthcare_service_unit_name", "service_unit_type"],
-        order_by="name asc",
-    )
+    theater_rooms = get_theater_rooms(company)
 
     # Get all OT Schedules in the date range
     schedules = frappe.db.get_all(
@@ -181,13 +172,16 @@ def postpone_ot_schedule(name: str) -> dict:
 @frappe.whitelist()
 def get_theater_rooms(company: str) -> list:
     """Return theater rooms for the company."""
-    return frappe.db.get_all(
-        "Healthcare Service Unit",
-        filters={
-            "company": company,
-            "is_group": 0,
-            "disabled": 0,
-        },
-        fields=["name", "healthcare_service_unit_name", "service_unit_type"],
-        order_by="name asc",
+    hsu = frappe.qb.DocType("Healthcare Service Unit")
+    return (
+        frappe.qb.from_(hsu)
+        .select(hsu.name, hsu.healthcare_service_unit_name, hsu.service_unit_type)
+        .where(hsu.company == company)
+        .where(hsu.is_group == 0)
+        .where(hsu.disabled == 0)
+        .where(
+            (hsu.name.like("%theater%")) | (hsu.name.like("%theatre%"))
+        )
+        .orderby(hsu.name)
+        .run(as_dict=True)
     )
