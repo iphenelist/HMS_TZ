@@ -308,17 +308,32 @@ let admit_patient_dialog = (frm) => {
           frm.doc.insurance_company &&
           frm.doc.insurance_company.includes("NHIF")
         ) {
-          const r = await new Promise((resolve, reject) => {
-            frappe.db.get_value(
-              "HMS TZ Setting",
-              frm.doc.company,
-              "enable_nhif_api",
-              (r) => resolve(r),
-              () => reject(new Error("Failed to fetch HMS TZ Setting"))
-            );
+          // const r = await new Promise((resolve, reject) => {
+          //   frappe.db.get_value(
+          //     "HMS TZ Setting",
+          //     frm.doc.company,
+          //     "enable_nhif_api",
+          //     (r) => resolve(r),
+          //     () => reject(new Error("Failed to fetch HMS TZ Setting"))
+          //   );
+          // });
+
+          let enable_nhif_api = false;
+          await frappe.call({
+            method: "frappe.client.get_value",
+            args: {
+              doctype: "HMS TZ Setting",
+              name: frm.doc.company,
+              fieldname: "enable_nhif_api",
+            },
+            callback: (r) => {
+              if (r.message && r.message.enable_nhif_api) {
+                enable_nhif_api = r.message.enable_nhif_api;
+              }
+            },
           });
 
-          if (r.enable_nhif_api) {
+          if (enable_nhif_api) {
             await nhif_admit_patient(
               frm,
               dialog,
