@@ -210,7 +210,7 @@ def get_authorization_number(
             authorization_no=data.get("AuthorizationNo", ""),
         )
 
-        
+
         if not data.get("AuthorizationNo"):
             frappe.throw(title=data.get("Status"), msg=data["Description"])
 
