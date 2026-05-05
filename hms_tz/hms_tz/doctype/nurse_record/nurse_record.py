@@ -157,7 +157,7 @@ class NurseRecord(Document):
         nurse_info = ""
         if nurse_details.nursing_notes:
             nurse_info = f"""
-            Nurse: <b>{nurse_details.nurse}</b>: Date: <b>{nurse_details.posting_date + ' ' + nurse_details.posting_time}</b><br>{nurse_details.nursing_notes}
+            Nurse: <b>{nurse_details.nurse}</b>: Date: <b>{str(nurse_details.posting_date)} {str(nurse_details.posting_time)}</b><br>{nurse_details.nursing_notes}
             """
         self.previous_notes = nurse_info + "\n\n" + (nurse_details.previous_notes or "")
 
@@ -824,7 +824,7 @@ def create_imo_from_delivery_note(doc, method):
                 "dosage": 1,
                 "dosage_form": dosage_form,
                 "date": start_date,
-                "time": "08:00:00",
+                "time": _format_timedelta(to_timedelta(nowtime()) + td(minutes=30)),
                 "instructions": dp.get("comment") or "",
                 "ref_doctype": "Drug Prescription",
                 "ref_docname": dp_name,
@@ -836,14 +836,28 @@ def create_imo_from_delivery_note(doc, method):
         dosage_doc = frappe.get_doc("Prescription Dosage", dosage_name)
 
         for date in dates:
+            if len(dosage_doc.dosage_strength) == 0:
+                imo.append("medication_orders", {
+                    "drug": drug,
+                    "drug_name": drug_name,
+                    "dosage": 1,
+                    "dosage_form": dosage_form,
+                    "date": date,
+                    "time": _format_timedelta(to_timedelta(nowtime()) + td(minutes=30)),
+                    "instructions": dp.get("comment") or "",
+                    "ref_doctype": "Drug Prescription",
+                    "ref_docname": dp_name,
+                })
+                has_entries = True
+
+                continue
+
             for dose in dosage_doc.dosage_strength:
                 dose_value = dose.strength or 1
 
-                dose_time = dose.strength_time
-                if not dose_time:
-                    dose_time = _get_default_dose_time(
-                        dose.idx, len(dosage_doc.dosage_strength)
-                    )
+                dose_time = _get_default_dose_time(
+                    dose.idx, len(dosage_doc.dosage_strength)
+                )
 
                 imo.append("medication_orders", {
                     "drug": drug,
@@ -899,15 +913,14 @@ def create_imo_from_delivery_note(doc, method):
 def _get_default_dose_time(idx, total_doses):
     """Return a proportionally distributed time when strength_time is not set.
 
-    Divides 24 hours equally by the number of doses per day, starting from
-    06:00 (common hospital first-dose time).
+    Divides 24 hours equally by the number of doses per day, starting from current time.
 
     Examples:
-        - 1x/day  → 06:00
-        - 2x/day  → 06:00, 18:00  (every 12 hours)
-        - 3x/day  → 06:00, 14:00, 22:00  (every 8 hours)
-        - 4x/day  → 06:00, 12:00, 18:00, 00:00  (every 6 hours)
-        - 6x/day  → 06:00, 10:00, 14:00, 18:00, 22:00, 02:00  (every 4 hours)
+        - 1x/day  → current time
+        - 2x/day  → current time, 12 hours later  (every 12 hours)
+        - 3x/day  → current time, 8 hours later, 16 hours later  (every 8 hours)
+        - 4x/day  → current time, 6 hours later, 12 hours later, 18 hours later  (every 6 hours)
+        - 6x/day  → current time, 4 hours later, 8 hours later, 12 hours later, 16 hours later, 20 hours later  (every 4 hours)
 
     Args:
         idx: 1-based index of the dose in the dosage strength list
@@ -917,15 +930,21 @@ def _get_default_dose_time(idx, total_doses):
         Time string in HH:MM:SS format
     """
     if total_doses <= 0:
-        return "06:00:00"
+        return _format_timedelta(to_timedelta(nowtime()) + td(minutes=30))
 
     # Calculate the equal interval in hours
     interval_hours = 24 / total_doses
 
-    # Start from 06:00 (common hospital first-dose time), then space evenly
-    start_hour = 6
-    total_minutes = int((start_hour + (idx - 1) * interval_hours) * 60) % (24 * 60)
+    # Start from now + 30 minutes, then space evenly
+    start_td = to_timedelta(nowtime()) + td(minutes=30)
+    offset_td = start_td + td(hours=(idx - 1) * interval_hours)
 
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
+    return _format_timedelta(offset_td)
+
+
+def _format_timedelta(t):
+    """Format a timedelta as HH:MM:SS, wrapping around 24 hours."""
+    total_seconds = int(t.total_seconds()) % (24 * 3600)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
     return f"{hours:02d}:{minutes:02d}:00"
