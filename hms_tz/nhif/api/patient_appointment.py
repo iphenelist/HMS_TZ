@@ -443,6 +443,9 @@ def get_previous_appointment(patient, filters=None):
 
 
 def set_follow_up(appointment_doc, method):
+    if appointment_doc.healthcare_package_order:
+        return
+
     filters = {
         "name": ["!=", appointment_doc.name],
         "department": appointment_doc.department,
