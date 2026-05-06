@@ -443,13 +443,14 @@ def get_previous_appointment(patient, filters=None):
 
 
 def set_follow_up(appointment_doc, method):
+    if appointment_doc.healthcare_package_order:
+        return
+
     filters = {
         "name": ["!=", appointment_doc.name],
         "department": appointment_doc.department,
         "status": ["in", ["Open", "Closed"]],
     }
-    if appointment_doc.healthcare_package_order:
-        filters["practitioner"] = appointment_doc.practitioner
     if appointment_doc.insurance_subscription:
         filters["insurance_subscription"] = appointment_doc.insurance_subscription
     else:
