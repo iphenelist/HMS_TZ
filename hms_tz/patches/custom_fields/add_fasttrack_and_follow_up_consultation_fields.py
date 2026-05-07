@@ -146,6 +146,10 @@ def removed_type_custom_field():
 
 
 def update_has_cons_value():
+    # Guard: on fresh installs, the old custom field may not exist
+    if not frappe.db.has_column("Appointment Type", "has_no_consultation_charges"):
+        return
+
     app_type = frappe.query_builder.DocType("Appointment Type")
     (
         frappe.qb.update(app_type)
