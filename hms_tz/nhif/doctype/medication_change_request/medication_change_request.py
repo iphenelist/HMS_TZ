@@ -689,7 +689,7 @@ def get_patient_encounter_name(delivery_note, sales_order):
 
 
 @frappe.whitelist()
-def get_patient_encounter_doc(patient_encounter):
+def get_patient_encounter_doc(patient_encounter: str):
     doc = frappe.get_doc("Patient Encounter", patient_encounter)
     return doc
 
