@@ -113,7 +113,15 @@ class MedicationChangeRequest(Document):
         if not self.sales_order:
             validate_nhif_patient_claim_status("Medication Change Request", self.company, self.appointment)
 
-        encounter_doc = self.update_encounter()
+        has_updated = self.update_encounter()
+
+        if not has_updated:
+            frappe.throw(
+                title="Failed to Update Encounter",
+                msg="Failed to update Patient Encounter. Please try again."
+            )
+
+        encounter_doc = get_patient_encounter_doc(self.patient_encounter)
 
         if self.delivery_note:
             self.update_delivery_note(encounter_doc)
@@ -381,7 +389,6 @@ class MedicationChangeRequest(Document):
                     method,
                 )
 
-    # @frappe.whitelist()
     def validate_copayment_added_item(self, row):
         """Validate a co-payment item is newly added to the Medication Change Request"""
 
@@ -427,7 +434,7 @@ class MedicationChangeRequest(Document):
     def update_encounter(self):
         """Update Patient Encounter with new Drug Prescription"""
 
-        doc = frappe.get_cached_doc("Patient Encounter", self.patient_encounter)
+        doc = get_patient_encounter_doc(self.patient_encounter)
         for line in self.original_pharmacy_prescription:
             for row in doc.drug_prescription:
                 if line.drug_code == row.drug_code and line.healthcare_service_unit == row.healthcare_service_unit:
@@ -464,11 +471,12 @@ class MedicationChangeRequest(Document):
             doc.append("drug_prescription", new_row)
 
         doc.db_update_all()
+        frappe.clear_document_cache("Patient Encounter", self.patient_encounter)
         frappe.msgprint(
             _("Patient Encounter " + self.patient_encounter + " has been updated!"),
             alert=True,
         )
-        return doc
+        return True
 
     def update_sales_order(self, encounter_doc):
         so_doc = frappe.get_cached_doc("Sales Order", self.sales_order)
@@ -681,8 +689,8 @@ def get_patient_encounter_name(delivery_note, sales_order):
 
 
 @frappe.whitelist()
-def get_patient_encounter_doc(patient_encounter):
-    doc = frappe.get_cached_doc("Patient Encounter", patient_encounter)
+def get_patient_encounter_doc(patient_encounter: str):
+    doc = frappe.get_doc("Patient Encounter", patient_encounter)
     return doc
 
 
@@ -1006,7 +1014,7 @@ def update_insurance_hsr_hre(
     hsr_doc.reload()
 
     # Step 3: Build drug map from the UPDATED encounter for adding/updating services
-    encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
+    encounter_doc = get_patient_encounter_doc(mcr_doc.patient_encounter)
 
     drug_map = {}
     for d in encounter_doc.drug_prescription:
@@ -1097,7 +1105,7 @@ def update_cash_inpatient_hre(
         new_ref_docnames = []
         remarks = f"Reason for Qty Change: <br><br>{frappe.bold(mcr_doc.hms_tz_comment)}" if mcr_doc.hms_tz_comment else ""
 
-        encounter_doc = frappe.get_doc("Patient Encounter", mcr_doc.patient_encounter)
+        encounter_doc = get_patient_encounter_doc(mcr_doc.patient_encounter)
         for d in encounter_doc.drug_prescription:
             if d.is_cancelled == 1 or d.is_not_available_inhouse == 1:
                 continue
