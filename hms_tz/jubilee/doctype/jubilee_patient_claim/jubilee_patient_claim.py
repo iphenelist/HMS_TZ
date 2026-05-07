@@ -534,7 +534,7 @@ class JubileePatientClaim(Document):
                 " ".join([patient_name, gender, date_of_birth, years]) + "<br>"
             )
 
-        encounter_doc = frappe.get_cached_doc("Patient Encounter", encounter)
+        encounter_doc = frappe.get_doc("Patient Encounter", encounter)
 
         department = frappe.get_cached_value("Healthcare Practitioner", encounter_doc.practitioner, "department")
         self.clinical_notes += f"<br>PractitionerName: <i>{encounter_doc.practitioner_name},</i> Speciality: <i>{department},\
@@ -545,6 +545,9 @@ class JubileePatientClaim(Document):
         if len(encounter_doc.get("lab_test_prescription")) > 0:
             self.clinical_notes += "<br>Lab Test(s): <br>"
             for row in encounter_doc.get("lab_test_prescription"):
+                if row.get("is_cancelled") == 1:
+                    continue
+
                 serv_info = ""
                 if row.medical_code:
                     serv_info  += f", Medical Code: {row.medical_code}"
@@ -558,6 +561,9 @@ class JubileePatientClaim(Document):
         if len(encounter_doc.get("radiology_procedure_prescription")) > 0:
             self.clinical_notes += "<br>Radiology: <br>"
             for row in encounter_doc.get("radiology_procedure_prescription"):
+                if row.get("is_cancelled") == 1:
+                    continue
+
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
@@ -571,6 +577,9 @@ class JubileePatientClaim(Document):
         if len(encounter_doc.get("procedure_prescription")) > 0:
             self.clinical_notes += "<br>Procedure(s): <br>"
             for row in encounter_doc.get("procedure_prescription"):
+                if row.get("is_cancelled") == 1:
+                    continue
+
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
@@ -584,6 +593,9 @@ class JubileePatientClaim(Document):
         if len(encounter_doc.get("drug_prescription")) > 0:
             self.clinical_notes += "<br>Medication(s): <br>"
             for row in encounter_doc.get("drug_prescription"):
+                if row.get("is_cancelled") == 1:
+                    continue
+
                 med_info = ""
                 if row.medical_code:
                     med_info += f", Medical Code: {row.medical_code}"
@@ -603,6 +615,9 @@ class JubileePatientClaim(Document):
         if len(encounter_doc.get("therapies")) > 0:
             self.clinical_notes += "<br>Therapies: <br>"
             for row in encounter_doc.get("therapies"):
+                if row.get("is_cancelled") == 1:
+                    continue
+
                 serv_info = ""
                 if row.medical_code:
                     serv_info += f", Medical Code: {row.medical_code}"
