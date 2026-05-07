@@ -426,7 +426,7 @@ def send_vfd(invoice_name):
 
 @frappe.whitelist()
 def get_previous_appointment(patient, filters=None):
-    the_filters = {"patient": patient, "follow_up": 0}
+    the_filters = {"patient": patient, "follow_up": 0, "healthcare_package_order": ""}
     if filters:
         # when the function is called from frontend
         if isinstance(filters, str):
