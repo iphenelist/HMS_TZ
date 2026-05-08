@@ -148,7 +148,7 @@
         </p>
       </div>
 
-      <!-- Filter Bar (centered, reordered: Company → Frequency → Start Date → End Date) -->
+      <!-- Filter Bar (centered, reordered: Company → Duration → Start Date → End Date) -->
       <div class="border-b bg-white px-6 py-4">
         <div class="flex flex-wrap items-end justify-center gap-4">
           <div class="w-52">
@@ -164,12 +164,12 @@
           </div>
           <div class="w-40">
             <label class="mb-1 block text-xs font-medium text-gray-600">
-              Frequency
+              Duration
             </label>
             <FormControl
               type="select"
-              :options="frequencyOptions"
-              v-model="store.frequency"
+              :options="durationOptions"
+              v-model="store.duration"
               @change="store.calculateEndDate()"
             />
           </div>
@@ -291,7 +291,7 @@
               No roster loaded
             </h3>
             <p class="mt-1 text-sm text-gray-500">
-              Select company, start date and frequency to load the roster
+              Select company, start date and duration to load the roster
               automatically.
             </p>
           </div>
@@ -357,7 +357,7 @@ const companyResource = createResource({
   },
 });
 
-const frequencyOptions = [
+const durationOptions = [
   { label: "Daily", value: "Daily" },
   { label: "Weekly", value: "Weekly" },
   { label: "Monthly", value: "Monthly" },
@@ -393,9 +393,9 @@ function formatDateDisplay(val) {
 
 // Auto-load roster when all fields are filled
 watch(
-  () => [store.company, store.startDate, store.frequency, store.endDate],
+  () => [store.company, store.startDate, store.duration, store.endDate],
   () => {
-    if (store.company && store.startDate && store.frequency && store.endDate) {
+    if (store.company && store.startDate && store.duration && store.endDate) {
       store.loadRoster();
     }
   }
@@ -410,8 +410,8 @@ onMounted(() => {
   const params = new URLSearchParams(window.location.search);
   if (params.get("company")) store.company = params.get("company");
   if (params.get("start_date")) store.startDate = params.get("start_date");
-  if (params.get("frequency")) store.frequency = params.get("frequency");
-  if (store.startDate && store.frequency) {
+  if (params.get("duration")) store.duration = params.get("duration");
+  if (store.startDate && store.duration) {
     store.calculateEndDate();
   }
 });
