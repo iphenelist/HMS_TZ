@@ -192,12 +192,14 @@
                 label="Start Date *"
                 v-model="editStartDate"
                 :disabled="!!editingAssignment"
+                :min="!editingAssignment ? todayStr : undefined"
               />
               <FormControl
                 type="date"
                 label="End Date *"
                 v-model="editEndDate"
                 :disabled="!!editingAssignment"
+                :min="!editingAssignment ? todayStr : undefined"
               />
             </div>
             <div
@@ -292,6 +294,8 @@
 
 <script setup>
 import dayjs from "dayjs";
+
+const todayStr = dayjs().format("YYYY-MM-DD");
 import { computed, ref } from "vue";
 
 const props = defineProps({
