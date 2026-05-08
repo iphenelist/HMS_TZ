@@ -1,43 +1,19 @@
 <template>
   <td
-    class="relative border border-dashed border-gray-400 rounded-lg px-1 py-1 text-center"
+    class="relative border border-dashed border-gray-300 px-1 py-1 align-top"
     :class="cellClasses"
-    @click="handleCellClick"
   >
     <!-- On Leave cell -->
     <div
       v-if="isOnLeave"
-      class="flex h-8 items-center justify-center"
+      class="flex h-10 items-center justify-center"
       title="Nurse is on leave"
     >
       <span
-        class="inline-flex items-center rounded-full px-2 py-1 text-xs text-orange-600"
-      >
-        On Leave
-      </span>
-    </div>
-
-    <!-- Existing assignment (read-only pill) -->
-    <div
-      v-else-if="assignment && !showDialog"
-      class="flex items-center justify-center gap-1"
-    >
-      <span
-        class="inline-flex max-w-[100px] items-center truncate rounded-full px-2 py-1 text-xs font-medium"
-        :class="pillClasses"
-        :title="displayValue"
-      >
-        {{ displayValue }}
-      </span>
-      <!-- Edit button: only shown for future/today dates -->
-      <button
-        v-if="!isPastDate"
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-500 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
-        @click.stop="openEditDialog"
-        title="Edit assignment"
+        class="inline-flex items-center gap-1 rounded-full bg-orange-100/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-orange-700"
       >
         <svg
-          class="h-3.5 w-3.5"
+          class="h-3 w-3"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -46,95 +22,261 @@
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
-            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"
+          />
+        </svg>
+        On Leave
+      </span>
+    </div>
+
+    <!-- Assignments list + add button -->
+    <div v-else class="flex flex-col gap-1">
+      <!-- Existing / pending assignments -->
+      <div
+        v-for="(asgn, idx) in assignments"
+        :key="asgn.name || asgn._temp_id || idx"
+        class="group/pill relative flex items-center gap-1"
+      >
+        <div
+          class="flex min-w-0 flex-1 cursor-default flex-col rounded-md px-2 py-1 text-[10px] leading-tight shadow-sm transition-all"
+          :class="
+            asgn._pending
+              ? 'bg-amber-50 border border-amber-300 text-amber-800'
+              : 'bg-blue-50 border border-blue-200 text-blue-800'
+          "
+          :title="getTooltip(asgn)"
+        >
+          <!-- Location -->
+          <span class="truncate font-semibold">
+            {{
+              asgn.assign_based_on === "Room"
+                ? asgn.room || ""
+                : asgn.ward || ""
+            }}
+          </span>
+          <!-- Shift type + times -->
+          <span class="truncate text-[9px] opacity-75">
+            {{ asgn.shift_type || "" }}
+            <template v-if="asgn.shift_start_time">
+              · {{ formatTime(asgn.shift_start_time) }}-{{
+                formatTime(asgn.shift_end_time)
+              }}
+            </template>
+          </span>
+        </div>
+        <!-- Edit button -->
+        <button
+          v-if="!isPastDate && asgn.name"
+          class="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 opacity-0 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 group-hover/pill:opacity-100"
+          @click.stop="openEditDialog(asgn)"
+          title="Edit assignment"
+        >
+          <svg
+            class="h-2.5 w-2.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Add button (always visible for non-past, non-leave cells) -->
+      <button
+        v-if="!isPastDate"
+        class="flex h-7 items-center justify-center rounded-md border border-dashed border-gray-200 text-gray-400 transition-all hover:border-blue-400 hover:bg-blue-50/60 hover:text-blue-500"
+        @click.stop="openNewDialog"
+        title="Add shift assignment"
+      >
+        <svg
+          class="h-3 w-3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 4v16m8-8H4"
           />
         </svg>
       </button>
-    </div>
 
-    <!-- Empty cell (+): only clickable for future/today dates -->
-    <div
-      v-else-if="!assignment && !showDialog"
-      class="flex h-8 items-center justify-center rounded border border-dashed transition-colors"
-      :class="
-        isPastDate
-          ? 'border-gray-100 text-gray-200'
-          : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-500'
-      "
-    >
-      <svg
-        class="h-3.5 w-3.5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="2.5"
+      <!-- Empty state for past cells with no assignments -->
+      <div
+        v-if="isPastDate && assignments.length === 0"
+        class="flex h-8 items-center justify-center text-[10px] text-gray-300"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M12 4v16m8-8H4"
-        />
-      </svg>
+        —
+      </div>
     </div>
 
     <!-- Assignment Dialog -->
     <Dialog
       :options="{
-        title: assignment ? 'Edit Assignment' : 'New Assignment',
-        size: 'sm',
+        title: editingAssignment
+          ? 'Edit Shift Assignment'
+          : 'New Shift Assignment',
+        size: 'md',
         actions: dialogActions,
       }"
       v-model="showDialog"
       @close="cancelEdit"
     >
       <template #body-content>
-        <div class="flex flex-col gap-4">
-          <!-- Nurse & Date info -->
-          <div class="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
-            <div class="text-sm">
-              <span class="text-gray-500">Nurse:</span>
-              <span class="ml-1 font-medium text-gray-800">{{ nurse }}</span>
+        <div class="flex flex-col gap-3">
+          <!-- Nurse info bar -->
+          <div
+            class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-2"
+          >
+            <div
+              class="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100"
+            >
+              <svg
+                class="h-3.5 w-3.5 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
             </div>
-            <div class="text-sm">
-              <span class="text-gray-500">Date:</span>
-              <span class="ml-1 font-medium text-gray-800">{{ date }}</span>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold text-gray-800">
+                {{ nurse }}
+              </p>
             </div>
           </div>
 
-          <!-- Assignment Based On -->
-          <div>
+          <!-- Shift Type + Times (inline row) -->
+          <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-3">
+            <div
+              class="grid gap-3"
+              :class="resolvedShiftTimes.start ? 'grid-cols-2' : 'grid-cols-1'"
+            >
+              <FormControl
+                type="autocomplete"
+                label="Shift Type *"
+                :options="shiftTypeOptions"
+                v-model="selectedShiftType"
+                placeholder="Select shift..."
+              />
+              <div
+                v-if="resolvedShiftTimes.start"
+                class="flex items-center gap-2 self-end rounded-md bg-white px-3 py-[7px] shadow-sm"
+              >
+                <svg
+                  class="h-3.5 w-3.5 shrink-0 text-indigo-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span class="text-sm font-medium text-gray-700">{{
+                  resolvedShiftTimes.start
+                }}</span>
+                <span class="text-gray-400">→</span>
+                <span class="text-sm font-medium text-gray-700">{{
+                  resolvedShiftTimes.end
+                }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Date Range (side-by-side) -->
+          <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-3">
+            <div class="grid grid-cols-2 gap-3">
+              <FormControl
+                type="date"
+                label="Start Date *"
+                v-model="editStartDate"
+                :disabled="!!editingAssignment"
+              />
+              <FormControl
+                type="date"
+                label="End Date *"
+                v-model="editEndDate"
+                :disabled="!!editingAssignment"
+              />
+            </div>
+            <div
+              v-if="!editingAssignment && dateRangeCount > 1"
+              class="mt-2 flex items-center gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] text-blue-700"
+            >
+              <svg
+                class="h-3 w-3 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>
+                Creates <strong>{{ dateRangeCount }}</strong> schedule{{
+                  dateRangeCount > 1 ? "s" : ""
+                }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Location: Assign Based On + Ward/Room side-by-side -->
+          <div
+            class="grid grid-cols-2 gap-3 rounded-lg border border-gray-100 bg-gray-50/50 p-3"
+          >
             <FormControl
               type="select"
-              label="Assignment Based On"
+              label="Assign Based On"
               :options="assignBasedOnOptions"
               v-model="editAssignBasedOn"
             />
-          </div>
-
-          <!-- Service Unit Type (searchable autocomplete) -->
-          <div v-if="editAssignBasedOn === 'Service Unit Type'">
-            <FormControl
-              type="autocomplete"
-              label="Service Unit Type"
-              :options="serviceUnitTypeOptions"
-              v-model="selectedServiceUnitType"
-              placeholder="Search service unit type..."
-            />
-          </div>
-
-          <!-- Service Unit (searchable autocomplete) -->
-          <div v-if="editAssignBasedOn === 'Service Unit'">
-            <FormControl
-              type="autocomplete"
-              label="Service Unit"
-              :options="serviceUnitOptions"
-              v-model="selectedServiceUnit"
-              placeholder="Search service unit..."
-            />
+            <div v-if="editAssignBasedOn === 'Ward'">
+              <FormControl
+                type="autocomplete"
+                label="Ward *"
+                :options="wardOptions"
+                v-model="selectedWard"
+                placeholder="Search ward..."
+              />
+            </div>
+            <div v-if="editAssignBasedOn === 'Room'">
+              <FormControl
+                type="autocomplete"
+                label="Room *"
+                :options="roomOptions"
+                v-model="selectedRoom"
+                placeholder="Search room..."
+              />
+            </div>
           </div>
 
           <!-- Remove button for existing assignments -->
-          <div v-if="assignment && assignment.name" class="border-t pt-3">
+          <div
+            v-if="editingAssignment && editingAssignment.name"
+            class="border-t border-red-100 pt-3"
+          >
             <Button
               variant="subtle"
               theme="red"
@@ -166,6 +308,7 @@
 </template>
 
 <script setup>
+import dayjs from "dayjs";
 import { computed, ref } from "vue";
 
 const props = defineProps({
@@ -174,67 +317,113 @@ const props = defineProps({
   isWeekend: { type: Boolean, default: false },
   isPastDate: { type: Boolean, default: false },
   isOnLeave: { type: Boolean, default: false },
-  assignment: { type: Object, default: null },
-  serviceUnitTypes: { type: Array, default: () => [] },
-  serviceUnits: { type: Array, default: () => [] },
+  assignments: { type: Array, default: () => [] },
+  wards: { type: Array, default: () => [] },
+  rooms: { type: Array, default: () => [] },
+  shiftTypes: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["assign", "edit", "remove"]);
 
 const showDialog = ref(false);
-const editAssignBasedOn = ref("Service Unit Type");
-const selectedServiceUnitType = ref(null);
-const selectedServiceUnit = ref(null);
+const editingAssignment = ref(null); // null = new, object = editing
+
+const editAssignBasedOn = ref("Ward");
+const selectedWard = ref(null);
+const selectedRoom = ref(null);
+const selectedShiftType = ref(null);
+const editStartDate = ref("");
+const editEndDate = ref("");
 
 const assignBasedOnOptions = [
-  { label: "Service Unit Type", value: "Service Unit Type" },
-  { label: "Service Unit", value: "Service Unit" },
+  { label: "Ward", value: "Ward" },
+  { label: "Room", value: "Room" },
 ];
 
-const displayValue = computed(() => {
-  if (!props.assignment) return "";
-  if (props.assignment.assign_based_on === "Service Unit") {
-    return props.assignment.service_unit || "";
-  }
-  return props.assignment.service_unit_type || "";
-});
-
-// Options formatted for autocomplete
-const serviceUnitTypeOptions = computed(() =>
-  props.serviceUnitTypes.map((s) => ({ label: s, value: s }))
+// Autocomplete options
+const wardOptions = computed(() =>
+  props.wards.map((w) => ({ label: w, value: w }))
 );
 
-const serviceUnitOptions = computed(() =>
-  props.serviceUnits.map((s) => ({
-    label: s.name,
-    value: s.name,
+const roomOptions = computed(() =>
+  props.rooms.map((r) => ({
+    label: r.name,
+    value: r.name,
+    description: r.type || "",
   }))
 );
 
-// The currently selected value string
-const currentEditValue = computed(() => {
-  if (editAssignBasedOn.value === "Service Unit Type") {
-    return selectedServiceUnitType.value?.value || "";
-  }
-  return selectedServiceUnit.value?.value || "";
+const shiftTypeOptions = computed(() =>
+  props.shiftTypes.map((s) => ({
+    label: s.name,
+    value: s.name,
+    description:
+      s.start_time && s.end_time
+        ? `${formatTime(s.start_time)} - ${formatTime(s.end_time)}`
+        : "",
+  }))
+);
+
+// Resolve shift start/end times from the selected shift type
+const resolvedShiftTimes = computed(() => {
+  if (!selectedShiftType.value) return { start: "", end: "" };
+  const val = selectedShiftType.value?.value || selectedShiftType.value;
+  const found = props.shiftTypes.find((s) => s.name === val);
+  if (!found) return { start: "", end: "" };
+  return {
+    start: formatTime(found.start_time),
+    end: formatTime(found.end_time),
+    raw_start: found.start_time,
+    raw_end: found.end_time,
+  };
 });
 
-const pillClasses = computed(() => {
-  if (props.assignment?._pending) return "bg-yellow-100 text-yellow-800";
-  return "bg-blue-100 text-blue-800";
+// Date range count
+const dateRangeCount = computed(() => {
+  if (!editStartDate.value || !editEndDate.value) return 0;
+  const start = dayjs(editStartDate.value);
+  const end = dayjs(editEndDate.value);
+  if (end.isBefore(start)) return 0;
+  return end.diff(start, "day") + 1;
 });
+
+// Current location value
+const currentLocationValue = computed(() => {
+  if (editAssignBasedOn.value === "Ward") {
+    return selectedWard.value?.value || "";
+  }
+  return selectedRoom.value?.value || "";
+});
+
+// Shift type value
+const shiftTypeValue = computed(() => {
+  return selectedShiftType.value?.value || selectedShiftType.value || "";
+});
+
+// Pill tooltip
+function getTooltip(asgn) {
+  const location = asgn.assign_based_on === "Room" ? asgn.room : asgn.ward;
+  const shift = asgn.shift_type || "";
+  const times =
+    asgn.shift_start_time && asgn.shift_end_time
+      ? `${formatTime(asgn.shift_start_time)}-${formatTime(
+          asgn.shift_end_time
+        )}`
+      : "";
+  return [location, shift, times].filter(Boolean).join(" · ");
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return "";
+  // Handle "HH:mm:ss" or "HH:mm" formats
+  const parts = String(timeStr).split(":");
+  if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
+  return timeStr;
+}
 
 const cellClasses = computed(() => ({
   "bg-red-50/60": props.isOnLeave,
-  "bg-orange-50/50": props.isWeekend && !showDialog.value && !props.isOnLeave,
-  "cursor-pointer":
-    !showDialog.value &&
-    !props.assignment &&
-    !props.isPastDate &&
-    !props.isOnLeave,
-  "bg-blue-50/30":
-    props.assignment && !props.assignment._pending && !props.isOnLeave,
-  "bg-yellow-50/50": props.assignment?._pending && !props.isOnLeave,
+  "bg-orange-50/40": props.isWeekend && !props.isOnLeave,
 }));
 
 const dialogActions = computed(() => [
@@ -244,83 +433,106 @@ const dialogActions = computed(() => [
     onClick: () => cancelEdit(),
   },
   {
-    label: props.assignment ? "Update" : "Assign",
+    label: editingAssignment.value ? "Update" : "Assign",
     variant: "solid",
-    disabled: !currentEditValue.value,
+    disabled:
+      !shiftTypeValue.value ||
+      !currentLocationValue.value ||
+      !editStartDate.value ||
+      !editEndDate.value,
     onClick: () => confirmEdit(),
   },
 ]);
 
-function handleCellClick() {
-  // Do not allow opening dialog for past dates or leave dates
-  if (props.isPastDate || props.isOnLeave) return;
-  if (!props.assignment && !showDialog.value) {
-    openNewDialog();
-  }
-}
-
 function openNewDialog() {
-  editAssignBasedOn.value = "Service Unit Type";
-  selectedServiceUnitType.value = null;
-  selectedServiceUnit.value = null;
+  if (props.isPastDate || props.isOnLeave) return;
+  editingAssignment.value = null;
+  editAssignBasedOn.value = "Ward";
+  selectedWard.value = null;
+  selectedRoom.value = null;
+  selectedShiftType.value = null;
+  editStartDate.value = props.date;
+  editEndDate.value = props.date;
   showDialog.value = true;
 }
 
-function openEditDialog() {
-  // Do not allow editing past dates or leave dates
+function openEditDialog(asgn) {
   if (props.isPastDate || props.isOnLeave) return;
+  editingAssignment.value = asgn;
 
-  if (props.assignment) {
-    editAssignBasedOn.value =
-      props.assignment.assign_based_on || "Service Unit Type";
-    if (props.assignment.assign_based_on === "Service Unit") {
-      const val = props.assignment.service_unit || "";
-      selectedServiceUnit.value = val ? { label: val, value: val } : null;
-      selectedServiceUnitType.value = null;
-    } else {
-      const val = props.assignment.service_unit_type || "";
-      selectedServiceUnitType.value = val ? { label: val, value: val } : null;
-      selectedServiceUnit.value = null;
-    }
+  editAssignBasedOn.value = asgn.assign_based_on || "Ward";
+
+  if (asgn.assign_based_on === "Room") {
+    const val = asgn.room || "";
+    selectedRoom.value = val ? { label: val, value: val } : null;
+    selectedWard.value = null;
+  } else {
+    const val = asgn.ward || "";
+    selectedWard.value = val ? { label: val, value: val } : null;
+    selectedRoom.value = null;
   }
+
+  const shiftVal = asgn.shift_type || "";
+  selectedShiftType.value = shiftVal
+    ? { label: shiftVal, value: shiftVal }
+    : null;
+
+  // For editing, only allow the single date
+  editStartDate.value = asgn.assignment_date || props.date;
+  editEndDate.value = asgn.assignment_date || props.date;
+
   showDialog.value = true;
 }
 
 function confirmEdit() {
-  const val = currentEditValue.value;
-  if (!val) return;
+  const locationVal = currentLocationValue.value;
+  const shiftVal = shiftTypeValue.value;
+  if (!locationVal || !shiftVal || !editStartDate.value || !editEndDate.value)
+    return;
 
-  if (props.assignment?.name) {
+  if (editingAssignment.value?.name) {
+    // Editing an existing saved assignment — include original shift for bulk matching
     emit("edit", {
       nurse: props.nurse,
-      date: props.date,
+      date: editingAssignment.value.assignment_date,
       assignBasedOn: editAssignBasedOn.value,
-      value: val,
-      existingName: props.assignment.name,
+      value: locationVal,
+      shiftType: shiftVal,
+      shiftStartTime: resolvedShiftTimes.value.raw_start || "",
+      shiftEndTime: resolvedShiftTimes.value.raw_end || "",
+      existingName: editingAssignment.value.name,
+      originalShiftType: editingAssignment.value.shift_type || "",
     });
   } else {
+    // New assignment — emit with date range
     emit("assign", {
       nurse: props.nurse,
-      date: props.date,
+      startDate: editStartDate.value,
+      endDate: editEndDate.value,
       assignBasedOn: editAssignBasedOn.value,
-      value: val,
+      value: locationVal,
+      shiftType: shiftVal,
+      shiftStartTime: resolvedShiftTimes.value.raw_start || "",
+      shiftEndTime: resolvedShiftTimes.value.raw_end || "",
     });
   }
+
   showDialog.value = false;
 }
 
 function cancelEdit() {
   showDialog.value = false;
-  selectedServiceUnitType.value = null;
-  selectedServiceUnit.value = null;
+  editingAssignment.value = null;
 }
 
 function removeAssignment() {
   emit("remove", {
     nurse: props.nurse,
-    date: props.date,
-    existingName: props.assignment?.name || props.assignment?.existing_name,
+    date: editingAssignment.value?.assignment_date || props.date,
+    existingName:
+      editingAssignment.value?.name || editingAssignment.value?.existing_name,
   });
   showDialog.value = false;
+  editingAssignment.value = null;
 }
 </script>
