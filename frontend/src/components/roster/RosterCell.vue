@@ -35,16 +35,20 @@
       <div
         v-for="(asgn, idx) in assignments"
         :key="asgn.name || asgn._temp_id || idx"
-        class="group/pill relative flex items-center gap-1"
+        class="relative"
       >
         <div
-          class="flex min-w-0 flex-1 cursor-default flex-col rounded-md px-2 py-1 text-[10px] leading-tight shadow-sm transition-all"
-          :class="
+          class="flex min-w-0 flex-1 flex-col rounded-md px-2 py-1 text-[10px] leading-tight shadow-sm transition-all"
+          :class="[
             asgn._pending
               ? 'bg-amber-50 border border-amber-300 text-amber-800'
-              : 'bg-blue-50 border border-blue-200 text-blue-800'
-          "
+              : 'bg-blue-50 border border-blue-200 text-blue-800',
+            !isPastDate && asgn.name
+              ? 'cursor-pointer hover:ring-1 hover:ring-blue-400'
+              : 'cursor-default',
+          ]"
           :title="getTooltip(asgn)"
+          @click.stop="!isPastDate && asgn.name && openEditDialog(asgn)"
         >
           <!-- Location -->
           <span class="truncate font-semibold">
@@ -64,27 +68,6 @@
             </template>
           </span>
         </div>
-        <!-- Edit button -->
-        <button
-          v-if="!isPastDate && asgn.name"
-          class="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 opacity-0 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 group-hover/pill:opacity-100"
-          @click.stop="openEditDialog(asgn)"
-          title="Edit assignment"
-        >
-          <svg
-            class="h-2.5 w-2.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-            />
-          </svg>
-        </button>
       </div>
 
       <!-- Add button (always visible for non-past, non-leave cells) -->
