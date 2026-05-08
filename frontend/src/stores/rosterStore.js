@@ -6,7 +6,7 @@ import { computed, ref } from "vue";
 export const useRosterStore = defineStore("roster", () => {
   // Filter state
   const company = ref("");
-  const startDate = ref("");
+  const startDate = ref(dayjs().format("YYYY-MM-DD"));
   const duration = ref("Weekly");
   const endDate = ref("");
 
@@ -106,6 +106,9 @@ export const useRosterStore = defineStore("roster", () => {
         .format("YYYY-MM-DD");
     }
   }
+
+  // Calculate end date on store init (startDate defaults to today, duration to Weekly)
+  calculateEndDate();
 
   // API resources
   const rosterDataResource = createResource({
