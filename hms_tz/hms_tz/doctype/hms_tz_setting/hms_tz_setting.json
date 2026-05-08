@@ -43,6 +43,8 @@
   "column_break_finc",
   "hms_tz_minimum_cash_limit_percent",
   "hms_tz_limit_exceed_action",
+  "nursing_conf_section",
+  "auto_create_shift_assignment_from_nursing_roster",
   "reporting_section",
   "start_date",
   "nhif_tab",
@@ -618,6 +620,12 @@
    "search_index": 1
   },
   {
+   "collapsible": 1,
+   "fieldname": "nursing_conf_section",
+   "fieldtype": "Section Break",
+   "label": "Nursing Conf"
+  },
+  {
    "depends_on": "eval: doc.enable_nhif_api == 1",
    "description": "This is used to fetch items with Refcode from Item doctype during processing of covered items",
    "fieldname": "nhif_customer_name",
@@ -662,11 +670,18 @@
    "fieldname": "cancel_delivery_note_after",
    "fieldtype": "Int",
    "label": "Cancel Draft Delivery Note After"
+  },
+  {
+   "default": "0",
+   "description": "If checked, a Shift Assignment will be auto-created (and submitted) for the nurse's linked employee when a Nursing Schedule is submitted.",
+   "fieldname": "auto_create_shift_assignment_from_nursing_roster",
+   "fieldtype": "Check",
+   "label": "Auto Create Shift Assignment from Nursing Roster"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 16:15:30.420690",
+ "modified": "2026-05-08 21:57:05.971456",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",

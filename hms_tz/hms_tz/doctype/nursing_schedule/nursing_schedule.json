@@ -21,7 +21,8 @@
   "column_break_shift",
   "shift_start_time",
   "shift_end_time",
-  "naming_series"
+  "naming_series",
+  "shift_assignment"
  ],
  "fields": [
   {
@@ -139,6 +140,15 @@
    "no_copy": 1,
    "options": "Nursing Schedule",
    "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "shift_assignment",
+   "fieldtype": "Link",
+   "label": "Shift Assignment",
+   "no_copy": 1,
+   "options": "Shift Assignment",
    "read_only": 1
   }
  ],
