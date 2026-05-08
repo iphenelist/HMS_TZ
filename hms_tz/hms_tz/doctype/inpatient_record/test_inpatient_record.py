@@ -157,6 +157,7 @@ def get_service_unit_type():
 def create_patient():
     patient = frappe.db.exists("Patient", "_Test IPD Patient")
     if not patient:
+        _ensure_customer_group()
         patient = frappe.new_doc("Patient")
         patient.first_name = "_Test IPD Patient"
         patient.sex = "Female"
@@ -169,3 +170,26 @@ def create_patient():
         patient.save(ignore_permissions=True)
         patient = patient.name
     return patient
+
+
+def _ensure_customer_group():
+    """Ensure a non-group (leaf) Customer Group exists for tests.
+
+    On fresh CI sites (reinstall --yes without setup wizard), ERPNext's
+    default Customer Group fixtures are not created. Newer ERPNext versions
+    validate that Customer Group must not be a group-type node, so we need
+    at least one leaf-level Customer Group to exist.
+    """
+    from frappe.utils.nestedset import get_root_of
+
+    if frappe.db.exists("Customer Group", {"is_group": 0}):
+        return
+
+    root = get_root_of("Customer Group")
+    if not frappe.db.exists("Customer Group", "Patient"):
+        frappe.get_doc({
+            "doctype": "Customer Group",
+            "customer_group_name": "Patient",
+            "parent_customer_group": root,
+            "is_group": 0,
+        }).insert(ignore_permissions=True)
