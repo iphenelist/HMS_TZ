@@ -363,7 +363,13 @@ def admit_patient(
     inpatient_record.expected_discharge = expected_discharge
 
     inpatient_record.set("inpatient_occupancies", [])
-    transfer_patient(inpatient_record, service_unit, check_in)
+    transfer_patient(
+        inpatient_record,
+        service_unit,
+        check_in,
+        admission_no=admission_no,
+        poc_reference_no=poc_reference_no
+    )
 
     frappe.db.set_value("Patient", inpatient_record.patient, "inpatient_status", "Admitted")
     frappe.db.set_value(
@@ -375,7 +381,15 @@ def admit_patient(
     return True
 
 
-def transfer_patient(inpatient_record, service_unit, check_in, check_out=None, leave_from=None, poc_reference_no=None):
+def transfer_patient(
+    inpatient_record,
+    service_unit,
+    check_in,
+    check_out=None,
+    leave_from=None,
+    admission_no=None,
+    poc_reference_no=None
+):
     if len(inpatient_record.inpatient_occupancies) > 0 and leave_from:
         for inpatient_occupancy in inpatient_record.inpatient_occupancies:
             if inpatient_occupancy.left != 1 and inpatient_occupancy.service_unit == leave_from:
@@ -401,10 +415,13 @@ def transfer_patient(inpatient_record, service_unit, check_in, check_out=None, l
             "Occupied",
         )
 
+    if admission_no:
+        inpatient_record.admission_no = admission_no
+
     if poc_reference_no:
         inpatient_record.poc_reference_no = poc_reference_no
 
-    if service_unit or leave_from or poc_reference_no:
+    if service_unit or leave_from or admission_no or poc_reference_no:
         inpatient_record.save(ignore_permissions=True)
 
     return True
