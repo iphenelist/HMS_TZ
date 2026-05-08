@@ -338,7 +338,7 @@ import { useRosterStore } from "@/stores/rosterStore";
 const store = useRosterStore();
 const isSidebarCollapsed = ref(false);
 
-// Company options
+// Company options (respects User Permissions)
 const companyOptions = ref([]);
 const companyResource = createResource({
   url: "frappe.client.get_list",
@@ -347,6 +347,7 @@ const companyResource = createResource({
     fields: ["name"],
     order_by: "name asc",
     limit_page_length: 0,
+    ignore_permissions: 0,
   },
   auto: true,
   onSuccess(data) {
@@ -354,6 +355,10 @@ const companyResource = createResource({
       label: c.name,
       value: c.name,
     }));
+    if (data.length === 1 && !store.company) {
+      store.company = data[0].name;
+      store.calculateEndDate();
+    }
   },
 });
 
