@@ -187,20 +187,28 @@
           <!-- Date Range (side-by-side) -->
           <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-3">
             <div class="grid grid-cols-2 gap-3">
-              <FormControl
-                type="date"
-                label="Start Date *"
-                v-model="editStartDate"
-                :disabled="!!editingAssignment"
-                :min="!editingAssignment ? todayStr : undefined"
-              />
-              <FormControl
-                type="date"
-                label="End Date *"
-                v-model="editEndDate"
-                :disabled="!!editingAssignment"
-                :min="!editingAssignment ? todayStr : undefined"
-              />
+              <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">
+                  Start Date *
+                </label>
+                <DatePicker
+                  v-model="editStartDate"
+                  :formatValue="(val) => formatDateDD(val)"
+                  :disabled="!!editingAssignment"
+                  placeholder="Select date"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">
+                  End Date *
+                </label>
+                <DatePicker
+                  v-model="editEndDate"
+                  :formatValue="(val) => formatDateDD(val)"
+                  :disabled="!!editingAssignment"
+                  placeholder="Select date"
+                />
+              </div>
             </div>
             <div
               v-if="!editingAssignment && dateRangeCount > 1"
@@ -406,6 +414,11 @@ function formatTime(timeStr) {
   const parts = String(timeStr).split(":");
   if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
   return timeStr;
+}
+
+function formatDateDD(val) {
+  if (!val) return "";
+  return dayjs(val).format("DD-MM-YYYY");
 }
 
 const cellClasses = computed(() => ({
