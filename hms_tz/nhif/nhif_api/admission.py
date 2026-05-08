@@ -399,14 +399,14 @@ def get_room_types(company=None, caller=None):
 
 @frappe.whitelist()
 def admit_patient(
-    admission_type,
-    service_unit,
-    date_admitted,
-    fingerprint,
-    fpcode,
-    biometric_method,
-    ref_doctype,
-    ref_docname
+    admission_type: str,
+    service_unit: str,
+    date_admitted: str,
+    fingerprint: str,
+    fpcode: str,
+    biometric_method: str,
+    ref_doctype: str,
+    ref_docname: str,
 ):
     doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
     mct_code = frappe.get_cached_value(
