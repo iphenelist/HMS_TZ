@@ -957,6 +957,8 @@ def update_approval_status(doc, appointment, data, dni_id=None):
                 rad_doc.add_comment(
                     comment_type="Comment",
                     text=f"Approval status: <b>{row.get('ApprovalStatus')}</b><br>ReferenceNo: <b>{row.get('ReferenceNo') or 'Not Provided'}</b>\
+                        <br>QuantityRequested: <b>{row.get('QuantityRequested')}</b>\
+                        <br>QuantityApproved: <b>{row.get('QuantityApproved')}</b>\
                         <br>Remarks: <b>{row.get('Remarks') or row.get('SummaryRemarks')}</b>",
                 )
                 rad_doc.reload()
@@ -1007,6 +1009,8 @@ def update_approval_status(doc, appointment, data, dni_id=None):
                         frappe.db.set_value("Delivery Note Item", dni.get("dni_id"), fields)
                         comment = f"Item: <b>{dni.get('item_code')}</b><br>Approval status: <b>{row.get('ApprovalStatus')}</b><br>\
                                 ReferenceNo: <b>{row.get('ReferenceNo') or 'Not Provided'}</b>\
+                                <br>QuantityRequested: <b>{row.get('QuantityRequested')}</b>\
+                                <br>QuantityApproved: <b>{row.get('QuantityApproved')}</b>\
                                 <br>Remarks: <b>{row.get('Remarks') or row.get('SummaryRemarks')}</b>"
 
                         dn_doc.add_comment(comment_type="Comment", text=comment)
@@ -1034,10 +1038,14 @@ def set_service_approval(
             "service_authorization_id": data.get("ServiceAuthorizationID"),
         }
         if data.get("ReferenceNo"):
-            msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
+            msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b>"
             fields["approval_number"] = data.get("ReferenceNo")
         else:
-            msg += f"<br>ReferenceNo: <b>Not Provided</b><br>Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
+            msg += f"<br>ReferenceNo: <b>Not Provided</b>"
+
+        msg += f"<br>QuantityRequested: <b>{data.get('QuantityRequested')}</b>\
+            <br>QuantityApproved: <b>{data.get('Quantity')}</b>\
+            Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
 
         frappe.db.set_value(
             "Delivery Note Item",
@@ -1051,9 +1059,13 @@ def set_service_approval(
         )
     else:
         if data.get("ReferenceNo"):
-            msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b><br>"
+            msg += f"<br>ReferenceNo: <b>{data.get('ReferenceNo')}</b>"
         else:
-            msg += f"<br>ReferenceNo: <b>Not Provided</b><br>Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
+            msg += "<br>ReferenceNo: <b>Not Provided</b>"
+
+        msg += f"<br>QuantityRequested: <b>{data.get('QuantityRequested')}</b>\
+            <br>QuantityApproved: <b>{data.get('Quantity')}</b>\
+            Remarks: <b>{data.get('Remarks') or data.get('SummaryRemarks')}</b>"
 
         frappe.db.set_value(
             doc.doctype,
