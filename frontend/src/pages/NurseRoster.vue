@@ -201,6 +201,43 @@
             <LoadingIndicator class="h-5 w-5" />
           </div>
         </div>
+
+        <!-- Optional employee-based filters (second row) -->
+        <div class="mt-3 flex flex-wrap items-end justify-center gap-4">
+          <div class="w-44">
+            <label class="mb-1 block text-xs font-medium text-gray-400">
+              Department
+            </label>
+            <FormControl
+              type="autocomplete"
+              :options="departmentOptions"
+              v-model="departmentModel"
+              placeholder="All"
+            />
+          </div>
+          <div class="w-44">
+            <label class="mb-1 block text-xs font-medium text-gray-400">
+              Designation
+            </label>
+            <FormControl
+              type="autocomplete"
+              :options="designationOptions"
+              v-model="designationModel"
+              placeholder="All"
+            />
+          </div>
+          <div class="w-44">
+            <label class="mb-1 block text-xs font-medium text-gray-400">
+              Branch
+            </label>
+            <FormControl
+              type="autocomplete"
+              :options="branchOptions"
+              v-model="branchModel"
+              placeholder="All"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Scrollable grid section -->
@@ -386,6 +423,102 @@ const companyModel = computed({
   },
 });
 
+// Department options (reactive to company, Department has a company field)
+const departmentOptions = ref([]);
+const departmentResource = createResource({
+  url: "frappe.client.get_list",
+  makeParams() {
+    return {
+      doctype: "Department",
+      fields: ["name"],
+      filters: { company: store.company },
+      order_by: "name asc",
+      limit_page_length: 0,
+      ignore_permissions: 0,
+    };
+  },
+  onSuccess(data) {
+    departmentOptions.value = data.map((d) => ({
+      label: d.name,
+      value: d.name,
+    }));
+  },
+});
+
+// Refetch departments when company changes and clear stale selection
+watch(
+  () => store.company,
+  (newCompany) => {
+    store.department = "";
+    if (newCompany) {
+      departmentResource.submit();
+    } else {
+      departmentOptions.value = [];
+    }
+  }
+);
+
+// Designation options
+const designationOptions = ref([]);
+createResource({
+  url: "frappe.client.get_list",
+  params: {
+    doctype: "Designation",
+    fields: ["name"],
+    order_by: "name asc",
+    limit_page_length: 0,
+    ignore_permissions: 0,
+  },
+  auto: true,
+  onSuccess(data) {
+    designationOptions.value = data.map((d) => ({
+      label: d.name,
+      value: d.name,
+    }));
+  },
+});
+
+// Branch options
+const branchOptions = ref([]);
+createResource({
+  url: "frappe.client.get_list",
+  params: {
+    doctype: "Branch",
+    fields: ["name"],
+    order_by: "name asc",
+    limit_page_length: 0,
+    ignore_permissions: 0,
+  },
+  auto: true,
+  onSuccess(data) {
+    branchOptions.value = data.map((d) => ({
+      label: d.name,
+      value: d.name,
+    }));
+  },
+});
+
+// v-model adapters for autocomplete filters
+function makeFilterModel(storeKey) {
+  return computed({
+    get() {
+      if (!store[storeKey]) return null;
+      return { label: store[storeKey], value: store[storeKey] };
+    },
+    set(option) {
+      if (option && typeof option === "object") {
+        store[storeKey] = option.value || option.label || "";
+      } else {
+        store[storeKey] = option || "";
+      }
+    },
+  });
+}
+
+const departmentModel = makeFilterModel("department");
+const designationModel = makeFilterModel("designation");
+const branchModel = makeFilterModel("branch");
+
 // Check if a date is in the past (before today)
 function isDatePast(dateStr) {
   return dayjs(dateStr).isBefore(dayjs(), "day");
@@ -396,9 +529,17 @@ function formatDateDisplay(val) {
   return dayjs(val).format("DD-MM-YYYY");
 }
 
-// Auto-load roster when all fields are filled
+// Auto-load roster when required fields are filled (optional filters also trigger reload)
 watch(
-  () => [store.company, store.startDate, store.duration, store.endDate],
+  () => [
+    store.company,
+    store.startDate,
+    store.duration,
+    store.endDate,
+    store.department,
+    store.designation,
+    store.branch,
+  ],
   () => {
     if (store.company && store.startDate && store.duration && store.endDate) {
       store.loadRoster();

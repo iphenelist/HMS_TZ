@@ -10,6 +10,11 @@ export const useRosterStore = defineStore("roster", () => {
   const duration = ref("Weekly");
   const endDate = ref("");
 
+  // Optional employee-based filters
+  const department = ref("");
+  const designation = ref("");
+  const branch = ref("");
+
   // Data state
   const nurses = ref([]);
   const assignments = ref([]);
@@ -152,6 +157,9 @@ export const useRosterStore = defineStore("roster", () => {
       company: company.value,
       start_date: startDate.value,
       end_date: endDate.value,
+      department: department.value || undefined,
+      designation: designation.value || undefined,
+      branch: branch.value || undefined,
     });
     serviceOptionsResource.submit({
       company: company.value,
@@ -203,6 +211,9 @@ export const useRosterStore = defineStore("roster", () => {
     startDate,
     duration,
     endDate,
+    department,
+    designation,
+    branch,
     nurses,
     assignments,
     wards,
