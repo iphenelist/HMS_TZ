@@ -1,25 +1,27 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-04-04 00:00:00.000000",
+ "creation": "2026-04-04 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
- "in_create": 1,
- "is_submittable": 1,
  "field_order": [
-  "naming_series",
   "company",
-  "frequency",
+  "assignment_date",
   "column_break_01",
   "nurse",
   "nurse_name",
-  "assignment_date",
   "column_break_02",
   "assign_based_on",
-  "service_unit_type",
-  "service_unit",
+  "ward",
+  "room",
+  "section_break_shift",
+  "shift_type",
   "nurse_record_created",
-  "amended_from"
+  "amended_from",
+  "column_break_shift",
+  "shift_start_time",
+  "shift_end_time",
+  "naming_series"
  ],
  "fields": [
   {
@@ -35,13 +37,6 @@
    "in_list_view": 1,
    "label": "Company",
    "options": "Company",
-   "reqd": 1
-  },
-  {
-   "fieldname": "frequency",
-   "fieldtype": "Select",
-   "label": "Frequency",
-   "options": "Daily\nWeekly\nMonthly\nQuarterly\nBi-Yearly\nYearly",
    "reqd": 1
   },
   {
@@ -76,36 +71,66 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "Service Unit Type",
+   "default": "Ward",
    "fieldname": "assign_based_on",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Assign Based On",
-   "options": "Service Unit Type\nService Unit",
+   "options": "Ward\nRoom",
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.assign_based_on=='Service Unit Type'",
-   "fieldname": "service_unit_type",
+   "depends_on": "eval:doc.assign_based_on=='Ward'",
+   "fieldname": "ward",
    "fieldtype": "Link",
-   "label": "Service Unit Type",
+   "label": "Ward",
    "options": "Healthcare Service Unit Type"
   },
   {
-   "depends_on": "eval:doc.assign_based_on=='Service Unit'",
-   "fieldname": "service_unit",
+   "depends_on": "eval:doc.assign_based_on=='Room'",
+   "fieldname": "room",
    "fieldtype": "Link",
-   "label": "Service Unit",
+   "label": "Room",
    "options": "Healthcare Service Unit"
   },
   {
+   "fieldname": "section_break_shift",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "shift_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shift Type",
+   "options": "Shift Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_shift",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "shift_type.start_time",
+   "fieldname": "shift_start_time",
+   "fieldtype": "Time",
+   "label": "Shift Start Time",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "shift_type.end_time",
+   "fieldname": "shift_end_time",
+   "fieldtype": "Time",
+   "label": "Shift End Time",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "nurse_record_created",
    "fieldtype": "Check",
    "label": "Nurse Record Created",
-   "read_only": 1,
    "no_copy": 1,
-   "allow_on_submit": 1
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
@@ -117,8 +142,10 @@
    "read_only": 1
   }
  ],
+ "in_create": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-04-08 12:00:00.000000",
+ "modified": "2026-05-08 15:46:03.082991",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nursing Schedule",

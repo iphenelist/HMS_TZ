@@ -13,8 +13,9 @@ export const useRosterStore = defineStore("roster", () => {
   // Data state
   const nurses = ref([]);
   const assignments = ref([]);
-  const serviceUnitTypes = ref([]);
-  const serviceUnits = ref([]);
+  const wards = ref([]);
+  const rooms = ref([]);
+  const shiftTypes = ref([]);
   const nurseLeaves = ref({});
 
   // Pending changes (tracked before save)
@@ -41,30 +42,43 @@ export const useRosterStore = defineStore("roster", () => {
     return cols;
   });
 
-  // Build a lookup map: nurse -> date -> assignment
+  // Build a lookup map: nurse|date → array of assignments
   const assignmentMap = computed(() => {
     const map = {};
+
+    // Group existing assignments
     for (const a of assignments.value) {
       const key = `${a.nurse}|${a.assignment_date}`;
-      map[key] = a;
+      if (!map[key]) map[key] = [];
+      map[key].push(a);
     }
-    // Overlay pending changes
+
+    // Apply pending changes
     for (const change of pendingChanges.value) {
       const key = `${change.nurse}|${change.assignment_date}`;
+      if (!map[key]) map[key] = [];
+
       if (change.action === "remove") {
-        delete map[key];
+        map[key] = map[key].filter((a) => a.name !== change.existing_name);
+      } else if (change.action === "edit") {
+        const idx = map[key].findIndex((a) => a.name === change.existing_name);
+        if (idx >= 0) {
+          map[key][idx] = { ...map[key][idx], ...change, _pending: true };
+        }
       } else {
-        map[key] = { ...map[key], ...change, _pending: true };
+        // action === "add"
+        map[key].push({ ...change, _pending: true });
       }
     }
+
     return map;
   });
 
-  function getAssignment(nurse, date) {
-    return assignmentMap.value[`${nurse}|${date}`] || null;
+  function getAssignments(nurse, date) {
+    return assignmentMap.value[`${nurse}|${date}`] || [];
   }
 
-  // Calculate end date
+  // Calculate end date based on frequency
   function calculateEndDate() {
     if (!startDate.value || !frequency.value) {
       endDate.value = "";
@@ -111,8 +125,9 @@ export const useRosterStore = defineStore("roster", () => {
   const serviceOptionsResource = createResource({
     url: "hms_tz.hms_tz.doctype.nursing_schedule.roster.get_service_options",
     onSuccess(data) {
-      serviceUnitTypes.value = data.service_unit_types || [];
-      serviceUnits.value = data.service_units || [];
+      wards.value = data.wards || [];
+      rooms.value = data.rooms || [];
+      shiftTypes.value = data.shift_types || [];
     },
   });
 
@@ -120,7 +135,6 @@ export const useRosterStore = defineStore("roster", () => {
     url: "hms_tz.hms_tz.doctype.nursing_schedule.roster.save_roster_assignments",
     onSuccess() {
       isSaving.value = false;
-      // Reload after save
       loadRoster();
     },
     onError() {
@@ -142,21 +156,22 @@ export const useRosterStore = defineStore("roster", () => {
   }
 
   function addPendingChange(change) {
-    // Remove any existing pending change for same nurse+date
-    pendingChanges.value = pendingChanges.value.filter(
-      (c) =>
-        !(
-          c.nurse === change.nurse &&
-          c.assignment_date === change.assignment_date
-        )
-    );
-    pendingChanges.value.push(change);
-  }
-
-  function removePendingChange(nurse, date) {
-    pendingChanges.value = pendingChanges.value.filter(
-      (c) => !(c.nurse === nurse && c.assignment_date === date)
-    );
+    if (change.action === "add") {
+      // Allow multiple add-actions per nurse+date (different shifts)
+      pendingChanges.value.push(change);
+    } else if (change.action === "edit" && change.existing_name) {
+      // Replace any existing pending change for the same record
+      pendingChanges.value = pendingChanges.value.filter(
+        (c) => c.existing_name !== change.existing_name
+      );
+      pendingChanges.value.push(change);
+    } else if (change.action === "remove" && change.existing_name) {
+      // Remove any pending edits for this record and add a remove
+      pendingChanges.value = pendingChanges.value.filter(
+        (c) => c.existing_name !== change.existing_name
+      );
+      pendingChanges.value.push(change);
+    }
   }
 
   function hasPendingChanges() {
@@ -175,7 +190,6 @@ export const useRosterStore = defineStore("roster", () => {
       company: company.value,
       start_date: startDate.value,
       end_date: endDate.value,
-      frequency: frequency.value,
       assignments: JSON.stringify(pendingChanges.value),
     });
   }
@@ -188,8 +202,9 @@ export const useRosterStore = defineStore("roster", () => {
     endDate,
     nurses,
     assignments,
-    serviceUnitTypes,
-    serviceUnits,
+    wards,
+    rooms,
+    shiftTypes,
     nurseLeaves,
     pendingChanges,
     isLoading,
@@ -198,11 +213,10 @@ export const useRosterStore = defineStore("roster", () => {
     dateColumns,
     assignmentMap,
     // Methods
-    getAssignment,
+    getAssignments,
     calculateEndDate,
     loadRoster,
     addPendingChange,
-    removePendingChange,
     hasPendingChanges,
     isNurseOnLeave,
     saveRoster,

@@ -10,14 +10,11 @@ from frappe.utils import add_to_date, getdate, today
 def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
     """Return nurses and their existing assignments for the given company and date range.
 
-    Nurses fully on leave for the entire date range are kept visible but
-    their leave dates are marked so the frontend can render them as non-editable.
-
     Returns:
         dict with keys:
         - nurses: list of {name, practitioner_name, employee}
         - assignments: list of {name, nurse, nurse_name, assignment_date,
-          assign_based_on, service_unit_type, service_unit}
+          assign_based_on, ward, room, shift_type, shift_start_time, shift_end_time}
         - nurse_leave_dates: dict mapping nurse name → list of leave date strings
     """
     if not company or not start_date or not end_date:
@@ -79,7 +76,7 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
 
     nurse_names = [n.name for n in nurses]
 
-    # Get assignments from Nursing Schedule (individual records)
+    # Get assignments from Nursing Schedule
     assignments = []
     if nurse_names:
         assignments = frappe.db.get_all(
@@ -95,10 +92,13 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
                 "nurse_name",
                 "assignment_date",
                 "assign_based_on",
-                "service_unit_type",
-                "service_unit",
+                "ward",
+                "room",
+                "shift_type",
+                "shift_start_time",
+                "shift_end_time",
             ],
-            order_by="assignment_date asc",
+            order_by="assignment_date asc, shift_start_time asc",
         )
 
     return {
@@ -113,23 +113,21 @@ def save_roster_assignments(
     company: str,
     start_date: str,
     end_date: str,
-    frequency: str,
     assignments: list | str,
 ) -> dict:
     """Batch-save roster assignments as individual Nursing Schedule records.
 
     Each assignment dict should have:
-    - nurse: str (Healthcare Practitioner name)
+    - nurse: str
     - assignment_date: str (YYYY-MM-DD)
-    - assign_based_on: str (Service Unit Type / Service Unit)
-    - service_unit_type: str (optional)
-    - service_unit: str (optional)
-    - existing_name: str (optional - for editing/removing existing records)
+    - assign_based_on: str (Ward / Room)
+    - ward: str (optional)
+    - room: str (optional)
+    - shift_type: str
+    - shift_start_time: str (optional — auto-filled from shift_type)
+    - shift_end_time: str (optional — auto-filled from shift_type)
+    - existing_name: str (optional — for editing/removing existing records)
     - action: str (add / edit / remove)
-
-    New records are created and immediately submitted.
-    Edits to existing (submitted) records are applied directly to the database.
-    Modifications to records with past assignment dates are blocked.
     """
     import json
 
@@ -160,7 +158,6 @@ def save_roster_assignments(
             continue
 
         if action == "remove" and existing_name:
-            # Cancel the submitted record
             doc = frappe.get_doc("Nursing Schedule", existing_name)
             if doc.docstatus == 1:
                 doc.cancel()
@@ -169,16 +166,18 @@ def save_roster_assignments(
             continue
 
         if action == "edit" and existing_name:
-            # Direct DB update on the submitted record
             update_values = {
                 "assign_based_on": assignment.get("assign_based_on", ""),
+                "shift_type": assignment.get("shift_type", ""),
+                "shift_start_time": assignment.get("shift_start_time", ""),
+                "shift_end_time": assignment.get("shift_end_time", ""),
             }
-            if assignment.get("assign_based_on") == "Service Unit Type":
-                update_values["service_unit_type"] = assignment.get("service_unit_type", "")
-                update_values["service_unit"] = ""
+            if assignment.get("assign_based_on") == "Ward":
+                update_values["ward"] = assignment.get("ward", "")
+                update_values["room"] = ""
             else:
-                update_values["service_unit"] = assignment.get("service_unit", "")
-                update_values["service_unit_type"] = ""
+                update_values["room"] = assignment.get("room", "")
+                update_values["ward"] = ""
 
             frappe.db.set_value(
                 "Nursing Schedule",
@@ -190,19 +189,20 @@ def save_roster_assignments(
             continue
 
         # action == "add" — create and submit a new individual record
-        # Check for duplicate first
+        # Check for duplicate (same nurse + date + shift)
         existing = frappe.db.exists(
             "Nursing Schedule",
             {
                 "nurse": assignment.get("nurse"),
                 "assignment_date": assignment.get("assignment_date"),
+                "shift_type": assignment.get("shift_type"),
                 "docstatus": ["!=", 2],
             },
         )
         if existing:
             frappe.msgprint(
-                _("Nurse {0} already has an assignment on {1}. Skipping.").format(
-                    assignment.get("nurse"), assignment.get("assignment_date")
+                _(
+                    f"Nurse {assignment.get('nurse')} already has a {assignment.get('shift_type')} shift on {assignment.get('assignment_date')}. Skipping."
                 ),
                 alert=True,
             )
@@ -210,12 +210,14 @@ def save_roster_assignments(
 
         doc = frappe.new_doc("Nursing Schedule")
         doc.company = company
-        doc.frequency = frequency
         doc.nurse = assignment.get("nurse")
         doc.assignment_date = assignment.get("assignment_date")
-        doc.assign_based_on = assignment.get("assign_based_on", "Service Unit Type")
-        doc.service_unit_type = assignment.get("service_unit_type", "")
-        doc.service_unit = assignment.get("service_unit", "")
+        doc.assign_based_on = assignment.get("assign_based_on", "Ward")
+        doc.ward = assignment.get("ward", "")
+        doc.room = assignment.get("room", "")
+        doc.shift_type = assignment.get("shift_type", "")
+        doc.shift_start_time = assignment.get("shift_start_time", "")
+        doc.shift_end_time = assignment.get("shift_end_time", "")
         doc.insert(ignore_permissions=False)
         doc.submit()
         created += 1
@@ -231,28 +233,40 @@ def save_roster_assignments(
         parts.append(_("{0} removed").format(removed))
 
     return {
-        "message": _("Roster saved: {0}.").format(", ".join(parts)) if parts else _("No changes made."),
+        "message": _(
+            f"Roster saved: {', '.join(parts) if parts else 'No changes made.'}"
+        ),
     }
 
 
 @frappe.whitelist()
 def get_service_options(company: str) -> dict:
-    """Return service unit types and service units for dropdowns."""
-    service_unit_types = frappe.db.get_all(
+    """Return wards (service unit types), rooms (service units), and shift types."""
+    wards = frappe.db.get_all(
         "Healthcare Service Unit Type",
         filters={"disabled": 0},
         fields=["name"],
         order_by="name asc",
     )
 
-    service_units = frappe.db.get_all(
+    rooms = frappe.db.get_all(
         "Healthcare Service Unit",
         filters={"is_group": 0, "disabled": 0, "company": company},
         fields=["name", "service_unit_type"],
         order_by="name asc",
     )
 
+    shift_types = frappe.db.get_all(
+        "Shift Type",
+        fields=["name", "start_time", "end_time"],
+        order_by="name asc",
+    )
+
     return {
-        "service_unit_types": [s.name for s in service_unit_types],
-        "service_units": [{"name": s.name, "type": s.service_unit_type} for s in service_units],
+        "wards": [s.name for s in wards],
+        "rooms": [{"name": s.name, "type": s.service_unit_type} for s in rooms],
+        "shift_types": [
+            {"name": s.name, "start_time": str(s.start_time or ""), "end_time": str(s.end_time or "")}
+            for s in shift_types
+        ],
     }

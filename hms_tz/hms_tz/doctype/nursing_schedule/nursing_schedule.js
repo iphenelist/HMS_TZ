@@ -17,7 +17,7 @@ frappe.ui.form.on("Nursing Schedule", {
       };
     });
 
-    frm.set_query("service_unit_type", function () {
+    frm.set_query("ward", function () {
       return {
         filters: {
           disabled: 0,
@@ -25,7 +25,7 @@ frappe.ui.form.on("Nursing Schedule", {
       };
     });
 
-    frm.set_query("service_unit", function () {
+    frm.set_query("room", function () {
       return {
         filters: {
           is_group: 0,
@@ -37,10 +37,26 @@ frappe.ui.form.on("Nursing Schedule", {
   },
 
   assign_based_on: function (frm) {
-    if (frm.doc.assign_based_on === "Service Unit") {
-      frm.set_value("service_unit_type", "");
+    if (frm.doc.assign_based_on === "Room") {
+      frm.set_value("ward", "");
     } else {
-      frm.set_value("service_unit", "");
+      frm.set_value("room", "");
+    }
+  },
+
+  shift_type: function (frm) {
+    if (frm.doc.shift_type) {
+      frappe.db.get_value(
+        "Shift Type",
+        frm.doc.shift_type,
+        ["start_time", "end_time"],
+        (r) => {
+          if (r) {
+            frm.set_value("shift_start_time", r.start_time);
+            frm.set_value("shift_end_time", r.end_time);
+          }
+        }
+      );
     }
   },
 });

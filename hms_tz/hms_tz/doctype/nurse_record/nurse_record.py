@@ -622,8 +622,8 @@ def create_nurse_records_for_admitted_patients():
             "nurse_name",
             "company",
             "assign_based_on",
-            "service_unit",
-            "service_unit_type",
+            "room",
+            "ward",
         ],
     )
 
@@ -671,15 +671,15 @@ def create_nurse_records_for_admitted_patients():
             # Match by service_unit or service_unit_type
             matched = False
             if (
-                schedule.assign_based_on == "Service Unit"
-                and schedule.service_unit
+                schedule.assign_based_on == "Room"
+                and schedule.room
             ):
-                matched = schedule.service_unit == last_occupancy
+                matched = schedule.room == last_occupancy
             elif (
-                schedule.assign_based_on == "Service Unit Type"
-                and schedule.service_unit_type
+                schedule.assign_based_on == "Ward"
+                and schedule.ward
             ):
-                matched = schedule.service_unit_type == last_su_type
+                matched = schedule.ward == last_su_type
 
             if not matched:
                 continue
@@ -717,12 +717,12 @@ def create_nurse_records_for_admitted_patients():
                 nr.inpatient_record = ip.name
                 nr.service_unit = (
                     last_occupancy
-                    if schedule.assign_based_on == "Service Unit"
+                    if schedule.assign_based_on == "Room"
                     else None
                 )
                 nr.service_unit_type = (
                     last_su_type
-                    if schedule.assign_based_on == "Service Unit Type"
+                    if schedule.assign_based_on == "Ward"
                     else None
                 )
                 nr.flags.ignore_validate = True
