@@ -170,7 +170,6 @@
               type="select"
               :options="durationOptions"
               v-model="store.duration"
-              @change="store.calculateEndDate()"
             />
           </div>
           <div class="w-40">
@@ -180,7 +179,6 @@
             <DatePicker
               v-model="store.startDate"
               :formatValue="(val) => formatDateDisplay(val)"
-              @change="store.calculateEndDate()"
               placeholder="Select date"
             />
           </div>
@@ -528,6 +526,14 @@ function formatDateDisplay(val) {
   if (!val) return "";
   return dayjs(val).format("DD-MM-YYYY");
 }
+
+// Recalculate end date whenever startDate or duration changes
+watch(
+  () => [store.startDate, store.duration],
+  () => {
+    store.calculateEndDate();
+  }
+);
 
 // Auto-load roster when required fields are filled (optional filters also trigger reload)
 watch(
