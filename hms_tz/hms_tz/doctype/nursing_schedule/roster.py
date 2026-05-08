@@ -7,7 +7,14 @@ from frappe.utils import add_to_date, getdate, today
 
 
 @frappe.whitelist()
-def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
+def get_roster_data(
+    company: str,
+    start_date: str,
+    end_date: str,
+    department: str = None,
+    designation: str = None,
+    branch: str = None,
+) -> dict:
     """Return nurses and their existing assignments for the given company and date range.
 
     Returns:
@@ -20,16 +27,28 @@ def get_roster_data(company: str, start_date: str, end_date: str) -> dict:
     if not company or not start_date or not end_date:
         frappe.throw(_("Company, Start Date, and End Date are required."))
 
-    nurses = frappe.db.get_all(
-        "Healthcare Practitioner",
-        filters={
-            "practitioner_role": "Nurse",
-            "hms_tz_company": company,
-            "status": "Active",
-        },
-        fields=["name", "practitioner_name", "employee"],
-        order_by="practitioner_name asc",
+    hp = frappe.qb.DocType("Healthcare Practitioner")
+    emp = frappe.qb.DocType("Employee")
+
+    query = (
+        frappe.qb.from_(hp)
+        .inner_join(emp)
+        .on(hp.employee == emp.name)
+        .select(hp.name, hp.practitioner_name, hp.employee)
+        .where(hp.practitioner_role == "Nurse")
+        .where(hp.hms_tz_company == company)
+        .where(hp.status == "Active")
+        .orderby(hp.practitioner_name)
     )
+
+    if department:
+        query = query.where(emp.department == department)
+    if designation:
+        query = query.where(emp.designation == designation)
+    if branch:
+        query = query.where(emp.branch == branch)
+
+    nurses = query.run(as_dict=True)
 
     # Build employee → nurse mapping for leave lookups
     employee_nurse_map = {}
