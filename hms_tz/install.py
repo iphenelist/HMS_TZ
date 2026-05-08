@@ -86,13 +86,20 @@ def before_tests():
     healthcare_before_tests()
     setup_healthcare()
 
-    # 3. hms_tz accounting dimensions (Healthcare Practitioner, Healthcare Service Unit)
+    # 3. Ensure a non-group Customer Group is available and set in Selling Settings.
+    #    ERPNext's set_defaults_for_tests() sets Selling Settings.customer_group
+    #    to the root "All Customer Groups" (is_group=1).  Newer ERPNext versions
+    #    reject group-type Customer Groups during Customer.validate().  We must
+    #    override it with a leaf node AFTER ERPNext's before_tests has run.
+    _ensure_non_group_customer_group()
+
+    # 4. hms_tz accounting dimensions (Healthcare Practitioner, Healthcare Service Unit)
     create_accounting_dimensions()
 
-    # 4. hms_tz master data required by tests (lookup records for mandatory fields)
+    # 5. hms_tz master data required by tests (lookup records for mandatory fields)
     create_test_master_data()
 
-    # 5. hms_tz-specific setup: custom fields, property setters, etc.
+    # 6. hms_tz-specific setup: custom fields, property setters, etc.
     setup_hms_tz_test_data()
 
     frappe.db.commit()
@@ -377,3 +384,46 @@ def _ensure_ward_type():
             pass
         except Exception:
             pass
+
+
+def _ensure_non_group_customer_group():
+    """Ensure a non-group (leaf) Customer Group exists and is the Selling default.
+
+    Problem:
+      ERPNext's ``set_defaults_for_tests()`` sets Selling Settings
+      ``customer_group`` to ``get_root_of("Customer Group")`` which is
+      "All Customer Groups" (is_group=1).  Newer ERPNext versions added
+      ``Customer.validate_customer_group()`` that rejects group-type nodes.
+
+    Solution:
+      1. Find or create a leaf-level Customer Group ("Individual").
+      2. Override Selling Settings ``customer_group`` to point to it.
+      3. Set the global default so ``frappe.defaults.get_global_default``
+         also returns the leaf node.
+    """
+    from frappe.utils.nestedset import get_root_of
+
+    # Step 1: find an existing non-group Customer Group
+    leaf = frappe.db.get_value(
+        "Customer Group", {"is_group": 0}, "name", order_by="name asc"
+    )
+
+    # Step 2: if none exists, create one
+    if not leaf:
+        root = get_root_of("Customer Group")
+        try:
+            doc = frappe.get_doc({
+                "doctype": "Customer Group",
+                "customer_group_name": "Individual",
+                "parent_customer_group": root,
+                "is_group": 0,
+            })
+            doc.insert(ignore_permissions=True)
+            leaf = doc.name
+        except frappe.DuplicateEntryError:
+            leaf = "Individual"
+
+    # Step 3: set as Selling Settings default so get_non_group_customer_group()
+    # in patient.py returns it immediately (step 1 fast-path)
+    frappe.db.set_single_value("Selling Settings", "customer_group", leaf)
+    frappe.db.set_default("customer_group", leaf)
