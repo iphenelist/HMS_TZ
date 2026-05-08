@@ -217,7 +217,7 @@
                   <th
                     v-for="col in store.dateColumns"
                     :key="col.date"
-                    class="min-w-[120px] border-b px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider"
+                    class="min-w-[150px] border-b px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider"
                     :class="
                       col.isWeekend
                         ? 'bg-orange-50 text-orange-700'
@@ -252,9 +252,10 @@
                     :is-weekend="col.isWeekend"
                     :is-past-date="isDatePast(col.date)"
                     :is-on-leave="store.isNurseOnLeave(nurse.name, col.date)"
-                    :assignment="store.getAssignment(nurse.name, col.date)"
-                    :service-unit-types="store.serviceUnitTypes"
-                    :service-units="store.serviceUnits"
+                    :assignments="store.getAssignments(nurse.name, col.date)"
+                    :wards="store.wards"
+                    :rooms="store.rooms"
+                    :shift-types="store.shiftTypes"
                     @assign="handleAssign"
                     @edit="handleEdit"
                     @remove="handleRemove"
@@ -408,24 +409,57 @@ onMounted(() => {
   }
 });
 
-function handleAssign({ nurse, date, assignBasedOn, value }) {
-  store.addPendingChange({
-    nurse,
-    assignment_date: date,
-    assign_based_on: assignBasedOn,
-    service_unit_type: assignBasedOn === "Service Unit Type" ? value : "",
-    service_unit: assignBasedOn === "Service Unit" ? value : "",
-    action: "add",
-  });
+function handleAssign({
+  nurse,
+  startDate,
+  endDate,
+  assignBasedOn,
+  value,
+  shiftType,
+  shiftStartTime,
+  shiftEndTime,
+}) {
+  // Expand date range into individual pending changes
+  let current = dayjs(startDate);
+  const end = dayjs(endDate);
+  while (current.isBefore(end) || current.isSame(end, "day")) {
+    store.addPendingChange({
+      nurse,
+      assignment_date: current.format("YYYY-MM-DD"),
+      assign_based_on: assignBasedOn,
+      ward: assignBasedOn === "Ward" ? value : "",
+      room: assignBasedOn === "Room" ? value : "",
+      shift_type: shiftType,
+      shift_start_time: shiftStartTime,
+      shift_end_time: shiftEndTime,
+      action: "add",
+      _temp_id: `${nurse}-${current.format(
+        "YYYY-MM-DD"
+      )}-${shiftType}-${Date.now()}`,
+    });
+    current = current.add(1, "day");
+  }
 }
 
-function handleEdit({ nurse, date, assignBasedOn, value, existingName }) {
+function handleEdit({
+  nurse,
+  date,
+  assignBasedOn,
+  value,
+  shiftType,
+  shiftStartTime,
+  shiftEndTime,
+  existingName,
+}) {
   store.addPendingChange({
     nurse,
     assignment_date: date,
     assign_based_on: assignBasedOn,
-    service_unit_type: assignBasedOn === "Service Unit Type" ? value : "",
-    service_unit: assignBasedOn === "Service Unit" ? value : "",
+    ward: assignBasedOn === "Ward" ? value : "",
+    room: assignBasedOn === "Room" ? value : "",
+    shift_type: shiftType,
+    shift_start_time: shiftStartTime,
+    shift_end_time: shiftEndTime,
     existing_name: existingName,
     action: "edit",
   });
