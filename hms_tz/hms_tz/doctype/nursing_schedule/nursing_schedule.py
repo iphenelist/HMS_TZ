@@ -19,7 +19,7 @@ class NursingSchedule(Document):
         self.update_shift_assignment()
 
     def on_cancel(self):
-        self.maybe_cancel_shift_assignment()
+        self.cancel_shift_assignment()
 
     def validate_assignment_fields(self):
         """Ensure the correct location field is filled based on assign_based_on."""
