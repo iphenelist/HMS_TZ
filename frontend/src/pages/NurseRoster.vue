@@ -177,21 +177,23 @@
             <label class="mb-1 block text-xs font-medium text-gray-600">
               Start Date
             </label>
-            <FormControl
-              type="date"
+            <DatePicker
               v-model="store.startDate"
+              :formatValue="(val) => formatDateDisplay(val)"
               @change="store.calculateEndDate()"
+              placeholder="Select date"
             />
           </div>
           <div class="w-40">
             <label class="mb-1 block text-xs font-medium text-gray-600">
               End Date
             </label>
-            <FormControl
-              type="date"
+            <DatePicker
               :modelValue="store.endDate"
+              :formatValue="(val) => formatDateDisplay(val)"
               disabled
               class="bg-gray-50"
+              placeholder="End date"
             />
           </div>
           <!-- Loading indicator inline -->
@@ -382,6 +384,11 @@ const companyModel = computed({
 // Check if a date is in the past (before today)
 function isDatePast(dateStr) {
   return dayjs(dateStr).isBefore(dayjs(), "day");
+}
+
+function formatDateDisplay(val) {
+  if (!val) return "";
+  return dayjs(val).format("DD-MM-YYYY");
 }
 
 // Auto-load roster when all fields are filled
