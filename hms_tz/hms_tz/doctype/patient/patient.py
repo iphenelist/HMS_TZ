@@ -187,13 +187,13 @@ def get_non_group_customer_group():
     This helper resolves a suitable leaf-level Customer Group by:
     1. Checking Selling Settings default
     2. Falling back to any existing non-group Customer Group
-    3. Creating a 'Individual' leaf node under the root as last resort
+    3. Creating an 'Individual' leaf node under the root as last resort
     """
     # First try the configured default from Selling Settings
     customer_group = frappe.db.get_single_value("Selling Settings", "customer_group")
-    if customer_group:
+    if customer_group and frappe.db.exists("Customer Group", customer_group):
         is_group = frappe.db.get_value("Customer Group", customer_group, "is_group")
-        if not is_group:
+        if is_group == 0:
             return customer_group
 
     # Find any existing non-group Customer Group
@@ -204,18 +204,26 @@ def get_non_group_customer_group():
         order_by="name asc",
     )
     if non_group:
+        # Update Selling Settings so future calls use the fast path
+        frappe.db.set_single_value("Selling Settings", "customer_group", non_group)
         return non_group
 
     # Last resort: create a leaf-level Customer Group under the root
     root = get_root_of("Customer Group")
-    doc = frappe.get_doc({
-        "doctype": "Customer Group",
-        "customer_group_name": "Individual",
-        "parent_customer_group": root,
-        "is_group": 0,
-    })
-    doc.insert(ignore_permissions=True)
-    return doc.name
+    try:
+        doc = frappe.get_doc({
+            "doctype": "Customer Group",
+            "customer_group_name": "Patient",
+            "parent_customer_group": root,
+            "is_group": 0,
+        })
+        doc.insert(ignore_permissions=True)
+        leaf = doc.name
+    except frappe.DuplicateEntryError:
+        leaf = "Patient"
+
+    frappe.db.set_single_value("Selling Settings", "customer_group", leaf)
+    return leaf
 
 
 def create_customer(doc):
