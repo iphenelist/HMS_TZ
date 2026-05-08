@@ -7,7 +7,7 @@ export const useRosterStore = defineStore("roster", () => {
   // Filter state
   const company = ref("");
   const startDate = ref("");
-  const frequency = ref("Weekly");
+  const duration = ref("Weekly");
   const endDate = ref("");
 
   // Data state
@@ -78,13 +78,13 @@ export const useRosterStore = defineStore("roster", () => {
     return assignmentMap.value[`${nurse}|${date}`] || [];
   }
 
-  // Calculate end date based on frequency
+  // Calculate end date based on duration
   function calculateEndDate() {
-    if (!startDate.value || !frequency.value) {
+    if (!startDate.value || !duration.value) {
       endDate.value = "";
       return;
     }
-    const frequencyMap = {
+    const durationMap = {
       Daily: { days: 0 },
       Weekly: { days: 6 },
       Monthly: { months: 1 },
@@ -92,7 +92,7 @@ export const useRosterStore = defineStore("roster", () => {
       "Bi-Yearly": { months: 6 },
       Yearly: { months: 12 },
     };
-    const offset = frequencyMap[frequency.value];
+    const offset = durationMap[duration.value];
     if (!offset) return;
 
     if (offset.days !== undefined) {
@@ -198,7 +198,7 @@ export const useRosterStore = defineStore("roster", () => {
     // State
     company,
     startDate,
-    frequency,
+    duration,
     endDate,
     nurses,
     assignments,
