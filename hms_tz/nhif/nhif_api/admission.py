@@ -7,6 +7,7 @@ from frappe.query_builder import DocType
 from frappe.utils import date_diff, get_datetime, get_fullname, get_url_to_form, now_datetime, nowdate
 from pypika.terms import Not
 
+from hms_tz.hms_tz.doctype.inpatient_record.inpatient_record import admit_patient as local_admit_patient
 from hms_tz.nhif.api.healthcare_utils import get_item_rate
 from hms_tz.nhif.api.inpatient_record import get_last_encounter
 from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
@@ -398,14 +399,14 @@ def get_room_types(company=None, caller=None):
 
 @frappe.whitelist()
 def admit_patient(
-    admission_type,
-    service_unit,
-    date_admitted,
-    fingerprint,
-    fpcode,
-    biometric_method,
-    ref_doctype,
-    ref_docname
+    admission_type: str,
+    service_unit: str,
+    date_admitted: str,
+    fingerprint: str,
+    fpcode: str,
+    biometric_method: str,
+    ref_doctype: str,
+    ref_docname: str,
 ):
     doc = frappe.get_cached_doc("Inpatient Record", ref_docname)
     mct_code = frappe.get_cached_value(
@@ -552,9 +553,28 @@ def admit_patient(
             ref_docname=ref_docname,
         )
 
+        admission_no = data.get("AdmissionNo")
+        poc_reference_no = reference_data.get("ReferenceNo") if reference_data else ""
+
+        if not admission_no:
+            frappe.throw(
+                _("Cannot admit NHIF patient without an Admission Number from NHIF."),
+                title=_("Admission Number Missing"),
+            )
+
+        local_admit_patient(
+            doc,
+            service_unit,
+            date_admitted,
+            admission_no=admission_no,
+            admission_type=admission_type,
+            poc_reference_no=poc_reference_no,
+        )
+
         return {
-            "admission_no": data.get("AdmissionNo"),
-            "poc_reference_no": reference_data.get("ReferenceNo") if reference_data else ""
+            "admission_no": admission_no,
+            "poc_reference_no": poc_reference_no,
+            "admitted": True,
         }
 
 

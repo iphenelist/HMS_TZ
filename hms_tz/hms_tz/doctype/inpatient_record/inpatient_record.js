@@ -289,7 +289,9 @@ let admit_patient_dialog = (frm) => {
       },
     ],
     primary_action_label:
-      frm.doc.insurance_company && frm.doc.insurance_company.includes("NHIF")
+      frm.doc.insurance_company &&
+      frm.doc.insurance_company.includes("NHIF") &&
+      !frm.doc.admission_no
         ? __("Next")
         : __("Admit"),
     primary_action: async () => {
@@ -306,18 +308,9 @@ let admit_patient_dialog = (frm) => {
       try {
         if (
           frm.doc.insurance_company &&
-          frm.doc.insurance_company.includes("NHIF")
+          frm.doc.insurance_company.includes("NHIF") &&
+          !frm.doc.admission_no
         ) {
-          // const r = await new Promise((resolve, reject) => {
-          //   frappe.db.get_value(
-          //     "HMS TZ Setting",
-          //     frm.doc.company,
-          //     "enable_nhif_api",
-          //     (r) => resolve(r),
-          //     () => reject(new Error("Failed to fetch HMS TZ Setting"))
-          //   );
-          // });
-
           let enable_nhif_api = false;
           await frappe.call({
             method: "frappe.client.get_value",
@@ -343,7 +336,13 @@ let admit_patient_dialog = (frm) => {
               biometric_method
             );
           } else {
-            await admit_patient(frm, service_unit, check_in, admission_type);
+            await admit_patient(
+              frm,
+              service_unit,
+              check_in,
+              null,
+              admission_type
+            );
             dialog.hide();
           }
         }
@@ -372,12 +371,22 @@ let admit_patient_dialog = (frm) => {
         //   );
         // }
         else {
-          await admit_patient(frm, service_unit, check_in, admission_type);
+          await admit_patient(
+            frm,
+            service_unit,
+            check_in,
+            null,
+            admission_type
+          );
           dialog.hide();
         }
       } catch (e) {
         dialog.enable_primary_action();
-        console.error("Admission error:", e);
+        frappe.msgprint({
+          title: __("Admission Error"),
+          message: __(e.message || e),
+          indicator: "red",
+        });
       }
     },
   });
@@ -452,44 +461,64 @@ let nhif_admit_patient = async (
 
   dialog.hide();
 
-  const r = await frappe.call({
-    method: "hms_tz.nhif.nhif_api.admission.admit_patient",
-    args: {
-      admission_type: admission_type,
-      service_unit: service_unit,
-      date_admitted: check_in,
-      fingerprint: biometricData.Data,
-      fpcode: biometricData.fpCode,
-      biometric_method: biometric_method,
-      ref_doctype: frm.doc.doctype,
-      ref_docname: frm.doc.name,
-    },
-    freeze: true,
-    freeze_message: __("Sending Data to NHIF"),
-  });
+  let r;
+  try {
+    r = await frappe.call({
+      method: "hms_tz.nhif.nhif_api.admission.admit_patient",
+      args: {
+        admission_type: admission_type,
+        service_unit: service_unit,
+        date_admitted: check_in,
+        fingerprint: biometricData.Data,
+        fpcode: biometricData.fpCode,
+        biometric_method: biometric_method,
+        ref_doctype: frm.doc.doctype,
+        ref_docname: frm.doc.name,
+      },
+      freeze: true,
+      freeze_message: __("Sending Data to NHIF"),
+      callback: (r) => {
+        if (r && r.message && r.message.admitted) {
+          frappe.utils.play_sound("success");
+          frappe.show_alert({
+            message: __("Patient admitted successfully"),
+            indicator: "green",
+          });
+          frm.reload_doc();
+        } else if (r && r.message && !r.message.admission_no) {
+          frappe.utils.play_sound("error");
+          frappe.msgprint({
+            title: __("NHIF Admission Incomplete"),
+            message: __(
+              "NHIF did not return an Admission Number. Please try again."
+            ),
+            indicator: "red",
+          });
+        }
+      },
+    });
+  } catch (nhif_error) {
+    await frm.reload_doc();
 
-  if (r && r.message) {
-    let result = r.message;
+    console.error("NHIF admission API error:", nhif_error);
 
-    if (!result.admission_no) {
+    if (frm.doc.status === "Admitted") {
+      frappe.utils.play_sound("success");
+      frappe.show_alert({
+        message: __("Patient admitted successfully"),
+        indicator: "green",
+      });
+    } else {
+      frappe.utils.play_sound("error");
       frappe.msgprint({
-        title: __("NHIF Admission Incomplete"),
+        title: __("NHIF Admission Error"),
         message: __(
-          "NHIF did not return an Admission Number. Please try again."
+          "An error occurred while communicating with NHIF. Please try again."
         ),
         indicator: "red",
       });
-      return;
     }
-
-    await admit_patient(
-      frm,
-      service_unit,
-      check_in,
-      result.admission_no,
-      admission_type,
-      result.poc_reference_no
-    );
+    return;
   }
 };
 
