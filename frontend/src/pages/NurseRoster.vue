@@ -139,13 +139,17 @@
     <!-- Main content -->
     <div class="flex flex-1 flex-col overflow-hidden">
       <!-- Header (centered) -->
-      <div class="border-b bg-white px-6 py-4">
+      <div class="relative border-b bg-white px-6 py-4">
         <h1 class="text-center text-xl font-semibold text-gray-900">
           Nurse Roster
         </h1>
         <p class="mt-1 text-center text-sm" style="color: #60a5fa">
           Assign nurses to wards and rooms across dates
         </p>
+        <!-- Mini Awesome Bar -->
+        <div class="absolute right-6 top-1/2 -translate-y-1/2">
+          <DeskSearchBar />
+        </div>
       </div>
 
       <!-- Filter Bar (centered, reordered: Company → Duration → Start Date → End Date) -->
@@ -368,6 +372,7 @@ import dayjs from "dayjs";
 import { createResource } from "frappe-ui";
 import { computed, onMounted, ref, watch } from "vue";
 import RosterCell from "@/components/roster/RosterCell.vue";
+import DeskSearchBar from "@/components/DeskSearchBar.vue";
 import { useRosterStore } from "@/stores/rosterStore";
 
 const store = useRosterStore();
