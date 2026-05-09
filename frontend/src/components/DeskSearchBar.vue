@@ -467,18 +467,12 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   background: white;
-  border: 1px solid #d1d5db;
+  border: none;
   border-radius: 8px;
   padding: 0 10px;
   height: 36px;
   width: 320px;
-  transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.search-input-wrapper:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon {
