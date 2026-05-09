@@ -133,6 +133,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { createResource } from "frappe-ui";
 
 const containerRef = ref(null);
 const searchInput = ref(null);
@@ -163,28 +164,30 @@ const CUSTOM_PAGES = [
 const pages = ref([...CUSTOM_PAGES]);
 let pagesLoaded = false;
 
-async function loadPermittedDoctypes() {
-  if (pagesLoaded) return;
-
-  try {
-    const response = await fetch(
-      "/api/method/hms_tz.api.search.get_permitted_doctypes",
-      {
-        headers: {
-          "X-Frappe-CSRF-Token": getCSRFToken(),
-          Accept: "application/json",
-        },
-      }
-    );
-    const json = await response.json();
-    if (json.message) {
-      pages.value = [...json.message, ...CUSTOM_PAGES];
+// Resource to load permitted doctypes (called once on mount)
+const permittedDoctypesResource = createResource({
+  url: "hms_tz.api.search.get_permitted_doctypes",
+  auto: false,
+  onSuccess(data) {
+    if (data) {
+      pages.value = [...data, ...CUSTOM_PAGES];
       pagesLoaded = true;
     }
-  } catch (e) {
-    // Keep custom pages as fallback
+  },
+  onError(e) {
     console.warn("Failed to load permitted doctypes:", e);
-  }
+  },
+});
+
+// Resource for global search (called on each search query)
+const globalSearchResource = createResource({
+  url: "frappe.utils.global_search.search",
+  auto: false,
+});
+
+async function loadPermittedDoctypes() {
+  if (pagesLoaded) return;
+  permittedDoctypesResource.fetch();
 }
 
 const pageResults = computed(() =>
@@ -242,20 +245,13 @@ async function search() {
 
 async function searchGlobalRecords(q) {
   try {
-    const response = await fetch(
-      `/api/method/frappe.utils.global_search.search?text=${encodeURIComponent(
-        q
-      )}&start=0&limit=8`,
-      {
-        headers: {
-          "X-Frappe-CSRF-Token": getCSRFToken(),
-          Accept: "application/json",
-        },
-      }
-    );
-    const json = await response.json();
-    if (json.message) {
-      return json.message.map((r) => ({
+    const data = await globalSearchResource.fetch({
+      text: q,
+      start: 0,
+      limit: 8,
+    });
+    if (data) {
+      return data.map((r) => ({
         label: r.name,
         description: r.doctype,
         route: `/app/${toKebabCase(r.doctype)}/${encodeURIComponent(r.name)}`,
@@ -266,15 +262,6 @@ async function searchGlobalRecords(q) {
     // Fallback silently
   }
   return [];
-}
-
-function getCSRFToken() {
-  return (
-    document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("csrf_token="))
-      ?.split("=")[1] || ""
-  );
 }
 
 function toKebabCase(str) {
