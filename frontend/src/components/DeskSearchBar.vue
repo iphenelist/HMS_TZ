@@ -132,8 +132,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
-import { createResource } from "frappe-ui";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 
 const containerRef = ref(null);
 const searchInput = ref(null);
@@ -144,116 +143,8 @@ const selectedIndex = ref(-1);
 const results = ref([]);
 let debounceTimer = null;
 
-// Common pages users might search for
-const PAGES = [
-  {
-    label: "Patient",
-    description: "Patient List",
-    route: "/app/patient",
-    type: "page",
-  },
-  {
-    label: "Patient Encounter",
-    description: "Patient Encounter List",
-    route: "/app/patient-encounter",
-    type: "page",
-  },
-  {
-    label: "Patient Appointment",
-    description: "Appointment List",
-    route: "/app/patient-appointment",
-    type: "page",
-  },
-  {
-    label: "Employee",
-    description: "Employee List",
-    route: "/app/employee",
-    type: "page",
-  },
-  {
-    label: "Nursing Schedule",
-    description: "Nursing Schedule List",
-    route: "/app/nursing-schedule",
-    type: "page",
-  },
-  {
-    label: "Clinical Procedure",
-    description: "Clinical Procedure List",
-    route: "/app/clinical-procedure",
-    type: "page",
-  },
-  {
-    label: "Lab Test",
-    description: "Lab Test List",
-    route: "/app/lab-test",
-    type: "page",
-  },
-  {
-    label: "Vital Signs",
-    description: "Vital Signs List",
-    route: "/app/vital-signs",
-    type: "page",
-  },
-  {
-    label: "Drug Prescription",
-    description: "Drug Prescription List",
-    route: "/app/drug-prescription",
-    type: "page",
-  },
-  {
-    label: "Inpatient Record",
-    description: "Inpatient Record List",
-    route: "/app/inpatient-record",
-    type: "page",
-  },
-  {
-    label: "Shift Assignment",
-    description: "Shift Assignment List",
-    route: "/app/shift-assignment",
-    type: "page",
-  },
-  {
-    label: "Shift Type",
-    description: "Shift Type List",
-    route: "/app/shift-type",
-    type: "page",
-  },
-  {
-    label: "Healthcare Service Unit",
-    description: "Service Unit List",
-    route: "/app/healthcare-service-unit",
-    type: "page",
-  },
-  {
-    label: "Company",
-    description: "Company List",
-    route: "/app/company",
-    type: "page",
-  },
-  {
-    label: "Department",
-    description: "Department List",
-    route: "/app/department",
-    type: "page",
-  },
-  {
-    label: "Designation",
-    description: "Designation List",
-    route: "/app/designation",
-    type: "page",
-  },
-  {
-    label: "Branch",
-    description: "Branch List",
-    route: "/app/branch",
-    type: "page",
-  },
-  {
-    label: "HMS TZ Setting",
-    description: "HMS TZ Settings",
-    route: "/app/hms-tz-setting",
-    type: "page",
-  },
+// Custom frontend routes (not DocTypes — always available)
+const CUSTOM_PAGES = [
   {
     label: "Nurse Roster",
     description: "Open Nurse Roster",
@@ -267,6 +158,34 @@ const PAGES = [
     type: "page",
   },
 ];
+
+// Module-level cache: loaded once, shared across all component instances
+const pages = ref([...CUSTOM_PAGES]);
+let pagesLoaded = false;
+
+async function loadPermittedDoctypes() {
+  if (pagesLoaded) return;
+
+  try {
+    const response = await fetch(
+      "/api/method/hms_tz.api.search.get_permitted_doctypes",
+      {
+        headers: {
+          "X-Frappe-CSRF-Token": getCSRFToken(),
+          Accept: "application/json",
+        },
+      }
+    );
+    const json = await response.json();
+    if (json.message) {
+      pages.value = [...json.message, ...CUSTOM_PAGES];
+      pagesLoaded = true;
+    }
+  } catch (e) {
+    // Keep custom pages as fallback
+    console.warn("Failed to load permitted doctypes:", e);
+  }
+}
 
 const pageResults = computed(() =>
   results.value.filter((r) => r.type === "page")
@@ -307,27 +226,15 @@ async function search() {
 
   isSearching.value = true;
 
-  // 1. Filter matching pages
-  const matchedPages = PAGES.filter(
+  // 1. Filter matching pages from the permission-checked list
+  const matchedPages = pages.value.filter(
     (p) =>
       p.label.toLowerCase().includes(q) ||
       p.description.toLowerCase().includes(q)
   );
 
-  // 2. Search records via global search
-  let records = [];
-  try {
-    const data = await searchResource.fetch({
-      doctype: "DocType",
-      filters: {},
-      or_filters: {},
-    });
-    // Use the global search API instead
-    records = await searchGlobalRecords(q);
-  } catch (e) {
-    // Fallback: search common doctypes individually
-    records = await searchCommonDoctypes(q);
-  }
+  // 2. Search records via global search (also respects permissions server-side)
+  const records = await searchGlobalRecords(q);
 
   results.value = [...matchedPages, ...records];
   isSearching.value = false;
@@ -359,45 +266,6 @@ async function searchGlobalRecords(q) {
     // Fallback silently
   }
   return [];
-}
-
-async function searchCommonDoctypes(q) {
-  const doctypes = ["Patient", "Employee", "Patient Encounter"];
-  const allResults = [];
-
-  for (const dt of doctypes) {
-    try {
-      const response = await fetch(
-        `/api/method/frappe.client.get_list?doctype=${encodeURIComponent(
-          dt
-        )}&filters=${encodeURIComponent(
-          JSON.stringify({ name: ["like", `%${q}%`] })
-        )}&fields=${encodeURIComponent(
-          JSON.stringify(["name"])
-        )}&limit_page_length=3`,
-        {
-          headers: {
-            "X-Frappe-CSRF-Token": getCSRFToken(),
-            Accept: "application/json",
-          },
-        }
-      );
-      const json = await response.json();
-      if (json.message) {
-        allResults.push(
-          ...json.message.map((r) => ({
-            label: r.name,
-            description: dt,
-            route: `/app/${toKebabCase(dt)}/${encodeURIComponent(r.name)}`,
-            type: "record",
-          }))
-        );
-      }
-    } catch (e) {
-      // Skip silently
-    }
-  }
-  return allResults;
 }
 
 function getCSRFToken() {
@@ -448,6 +316,7 @@ function handleClickOutside(e) {
 onMounted(() => {
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("click", handleClickOutside);
+  loadPermittedDoctypes();
 });
 
 onUnmounted(() => {
