@@ -139,13 +139,17 @@
     <!-- Main content -->
     <div class="flex flex-1 flex-col overflow-hidden">
       <!-- Header -->
-      <div class="border-b bg-white px-6 py-4">
+      <div class="relative border-b bg-white px-6 py-4">
         <h1 class="text-center text-xl font-semibold text-gray-900">
           OT Roster
         </h1>
         <p class="mt-1 text-center text-sm" style="color: #60a5fa">
           Schedule surgeries across theater rooms and dates
         </p>
+        <!-- Mini Awesome Bar -->
+        <div class="absolute right-6 top-1/2 -translate-y-1/2">
+          <DeskSearchBar />
+        </div>
       </div>
 
       <!-- Filter Bar -->
@@ -307,6 +311,7 @@ import dayjs from "dayjs";
 import { createResource } from "frappe-ui";
 import { computed, onMounted, ref, watch } from "vue";
 import OTRosterCell from "@/components/roster/OTRosterCell.vue";
+import DeskSearchBar from "@/components/DeskSearchBar.vue";
 import { useOTRosterStore } from "@/stores/otRosterStore";
 
 const store = useOTRosterStore();

@@ -12,6 +12,7 @@ declare module 'vue' {
     AppointmentDialog: typeof import('./src/components/appointments/AppointmentDialog.vue')['default']
     AppointmentGrid: typeof import('./src/components/appointments/AppointmentGrid.vue')['default']
     Autocomplete: typeof import('./src/components/controls/Autocomplete.vue')['default']
+    DeskSearchBar: typeof import('./src/components/DeskSearchBar.vue')['default']
     FieldMap: typeof import('./src/components/controls/FieldMap.vue')['default']
     Fields: typeof import('./src/components/controls/Fields.vue')['default']
     Link: typeof import('./src/components/controls/Link.vue')['default']
