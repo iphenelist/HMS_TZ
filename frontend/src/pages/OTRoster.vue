@@ -5,7 +5,6 @@
       class="flex h-full flex-col border-r bg-gray-50"
       :class="isSidebarCollapsed ? 'w-12' : 'w-[220px]'"
     >
-      <!-- Logo/Brand area -->
       <div class="flex items-center gap-2 border-b px-3 py-3">
         <div
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white"
@@ -31,8 +30,6 @@
           HMS TZ
         </span>
       </div>
-
-      <!-- Nav links -->
       <nav class="flex flex-1 flex-col gap-0.5 p-2">
         <button
           class="flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
@@ -110,8 +107,6 @@
           <span v-if="!isSidebarCollapsed">OT Schedule</span>
         </button>
       </nav>
-
-      <!-- Collapse toggle -->
       <div class="border-t p-2">
         <button
           class="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-gray-500 hover:bg-gray-200"
@@ -137,28 +132,27 @@
     </div>
 
     <!-- Main content -->
-    <div class="flex flex-1 flex-col overflow-hidden">
-      <!-- Header -->
+    <div class="flex flex-1 flex-col overflow-hidden bg-white">
+      <!-- Top bar -->
       <div class="relative border-b bg-white px-6 py-4">
         <h1 class="text-center text-xl font-semibold text-gray-900">
           OT Roster
         </h1>
         <p class="mt-1 text-center text-sm" style="color: #60a5fa">
-          Schedule surgeries across theater rooms and dates
+          Schedule surgeries across theater rooms
         </p>
-        <!-- Mini Awesome Bar -->
         <div class="absolute right-6 top-1/2 -translate-y-1/2">
           <DeskSearchBar />
         </div>
       </div>
 
-      <!-- Filter Bar -->
-      <div class="border-b bg-white px-6 py-4">
+      <!-- Filter bar -->
+      <div class="border-b bg-white px-6 py-3">
         <div class="flex flex-wrap items-end justify-center gap-4">
           <div class="w-52">
-            <label class="mb-1 block text-xs font-medium text-gray-600">
-              Company
-            </label>
+            <label class="mb-1 block text-xs font-medium text-gray-600"
+              >Company</label
+            >
             <FormControl
               type="autocomplete"
               :options="companyOptions"
@@ -167,140 +161,169 @@
             />
           </div>
           <div class="w-40">
-            <label class="mb-1 block text-xs font-medium text-gray-600">
-              Frequency
-            </label>
-            <FormControl
-              type="select"
-              :options="frequencyOptions"
-              v-model="store.frequency"
-              @change="store.calculateEndDate()"
-            />
+            <label class="mb-1 block text-xs font-medium text-gray-600"
+              >Date</label
+            >
+            <div class="relative">
+              <input
+                type="date"
+                :value="datePickerValue"
+                @input="onDateInput"
+                class="absolute inset-0 w-full opacity-0 cursor-pointer z-10"
+              />
+              <div
+                class="flex items-center justify-between rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 cursor-pointer hover:border-gray-400 transition-colors"
+              >
+                <span>{{ formattedDate }}</span>
+                <svg
+                  class="h-3.5 w-3.5 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
-          <div class="w-40">
-            <label class="mb-1 block text-xs font-medium text-gray-600">
-              Start Date
-            </label>
-            <FormControl
-              type="date"
-              v-model="store.startDate"
-              @change="store.calculateEndDate()"
-            />
-          </div>
-          <div class="w-40">
-            <label class="mb-1 block text-xs font-medium text-gray-600">
-              End Date
-            </label>
-            <FormControl
-              type="date"
-              :modelValue="store.endDate"
-              disabled
-              class="bg-gray-50"
-            />
-          </div>
-          <!-- Loading indicator -->
           <div v-if="store.isLoading" class="flex items-center pb-1">
             <LoadingIndicator class="h-5 w-5" />
           </div>
         </div>
       </div>
 
-      <!-- Scrollable grid section -->
-      <div class="flex-1 overflow-auto">
-        <!-- Grid -->
-        <div class="p-6" v-if="store.theaterRooms.length">
-          <div class="overflow-x-auto rounded-lg border bg-white shadow-sm">
-            <table class="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th
-                    class="sticky left-0 z-10 min-w-[180px] border-b border-r bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600"
-                  >
-                    Theater Room
-                  </th>
-                  <th
-                    v-for="col in store.dateColumns"
-                    :key="col.date"
-                    class="min-w-[160px] border-b px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider"
-                    :class="
-                      col.isWeekend
-                        ? 'bg-orange-50 text-orange-700'
-                        : 'bg-gray-50 text-gray-600'
-                    "
-                  >
-                    {{ col.label }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="room in store.theaterRooms"
-                  :key="room.name"
-                  class="group hover:bg-gray-50/50"
-                >
-                  <!-- Room name (sticky left) -->
-                  <td
-                    class="sticky left-0 z-10 border-b border-r bg-white px-4 py-2 group-hover:bg-gray-50"
-                  >
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ room.healthcare_service_unit_name || room.name }}
-                    </div>
-                    <div
-                      v-if="room.service_unit_type"
-                      class="text-xs text-gray-500"
-                    >
-                      {{ room.service_unit_type }}
-                    </div>
-                  </td>
-
-                  <!-- Date cells -->
-                  <OTRosterCell
-                    v-for="col in store.dateColumns"
-                    :key="`${room.name}-${col.date}`"
-                    :theater-room="room.name"
-                    :date="col.date"
-                    :is-weekend="col.isWeekend"
-                    :is-past-date="isDatePast(col.date)"
-                    :cell-schedules="store.getSchedules(room.name, col.date)"
-                    :company="store.company"
-                    @save="handleSave"
-                    @remove="handleRemove"
-                    @postpone="handlePostpone"
-                  />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Empty state -->
-        <div
-          v-else-if="!store.isLoading"
-          class="flex flex-col items-center justify-center px-6 py-20"
-        >
-          <div class="text-center">
-            <svg
-              class="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+      <!-- Calendar -->
+      <div
+        v-if="store.company"
+        class="flex flex-1 flex-col overflow-hidden p-4"
+      >
+        <!-- Month header bar -->
+        <div class="mb-3 flex items-center justify-between">
+          <span class="text-lg font-semibold text-gray-800">{{
+            store.monthYearLabel
+          }}</span>
+          <div class="flex items-center gap-1">
+            <button
+              class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+              @click="
+                store.goToPrevMonth();
+                reloadIfReady();
+              "
+              title="Previous month"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-            <h3 class="mt-4 text-sm font-medium text-gray-900">
-              No roster loaded
-            </h3>
-            <p class="mt-1 text-sm text-gray-500">
-              Select company, start date and frequency to load the OT roster
-              automatically.
-            </p>
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <button
+              class="rounded-md px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              @click="
+                store.goToToday();
+                reloadIfReady();
+              "
+            >
+              Today
+            </button>
+            <button
+              class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+              @click="
+                store.goToNextMonth();
+                reloadIfReady();
+              "
+              title="Next month"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
           </div>
         </div>
+
+        <!-- Bordered calendar container -->
+        <div
+          class="flex flex-1 flex-col overflow-hidden rounded-lg border border-gray-200"
+        >
+          <!-- Day-of-week headers -->
+          <div class="grid grid-cols-7 bg-gray-50/80">
+            <div
+              v-for="(dayName, idx) in dayNames"
+              :key="dayName"
+              class="py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500"
+              :class="idx < 6 ? 'border-r border-gray-200' : ''"
+            >
+              {{ dayName }}
+            </div>
+          </div>
+
+          <!-- Calendar grid -->
+          <div
+            class="grid flex-1 grid-cols-7 overflow-hidden border-t border-gray-200"
+            :style="{
+              gridTemplateRows: `repeat(${store.calendarRows}, minmax(120px, 1fr))`,
+            }"
+          >
+            <OTRosterCell
+              v-for="cell in store.calendarDates"
+              :key="cell.date"
+              :cell="cell"
+              :cell-schedules="store.getSchedules(cell.date)"
+              :company="store.company"
+              :theater-rooms="store.theaterRooms"
+              :get-theater-room-label="store.getTheaterRoomLabel"
+              @save="handleSave"
+              @remove="handleRemove"
+              @postpone="handlePostpone"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else class="flex flex-1 flex-col items-center justify-center">
+        <svg
+          class="mx-auto h-12 w-12 text-gray-300"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+        <h3 class="mt-3 text-sm font-medium text-gray-700">
+          No roster loaded
+        </h3>
+        <p class="mt-1 text-xs text-gray-400">
+          Select a company to view the OT calendar.
+        </p>
       </div>
     </div>
   </div>
@@ -316,10 +339,11 @@ import { useOTRosterStore } from "@/stores/otRosterStore";
 
 const store = useOTRosterStore();
 const isSidebarCollapsed = ref(false);
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Company options
 const companyOptions = ref([]);
-const companyResource = createResource({
+createResource({
   url: "frappe.client.get_list",
   params: {
     doctype: "Company",
@@ -329,21 +353,13 @@ const companyResource = createResource({
   },
   auto: true,
   onSuccess(data) {
-    companyOptions.value = data.map((c) => ({
-      label: c.name,
-      value: c.name,
-    }));
+    companyOptions.value = data.map((c) => ({ label: c.name, value: c.name }));
+    // Auto-select when only one company is available
+    if (companyOptions.value.length === 1 && !store.company) {
+      store.company = companyOptions.value[0].value;
+    }
   },
 });
-
-const frequencyOptions = [
-  { label: "Daily", value: "Daily" },
-  { label: "Weekly", value: "Weekly" },
-  { label: "Monthly", value: "Monthly" },
-  { label: "Quarterly", value: "Quarterly" },
-  { label: "Bi-Yearly", value: "Bi-Yearly" },
-  { label: "Yearly", value: "Yearly" },
-];
 
 const companyModel = computed({
   get() {
@@ -351,27 +367,38 @@ const companyModel = computed({
     return { label: store.company, value: store.company };
   },
   set(option) {
-    if (option && typeof option === "object") {
-      store.company = option.value || option.label || "";
-    } else {
-      store.company = option || "";
-    }
+    store.company =
+      option && typeof option === "object"
+        ? option.value || option.label || ""
+        : option || "";
   },
 });
 
-function isDatePast(dateStr) {
-  return dayjs(dateStr).isBefore(dayjs(), "day");
+// Date picker (DD-MM-YYYY display via overlay)
+const datePickerValue = ref(dayjs().format("YYYY-MM-DD"));
+
+const formattedDate = computed(() => {
+  if (!datePickerValue.value) return "";
+  return dayjs(datePickerValue.value).format("DD-MM-YYYY");
+});
+
+function onDateInput(e) {
+  const val = e.target.value;
+  if (val) {
+    datePickerValue.value = val;
+    store.goToDate(val);
+    reloadIfReady();
+  }
 }
 
-// Auto-load roster when all fields are filled
 watch(
-  () => [store.company, store.startDate, store.frequency, store.endDate],
-  () => {
-    if (store.company && store.startDate && store.frequency && store.endDate) {
-      store.loadRoster();
-    }
-  }
+  () => store.company,
+  () => reloadIfReady()
 );
+
+function reloadIfReady() {
+  if (store.company) store.loadRoster();
+}
 
 function goTo(url) {
   window.location.href = url;
@@ -380,21 +407,19 @@ function goTo(url) {
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
   if (params.get("company")) store.company = params.get("company");
-  if (params.get("start_date")) store.startDate = params.get("start_date");
-  if (params.get("frequency")) store.frequency = params.get("frequency");
-  if (store.startDate && store.frequency) {
-    store.calculateEndDate();
+  if (params.get("date")) {
+    datePickerValue.value = params.get("date");
+    store.goToDate(params.get("date"));
   }
+  reloadIfReady();
 });
 
 function handleSave(scheduleData) {
   store.saveSchedule(scheduleData);
 }
-
 function handleRemove(name) {
   store.removeSchedule(name);
 }
-
 function handlePostpone(name) {
   store.postponeSchedule(name);
 }
