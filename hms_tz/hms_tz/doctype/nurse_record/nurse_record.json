@@ -48,6 +48,8 @@
   "section_break_fgmh",
   "vital_signs_html",
   "tab_medications",
+  "section_break_unscheduled_meds",
+  "unscheduled_medications_html",
   "medication_progress_html",
   "section_break_pending_meds",
   "pending_medications_html",
@@ -199,7 +201,8 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "appointment.inpatient_record",
+   "fetch_from": "patient.inpatient_record",
+   "fetch_if_empty": 1,
    "fieldname": "inpatient_record",
    "fieldtype": "Link",
    "in_standard_filter": 1,
@@ -259,6 +262,16 @@
    "fieldname": "tab_medications",
    "fieldtype": "Tab Break",
    "label": "Medication Administration"
+  },
+  {
+   "fieldname": "section_break_unscheduled_meds",
+   "fieldtype": "Section Break",
+   "label": "Unscheduled Medications"
+  },
+  {
+   "fieldname": "unscheduled_medications_html",
+   "fieldtype": "HTML",
+   "label": "Unscheduled Medications"
   },
   {
    "fieldname": "medication_progress_html",
@@ -464,7 +477,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-14 16:38:48.725657",
+ "modified": "2026-05-14 23:42:17.964741",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nurse Record",
