@@ -10,6 +10,7 @@ frappe.ui.form.on("Nurse Record", {
   refresh: (frm) => {
     set_queries(frm);
     render_consumables_placeholder(frm);
+    render_unscheduled_medications(frm);
     render_pending_medications(frm);
     render_medication_progress(frm);
     render_completed_medications(frm);
@@ -271,6 +272,430 @@ function show_vital_signs_dialog(frm) {
   });
 
   d.show();
+}
+
+// ─── Unscheduled Medications (from Dispensed Medication records) ───
+
+function render_unscheduled_medications(frm) {
+  if (!frm.fields_dict.unscheduled_medications_html) return;
+  if (!frm.doc.patient || !frm.doc.inpatient_record) {
+    frm.fields_dict.unscheduled_medications_html.$wrapper.html(
+      '<div class="text-muted text-center p-4">' +
+        __("Unscheduled medications will appear for admitted patients.") +
+        "</div>"
+    );
+    return;
+  }
+
+  frappe.call({
+    method:
+      "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_dispensed_medications",
+    args: {
+      patient: frm.doc.patient,
+      inpatient_record: frm.doc.inpatient_record || "",
+    },
+    callback: (r) => {
+      if (r.message && r.message.length > 0) {
+        render_unscheduled_meds_table(frm, r.message);
+      } else {
+        frm.fields_dict.unscheduled_medications_html.$wrapper.html(
+          '<div class="text-muted text-center p-3">' +
+            __(
+              "No unscheduled medications. All dispensed drugs have been scheduled."
+            ) +
+            "</div>"
+        );
+      }
+    },
+  });
+}
+
+function render_unscheduled_meds_table(frm, entries) {
+  let $wrapper = frm.fields_dict.unscheduled_medications_html.$wrapper;
+  $wrapper.empty();
+
+  let html =
+    '<div class="mb-2" style="padding: 8px; background: #fff8e1; border-left: 4px solid #ff9800; border-radius: 4px;">' +
+    '<strong style="color: #e65100;">💊 ' +
+    __("{0} medication(s) awaiting schedule from nurse", [entries.length]) +
+    "</strong></div>" +
+    '<table class="table table-sm table-bordered">' +
+    "<thead><tr>" +
+    "<th>" +
+    __("Drug") +
+    "</th>" +
+    "<th>" +
+    __("Form") +
+    "</th>" +
+    "<th>" +
+    __("Dosage") +
+    "</th>" +
+    "<th>" +
+    __("Period") +
+    "</th>" +
+    "<th>" +
+    __("Qty Dispensed") +
+    "</th>" +
+    "<th>" +
+    __("Dispensed Date") +
+    "</th>" +
+    '<th class="text-center">' +
+    __("Action") +
+    "</th>" +
+    "</tr></thead><tbody>";
+
+  entries.forEach((e) => {
+    html +=
+      "<tr>" +
+      "<td><strong>" +
+      (e.drug_name || e.drug) +
+      "</strong></td>" +
+      "<td>" +
+      (e.dosage_form || "-") +
+      "</td>" +
+      "<td>" +
+      (e.prescribed_dosage || "-") +
+      "</td>" +
+      "<td>" +
+      (e.prescribed_period || "-") +
+      "</td>" +
+      "<td>" +
+      (e.qty_dispensed || 0) +
+      "</td>" +
+      "<td>" +
+      (e.posting_date || "") +
+      "</td>" +
+      '<td class="text-center">' +
+      '<button class="btn btn-xs btn-warning btn-schedule-med" ' +
+      'data-dm="' +
+      e.name +
+      '" ' +
+      'data-drug="' +
+      (e.drug_name || e.drug) +
+      '" ' +
+      'data-form="' +
+      (e.dosage_form || "") +
+      '" ' +
+      'data-qty="' +
+      (e.qty_dispensed || 0) +
+      '" ' +
+      'data-prescribed="' +
+      (e.prescribed_dosage || "") +
+      '" ' +
+      'data-period="' +
+      (e.prescribed_period || "") +
+      '">' +
+      __("Create Schedule") +
+      "</button>" +
+      "</td></tr>";
+  });
+
+  html += "</tbody></table>";
+  $wrapper.html(html);
+
+  $wrapper.find(".btn-schedule-med").on("click", function () {
+    let dm_name = $(this).data("dm");
+    let drug_name = $(this).data("drug");
+    let dosage_form = $(this).data("form");
+    let qty_dispensed = $(this).data("qty");
+    let prescribed = $(this).data("prescribed");
+    let period = $(this).data("period");
+    show_schedule_medication_dialog(
+      frm,
+      dm_name,
+      drug_name,
+      dosage_form,
+      qty_dispensed,
+      prescribed,
+      period
+    );
+  });
+}
+
+function show_schedule_medication_dialog(
+  frm,
+  dm_name,
+  drug_name,
+  dosage_form,
+  qty_dispensed,
+  prescribed,
+  period
+) {
+  let info_rows = [];
+  if (dosage_form)
+    info_rows.push(__("Form") + ": <strong>" + dosage_form + "</strong>");
+  if (prescribed)
+    info_rows.push(__("Dosage") + ": <strong>" + prescribed + "</strong>");
+  if (period)
+    info_rows.push(__("Period") + ": <strong>" + period + "</strong>");
+  info_rows.push(
+    __("Qty Dispensed") + ": <strong>" + qty_dispensed + "</strong>"
+  );
+
+  let d = new frappe.ui.Dialog({
+    title: __("Create Medication Schedule"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "drug_info",
+        fieldtype: "HTML",
+        options:
+          '<div style="padding: 12px; background: var(--bg-light-gray); border-radius: 6px; margin-bottom: 12px;">' +
+          '<div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">' +
+          drug_name +
+          "</div>" +
+          '<div style="display: flex; flex-wrap: wrap; gap: 12px;">' +
+          info_rows
+            .map((r) => '<span style="font-size: 13px;">' + r + "</span>")
+            .join('<span style="color: var(--gray-400)">|</span>') +
+          "</div></div>",
+      },
+      {
+        fieldtype: "Section Break",
+        label: __("Schedule Details"),
+      },
+      {
+        fieldname: "dose_uom",
+        fieldtype: "Link",
+        options: "UOM",
+        label: __("Dose UOM"),
+        description: __("e.g., Tablet, ml, mg, Drop, Puff, Unit"),
+        reqd: 1,
+      },
+      {
+        fieldname: "dose_per_administration",
+        fieldtype: "Float",
+        label: __("Dose(s) per Administration"),
+        description: __("How much per dose (e.g., 2, 5)"),
+        reqd: 1,
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "total_administrable_qty",
+        fieldtype: "Float",
+        label: __("Total Administrable Qty"),
+        description: __(
+          "Total usable quantity in the dose UOM (e.g., 100 for 100ml bottle, or same as Qty Dispensed for tablets)"
+        ),
+        reqd: 1,
+        default: qty_dispensed,
+      },
+      {
+        fieldname: "interval_hours",
+        fieldtype: "Int",
+        label: __("Interval (Hours)"),
+        description: __("Interval in hours between each dose"),
+        reqd: 1,
+        default: 8,
+      },
+      { fieldtype: "Section Break", label: __("Schedule Timing") },
+      {
+        fieldname: "start_date",
+        fieldtype: "Date",
+        label: __("Start Date"),
+        reqd: 1,
+        default: (() => {
+          // Round up to next whole hour; if that crosses midnight, bump date
+          let now = frappe.datetime.now_datetime_as_moment
+            ? moment()
+            : moment(frappe.datetime.now_datetime());
+          let next_hour = now.clone().startOf("hour");
+          if (next_hour.isSameOrBefore(now)) {
+            next_hour.add(1, "hour");
+          }
+          return next_hour.format("YYYY-MM-DD");
+        })(),
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "start_time",
+        fieldtype: "Time",
+        label: __("Start Time"),
+        reqd: 1,
+        default: (() => {
+          let now = moment(frappe.datetime.now_datetime());
+          let next_hour = now.clone().startOf("hour");
+          if (next_hour.isSameOrBefore(now)) {
+            next_hour.add(1, "hour");
+          }
+          return next_hour.format("HH:mm");
+        })(),
+      },
+      { fieldtype: "Section Break" },
+      {
+        fieldname: "schedule_preview",
+        fieldtype: "HTML",
+        label: __("Preview"),
+      },
+    ],
+    primary_action_label: __("Create Schedule"),
+    primary_action(values) {
+      if (values.dose_per_administration <= 0) {
+        frappe.msgprint(
+          __("Dose per administration must be greater than zero.")
+        );
+        return;
+      }
+      if (values.interval_hours <= 0) {
+        frappe.msgprint(__("Interval must be greater than zero."));
+        return;
+      }
+      if (values.total_administrable_qty <= 0) {
+        frappe.msgprint(
+          __("Total administrable quantity must be greater than zero.")
+        );
+        return;
+      }
+
+      let total_doses = Math.floor(
+        values.total_administrable_qty / values.dose_per_administration
+      );
+
+      if (total_doses <= 0) {
+        frappe.msgprint(
+          __("Cannot create schedule: quantity is less than one dose.")
+        );
+        return;
+      }
+
+      frappe.call({
+        method:
+          "hms_tz.hms_tz.doctype.nurse_record.nurse_record.create_medication_schedule",
+        args: {
+          dispensed_medication: dm_name,
+          total_administrable_qty: values.total_administrable_qty,
+          dose_per_administration: values.dose_per_administration,
+          dose_uom: values.dose_uom,
+          start_date: values.start_date,
+          start_time: values.start_time,
+          interval_hours: values.interval_hours,
+        },
+        freeze: true,
+        freeze_message: __("Creating medication schedule..."),
+        callback: (r) => {
+          if (r.message && r.message.status === "success") {
+            let remainder_msg = "";
+            if (r.message.remainder > 0) {
+              remainder_msg =
+                "<br><small>" +
+                __("{0} remaining (less than one dose)", [
+                  r.message.remainder,
+                ]) +
+                "</small>";
+            }
+
+            frappe.show_alert({
+              message:
+                __("Schedule created: {0} doses from {1} to {2}", [
+                  r.message.total_doses,
+                  values.start_date,
+                  r.message.end_date,
+                ]) + remainder_msg,
+              indicator: "green",
+            });
+
+            d.hide();
+            render_unscheduled_medications(frm);
+            render_pending_medications(frm);
+            render_medication_progress(frm);
+          }
+        },
+      });
+    },
+  });
+
+  // Live preview calculation
+  function update_preview() {
+    let vals = d.get_values(true);
+    let $preview = d.fields_dict.schedule_preview.$wrapper;
+
+    if (
+      !vals.total_administrable_qty ||
+      !vals.dose_per_administration ||
+      !vals.interval_hours ||
+      vals.dose_per_administration <= 0 ||
+      vals.interval_hours <= 0
+    ) {
+      $preview.html(
+        '<div class="text-muted p-2">' +
+          __("Fill in all fields to see schedule preview.") +
+          "</div>"
+      );
+      return;
+    }
+
+    let total_doses = Math.floor(
+      vals.total_administrable_qty / vals.dose_per_administration
+    );
+    let remainder =
+      vals.total_administrable_qty -
+      total_doses * vals.dose_per_administration;
+
+    if (total_doses <= 0) {
+      $preview.html(
+        '<div class="text-danger p-2">' +
+          __("Quantity is less than one dose.") +
+          "</div>"
+      );
+      return;
+    }
+
+    // Calculate end date/time
+    let start_str =
+      (vals.start_date || frappe.datetime.get_today()) +
+      " " +
+      (vals.start_time || "08:00");
+    let start_moment = moment(start_str, "YYYY-MM-DD HH:mm");
+    let end_moment = moment(start_moment).add(
+      (total_doses - 1) * vals.interval_hours,
+      "hours"
+    );
+
+    let doses_per_day = Math.floor(24 / vals.interval_hours);
+    let total_days = Math.ceil(total_doses / doses_per_day);
+
+    let preview_html =
+      '<div style="padding: 10px; background: #e8f5e9; border-radius: 4px;">' +
+      "<strong>" +
+      __("Schedule Summary") +
+      "</strong><br>" +
+      __("Total doses: {0}", ["<strong>" + total_doses + "</strong>"]) +
+      "<br>" +
+      __("Doses per day: ~{0} (every {1}h)", [
+        doses_per_day,
+        vals.interval_hours,
+      ]) +
+      "<br>" +
+      __("Duration: ~{0} day(s)", [total_days]) +
+      "<br>" +
+      __("From: {0}", [start_moment.format("DD MMM YYYY HH:mm")]) +
+      "<br>" +
+      __("To: {0}", [end_moment.format("DD MMM YYYY HH:mm")]);
+
+    if (remainder > 0) {
+      preview_html +=
+        '<br><span class="text-warning">' +
+        __("Remainder: {0} (less than one dose)", [remainder.toFixed(2)]) +
+        "</span>";
+    }
+
+    preview_html += "</div>";
+    $preview.html(preview_html);
+  }
+
+  // Bind change events for live preview
+  [
+    "total_administrable_qty",
+    "dose_per_administration",
+    "interval_hours",
+    "start_date",
+    "start_time",
+  ].forEach((field) => {
+    d.fields_dict[field].$input.on("change", update_preview);
+  });
+
+  d.show();
+  update_preview();
 }
 
 // ─── Pending Medications (HTML-based, from IMO Entry) ───
