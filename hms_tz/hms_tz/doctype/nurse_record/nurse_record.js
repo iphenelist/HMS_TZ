@@ -987,54 +987,54 @@ function render_med_progress_chart(frm, data) {
   });
 
   // Summary table below chart
-  let summary_html =
-    '<table class="table table-sm table-bordered mt-2">' +
-    "<thead><tr>" +
-    "<th>" +
-    __("Drug") +
-    "</th>" +
-    "<th class='text-center'>" +
-    __("Total") +
-    "</th>" +
-    "<th class='text-center'>" +
-    __("Administered") +
-    "</th>" +
-    "<th class='text-center'>" +
-    __("Pending") +
-    "</th>" +
-    "</tr></thead><tbody>";
+  // let summary_html =
+  //   '<table class="table table-sm table-bordered mt-2">' +
+  //   "<thead><tr>" +
+  //   "<th>" +
+  //   __("Drug") +
+  //   "</th>" +
+  //   "<th class='text-center'>" +
+  //   __("Total") +
+  //   "</th>" +
+  //   "<th class='text-center'>" +
+  //   __("Administered") +
+  //   "</th>" +
+  //   "<th class='text-center'>" +
+  //   __("Pending") +
+  //   "</th>" +
+  //   "</tr></thead><tbody>";
 
-  data.forEach((d) => {
-    let pct = d.total > 0 ? Math.round((d.completed / d.total) * 100) : 0;
-    let badge_class =
-      pct === 100
-        ? "badge-success"
-        : pct > 50
-        ? "badge-warning"
-        : "badge-danger";
+  // data.forEach((d) => {
+  //   let pct = d.total > 0 ? Math.round((d.completed / d.total) * 100) : 0;
+  //   let badge_class =
+  //     pct === 100
+  //       ? "badge-success"
+  //       : pct > 50
+  //         ? "badge-warning"
+  //         : "badge-danger";
 
-    summary_html +=
-      "<tr>" +
-      "<td>" +
-      d.drug_name +
-      "</td>" +
-      '<td class="text-center">' +
-      d.total +
-      "</td>" +
-      '<td class="text-center">' +
-      d.completed +
-      "</td>" +
-      '<td class="text-center">' +
-      '<span class="badge ' +
-      badge_class +
-      '">' +
-      d.pending +
-      "</span>" +
-      "</td></tr>";
-  });
+  //   summary_html +=
+  //     "<tr>" +
+  //     "<td>" +
+  //     d.drug_name +
+  //     "</td>" +
+  //     '<td class="text-center">' +
+  //     d.total +
+  //     "</td>" +
+  //     '<td class="text-center">' +
+  //     d.completed +
+  //     "</td>" +
+  //     '<td class="text-center">' +
+  //     '<span class="badge ' +
+  //     badge_class +
+  //     '">' +
+  //     d.pending +
+  //     "</span>" +
+  //     "</td></tr>";
+  // });
 
-  summary_html += "</tbody></table>";
-  $wrapper.append(summary_html);
+  // summary_html += "</tbody></table>";
+  // $wrapper.append(summary_html);
 }
 
 function render_completed_medications(frm) {
