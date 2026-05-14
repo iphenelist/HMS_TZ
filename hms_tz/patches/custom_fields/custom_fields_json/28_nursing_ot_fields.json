@@ -71,6 +71,26 @@
         "doctype": "Custom Field"
     },
     {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "dose_uom",
+        "fieldtype": "Link",
+        "label": "Dose UOM",
+        "options": "UOM",
+        "insert_after": "administration_notes",
+        "description": "Unit of measurement for dosing (e.g., Tablet, ml, mg)",
+        "doctype": "Custom Field"
+    },
+    {
+        "dt": "Inpatient Medication Order Entry",
+        "fieldname": "interval_hours",
+        "fieldtype": "Int",
+        "label": "Interval (Hours)",
+        "insert_after": "dose_uom",
+        "read_only": 1,
+        "description": "Hours between doses (for reference)",
+        "doctype": "Custom Field"
+    },
+    {
         "dt": "Healthcare Service Unit",
         "fieldname": "disabled",
         "fieldtype": "Check",
