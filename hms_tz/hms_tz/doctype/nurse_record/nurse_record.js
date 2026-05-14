@@ -1144,7 +1144,7 @@ function check_upcoming_medications(frm) {
       "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_upcoming_medications",
     args: {
       nurse: frm.doc.nurse,
-      within_minutes: 420,
+      within_minutes: 100000000,
     },
     callback: (r) => {
       if (r.message && r.message.length > 0) {
@@ -1185,7 +1185,9 @@ function show_medication_alert_banner(frm, medications) {
         frappe.utils.escape_html(med.drug_name || "") +
         "</td>" +
         "<td>" +
-        frappe.utils.escape_html(med.dosage || "") +
+        frappe.utils.escape_html(
+          (med.dosage || "") + (med.dose_uom ? med.dose_uom : "")
+        ) +
         "</td>" +
         "<td>" +
         frappe.utils.escape_html(med.dosage_form || "") +
@@ -1213,7 +1215,7 @@ function show_medication_alert_banner(frm, medications) {
     __("Drug") +
     "</th>" +
     "<th>" +
-    __("Qty") +
+    __("Dose(s)") +
     "</th>" +
     "<th>" +
     __("Dosage Form") +
