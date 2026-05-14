@@ -154,23 +154,30 @@ function render_vitals_chart_and_table(frm, vitals) {
   table_html += "<th>" + __("Pulse") + "</th>";
   table_html += "<th>" + __("RR") + "</th>";
   table_html += "<th>" + __("BP") + "</th>";
-  table_html += "<th>" + __("Weight") + "</th>";
+  table_html += "<th>" + __("SpO2") + "</th>";
+  table_html += "<th>" + __("RBG") + "</th>";
+  table_html += "<th>" + __("Height (cm)") + "</th>";
+  table_html += "<th>" + __("Weight (kg)") + "</th>";
   table_html += "<th>" + __("BMI") + "</th>";
-  table_html += "<th>" + __("Notes") + "</th>";
+  // table_html += "<th>" + __("Notes") + "</th>";
   table_html += "</tr></thead><tbody>";
 
   vitals.forEach(function (v) {
     let bp_display = v.bp || v.bp_systolic + "/" + v.bp_diastolic;
+    let time_display = v.signs_time ? v.signs_time.substring(0, 5) : "";
     table_html += "<tr>";
     table_html += "<td>" + (v.signs_date || "") + "</td>";
-    table_html += "<td>" + (v.signs_time || "") + "</td>";
+    table_html += "<td>" + time_display + "</td>";
     table_html += "<td>" + (v.temperature || "") + "</td>";
     table_html += "<td>" + (v.pulse || "") + "</td>";
     table_html += "<td>" + (v.respiratory_rate || "") + "</td>";
     table_html += "<td>" + bp_display + "</td>";
+    table_html += "<td>" + (v.oxygen_saturation_spo2 || "") + "</td>";
+    table_html += "<td>" + (v.rbg || "") + "</td>";
+    table_html += "<td>" + (v.height_in_cm || "") + "</td>";
     table_html += "<td>" + (v.weight || "") + "</td>";
     table_html += "<td>" + (v.bmi || "") + "</td>";
-    table_html += "<td>" + (v.vital_signs_note || "") + "</td>";
+    // table_html += "<td>" + (v.vital_signs_note || "") + "</td>";
     table_html += "</tr>";
   });
 
@@ -210,27 +217,31 @@ function show_vital_signs_dialog(frm) {
       },
       { fieldtype: "Section Break" },
       {
-        fieldname: "weight",
-        fieldtype: "Float",
-        label: __("Weight (kg)"),
+        fieldname: "oxygen_saturation_spo2",
+        fieldtype: "Data",
+        label: __("SpO2 (%)"),
       },
       {
-        fieldname: "height",
+        fieldname: "rbg",
         fieldtype: "Float",
-        label: __("Height (cm)"),
-      },
-      { fieldtype: "Column Break" },
-      {
-        fieldname: "tongue",
-        fieldtype: "Select",
-        label: __("Tongue"),
-        options: "\nCoated\nVery Coated\nNormal\nFurry\nCuts",
+        label: __("Random Blood Glucose (RBG)"),
       },
       {
         fieldname: "abdomen",
         fieldtype: "Select",
         label: __("Abdomen"),
         options: "\nNormal\nBloated\nFull\nFluid\nConstipated",
+      },
+      { fieldtype: "Column Break" },
+      {
+        fieldname: "weight",
+        fieldtype: "Float",
+        label: __("Weight (kg)"),
+      },
+      {
+        fieldname: "height_in_cm",
+        fieldtype: "Int",
+        label: __("Height (cm)"),
       },
       {
         fieldname: "reflexes",
