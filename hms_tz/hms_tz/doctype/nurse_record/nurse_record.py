@@ -189,8 +189,10 @@ def get_vital_signs(patient, appointment=None):
             "bp_systolic",
             "bp_diastolic",
             "bp",
+            "oxygen_saturation_spo2",
+            "rbg",
             "weight",
-            "height",
+            "height_in_cm",
             "bmi",
             "vital_signs_note",
         ],
@@ -225,8 +227,10 @@ def create_vital_signs(patient, nurse_record, **kwargs):
         "respiratory_rate",
         "bp_systolic",
         "bp_diastolic",
+        "oxygen_saturation_spo2",
+        "rbg",
         "weight",
-        "height",
+        "height_in_cm",
         "tongue",
         "abdomen",
         "reflexes",
@@ -235,6 +239,16 @@ def create_vital_signs(patient, nurse_record, **kwargs):
     for field in vital_fields:
         if kwargs.get(field):
             vs.set(field, kwargs[field])
+
+    # Convert height_in_cm to height (in meters) and calculate BMI
+    if vs.height_in_cm:
+        vs.height = flt(vs.height_in_cm) / 100.0
+        if flt(vs.weight) and vs.height:
+            vs.bmi = flt(flt(vs.weight) / (vs.height * vs.height), 2)
+
+    # Set BP display string
+    if vs.bp_systolic and vs.bp_diastolic:
+        vs.bp = f"{vs.bp_systolic}/{vs.bp_diastolic} mmHg"
 
     vs.insert(ignore_permissions=True)
     vs.submit()
