@@ -608,17 +608,25 @@ def get_upcoming_medications(nurse, within_minutes=60):
                 ["time", ">=", str(current_time)],
                 ["time", "<=", str(cutoff_time)],
             ],
-            fields=["drug_name", "drug", "time", "dosage", "dosage_form"],
+            fields=["drug_name", "drug", "time", "dosage", "dosage_form", "dose_uom"],
         )
 
         for med in upcoming:
+            # Format time as HH:MM (zero-padded)
+            t = med.time
+            if hasattr(t, "strftime"):
+                formatted_time = t.strftime("%H:%M")
+            else:
+                formatted_time = str(t).zfill(8)[:5]
+
             results.append({
                 "patient": nr.patient,
                 "patient_name": nr.patient_name,
                 "drug_name": med.drug_name,
                 "dosage": med.dosage,
+                "dose_uom": med.dose_uom or "",
                 "dosage_form": med.dosage_form or "",
-                "scheduled_time": str(med.time),
+                "scheduled_time": formatted_time,
                 "nurse_record_name": nr.name,
             })
 
