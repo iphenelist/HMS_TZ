@@ -146,7 +146,7 @@ class NursingSchedule(Document):
 
 
 def create_nurse_records_for_admitted_patients():
-    """Background job (every 4 hours): auto-create Nurse Records for admitted patients.
+    """Background job (every 1 hour): auto-create Nurse Records for admitted patients.
 
     Logic:
     1. Get all Nursing Schedule records for today that haven't yet generated
@@ -179,6 +179,9 @@ def create_nurse_records_for_admitted_patients():
             "assign_based_on",
             "room",
             "ward",
+            "shift_type",
+            "shift_start_time",
+            "shift_end_time",
         ],
     )
 
@@ -239,15 +242,15 @@ def create_nurse_records_for_admitted_patients():
             if not matched:
                 continue
 
-            #Check if a record already exists
+            # Check if a record already exists for this nurse + patient + shift
             existing = frappe.db.exists(
                 "Nurse Record",
                 {
                     "patient": ip.patient,
                     "nurse": schedule.nurse,
                     "posting_date": today,
+                    "shift_type": schedule.shift_type,
                     "docstatus": ["!=", 2],
-                    "nurse": schedule.nurse,
                 },
             )
             if existing:
@@ -270,6 +273,9 @@ def create_nurse_records_for_admitted_patients():
                 nr.posting_date = today
                 nr.company = ip.company
                 nr.inpatient_record = ip.name
+                nr.nurse_shift = schedule.shift_type
+                nr.shift_start_time = schedule.shift_start_time
+                nr.shift_end_time = schedule.shift_end_time
 
                 insurance_details = frappe.get_cached_value(
                     "Patient Appointment",
