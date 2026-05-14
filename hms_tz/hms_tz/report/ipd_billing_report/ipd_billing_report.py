@@ -669,10 +669,22 @@ def get_ipd_consultancy_transactions(filters):
 
 
 def get_consumable_transactions(filters):
-    """Fetch non-invoiced consumable items for cash IPD patients."""
-    ipd_conditions = get_ipd_conditions(filters)
+	"""Fetch non-invoiced consumable items for cash IPD patients."""
 
-    data = frappe.db.sql(
+	conditions = ""
+	if filters.get("patient"):
+		conditions += f"AND cr.patient = '{filters.get('patient')}' "
+
+	if filters.get("appointment_no"):
+		conditions += f"AND cr.appointment = '{filters.get('appointment_no')}' "
+
+	if filters.get("from_date"):
+		conditions += f"AND cr.posting_date >= '{filters.get('from_date')}' "
+
+	if filters.get("to_date"):
+		conditions += f"AND cr.posting_date <= '{filters.get('to_date')}' "
+
+	data = frappe.db.sql(
         f"""
 		SELECT
 			cr.posting_date AS date,
@@ -697,12 +709,13 @@ def get_consumable_transactions(filters):
 		WHERE cr.docstatus = 1
 		AND cr.payment_type = 'Cash'
 		AND ci.invoiced = 0
-		{ipd_conditions}
+		AND ci.is_billable = 1
+		{conditions}
 	""",
         filters,
         as_dict=1,
     )
-    return data
+	return data
 
 
 def get_cash_lrpmt_transaction(filters):
