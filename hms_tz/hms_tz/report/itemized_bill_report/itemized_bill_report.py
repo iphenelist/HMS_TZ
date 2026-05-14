@@ -86,6 +86,10 @@ def execute(filters=None):
         if ipd_cons:
             data += ipd_cons
 
+        consumables = get_consumable_transactions(filters)
+        if consumables:
+            data += consumables
+
         data = sorted(data, key=lambda d: (d["category"], d["date"]))
 
         if not data:
@@ -148,6 +152,10 @@ def execute(filters=None):
         )
         if insurance_lrpmt_data:
             data += insurance_lrpmt_data
+
+        consumables = get_consumable_transactions(filters)
+        if consumables:
+            data += consumables
 
         data = sorted(data, key=lambda d: (d["category"], d["date"]))
 
@@ -214,6 +222,10 @@ def execute(filters=None):
         ipd_cons = get_ipd_consultancy_transactions(filters)
         if ipd_cons:
             data += ipd_cons
+
+        consumables = get_consumable_transactions(filters)
+        if consumables:
+            data += consumables
 
         data = sorted(data, key=lambda d: (d["category"], d["date"]))
         if not data:
@@ -582,6 +594,74 @@ def get_ipd_consultancy_transactions(filters):
     data = query.run(as_dict=True)
 
     return data
+
+
+def get_consumable_transactions(filters):
+    """Fetch billable consumable items from Consumable Record for the patient.
+    Works for both OPD and IPD, and for both Cash and Insurance patients.
+    Links through cr.appointment to Patient Appointment, and LEFT JOINs
+    Inpatient Record for admitted/discharge date metadata.
+    """
+    ci = DocType("Consumable Item")
+    cr = DocType("Consumable Record")
+    pa = DocType("Patient Appointment")
+    ipd_rec = DocType("Inpatient Record")
+
+    query = (
+        frappe.qb.from_(ci)
+        .inner_join(cr)
+        .on(ci.parent == cr.name)
+        .inner_join(pa)
+        .on(cr.appointment == pa.name)
+        .left_join(ipd_rec)
+        .on(pa.name == ipd_rec.patient_appointment)
+        .select(
+            cr.posting_date.as_("date"),
+            ValueWrapper("Consumables").as_("category"),
+            ci.item_name.as_("description"),
+            ci.qty_requested.as_("quantity"),
+            ci.rate.as_("rate"),
+            ci.amount.as_("amount"),
+            pa.patient.as_("patient"),
+            pa.patient_name.as_("patient_name"),
+            pa.appointment_type.as_("appointment_type"),
+            pa.insurance_company.as_("insurance_company"),
+            pa.coverage_plan_name.as_("coverage_plan_name"),
+            pa.authorization_number.as_("authorization_number"),
+            pa.coverage_plan_card_number.as_("coverage_plan_card_number"),
+            fn.Date(ipd_rec.admitted_datetime).as_("admitted_date"),
+            ipd_rec.discharge_date.as_("discharge_date"),
+        )
+        .where(
+            (cr.docstatus == 1)
+            & (ci.is_billable == 1)
+        )
+    )
+
+    # Apply filters
+    if filters.get("patient"):
+        query = query.where(cr.patient == filters.patient)
+
+    if filters.get("patient_appointment"):
+        query = query.where(cr.appointment == filters.patient_appointment)
+
+    if filters.get("from_date"):
+        query = query.where(cr.posting_date >= filters.from_date)
+
+    if filters.get("to_date"):
+        query = query.where(cr.posting_date <= filters.to_date)
+
+    # Apply patient type filter
+    if filters.get("patient_type") == "In-Patient":
+        query = query.where(
+            (cr.inpatient_record.isnotnull()) & (cr.inpatient_record != "")
+        )
+    elif filters.get("patient_type") == "Out-Patient":
+        query = query.where(
+            (cr.inpatient_record.isnull()) | (cr.inpatient_record == "")
+        )
+
+    return query.run(as_dict=True)
 
 
 def get_cash_lrpmt_transaction(filters):
