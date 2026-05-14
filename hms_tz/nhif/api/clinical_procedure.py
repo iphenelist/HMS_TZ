@@ -9,7 +9,7 @@ import json
 import frappe
 from frappe import _
 from frappe.query_builder import DocType
-from frappe.utils import get_fullname, nowdate
+from frappe.utils import flt, get_fullname, nowdate
 
 from hms_tz.hms_tz.doctype.hospital_revenue_entry.hospital_revenue_entry import (
     create_revenue_entry,
@@ -217,13 +217,24 @@ def create_vital_signs_from_cp(clinical_procedure: str, **kwargs) -> str:
     vital_fields = [
         "temperature", "pulse", "respiratory_rate",
         "bp_systolic", "bp_diastolic",
-        "weight", "height",
+        "oxygen_saturation_spo2", "rbg",
+        "weight", "height_in_cm",
         "tongue", "abdomen", "reflexes",
         "vital_signs_note",
     ]
     for field in vital_fields:
         if kwargs.get(field):
             vs.set(field, kwargs[field])
+
+    # Convert height_in_cm to height (in meters) and calculate BMI
+    if vs.height_in_cm:
+        vs.height = flt(vs.height_in_cm) / 100.0
+        if flt(vs.weight) and vs.height:
+            vs.bmi = flt(flt(vs.weight) / (vs.height * vs.height), 2)
+
+    # Set BP display string
+    if vs.bp_systolic and vs.bp_diastolic:
+        vs.bp = f"{vs.bp_systolic}/{vs.bp_diastolic} mmHg"
 
     vs.insert(ignore_permissions=True)
     vs.submit()
