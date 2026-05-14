@@ -744,7 +744,7 @@ function render_pending_meds_table(frm, entries) {
     __("Drug") +
     "</th>" +
     "<th>" +
-    __("Qty") +
+    __("Dose(s)") +
     "</th>" +
     "<th>" +
     __("Form") +
@@ -788,7 +788,7 @@ function render_pending_meds_table(frm, entries) {
       (e.drug_name || e.drug) +
       "</td>" +
       "<td>" +
-      (e.dosage || "") +
+      ((e.dosage || "") + (e.dose_uom ? " " + e.dose_uom : "")) +
       "</td>" +
       "<td>" +
       (e.dosage_form || "") +
@@ -1076,7 +1076,7 @@ function render_completed_meds_table(frm, entries) {
     __("Drug") +
     "</th>" +
     "<th>" +
-    __("Qty") +
+    __("Dose(s)") +
     "</th>" +
     "<th>" +
     __("Form") +
@@ -1110,7 +1110,7 @@ function render_completed_meds_table(frm, entries) {
       (e.drug_name || e.drug) +
       "</td>" +
       "<td>" +
-      (e.dosage || "") +
+      ((e.dosage || "") + (e.dose_uom ? " " + e.dose_uom : "")) +
       "</td>" +
       "<td>" +
       (e.dosage_form || "") +
@@ -1144,7 +1144,7 @@ function check_upcoming_medications(frm) {
       "hms_tz.hms_tz.doctype.nurse_record.nurse_record.get_upcoming_medications",
     args: {
       nurse: frm.doc.nurse,
-      within_minutes: 100000000,
+      within_minutes: 60,
     },
     callback: (r) => {
       if (r.message && r.message.length > 0) {
@@ -1186,7 +1186,7 @@ function show_medication_alert_banner(frm, medications) {
         "</td>" +
         "<td>" +
         frappe.utils.escape_html(
-          (med.dosage || "") + (med.dose_uom ? med.dose_uom : "")
+          (med.dosage || "") + (med.dose_uom ? " " + med.dose_uom : "")
         ) +
         "</td>" +
         "<td>" +
