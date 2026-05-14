@@ -47,7 +47,7 @@
         "field_name": "dosage",
         "property": "label",
         "property_type": "Data",
-        "value": "Qty",
+        "value": "Dose(s)",
         "doctype": "Property Setter"
     },
 
