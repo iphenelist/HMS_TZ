@@ -1,0 +1,228 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-05-14 18:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_patient",
+  "patient",
+  "patient_name",
+  "appointment",
+  "column_break_patient",
+  "company",
+  "inpatient_record",
+  "posting_date",
+  "section_break_source",
+  "delivery_note",
+  "patient_encounter",
+  "column_break_source",
+  "drug_prescription",
+  "section_break_drug",
+  "drug",
+  "drug_name",
+  "dosage_form",
+  "column_break_drug",
+  "prescribed_dosage",
+  "prescribed_period",
+  "qty_dispensed",
+  "dose_uom"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_patient",
+   "fieldtype": "Section Break",
+   "label": "Patient Details"
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Patient Appointment",
+   "options": "Patient Appointment",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_patient",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "inpatient_record",
+   "fieldtype": "Link",
+   "label": "Inpatient Record",
+   "options": "Inpatient Record",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Dispensed Date",
+   "reqd": 1,
+   "read_only": 1,
+   "default": "Today"
+  },
+  {
+   "fieldname": "section_break_source",
+   "fieldtype": "Section Break",
+   "label": "Source References"
+  },
+  {
+   "fieldname": "delivery_note",
+   "fieldtype": "Link",
+   "label": "Delivery Note",
+   "options": "Delivery Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "patient_encounter",
+   "fieldtype": "Link",
+   "label": "Patient Encounter",
+   "options": "Patient Encounter",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_source",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "drug_prescription",
+   "fieldtype": "Data",
+   "label": "Drug Prescription",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_drug",
+   "fieldtype": "Section Break",
+   "label": "Drug Details"
+  },
+  {
+   "fieldname": "drug",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Drug",
+   "options": "Item",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fetch_from": "drug.item_name",
+   "fieldname": "drug_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Drug Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dosage_form",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Dosage Form",
+   "options": "Dosage Form",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_drug",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "prescribed_dosage",
+   "fieldtype": "Data",
+   "label": "Prescribed Dosage",
+   "description": "What the doctor prescribed (e.g., 1-0-1)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prescribed_period",
+   "fieldtype": "Data",
+   "label": "Prescribed Period",
+   "description": "Duration prescribed by the doctor",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_dispensed",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty Dispensed",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "dose_uom",
+   "fieldtype": "Link",
+   "label": "Dose UOM",
+   "options": "UOM",
+   "description": "Unit of measurement for dosing (e.g., Tablet, ml, mg)"
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-14 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "HMS TZ",
+ "name": "Dispensed Medication",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  }
+ ],
+ "read_only": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "patient_name",
+ "track_changes": 1
+}
