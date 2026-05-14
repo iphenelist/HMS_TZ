@@ -143,3 +143,182 @@ class NursingSchedule(Document):
         if sa.docstatus == 1:
             sa.flags.ignore_permissions = True
             sa.cancel()
+
+
+def create_nurse_records_for_admitted_patients():
+    """Background job (every 4 hours): auto-create Nurse Records for admitted patients.
+
+    Logic:
+    1. Get all Nursing Schedule records for today that haven't yet generated
+       a Nurse Record (nurse_record_created == 0).
+    2. Get all Inpatient Records with status 'Admitted'.
+    3. For each admitted patient, get the last service unit from the
+       inpatient_occupancies child table.
+    4. Match nursing schedules by comparing:
+       - schedule.service_unit == last occupancy service_unit, OR
+       - schedule.service_unit_type == service_unit_type of the last
+         occupancy's service unit
+    5. Create a Nurse Record for each match if one doesn't already exist.
+    6. Mark the Nursing Schedule's nurse_record_created checkbox.
+    """
+    today = nowdate()
+
+    # Get today's nursing schedules that haven't generated records
+    schedules = frappe.db.get_all(
+        "Nursing Schedule",
+        filters={
+            "assignment_date": today,
+            "docstatus": 1,
+            "nurse_record_created": 0,
+        },
+        fields=[
+            "name",
+            "nurse",
+            "nurse_name",
+            "company",
+            "assign_based_on",
+            "room",
+            "ward",
+        ],
+    )
+
+    if not schedules:
+        return
+
+    # Get all admitted inpatient records
+    admitted_records = frappe.db.get_all(
+        "Inpatient Record",
+        filters={"status": "Admitted"},
+        fields=["name", "patient", "company", "patient_appointment"],
+    )
+
+    if not admitted_records:
+        return
+
+    for ip in admitted_records:
+        # Get the last service unit from inpatient occupancies
+        last_occupancy = frappe.db.get_value(
+            "Inpatient Occupancy",
+            filters={
+                "parent": ip.name,
+                "parenttype": "Inpatient Record",
+                "left": 0,
+            },
+            fieldname="service_unit",
+            order_by="check_in desc",
+        )
+
+        if not last_occupancy:
+            continue
+
+        # Get the service unit type of the last occupancy's service unit
+        last_su_type = frappe.db.get_value(
+            "Healthcare Service Unit",
+            last_occupancy,
+            "service_unit_type",
+        )
+
+        for schedule in schedules:
+            # Only match schedules in the same company
+            if schedule.company != ip.company:
+                continue
+
+            # Match by service_unit or service_unit_type
+            matched = False
+            if (
+                schedule.assign_based_on == "Room"
+                and schedule.room
+            ):
+                matched = schedule.room == last_occupancy
+            elif (
+                schedule.assign_based_on == "Ward"
+                and schedule.ward
+            ):
+                matched = schedule.ward == last_su_type
+
+            if not matched:
+                continue
+
+            #Check if a record already exists
+            existing = frappe.db.exists(
+                "Nurse Record",
+                {
+                    "patient": ip.patient,
+                    "nurse": schedule.nurse,
+                    "posting_date": today,
+                    "docstatus": ["!=", 2],
+                    "nurse": schedule.nurse,
+                },
+            )
+            if existing:
+                # Still mark the schedule as processed
+                frappe.db.set_value(
+                    "Nursing Schedule",
+                    schedule.name,
+                    "nurse_record_created",
+                    1,
+                    update_modified=False,
+                )
+                continue
+
+
+            try:
+                nr = frappe.new_doc("Nurse Record")
+                nr.appointment = ip.patient_appointment
+                nr.patient = ip.patient
+                nr.nurse = schedule.nurse
+                nr.posting_date = today
+                nr.company = ip.company
+                nr.inpatient_record = ip.name
+
+                insurance_details = frappe.get_cached_value(
+                    "Patient Appointment",
+                    ip.patient_appointment,
+                    ["insurance_company", "coverage_plan_name", "insurance_subscription"],
+                    as_dict=True,
+                )
+                if insurance_details.insurance_company:
+                    nr.payment_type = 'Insurance'
+                    nr.insurance_company = insurance_details.insurance_company
+                    nr.insurance_coverage_plan = insurance_details.coverage_plan_name
+                    nr.insurance_subscription = insurance_details.insurance_subscription
+                else:
+                    nr.payment_type = 'Cash'
+                    nr.insurance_company = ""
+                    nr.insurance_coverage_plan = ""
+                    nr.insurance_subscription = ""
+
+                nr.service_unit = (
+                    last_occupancy
+                    if schedule.assign_based_on == "Room"
+                    else None
+                )
+                nr.service_unit_type = (
+                    last_su_type
+                    if schedule.assign_based_on == "Ward"
+                    else None
+                )
+                nr.flags.ignore_validate = True
+                nr.insert(ignore_permissions=True)
+
+                # Mark the nursing schedule
+                frappe.db.set_value(
+                    "Nursing Schedule",
+                    schedule.name,
+                    "nurse_record_created",
+                    1,
+                    update_modified=False,
+                )
+
+            except Exception:
+                frappe.log_error(
+                    title="Nurse Record Auto-Creation Error",
+                    message=(
+                        f"Failed to create Nurse Record for patient"
+                        f" {ip.patient}, nurse {schedule.nurse},"
+                        f" schedule {schedule.name}"
+                    ),
+                    reference_doctype="Nursing Schedule",
+                    reference_name=schedule.name,
+                )
+                frappe.db.rollback()
