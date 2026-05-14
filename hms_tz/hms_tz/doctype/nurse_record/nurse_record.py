@@ -274,7 +274,7 @@ def get_pending_medications(patient, inpatient_record):
             "date": ["<=", today],
         },
         fields=[
-            "name", "drug", "drug_name", "dosage", "dosage_form",
+            "name", "drug", "drug_name", "dosage", "dosage_form", "dose_uom",
             "date", "time", "instructions", "parent",
             "administration_status",
         ],
@@ -459,7 +459,7 @@ def get_completed_medications(patient, inpatient_record):
             "is_completed": 1,
         },
         fields=[
-            "name", "drug", "drug_name", "dosage", "dosage_form",
+            "name", "drug", "drug_name", "dosage", "dosage_form", "dose_uom",
             "date", "time", "parent",
             "administration_status", "administered_time",
             "administered_by", "administration_notes",
