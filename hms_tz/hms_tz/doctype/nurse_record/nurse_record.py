@@ -1,13 +1,14 @@
 # Copyright (c) 2026, Aakvatech and contributors
 # For license information, please see license.txt
 
+import math
+from datetime import datetime
 from datetime import timedelta as td
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, now_datetime, nowdate, nowtime, time_diff_in_seconds, to_timedelta
-from healthcare.healthcare.doctype.patient_encounter.patient_encounter import get_prescription_dates
+from frappe.utils import add_days, cint, flt, now_datetime, nowdate, nowtime, time_diff_in_seconds, to_timedelta
 
 from hms_tz.nhif.api.medical_record import create_medical_record, delete_medical_record, update_medical_record
 
@@ -528,26 +529,60 @@ def get_upcoming_medications(nurse, within_minutes=60):
     cutoff_time = (now + td(minutes=cint(within_minutes))).time()
     current_time = now.time()
 
-    # Get all active Nurse Records for this nurse
+    # Fetch nurse records from today and yesterday (covers overnight shifts)
     nurse_records = frappe.db.get_all(
         "Nurse Record",
         filters={
             "nurse": nurse,
-            "posting_date": today,
+            "posting_date": ["in", [today, add_days(today, -1)]],
             "status": ["in", ["Open", "In Progress"]],
             "docstatus": ["!=", 2],
         },
-        fields=["name", "patient", "patient_name", "inpatient_record"],
+        fields=[
+            "name", "patient", "patient_name", "inpatient_record",
+            "posting_date", "shift_start_time", "shift_end_time",
+        ],
     )
 
     if not nurse_records:
         return []
 
-    results = []
+    # Filter to only nurse records whose shift covers the current time
+    active_records = []
     for nr in nurse_records:
         if not nr.inpatient_record:
             continue
 
+        shift_start = to_timedelta(nr.shift_start_time) if nr.shift_start_time else None
+        shift_end = to_timedelta(nr.shift_end_time) if nr.shift_end_time else None
+
+        if not shift_start or not shift_end:
+            # No shift times defined — include it (backward compat)
+            active_records.append(nr)
+            continue
+
+        posting = str(nr.posting_date)
+        # Build shift start/end datetimes
+        shift_start_dt = datetime.strptime(
+            f"{posting} {shift_start}", "%Y-%m-%d %H:%M:%S"
+        )
+
+        if shift_end <= shift_start:
+            # Overnight shift — shift_end is on the next day
+            next_day = add_days(posting, 1)
+            shift_end_dt = datetime.strptime(
+                f"{next_day} {shift_end}", "%Y-%m-%d %H:%M:%S"
+            )
+        else:
+            shift_end_dt = datetime.strptime(
+                f"{posting} {shift_end}", "%Y-%m-%d %H:%M:%S"
+            )
+
+        if shift_start_dt <= now <= shift_end_dt:
+            active_records.append(nr)
+
+    results = []
+    for nr in active_records:
         # Get pending IMO entries for this patient due within the window
         imo_list = frappe.db.get_all(
             "Inpatient Medication Order",
@@ -591,33 +626,44 @@ def get_upcoming_medications(nurse, within_minutes=60):
 
 
 def create_imo_from_delivery_note(doc, method):
-    """On submit of Delivery Note, auto-create Inpatient Medication Order.
+    """On submit of Delivery Note, create Dispensed Medication records.
+
+    Creates one Dispensed Medication record per drug dispensed, to be picked
+    up by nurses for scheduling in Inpatient Medication Orders.
 
     Only runs for admitted patients (those with an active inpatient_record).
-    Groups drug prescriptions by patient encounter and creates one IMO per encounter.
 
     Args:
         doc: Delivery Note document
         method: Hook method name (on_submit)
     """
+
+    if not frappe.db.get_value(
+        "HMS TZ Setting", doc.company, "auto_create_imo_from_delivery_note"
+    ):
+        return
+
     if not doc.patient:
         return
 
     if doc.get("reference_doctype") != "Patient Encounter":
         return
 
-    # Get encounter info from DN
     encounter_name = doc.get("reference_name")
     if not encounter_name:
         return
 
-    # Check if patient is admitted
-    inpatient_record = frappe.db.get_value("Patient", doc.patient, "inpatient_record")
+    inpatient_record = frappe.db.get_value(
+        "Patient", doc.patient, "inpatient_record"
+    )
     if not inpatient_record:
         return
 
-    # Collect Drug Prescription refs from DN Items
-    drug_prescriptions = []
+    appointment = frappe.db.get_value(
+        "Patient Encounter", encounter_name, "appointment"
+    )
+
+    created_count = 0
     for item in doc.items:
         ref_dt = item.get("reference_doctype")
         ref_dn = item.get("reference_name")
@@ -625,165 +671,264 @@ def create_imo_from_delivery_note(doc, method):
         if ref_dt != "Drug Prescription" or not ref_dn:
             continue
 
-        drug_prescriptions.append({
-            "dp_name": ref_dn,
-        })
+        dp = frappe.get_doc("Drug Prescription", ref_dn)
 
-    if not drug_prescriptions:
-        return
+        try:
+            dm = frappe.new_doc("Dispensed Medication")
+            dm.patient = doc.patient
+            dm.appointment = appointment or ""
+            dm.company = doc.company
+            dm.inpatient_record = inpatient_record
+            dm.posting_date = doc.posting_date or nowdate()
+            dm.delivery_note = doc.name
+            dm.patient_encounter = encounter_name
+            dm.drug_prescription = ref_dn
+            dm.drug = dp.get("drug_code")
+            dm.drug_name = dp.get("drug_name") or ""
+            dm.dosage_form = dp.get("dosage_form") or ""
+            dm.prescribed_dosage = dp.get("dosage") or ""
+            dm.prescribed_period = dp.get("period") or ""
+            dm.qty_dispensed = item.qty or 0
+            dm.insert(ignore_permissions=True)
+            created_count += 1
+        except Exception:
+            frappe.log_error(
+                title="Dispensed Medication Creation Error",
+                message=frappe.get_traceback(),
+                reference_doctype="Delivery Note",
+                reference_name=doc.name,
+            )
 
-    start_date = doc.posting_date or nowdate()
-
-    imo = frappe.new_doc("Inpatient Medication Order")
-    imo.patient = doc.patient
-    imo.patient_name = doc.get("patient_name") or ""
-    imo.inpatient_record = inpatient_record
-    imo.patient_encounter = encounter_name
-    imo.practitioner = doc.get("healthcare_practitioner") or ""
-    imo.company = doc.company
-    imo.start_date = start_date
-
-    has_entries = False
-
-    for dp_info in drug_prescriptions:
-        dp_name = dp_info["dp_name"]
-
-        dp = frappe.get_doc("Drug Prescription", dp_name)
-        dosage_name = dp.get("dosage")
-        period = dp.get("period")
-        drug = dp.get("drug_code")
-        drug_name = dp.get("drug_name")
-        dosage_form = dp.get("dosage_form") or ""
-
-        if not dosage_name or not period:
-            # If no dosage/period, create a single entry for today
-            imo.append("medication_orders", {
-                "drug": drug,
-                "drug_name": drug_name,
-                "dosage": 1,
-                "dosage_form": dosage_form,
-                "date": start_date,
-                "time": _format_timedelta(to_timedelta(nowtime()) + td(minutes=30)),
-                "instructions": dp.get("comment") or "",
-                "ref_doctype": "Drug Prescription",
-                "ref_docname": dp_name,
-            })
-            has_entries = True
-            continue
-
-        dates = get_prescription_dates(period, start_date)
-        dosage_doc = frappe.get_doc("Prescription Dosage", dosage_name)
-
-        for date in dates:
-            if len(dosage_doc.dosage_strength) == 0:
-                imo.append("medication_orders", {
-                    "drug": drug,
-                    "drug_name": drug_name,
-                    "dosage": 1,
-                    "dosage_form": dosage_form,
-                    "date": date,
-                    "time": _format_timedelta(to_timedelta(nowtime()) + td(minutes=30)),
-                    "instructions": dp.get("comment") or "",
-                    "ref_doctype": "Drug Prescription",
-                    "ref_docname": dp_name,
-                })
-                has_entries = True
-
-                continue
-
-            for dose in dosage_doc.dosage_strength:
-                dose_value = dose.strength or 1
-
-                dose_time = _get_default_dose_time(
-                    dose.idx, len(dosage_doc.dosage_strength)
-                )
-
-                imo.append("medication_orders", {
-                    "drug": drug,
-                    "drug_name": drug_name,
-                    "dosage": dose_value,
-                    "dosage_form": dosage_form,
-                    "date": date,
-                    "time": dose_time,
-                    "instructions": dp.get("comment") or "",
-                    "ref_doctype": "Drug Prescription",
-                    "ref_docname": dp_name,
-                })
-                has_entries = True
-
-    if not has_entries:
-        return
-
-    # Set end_date from the last entry
-    if imo.medication_orders:
-        imo.end_date = imo.medication_orders[-1].date
-
-    try:
-        imo.insert(ignore_permissions=True)
-        imo.submit()
-
+    if created_count:
         frappe.msgprint(
             _(
-                "Inpatient Medication Order {0} created and submitted"
-                " from Delivery Note {1}"
-            ).format(frappe.bold(imo.name), frappe.bold(doc.name)),
+                "{0} Dispensed Medication record(s) created from Delivery Note {1}. "
+                "Nurses can now schedule medication administration."
+            ).format(created_count, frappe.bold(doc.name)),
             alert=True,
         )
-    except frappe.DuplicateEntryError:
-        # IMO already exists for this encounter — skip silently
-        frappe.log_error(
-            title="IMO Creation: Duplicate",
-            message=(
-                f"IMO already exists for encounter {encounter_name}."
-                f" Skipping creation from DN {doc.name}."
-            ),
-            reference_doctype="Delivery Note",
-            reference_name=doc.name,
-        )
-    except Exception:
-        frappe.log_error(
-            title="IMO Creation Error",
-            message=frappe.get_traceback(),
-            reference_doctype="Delivery Note",
-            reference_name=doc.name,
-        )
 
 
-def _get_default_dose_time(idx, total_doses):
-    """Return a proportionally distributed time when strength_time is not set.
-
-    Divides 24 hours equally by the number of doses per day, starting from current time.
-
-    Examples:
-        - 1x/day  → current time
-        - 2x/day  → current time, 12 hours later  (every 12 hours)
-        - 3x/day  → current time, 8 hours later, 16 hours later  (every 8 hours)
-        - 4x/day  → current time, 6 hours later, 12 hours later, 18 hours later  (every 6 hours)
-        - 6x/day  → current time, 4 hours later, 8 hours later, 12 hours later, 16 hours later, 20 hours later  (every 4 hours)
+@frappe.whitelist()
+def get_dispensed_medications(patient, inpatient_record):
+    """Fetch all unscheduled Dispensed Medication records for a patient.
 
     Args:
-        idx: 1-based index of the dose in the dosage strength list
-        total_doses: Total number of doses per day
+        patient: Patient ID
+        inpatient_record: Inpatient Record name
 
     Returns:
-        Time string in HH:MM:SS format
+        list[dict]: Dispensed Medication records awaiting nurse scheduling.
     """
+    data = frappe.get_all(
+        "Dispensed Medication",
+        filters={
+            "patient": patient,
+            "inpatient_record": inpatient_record,
+        },
+        fields=[
+            "name",
+            "drug",
+            "drug_name",
+            "dosage_form",
+            "prescribed_dosage",
+            "prescribed_period",
+            "qty_dispensed",
+            "dose_uom",
+            "posting_date",
+            "delivery_note",
+            "patient_encounter",
+        ],
+        order_by="posting_date asc, creation asc",
+    )
+
+    return data
+
+@frappe.whitelist()
+def create_medication_schedule(
+    dispensed_medication,
+    total_administrable_qty,
+    dose_per_administration,
+    dose_uom,
+    start_date,
+    start_time,
+    interval_hours,
+):
+    """Create medication schedule entries in an IMO from nurse input.
+
+    This function:
+    1. Calculates the total number of doses from qty and dose.
+    2. Finds or creates a submitted IMO for the encounter.
+    3. Appends schedule entries to the IMO.
+    4. Deletes the Dispensed Medication record.
+
+    Args:
+        dispensed_medication: Name of the Dispensed Medication record
+        total_administrable_qty: Total usable qty in dose_uom
+        dose_per_administration: Amount per dose
+        dose_uom: Unit of measurement (ml, mg, Tablet, etc.)
+        start_date: Schedule start date
+        start_time: Schedule start time (HH:MM or HH:MM:SS)
+        interval_hours: Hours between doses
+
+    Returns:
+        dict: Result with status, imo_name, total_doses, end_date
+    """
+    dm = frappe.get_doc("Dispensed Medication", dispensed_medication)
+
+    total_administrable_qty = flt(total_administrable_qty)
+    dose_per_administration = flt(dose_per_administration)
+    interval_hours = cint(interval_hours)
+
+    if dose_per_administration <= 0:
+        frappe.throw(_("Dose per administration must be greater than zero."))
+
+    if interval_hours <= 0:
+        frappe.throw(_("Interval hours must be greater than zero."))
+
+    if total_administrable_qty <= 0:
+        frappe.throw(_("Total administrable quantity must be greater than zero."))
+
+    total_doses = math.floor(total_administrable_qty / dose_per_administration)
     if total_doses <= 0:
-        return _format_timedelta(to_timedelta(nowtime()) + td(minutes=30))
+        frappe.throw(
+            _("Cannot create a schedule: total quantity ({0}) is less than "
+              "one dose ({1}).").format(total_administrable_qty, dose_per_administration)
+        )
 
-    # Calculate the equal interval in hours
-    interval_hours = 24 / total_doses
+    # Generate all schedule entries
+    entries = _generate_schedule_entries(
+        drug=dm.drug,
+        drug_name=dm.drug_name,
+        dosage_form=dm.dosage_form,
+        dose_per_administration=dose_per_administration,
+        dose_uom=dose_uom,
+        start_date=start_date,
+        start_time=start_time,
+        interval_hours=interval_hours,
+        total_doses=total_doses,
+        drug_prescription=dm.drug_prescription,
+    )
 
-    # Start from now + 30 minutes, then space evenly
-    start_td = to_timedelta(nowtime()) + td(minutes=30)
-    offset_td = start_td + td(hours=(idx - 1) * interval_hours)
+    # Find or create IMO for this encounter
+    encounter_name = dm.patient_encounter
+    imo_name = frappe.db.get_value(
+        "Inpatient Medication Order",
+        {"patient_encounter": encounter_name, "docstatus": 1},
+        "name",
+    )
 
-    return _format_timedelta(offset_td)
+    if imo_name:
+        # Append to existing submitted IMO
+        imo = frappe.get_doc("Inpatient Medication Order", imo_name)
+        for entry in entries:
+            imo.append("medication_orders", entry)
+
+        imo.total_orders = len(imo.medication_orders)
+        # Recalculate end_date from the last entry
+        if imo.medication_orders:
+            imo.end_date = max(str(e.date) for e in imo.medication_orders)
+
+        imo.flags.ignore_validate_update_after_submit = True
+        imo.save(ignore_permissions=True)
+    else:
+        # Create new IMO and submit it
+        imo = frappe.new_doc("Inpatient Medication Order")
+        imo.patient = dm.patient
+        imo.patient_name = frappe.db.get_value(
+            "Patient", dm.patient, "patient_name"
+        ) or ""
+        imo.inpatient_record = dm.inpatient_record
+        imo.patient_encounter = encounter_name
+        imo.company = dm.company
+        imo.start_date = start_date
+
+        for entry in entries:
+            imo.append("medication_orders", entry)
+
+        imo.total_orders = len(entries)
+        imo.end_date = entries[-1]["date"] if entries else start_date
+
+        imo.insert(ignore_permissions=True)
+        imo.submit()
+        imo_name = imo.name
+
+    end_date = entries[-1]["date"] if entries else start_date
+    remainder = total_administrable_qty - (total_doses * dose_per_administration)
+
+    # Delete the Dispensed Medication record — it has been scheduled
+    frappe.delete_doc(
+        "Dispensed Medication", dispensed_medication, ignore_permissions=True
+    )
+
+    return {
+        "status": "success",
+        "imo_name": imo_name,
+        "total_doses": total_doses,
+        "end_date": end_date,
+        "remainder": remainder,
+    }
 
 
-def _format_timedelta(t):
-    """Format a timedelta as HH:MM:SS, wrapping around 24 hours."""
-    total_seconds = int(t.total_seconds()) % (24 * 3600)
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    return f"{hours:02d}:{minutes:02d}:00"
+def _generate_schedule_entries(
+    drug,
+    drug_name,
+    dosage_form,
+    dose_per_administration,
+    dose_uom,
+    start_date,
+    start_time,
+    interval_hours,
+    total_doses,
+    drug_prescription="",
+):
+    """Generate IMO Entry rows for a medication schedule.
+
+    Args:
+        drug: Item code
+        drug_name: Item name
+        dosage_form: Dosage Form name
+        dose_per_administration: Amount per dose
+        dose_uom: Unit of measurement
+        start_date: Start date string (YYYY-MM-DD)
+        start_time: Start time string (HH:MM or HH:MM:SS)
+        interval_hours: Hours between doses
+        total_doses: Total number of dose entries to create
+        drug_prescription: Reference Drug Prescription name
+
+    Returns:
+        list[dict]: Schedule entries ready to append to IMO.
+    """
+    from datetime import datetime, timedelta
+
+    # Parse start datetime
+    if len(start_time) == 5:
+        start_time += ":00"
+
+    start_dt = datetime.strptime(f"{start_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+    interval = timedelta(hours=interval_hours)
+
+    entries = []
+    current_dt = start_dt
+
+    for _ in range(total_doses):
+        entry_date = current_dt.strftime("%Y-%m-%d")
+        entry_time = current_dt.strftime("%H:%M:00")
+
+        entries.append({
+            "drug": drug,
+            "drug_name": drug_name,
+            "dosage": dose_per_administration,
+            "dosage_form": dosage_form,
+            "date": entry_date,
+            "time": entry_time,
+            "dose_uom": dose_uom,
+            "interval_hours": interval_hours,
+            "ref_doctype": "Drug Prescription",
+            "ref_docname": drug_prescription,
+        })
+
+        current_dt += interval
+
+    return entries
+
