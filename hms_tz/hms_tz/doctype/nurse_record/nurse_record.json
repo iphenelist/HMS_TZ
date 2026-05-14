@@ -26,6 +26,10 @@
   "nurse",
   "nurse_name",
   "amended_from",
+  "column_break_shift",
+  "nurse_shift",
+  "shift_start_time",
+  "shift_end_time",
   "section_break_r45y2",
   "payment_type",
   "insurance_subscription",
@@ -159,6 +163,24 @@
    "options": "Open\nIn Progress\nCompleted",
    "reqd": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_shift",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "shift_type.start_time",
+   "fieldname": "shift_start_time",
+   "fieldtype": "Time",
+   "label": "Shift Start Time",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "shift_type.end_time",
+   "fieldname": "shift_end_time",
+   "fieldtype": "Time",
+   "label": "Shift End Time",
+   "read_only": 1
   },
   {
    "fieldname": "service_unit",
@@ -428,11 +450,21 @@
   {
    "fieldname": "section_break_r45y2",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "nurse_shift",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Nurse Shift",
+   "options": "Shift Type",
+   "reqd": 1,
+   "search_index": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-10 17:35:38.124259",
+ "modified": "2026-05-14 16:38:48.725657",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nurse Record",
