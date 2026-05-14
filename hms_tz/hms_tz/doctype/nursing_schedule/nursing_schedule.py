@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import nowdate
 
 
 class NursingSchedule(Document):
@@ -263,7 +264,6 @@ def create_nurse_records_for_admitted_patients():
                     update_modified=False,
                 )
                 continue
-
 
             try:
                 nr = frappe.new_doc("Nurse Record")
