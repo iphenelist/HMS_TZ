@@ -46,6 +46,8 @@
   "hms_tz_limit_exceed_action",
   "nursing_conf_section",
   "auto_create_shift_assignment_from_nursing_roster",
+  "column_break_jsba",
+  "consumable_item_group",
   "reporting_section",
   "start_date",
   "nhif_tab",
@@ -680,16 +682,27 @@
    "label": "Auto Create Shift Assignment from Nursing Roster"
   },
   {
+   "description": "If set, only items belonging to this Item Group (and its sub-groups) will be shown in consumable item dialogs across the system",
+   "fieldname": "consumable_item_group",
+   "fieldtype": "Link",
+   "label": "Consumable Item Group",
+   "options": "Item Group"
+  },
+  {
    "default": "0",
    "description": "If ticket, Inpatient Medication Order will be auto created during submission of delivery note for admitted patients",
    "fieldname": "auto_create_imo_from_delivery_note",
    "fieldtype": "Check",
    "label": "Auto Create IMO from Delivery Note"
+  },
+  {
+   "fieldname": "column_break_jsba",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-12 11:07:32.848024",
+ "modified": "2026-05-15 03:05:19.349908",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "HMS TZ Setting",
