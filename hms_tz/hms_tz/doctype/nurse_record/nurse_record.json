@@ -19,8 +19,8 @@
   "status",
   "posting_time",
   "section_break_hsu",
-  "service_unit",
-  "service_unit_type",
+  "room",
+  "ward",
   "naming_series",
   "column_break_references",
   "nurse",
@@ -183,18 +183,6 @@
    "fieldtype": "Time",
    "label": "Shift End Time",
    "read_only": 1
-  },
-  {
-   "fieldname": "service_unit",
-   "fieldtype": "Link",
-   "label": "Service Unit",
-   "options": "Healthcare Service Unit"
-  },
-  {
-   "fieldname": "service_unit_type",
-   "fieldtype": "Link",
-   "label": "Service Unit Type",
-   "options": "Healthcare Service Unit Type"
   },
   {
    "fieldname": "column_break_references",
@@ -471,11 +459,23 @@
    "options": "Shift Type",
    "reqd": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "label": "Room",
+   "options": "Healthcare Service Unit"
+  },
+  {
+   "fieldname": "ward",
+   "fieldtype": "Link",
+   "label": "Ward",
+   "options": "Healthcare Service Unit Type"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-15 01:35:40.359315",
+ "modified": "2026-05-15 03:10:57.599706",
  "modified_by": "Administrator",
  "module": "Hms Tz",
  "name": "Nurse Record",
