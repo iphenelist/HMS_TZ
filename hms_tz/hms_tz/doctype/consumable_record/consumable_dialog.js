@@ -33,6 +33,19 @@ hms_tz.open_consumable_dialog = function (opts) {
     return;
   }
 
+  // Fetch consumable item group setting before opening the dialog
+  frappe.db.get_value(
+    "HMS TZ Setting",
+    { company: opts.company },
+    "consumable_item_group",
+    (r) => {
+      const consumable_item_group = r && r.consumable_item_group;
+      _open_dialog(opts, consumable_item_group);
+    }
+  );
+};
+
+function _open_dialog(opts, consumable_item_group) {
   const is_insurance = opts.payment_type === "Insurance";
 
   const dialog = new frappe.ui.Dialog({
@@ -176,7 +189,11 @@ hms_tz.open_consumable_dialog = function (opts) {
         cannot_add_rows: false,
         in_place_edit: true,
         data: [],
-        fields: _get_item_table_fields(is_insurance, opts.company),
+        fields: _get_item_table_fields(
+          is_insurance,
+          opts.company,
+          consumable_item_group
+        ),
       },
     ],
 
@@ -198,9 +215,14 @@ hms_tz.open_consumable_dialog = function (opts) {
 
   dialog.show();
   return dialog;
-};
+}
 
-function _get_item_table_fields(is_insurance, company) {
+function _get_item_table_fields(is_insurance, company, consumable_item_group) {
+  const item_filters = { is_stock_item: 1, disabled: 0 };
+  if (consumable_item_group) {
+    item_filters.item_group = consumable_item_group;
+  }
+
   const fields = [
     {
       fieldname: "item_code",
@@ -211,7 +233,7 @@ function _get_item_table_fields(is_insurance, company) {
       reqd: 1,
       columns: 2,
       get_query: () => ({
-        filters: { is_stock_item: 1, disabled: 0 },
+        filters: item_filters,
       }),
     },
     {
