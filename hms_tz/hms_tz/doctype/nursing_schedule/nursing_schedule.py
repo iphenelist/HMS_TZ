@@ -156,8 +156,8 @@ def create_nurse_records_for_admitted_patients():
     3. For each admitted patient, get the last service unit from the
        inpatient_occupancies child table.
     4. Match nursing schedules by comparing:
-       - schedule.service_unit == last occupancy service_unit, OR
-       - schedule.service_unit_type == service_unit_type of the last
+       - schedule.room == last occupancy service_unit, OR
+       - schedule.ward == service_unit_type of the last
          occupancy's service unit
     5. Create a Nurse Record for each match if one doesn't already exist.
     6. Mark the Nursing Schedule's nurse_record_created checkbox.
@@ -294,12 +294,12 @@ def create_nurse_records_for_admitted_patients():
                     nr.insurance_coverage_plan = ""
                     nr.insurance_subscription = ""
 
-                nr.service_unit = (
+                nr.room = (
                     last_occupancy
                     if schedule.assign_based_on == "Room"
                     else None
                 )
-                nr.service_unit_type = (
+                nr.ward = (
                     last_su_type
                     if schedule.assign_based_on == "Ward"
                     else None

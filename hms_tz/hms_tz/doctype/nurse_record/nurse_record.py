@@ -39,7 +39,7 @@ class NurseRecord(Document):
 
         self.set_missing_values()
         self.validate_no_duplicate()
-        self.validate_service_unit_fields()
+        self.validate_room_and_ward_fields()
         self.set_status_on_save()
         self.set_previous_notes()
 
@@ -111,19 +111,18 @@ class NurseRecord(Document):
                 ).format(self.patient, self.nurse, self.posting_date, existing)
             )
 
-    def validate_service_unit_fields(self):
+    def validate_room_and_ward_fields(self):
         """Validate service unit fields.
 
         Rules:
-        - If service_unit is set but service_unit_type is missing: OK
-        - If service_unit_type is set but service_unit is missing: OK
+        - If room is set but ward is missing: OK
+        - If ward is set but room is missing: OK
         - If BOTH are missing: throw validation error
         """
-        if not self.service_unit and not self.service_unit_type:
+        if not self.room and not self.ward:
             frappe.throw(
                 _(
-                    "Please set at least one of Service Unit or Service Unit"
-                    " Type."
+                    "Please set at least one of Room or Ward."
                 )
             )
 

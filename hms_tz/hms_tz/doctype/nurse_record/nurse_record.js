@@ -56,7 +56,7 @@ function set_queries(frm) {
       },
     };
   });
-  frm.set_query("service_unit", () => {
+  frm.set_query("room", () => {
     return {
       filters: {
         disabled: 0,
@@ -66,7 +66,7 @@ function set_queries(frm) {
     };
   });
 
-  frm.set_query("service_unit_type", () => {
+  frm.set_query("ward", () => {
     return {
       filters: {
         disabled: 0,
