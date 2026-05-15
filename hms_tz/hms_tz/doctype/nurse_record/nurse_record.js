@@ -663,7 +663,7 @@ function show_schedule_medication_dialog(
     );
 
     let doses_per_day = Math.floor(24 / vals.interval_hours);
-    let total_days = Math.ceil(total_doses / doses_per_day);
+    let total_days = Math.floor(total_doses / doses_per_day);
 
     let preview_html =
       '<div style="padding: 10px; background: #e8f5e9; border-radius: 4px;">' +
