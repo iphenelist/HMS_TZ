@@ -222,7 +222,7 @@ def get_hsr_details_batch(ref_docname_list, ref_doctype, coverage_plan_name, ite
             .select(
                 hsrp.ref_docname,
                 (hsrp.qty - hsrp.qty_returned).as_("qty"),
-                hsrp.amount,
+                hsrp.rate,
                 hsr.practitioner,
                 hsr.appointment
             )
@@ -231,14 +231,16 @@ def get_hsr_details_batch(ref_docname_list, ref_doctype, coverage_plan_name, ite
                 & (hsrp.ref_doctype == ref_doctype)
                 & (hsrp.payor_plan == coverage_plan_name)
                 & (hsrp.item_code == item_code)
+                & (hsr.docstatus == 1)
             )
             .run(as_dict=True)
         )
 
         for r in results:
+            net_qty = r.get("qty", 0)
             ref_doclist.append({
-                "qty": r.get("qty", 0),
-                "amount": r.get("amount", 0),
+                "qty": net_qty,
+                "amount": net_qty * r.get("rate", 0),
                 "practitioner": r.get("practitioner"),
                 "patient_appointment": r.get("appointment")
             })
