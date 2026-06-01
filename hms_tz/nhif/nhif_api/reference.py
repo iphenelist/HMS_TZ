@@ -17,7 +17,7 @@ def enqueue_get_diseases(company):
         is_async=True,
         company=company,
     )
-    frappe.msgprint("Fetch Diseases via backaground job", alert=True)
+    frappe.msgprint("Fetch Diseases via background job", alert=True)
 
 
 @frappe.whitelist()
@@ -205,13 +205,16 @@ def update_medical_code(disease):
         has_changed = True
         mc_doc.definition = disease.get("DiseaseName")
 
-    if mc_doc.is_non_specific != disease.get("IsNonSpecific"):
+    if (
+        disease.get("IsNonSpecific") and
+        mc_doc.is_non_specific != disease.get("IsNonSpecific")
+    ):
         has_changed = True
         mc_doc.is_non_specific = disease.get("IsNonSpecific")
 
-    if mc_doc.disabled == 1:
-        has_changed = True
-        mc_doc.disabled = 0
+    # if mc_doc.disabled == 1:
+    #     has_changed = True
+    #     mc_doc.disabled = 0
 
     if has_changed:
         mc_doc.save(ignore_permissions=True)

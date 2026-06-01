@@ -56,7 +56,7 @@ def process_nhif_records(company):
         company=company,
         facility_code=facility_code,
     )
-    frappe.msgprint("Processing NHIF prices via backaground job", alert=True)
+    frappe.msgprint("Processing NHIF prices via background job", alert=True)
 
     enqueue(
         method=process_nhif_coverages,
@@ -66,7 +66,7 @@ def process_nhif_records(company):
         company=company,
         facility_code=facility_code,
     )
-    frappe.msgprint("Processing NHIF Coverages via backaground job", alert=True)
+    frappe.msgprint("Processing NHIF Coverages via background job", alert=True)
 
 
 @frappe.whitelist()
@@ -79,7 +79,7 @@ def enqueue_fetch_nhif_items(company):
         is_async=True,
         company=company,
     )
-    frappe.msgprint("Fetch NHIF Items via backaground job", alert=True)
+    frappe.msgprint("Fetch NHIF Items via background job", alert=True)
 
 
 def get_price_package(company):
