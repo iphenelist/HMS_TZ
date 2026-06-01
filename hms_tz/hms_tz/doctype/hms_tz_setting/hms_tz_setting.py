@@ -7,6 +7,7 @@ from time import sleep
 
 import frappe
 import requests
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
@@ -15,6 +16,44 @@ from hms_tz.nhif.doctype.nhif_response_log.nhif_response_log import add_log
 
 
 class HMSTZSetting(Document):
+	def before_save(self):
+		self.validate_api_urls()
+
+	def validate_api_urls(self):
+		"""Enforce HTTPS and strip trailing slashes on all API URL fields."""
+
+		url_fields = [
+			{"field": "nhif_token_url", "label": "NHIF Token URL"},
+			{"field": "nhifservice_url", "label": "NHIF Service URL"},
+			{"field": "nhif_claim_url", "label": "NHIF Claim URL"},
+			{"field": "jubilee_url", "label": "Jubilee URL"},
+		]
+
+		for entry in url_fields:
+			url = self.get(entry["field"])
+			if not url:
+				continue
+
+			url = url.strip().rstrip("/")
+
+			if url.startswith("http://"):
+				frappe.throw(
+					_("<b>{0}</b> must use HTTPS. Please change <code>{1}</code> to <code>{2}</code>").format(
+						entry["label"],
+						url,
+						url.replace("http://", "https://", 1),
+					),
+					title=_("Insecure URL"),
+				)
+
+			if not url.startswith("https://"):
+				frappe.throw(
+					_("<b>{0}</b> must start with <code>https://</code>").format(entry["label"]),
+					title=_("Invalid URL"),
+				)
+
+			self.set(entry["field"], url)
+
 	@frappe.whitelist()
 	def get_nhif_token(self):
 		if self.enable_nhif_api == 0:
@@ -40,7 +79,7 @@ class HMSTZSetting(Document):
 
 		for i in range(3):
 			try:
-				r = requests.request("POST", url, headers=headers, data=payload)
+				r = requests.request("POST", url, headers=headers, data=payload, timeout=30)
 				r.raise_for_status()
 
 				data = json.loads(r.text)
