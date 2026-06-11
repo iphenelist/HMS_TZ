@@ -286,8 +286,10 @@
               type="autocomplete"
               label="Patient *"
               :options="patientOptions"
+              :loading="patientSearchLoading"
               v-model="newForm.patient"
               placeholder="Search patient..."
+              @update:query="onPatientSearch"
             />
             <div>
               <label class="mb-1.5 block text-xs text-gray-600"
@@ -410,7 +412,7 @@
 <script setup>
 import dayjs from "dayjs";
 import { computed, reactive, ref } from "vue";
-import { createResource } from "frappe-ui";
+import { createResource, call } from "frappe-ui";
 
 const props = defineProps({
   cell: { type: Object, required: true },
@@ -439,17 +441,36 @@ const sortedTeam = computed(() => {
   );
 });
 
-// Autocomplete data resources
-const patientList = createResource({
-  url: "frappe.client.get_list",
-  params: {
-    doctype: "Patient",
-    fields: ["name", "patient_name"],
-    filters: { status: "Active" },
-    order_by: "patient_name asc",
-    limit_page_length: 9999,
-  },
-});
+// Patient live-search state
+const patientOptions = ref([]);
+const patientSearchLoading = ref(false);
+let _patientSearchTimer = null;
+
+async function fetchPatients(searchText = "") {
+  patientSearchLoading.value = true;
+  try {
+    const results = await call(
+      "hms_tz.hms_tz.doctype.ot_schedule.roster.search_patients",
+      { search_text: searchText || "", limit: 30 }
+    );
+    patientOptions.value = (results || []).map((p) => ({
+      label: `${(p.patient_name || "").trim()} (${p.name})`,
+      value: p.name,
+    }));
+  } catch (_) {
+    patientOptions.value = [];
+  } finally {
+    patientSearchLoading.value = false;
+  }
+}
+
+function onPatientSearch(searchText) {
+  clearTimeout(_patientSearchTimer);
+  _patientSearchTimer = setTimeout(() => {
+    fetchPatients(searchText || "");
+  }, 300);
+}
+
 const procedureList = createResource({
   url: "frappe.client.get_list",
   params: {
@@ -501,12 +522,6 @@ const theaterRoomOptions = computed(() =>
   props.theaterRooms.map((r) => ({
     label: r.healthcare_service_unit_name || r.name,
     value: r.name,
-  }))
-);
-const patientOptions = computed(() =>
-  (patientList.data || []).map((p) => ({
-    label: `${p.patient_name} (${p.name})`,
-    value: p.name,
   }))
 );
 const procedureOptions = computed(() =>
@@ -592,7 +607,8 @@ function cardTooltip(s) {
 
 function handleAddClick() {
   if (props.cell.isPast) return;
-  if (!patientList.data) patientList.submit();
+  // Fetch an initial patient list for the dialog
+  fetchPatients("");
   if (!procedureList.data) procedureList.submit();
   if (!doctorList.data) doctorList.submit();
   if (!nurseList.data) nurseList.submit();
