@@ -170,6 +170,45 @@ def postpone_ot_schedule(name: str) -> dict:
 
 
 @frappe.whitelist()
+def search_patients(search_text: str = "", limit: int = 20) -> list:
+    """Search for active patients by name or patient ID.
+
+    Searches across patient_name (with TRIM to handle data-entry whitespace)
+    and the patient ID (name field). Returns up to `limit` results.
+    """
+    if not search_text or not search_text.strip():
+        # Return a reasonable set of recent/active patients when no search term given
+        return frappe.db.get_all(
+            "Patient",
+            filters={"status": "Active"},
+            fields=["name", "patient_name"],
+            order_by="patient_name asc",
+            limit_page_length=limit,
+        )
+
+    term = f"%{search_text.strip()}%"
+
+    # Use raw SQL so we can apply TRIM() and search across both name and patient_name
+    results = frappe.db.sql(
+        """
+        SELECT name, patient_name
+        FROM `tabPatient`
+        WHERE
+            status = 'Active'
+            AND (
+                TRIM(patient_name) LIKE %(term)s
+                OR name LIKE %(term)s
+            )
+        ORDER BY TRIM(patient_name) ASC
+        LIMIT %(limit)s
+        """,
+        {"term": term, "limit": int(limit)},
+        as_dict=True,
+    )
+    return results
+
+
+@frappe.whitelist()
 def get_theater_rooms(company: str) -> list:
     """Return theater rooms for the company."""
     hsu = frappe.qb.DocType("Healthcare Service Unit")
