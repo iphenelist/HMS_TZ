@@ -96,7 +96,7 @@ def get_healthcare_services_to_invoice(
         if not inpatient_record and i.inpatient_record:
             inpatient_record = i.inpatient_record
 
-        encounter_doc = frappe.get_cached_doc("Patient Encounter", i.name)
+        encounter_doc = frappe.get_doc("Patient Encounter", i.name)
 
         if not appointment and encounter_doc.appointment:
             appointment = encounter_doc.appointment
