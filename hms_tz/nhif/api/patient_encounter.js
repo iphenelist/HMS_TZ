@@ -2006,6 +2006,47 @@ var nhif_btns = (frm) => {
       let data = r.message;
       if (data.show_login) {
         login_to_nhif(frm);
+
+        frm.set_intro("");
+        frm.disable_form();
+        frm.set_read_only();
+        frm.toggle_display(
+          [
+            "section_break_28",
+            "hms_tz_section_break",
+            "sb_test_prescription",
+            "radiology_procedures_section",
+            "sb_procedures",
+            "medication_action_sb",
+            "sb_drug_prescription",
+            "rehabilitation_section",
+            "diet_recommendation_section",
+            "examination_detail",
+            "copy_from_preliminary_diagnosis",
+          ],
+          false
+        );
+        frm.toggle_enable(
+          [
+            "system_and_symptoms",
+            "patient_encounter_preliminary_diagnosis",
+            "lab_test_prescription",
+            "radiology_procedure_prescription",
+            "patient_encounter_final_diagnosis",
+            "procedure_prescription",
+            "drug_prescription",
+            "therapies",
+            "diet_recommendation",
+            "copy_from_preliminary_diagnosis",
+          ],
+          false
+        );
+        frm.set_intro(
+          __(
+            `<h5 style="text-align: center; color: #ff7421;">Please login to NHIF first!</h5>`
+          ),
+          "orange"
+        );
       }
 
       if (data.show_logout) {
