@@ -236,7 +236,10 @@ def create_vital_signs_from_cp(clinical_procedure: str, **kwargs) -> str:
     if vs.bp_systolic and vs.bp_diastolic:
         vs.bp = f"{vs.bp_systolic}/{vs.bp_diastolic} mmHg"
 
-    vs.insert(ignore_permissions=True)
+    vs.flags.ignore_permissions = True
+    vs.flags.ignore_mandatory = True
+    vs.flags.ignore_create_encounter = True
+    vs.insert()
     vs.submit()
     return vs.name
 

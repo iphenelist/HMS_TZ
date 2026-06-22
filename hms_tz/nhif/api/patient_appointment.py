@@ -293,7 +293,9 @@ def make_vital(appointment_doc, method):
                 company=appointment_doc.company,
             )
         )
-        vital_doc.save(ignore_permissions=True)
+        vital_doc.flags.ignore_permissions = True
+        vital_doc.flags.ignore_mandatory = True
+        vital_doc.save()
         appointment_doc.ref_vital_signs = vital_doc.name
         appointment_doc.db_update()
         frappe.msgprint(_(f"Vital Signs {vital_doc.name} created"))
@@ -311,6 +313,10 @@ def make_encounter(doc, method):
             frappe.throw("<b>Appointment is already cancelled</b>")
         source_name = doc.appointment
         _date = doc.signs_date
+
+        # ignore if called from nurse record and clinical procedure's vital sign creation
+        if doc.flags.get("ignore_create_encounter"):
+            return
 
     elif doc.doctype == "Patient Appointment":
         if (
