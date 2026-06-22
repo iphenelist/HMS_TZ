@@ -138,7 +138,8 @@
    "fieldtype": "Link",
    "label": "Reference DocType",
    "options": "DocType",
-   "permlevel": 2
+   "permlevel": 2,
+   "search_index": 1
   },
   {
    "allow_on_submit": 1,
@@ -146,7 +147,8 @@
    "fieldtype": "Dynamic Link",
    "label": "Reference DocName",
    "options": "reference_doctype",
-   "permlevel": 2
+   "permlevel": 2,
+   "search_index": 1
   },
   {
    "columns": 1,
@@ -177,7 +179,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-16 15:56:05.633051",
+ "modified": "2026-06-22 12:44:08.095947",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "NHIF Patient Claim Item",

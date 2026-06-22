@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2022-06-21 16:02:06.481758",
+ "creation": "2026-05-08 11:39:56.512865",
  "doctype": "DocType",
  "document_type": "Document",
  "editable_grid": 1,
@@ -812,14 +812,16 @@
    "fieldtype": "Link",
    "label": "Reference Doctype",
    "options": "DocType",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "reference_name",
    "fieldtype": "Dynamic Link",
    "label": "Reference Name",
    "options": "reference_doctype",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "healthcare",
@@ -891,12 +893,14 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2022-06-22 18:04:45.044601",
+ "modified": "2026-06-22 12:43:39.512942",
  "modified_by": "Administrator",
  "module": "NHIF",
  "name": "Original Delivery Note Item",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }
