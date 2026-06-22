@@ -270,6 +270,7 @@ class NHIFPatientClaim(Document):
                 self.patient_type_code = "OUT"
                 self.date_admitted = None
                 self.admitted_time = None
+                self.inpatient_record = None # to avoid pulling items based on Inpatient while claims goes to NHIF as Outpatient
             else:
                 self.patient_type_code = "IN"
                 self.date_discharge = discharge_date
