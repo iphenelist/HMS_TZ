@@ -700,9 +700,9 @@ class NHIFPatientClaim(Document):
         claim_details = frappe.db.get_all(
             "NHIF Patient Claim",
             filters={
-                "patient": self.patient,
+                # "patient": self.patient, SHM MOSIC#: 2081
                 "authorization_no": self.authorization_no,
-                "cardno": self.cardno,
+                # "cardno": self.cardno,
                 "docstatus": 0,
             },
             fields=[
@@ -731,9 +731,9 @@ class NHIFPatientClaim(Document):
         appointment_documents = frappe.db.get_all(
             "Patient Appointment",
             filters={
-                "patient": self.patient,
+                # "patient": self.patient, SHM MOSIC#: 2081
                 "authorization_number": self.authorization_no,
-                "coverage_plan_card_number": self.cardno,
+                # "coverage_plan_card_number": self.cardno,
                 "status": ["!=", "Cancelled"],
             },
             pluck="name",
