@@ -296,11 +296,15 @@ class HealthcareServiceRequest(Document):
 
             if service_type == "Lab Test Template":
                 lab_service = self.get_sorted_service(values)
+                if not lab_service:
+                    continue
                 encounter_child = frappe.get_cached_doc(lab_service.ref_doctype, lab_service.ref_docname)
                 create_individual_lab_test(encounter_doc, encounter_child, lab_service)
 
             elif service_type == "Radiology Examination Template":
                 radiology_service = self.get_sorted_service(values)
+                if not radiology_service:
+                    continue
                 encounter_child = frappe.get_cached_doc(
                     radiology_service.ref_doctype,
                     radiology_service.ref_docname,
@@ -309,6 +313,8 @@ class HealthcareServiceRequest(Document):
 
             elif service_type == "Clinical Procedure Template":
                 procedure_service = self.get_sorted_service(values)
+                if not procedure_service:
+                    continue
                 encounter_child = frappe.get_cached_doc(
                     procedure_service.ref_doctype,
                     procedure_service.ref_docname,
@@ -317,10 +323,14 @@ class HealthcareServiceRequest(Document):
 
             elif service_type == "Medication":
                 medication_service = self.get_sorted_service(values)
+                if not medication_service:
+                    continue
                 medications.append(medication_service)
 
             elif service_type == "Therapy Type":
                 therapy_service = self.get_sorted_service(values)
+                if not therapy_service:
+                    continue
 
                 therapy_map[therapy_service.ref_docname] = therapy_service
 
@@ -361,7 +371,12 @@ class HealthcareServiceRequest(Document):
             service = services[0]
 
         elif len(services) > 1:
-            services = sorted(services, key=sort_key)
+            # remove items with amount 0
+            filtered_services = [d for d in services if d.amount > 0]
+            if len(filtered_services) == 0:
+                return frappe._dict()
+            # sort the services by insurance company
+            services = sorted(filtered_services, key=sort_key)
             service = services[0]
 
         return service
