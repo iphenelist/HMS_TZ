@@ -2459,7 +2459,7 @@ var confirm_poc_btn = (frm) => {
 var verify_services_btn = (frm) => {
   if (!frm.page.fields_dict.verify_services_btn) {
     frm.page.add_field({
-      label: "Verify Services",
+      label: "Get PreApproval",
       fieldname: "verify_services_btn",
       fieldtype: "Button",
       click: async () => {
