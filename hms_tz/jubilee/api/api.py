@@ -89,7 +89,11 @@ def create_jubilee_subscription(patient_id, card_no, insurance_provider):
 
     subscription_list = frappe.get_list(
         "Healthcare Insurance Subscription",
-        filters={"patient": patient_id, "is_active": 1},
+        filters={
+            "patient": patient_id,
+            "is_active": 1,
+            "insurance_company": ["like", "Jubilee%"],
+        },
     )
     if len(subscription_list) > 0:
         frappe.msgprint(
