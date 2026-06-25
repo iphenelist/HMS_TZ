@@ -758,6 +758,13 @@ def validate_totals(doc, method, show_alert=True):
     ):
         return
 
+    # Check if full Jubilee API has enabled, If yes, then no need for manual validation of daily limit
+    if (
+        "Jubilee" in doc.insurance_company and
+        cint(frappe.get_cached_value("HMS TZ Setting", doc.company, "enable_jubilee_api")) == 1
+    ):
+        return
+
     childs_map = get_childs_map()
     if doc.encounter_type == "Initial":
         appointment_amount = frappe.get_cached_value("Patient Appointment", doc.appointment, "paid_amount")
