@@ -1092,11 +1092,11 @@ def create_individual_lab_test(source_doc, encounter_child, hsr_child=None):
         doc.insurance_subscription = insurance_subscription
         doc.hms_tz_insurance_coverage_plan = insurance_coverage_plan
         doc.insurance_company = insurance_company
+        doc.is_restricted = encounter_child.is_restricted
 
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.hms_tz_ref_childname = encounter_child.name
-    doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
         (encounter_child.medical_code or "No ICD Code") + " : " + (encounter_child.lab_test_comment or "No Comment")
@@ -1167,6 +1167,7 @@ def create_individual_radiology_examination(source_doc, encounter_child, hsr_chi
         doc.insurance_subscription = insurance_subscription
         doc.hms_tz_insurance_coverage_plan = insurance_coverage_plan
         doc.insurance_company = insurance_company
+        doc.is_restricted = encounter_child.is_restricted
 
     doc.medical_department = frappe.get_cached_value(
         "Radiology Examination Template",
@@ -1176,7 +1177,6 @@ def create_individual_radiology_examination(source_doc, encounter_child, hsr_chi
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.hms_tz_ref_childname = encounter_child.name
-    doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
         (encounter_child.medical_code or "No ICD Code")
@@ -1246,6 +1246,8 @@ def create_individual_procedure_prescription(source_doc, encounter_child, hsr_ch
         doc.insurance_subscription = insurance_subscription
         doc.hms_tz_insurance_coverage_plan = insurance_coverage_plan
         doc.insurance_company = insurance_company
+        doc.is_restricted = encounter_child.is_restricted
+
     doc.patient_sex = patient_sex
     doc.patient_age = source_doc.patient_age
     doc.medical_department = frappe.get_cached_value(
@@ -1256,7 +1258,6 @@ def create_individual_procedure_prescription(source_doc, encounter_child, hsr_ch
     doc.ref_doctype = source_doc.doctype
     doc.ref_docname = source_doc.name
     doc.hms_tz_ref_childname = encounter_child.name
-    doc.is_restricted = encounter_child.is_restricted
     doc.invoiced = 1
     doc.service_comment = (
         (encounter_child.medical_code or "No ICD Code") + " : " + (encounter_child.comments or "No Comment")
@@ -2323,7 +2324,7 @@ def create_invoiced_items_if_not_created(from_date='', to_date=''):
 
             if len(healthcare_service_parents) > 0:
                 for row in healthcare_service_parents:
-                    hsr_doc = frappe.get_cached_doc("Healthcare Service Request", row.service_request_no)
+                    hsr_doc = frappe.get_doc("Healthcare Service Request", row.service_request_no)
                     hsr_doc.create_healthcare_service_docs()
 
         frappe.db.commit()
