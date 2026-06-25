@@ -291,6 +291,8 @@ def set_item_coverage(doc, method, child_tables):
     for key, value in child_tables.items():
         for row in doc.get(key):
             if row.get("override_subscription") == 1 or row.prescribe == 1:
+                row.is_restricted = 0
+                row.has_copayment = 0
                 continue
 
             # service_templates is like
