@@ -227,6 +227,15 @@ def get_non_group_customer_group():
 
 
 def create_customer(doc):
+    # Check if customer already exists
+    existing_customer = frappe.db.get_value(
+        "Customer",
+        {"customer_name": doc.patient_name},
+    )
+    if existing_customer:
+        frappe.db.set_value("Patient", doc.name, "customer", existing_customer)
+        return
+
     customer = frappe.get_doc(
         {
             "doctype": "Customer",
