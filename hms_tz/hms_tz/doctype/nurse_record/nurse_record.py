@@ -218,6 +218,7 @@ def create_vital_signs(patient, nurse_record, **kwargs):
     vs.inpatient_record = nr.inpatient_record
     vs.company = nr.company
     vs.signs_date = nowdate()
+    vs.signs_time = kwargs.get("signs_time") or nowtime()
 
     # Set vital sign values from kwargs
     vital_fields = [

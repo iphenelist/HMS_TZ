@@ -255,6 +255,14 @@ function show_vital_signs_dialog(frm) {
         fieldtype: "Small Text",
         label: __("Notes"),
       },
+      { fieldtype: "Section Break" },
+      {
+        fieldname: "signs_time",
+        fieldtype: "Time",
+        label: __("Time Taken"),
+        default: frappe.datetime.now_time(),
+        reqd: 1,
+      },
     ],
     primary_action_label: __("Save"),
     primary_action(values) {
@@ -1102,6 +1110,9 @@ function render_completed_meds_table(frm, entries) {
     __("Status") +
     "</th>" +
     "<th>" +
+    __("Given By") +
+    "</th>" +
+    "<th>" +
     __("Notes") +
     "</th>" +
     "</tr></thead><tbody>";
@@ -1137,6 +1148,9 @@ function render_completed_meds_table(frm, entries) {
       '">' +
       status +
       "</span></td>" +
+      "<td>" +
+      (e.administered_by_name || "") +
+      "</td>" +
       "<td>" +
       (e.administration_notes || "") +
       "</td>" +
